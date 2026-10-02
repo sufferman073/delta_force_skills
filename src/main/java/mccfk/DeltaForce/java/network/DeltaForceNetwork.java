@@ -1,70 +1,77 @@
 package mccfk.DeltaForce.java.network;
 
-import com.rzy.dealt_force_skills.network.NetworkHandler;
-import mccfk.DeltaForce.java.DeltaForce;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.network.NetworkDirection;
 
-import java.util.Collection;
+import mccfk.DeltaForce.java.DeltaForce;
 
 /**
- * 网络包注册器 - Forge 1.20.1 适配版
- * 复用 dealt_force_skills 的共享通道注册 DeltaForce 专属网络包
+ * 网络包注册器
  */
-@Mod.EventBusSubscriber(modid = DeltaForce.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = DeltaForce.MODID)
 public class DeltaForceNetwork {
 
-    /** 包ID起始偏移（避免与 dealt_force_skills 冲突） */
-    private static int packetId = 201;
-
     @SubscribeEvent
-    public static void onCommonSetup(FMLCommonSetupEvent event) {
-        event.enqueueWork(() -> {
+    public static void registerPackets(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(DeltaForce.MODID).versioned("2");
 
-            NetworkHandler.CHANNEL.messageBuilder(C2S_CreateMarker.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
-                    .encoder(C2S_CreateMarker::encode)
-                    .decoder(C2S_CreateMarker::decode)
-                    .consumerMainThread(C2S_CreateMarker::handle)
-                    .add();
+        // C2S: 客户端→服务端 - 创建标点
+        registrar.playToServer(
+            C2S_CreateMarker.TYPE,
+            C2S_CreateMarker.CODEC,
+            (payload, context) -> {
+                context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player) {
+                        MarkerManager.validateRequest(player, payload.marker()).ifPresent(marker -> {
+                            if (MarkerManager.addMarker(player.getUUID(), marker)) {
+                                broadcastMarkers(player.getServer());
+                            }
+                        });
+                    }
+                });
+            }
+        );
 
-            NetworkHandler.CHANNEL.messageBuilder(S2C_SyncMarkers.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
-                    .encoder(S2C_SyncMarkers::encode)
-                    .decoder(S2C_SyncMarkers::decode)
-                    .consumerMainThread(S2C_SyncMarkers::handle)
-                    .add();
+        // S2C: 服务端→客户端 - 同步标点
+        registrar.playToClient(
+            S2C_SyncMarkers.TYPE,
+            S2C_SyncMarkers.CODEC,
+            (payload, context) -> {
+                // 更新客户端存储
+                ClientMarkerStorage.updateMarkers(payload.markers());
+            }
+        );
 
-            NetworkHandler.CHANNEL.messageBuilder(C2S_DfWarehouseAction.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
-                    .encoder(C2S_DfWarehouseAction::encode)
-                    .decoder(C2S_DfWarehouseAction::decode)
-                    .consumerMainThread(C2S_DfWarehouseAction::handle)
-                    .add();
+        // C2S: 客户端→服务端 - 仓库操作（打开/存入/取出）
+        registrar.playToServer(
+            C2S_DfWarehouseAction.TYPE,
+            C2S_DfWarehouseAction.STREAM_CODEC,
+            (payload, context) -> C2S_DfWarehouseAction.handle(payload, context)
+        );
 
-            NetworkHandler.CHANNEL.messageBuilder(S2C_DfWarehouseSnapshot.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
-                    .encoder(S2C_DfWarehouseSnapshot::encode)
-                    .decoder(S2C_DfWarehouseSnapshot::decode)
-                    .consumerMainThread(S2C_DfWarehouseSnapshot::handle)
-                    .add();
+        // S2C: 服务端→客户端 - 仓库快照
+        registrar.playToClient(
+            S2C_DfWarehouseSnapshot.TYPE,
+            S2C_DfWarehouseSnapshot.STREAM_CODEC,
+            (payload, context) -> S2C_DfWarehouseSnapshot.handle(payload, context)
+        );
 
-        });
     }
 
-    /** 向指定玩家同步当前所有标点 */
     public static void syncMarkers(ServerPlayer player) {
-        Collection<Marker> allMarkers = MarkerManager.getAllMarkers();
-        NetworkHandler.sendToPlayer(new S2C_SyncMarkers(allMarkers), player);
+        player.connection.send(new S2C_SyncMarkers(java.util.List.copyOf(MarkerManager.getAllMarkers())));
     }
 
-    /** 向全服广播标点变更 */
     public static void broadcastMarkers(MinecraftServer server) {
-        if (server == null) return;
-        Collection<Marker> allMarkers = MarkerManager.getAllMarkers();
-        var packet = new S2C_SyncMarkers(allMarkers);
-        server.getPlayerList().getPlayers().forEach(player ->
-                NetworkHandler.sendToPlayer(packet, player));
+        if (server == null) {
+            return;
+        }
+        var syncPacket = new S2C_SyncMarkers(java.util.List.copyOf(MarkerManager.getAllMarkers()));
+        server.getPlayerList().getPlayers().forEach(player -> player.connection.send(syncPacket));
     }
 
 }

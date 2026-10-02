@@ -4,12 +4,14 @@ import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
 
 import com.rzy.dealt_force_skills.registry.ModGameRules;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 
 import java.lang.reflect.Method;
 import java.util.Locale;
@@ -47,12 +49,13 @@ public final class GhrothTaczEnhancement {
         if (stack.isEmpty()) {
             return stack;
         }
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         tag.putBoolean(ENHANCED_TAG, true);
         tag.putString(ENHANCED_KIND, kind == null ? "" : kind);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         String name = stack.getHoverName().getString();
         if (!name.contains(DISPLAY_SUFFIX)) {
-            stack.setHoverName(Component.literal(name + " " + DISPLAY_SUFFIX).withStyle(ChatFormatting.GOLD));
+            stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(name + " " + DISPLAY_SUFFIX).withStyle(ChatFormatting.GOLD));
         }
         if ("gun".equals(kind)) {
             enhanceArmoryGunNbt(stack);
@@ -68,12 +71,13 @@ public final class GhrothTaczEnhancement {
         if (!isEnhancedGun(gun)) {
             return;
         }
-        CompoundTag tag = gun.getOrCreateTag();
+        CompoundTag tag = gun.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         tag.putBoolean(TACZ_GUN_ATTACHMENT_LOCK_TAG, false);
         refreshEnhancedCache(player, gun, tag);
         int vanillaMagazine = vanillaMagazineSize(gun);
         int enhancedMagazine = enhancedMagazineCapacity(vanillaMagazine);
         if (enhancedMagazine <= 0) {
+            gun.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
             return;
         }
         int current = Math.max(0, tag.getInt(TACZ_GUN_CURRENT_AMMO_COUNT_TAG));
@@ -88,25 +92,27 @@ public final class GhrothTaczEnhancement {
         tag.putInt(TACZ_GUN_CURRENT_AMMO_COUNT_TAG, current);
         tag.putBoolean(TACZ_GUN_HAS_BULLET_IN_BARREL_TAG, current > 0);
         tag.putInt(LAST_ENHANCED_AMMO_TAG, current);
+        gun.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     public static boolean isEnhanced(ItemStack stack) {
-        return stack != null && !stack.isEmpty() && stack.getOrCreateTag().getBoolean(ENHANCED_TAG);
+        return stack != null && !stack.isEmpty() && stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean(ENHANCED_TAG);
     }
 
     public static boolean isEnhancedGun(ItemStack stack) {
-        return isEnhanced(stack) && "gun".equals(stack.getOrCreateTag().getString(ENHANCED_KIND));
+        return isEnhanced(stack) && "gun".equals(stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString(ENHANCED_KIND));
     }
 
     public static boolean isEnhancedAttachment(ItemStack stack) {
-        return isEnhanced(stack) && "attachment".equals(stack.getOrCreateTag().getString(ENHANCED_KIND));
+        return isEnhanced(stack) && "attachment".equals(stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString(ENHANCED_KIND));
     }
 
     public static boolean isTaczGunStack(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return false;
         }
-        CompoundTag tag = stack.getTag();
+        CustomData customData = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = customData != null ? customData.copyTag() : null;
         if (tag != null && tag.contains(TACZ_GUN_ID_TAG)) {
             return true;
         }
@@ -117,7 +123,8 @@ public final class GhrothTaczEnhancement {
         if (stack == null || stack.isEmpty()) {
             return Optional.empty();
         }
-        CompoundTag tag = stack.getTag();
+        CustomData customData = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = customData != null ? customData.copyTag() : null;
         if (tag == null || !tag.contains(TACZ_GUN_ID_TAG)) {
             return Optional.empty();
         }
@@ -227,7 +234,8 @@ public final class GhrothTaczEnhancement {
         if (gun == null || gun.isEmpty()) {
             return 0;
         }
-        CompoundTag tag = gun.getTag();
+        CustomData customData = gun.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = customData != null ? customData.copyTag() : null;
         if (tag == null) {
             return 0;
         }
@@ -291,10 +299,11 @@ public final class GhrothTaczEnhancement {
     }
 
     private static void enhanceArmoryGunNbt(ItemStack gun) {
-        CompoundTag tag = gun.getOrCreateTag();
+        CompoundTag tag = gun.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         tag.putBoolean(TACZ_GUN_ATTACHMENT_LOCK_TAG, false);
         int enhancedMagazine = enhancedMagazineCapacity(vanillaMagazineSize(gun));
         if (enhancedMagazine <= 0) {
+            gun.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
             return;
         }
         int current = Math.max(0, tag.getInt(TACZ_GUN_CURRENT_AMMO_COUNT_TAG));
@@ -304,6 +313,7 @@ public final class GhrothTaczEnhancement {
         tag.putInt(TACZ_GUN_CURRENT_AMMO_COUNT_TAG, current);
         tag.putBoolean(TACZ_GUN_HAS_BULLET_IN_BARREL_TAG, current > 0);
         tag.putInt(LAST_ENHANCED_AMMO_TAG, current);
+        gun.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     private static int enhancedMagazineCapacity(int baseCapacity) {
@@ -396,7 +406,8 @@ public final class GhrothTaczEnhancement {
         if (stack == null || stack.isEmpty()) {
             return false;
         }
-        CompoundTag tag = stack.getTag();
+        CustomData customData = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = customData != null ? customData.copyTag() : null;
         if (tag != null && tag.contains("AttachmentId")) {
             return true;
         }
@@ -417,6 +428,6 @@ public final class GhrothTaczEnhancement {
                 return true;
             }
         }
-        return isEnhancedAttachment(ItemStack.of(compound));
+        return false;
     }
 }

@@ -9,16 +9,17 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ChatScreen;
-import net.minecraftforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.lwjgl.opengl.GL11;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class StaminaHud {
     private static boolean jumpWasDown;
 
@@ -33,8 +34,7 @@ public final class StaminaHud {
     }
 
     @SubscribeEvent
-    public static void tick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void tick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.screen != null) {
             jumpWasDown = true;
@@ -45,15 +45,16 @@ public final class StaminaHud {
         jumpWasDown = down;
     }
 
-    @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+    @EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
     public static final class Registration {
         private Registration() { }
 
         @SubscribeEvent
-        public static void register(RegisterGuiOverlaysEvent event) {
+        public static void register(RegisterGuiLayersEvent event) {
             // A native status HUD layer, ordered after chat so overlapping chat cannot cover it.
-            event.registerAbove(VanillaGuiOverlay.CHAT_PANEL.id(), "stamina",
-                    (gui, graphics, partialTick, width, height) -> {
+            event.registerAbove(VanillaGuiLayers.CHAT,
+                    ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "stamina"),
+                    (graphics, deltaTracker) -> {
                         if (!(Minecraft.getInstance().screen instanceof ChatScreen)) renderBar(graphics);
                     });
         }
@@ -89,7 +90,7 @@ public final class StaminaHud {
             graphics.pose().translate(x, y + StaminaBarRenderer.HEIGHT * (1.0F - scale), 0.0F);
             graphics.pose().scale(scale, scale, 1.0F);
             StaminaBarRenderer.render(graphics, StaminaManager.currentValue(mc.player),
-                    mc.player.hasEffect(ModEffects.BURNING_HEART.get()));
+                    mc.player.hasEffect(ModEffects.BURNING_HEART));
             graphics.flush();
         } finally {
             graphics.pose().popPose();

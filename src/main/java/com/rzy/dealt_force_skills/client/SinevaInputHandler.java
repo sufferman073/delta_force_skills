@@ -13,17 +13,17 @@ import com.rzy.dealt_force_skills.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class SinevaInputHandler {
     private static volatile int BLADE_WIRE_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BLADE_WIRE_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.sineva_input_handler.blade_wire_hold_ticks", 10));
-    private static volatile int CORE_LONG_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_LONG_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.sineva_input_handler.core_long_hold_ticks", 15));
     private static final int GRAPPLE_CHARGE_TICKS = 30;
 
     private static boolean active1WasDown;
@@ -55,21 +55,9 @@ public final class SinevaInputHandler {
             resetCommanderCoreInput();
             return;
         }
-        if (active1Owned) {
-            tickBladeWire();
-        } else {
-            resetBladeWireInput();
-        }
-        if (active2Owned) {
-            tickGrapple(minecraft);
-        } else {
-            resetGrappleInput();
-        }
-        if (commanderCoreAvailable) {
-            tickCommanderCore(minecraft);
-        } else {
-            resetCommanderCoreInput();
-        }
+        if (active1Owned) tickBladeWire(); else resetBladeWireInput();
+        if (active2Owned) tickGrapple(minecraft); else resetGrappleInput();
+        if (commanderCoreAvailable) tickCommanderCore(minecraft); else resetCommanderCoreInput();
     }
 
     private static void tickBladeWire() {
@@ -111,7 +99,7 @@ public final class SinevaInputHandler {
                 throwHeldBladeWire();
             } else if (active1HeldTicks < BLADE_WIRE_HOLD_TICKS) {
                 // Short tap = normal skill use (place blade wire at feet)
-                ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_1);
+                ClientCommanderState.useNativeOrInherited(ModCharacters.SINEVA_ID, SkillSlot.ACTIVE_1, false);
             }
         }
         active1WasDown = false;
@@ -167,9 +155,7 @@ public final class SinevaInputHandler {
         if (down) {
             boolean selectedCore = commanderCoreWasDown || ClientCommanderState.handlesSkill(
                     ModCharacters.SINEVA_ID, SkillSlot.CORE, minecraft.player.isShiftKeyDown());
-            if (!selectedCore) {
-                return;
-            }
+            if (!selectedCore) return;
             commanderCoreWasDown = true;
             commanderCoreHeldTicks++;
             while (KeybindRegister.CORE_SKILL.consumeClick()) {
@@ -178,22 +164,28 @@ public final class SinevaInputHandler {
         }
         if (commanderCoreWasDown) {
             ClientCommanderState.useInheritedSkill(ModCharacters.SINEVA_ID, SkillSlot.CORE,
-                    commanderCoreHeldTicks >= CORE_LONG_HOLD_TICKS);
+                    commanderCoreHeldTicks >= 15);
         }
         resetCommanderCoreInput();
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
-        if (!bladeWireHeld && !grappleCharging) {
+        if ((!bladeWireHeld && !grappleCharging)
+                || (!ClientSinevaHudState.shouldRender()
+                && !ClientCommanderState.inherits(ModCharacters.SINEVA_ID))) {
             return;
         }
         if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT && event.getButton() != GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             return;
         }
 
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
+
         event.setCanceled(true);
-        if (Minecraft.getInstance().screen != null || event.getAction() != GLFW.GLFW_PRESS) {
+        if (event.getAction() != GLFW.GLFW_PRESS) {
             return;
         }
 
@@ -208,7 +200,12 @@ public final class SinevaInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
-        if (!bladeWireHeld && !grappleCharging) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
+        if ((!bladeWireHeld && !grappleCharging)
+                || (!ClientSinevaHudState.shouldRender()
+                && !ClientCommanderState.inherits(ModCharacters.SINEVA_ID))) {
             return;
         }
 
@@ -226,7 +223,7 @@ public final class SinevaInputHandler {
     }
 
     private static void throwHeldBladeWire() {
-        ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_1, true);
+        ClientCommanderState.useNativeOrInherited(ModCharacters.SINEVA_ID, SkillSlot.ACTIVE_1, true);
         bladeWireHeld = false;
         active1WasDown = false;
         active1HeldTicks = 0;
@@ -243,7 +240,7 @@ public final class SinevaInputHandler {
         boolean locked = isGrappleChargeFull() && grappleLockTarget(minecraft) != null;
         NetworkHandler.sendToServer(new C2S_SinevaGrappleChargeSound(
                 C2S_SinevaGrappleChargeSound.Action.RELEASE));
-        ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_2, locked);
+        ClientCommanderState.useNativeOrInherited(ModCharacters.SINEVA_ID, SkillSlot.ACTIVE_2, locked);
         com.rzy.dealt_force_skills.client.visual.SinevaPlaceholderVisuals.startGrappleFire();
     }
 
@@ -280,7 +277,7 @@ public final class SinevaInputHandler {
                 ModCharacters.SINEVA_ID, SkillSlot.ACTIVE_2)) {
             return;
         }
-        ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_2);
+        ClientCommanderState.useNativeOrInherited(ModCharacters.SINEVA_ID, SkillSlot.ACTIVE_2, false);
         com.rzy.dealt_force_skills.client.visual.SinevaPlaceholderVisuals.startGrappleFire();
     }
 

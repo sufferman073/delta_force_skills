@@ -10,8 +10,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -28,13 +26,13 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class LunaReconArrowEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider {
     private static volatile int MAX_BOUNCES = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_BOUNCES", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.luna_recon_arrow_entity.max_bounces", 8));
@@ -70,7 +68,7 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -128,11 +126,6 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
         tag.putDouble("ForwardX", lastForward.x);
         tag.putDouble("ForwardY", lastForward.y);
         tag.putDouble("ForwardZ", lastForward.z);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     @Override

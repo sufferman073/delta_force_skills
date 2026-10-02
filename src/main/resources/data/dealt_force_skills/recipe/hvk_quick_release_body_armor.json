@@ -1,0 +1,32 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:hvk_quick_release_body_armor"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

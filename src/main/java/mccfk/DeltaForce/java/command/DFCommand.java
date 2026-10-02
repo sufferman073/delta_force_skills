@@ -174,6 +174,7 @@ public class DFCommand {
      *      /df dfs list [文件] (列出配置项及当前值)
      *      /df dfs get <键路径> (查看单项详情)
      *      /df dfs set <键路径> <值> (修改配置，自动校验类型)
+     *      /df dfs layout t|f (技能按钮移到血条右侧并缩放)
      *      /df dfs x <值> / y <值> (技能按钮偏移)
      *      /df dfs scale <值> (技能按钮缩放 0.25-3.0)
      *      /df dfs reload (重新加载全部配置)
@@ -187,6 +188,7 @@ public class DFCommand {
                         "§6/df dfs list [文件] §7(列出全部配置项及当前值)\n" +
                         "§6/df dfs get <键路径> §7(查看单项详情)\n" +
                         "§6/df dfs set <键路径> <值> §7(修改配置，自动校验类型)\n" +
+                        "§6/df dfs layout t|f §7(技能按钮移到血条右侧并缩放)\n" +
                         "§6/df dfs x <值> / y <值> §7(技能按钮偏移)\n" +
                         "§6/df dfs scale <值> §7(技能按钮缩放 0.25-3.0)\n" +
                         "§6/df dfs reload §7(重新加载全部配置)\n" +

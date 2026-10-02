@@ -7,7 +7,6 @@ import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
 import com.rzy.dealt_force_skills.character.ghroth.GhrothTaczEnhancement;
-import com.rzy.dealt_force_skills.compat.SuperbWarfareCompat;
 import com.rzy.dealt_force_skills.client.character.ClientCharacterSelectionState;
 import com.rzy.dealt_force_skills.client.character.ClientCatDadHudState;
 import com.rzy.dealt_force_skills.client.character.ClientChamberHudState;
@@ -17,7 +16,6 @@ import com.rzy.dealt_force_skills.client.character.ClientCorpsHudState;
 import com.rzy.dealt_force_skills.client.character.ClientDWolfHudState;
 import com.rzy.dealt_force_skills.client.character.ClientDepartmentHudState;
 import com.rzy.dealt_force_skills.client.character.ClientGamblerHudState;
-import com.rzy.dealt_force_skills.client.character.ClientGamblerTargetingState;
 import com.rzy.dealt_force_skills.client.character.ClientGizmoHudState;
 import com.rzy.dealt_force_skills.client.character.ClientHackclawHudState;
 import com.rzy.dealt_force_skills.client.character.ClientHackclawCoreVisualState;
@@ -34,7 +32,6 @@ import com.rzy.dealt_force_skills.client.character.ClientRaptorHudState;
 import com.rzy.dealt_force_skills.client.character.ClientSaeedHudState;
 import com.rzy.dealt_force_skills.client.character.ClientShepherdHudState;
 import com.rzy.dealt_force_skills.client.character.ClientSinevaHudState;
-import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
 import com.rzy.dealt_force_skills.client.character.ClientSinevaRenderState;
 import com.rzy.dealt_force_skills.client.character.ClientSkillModelVisualState;
 import com.rzy.dealt_force_skills.client.character.ClientStingerHudState;
@@ -55,8 +52,8 @@ import com.rzy.dealt_force_skills.client.renderer.BladeWireBlockEntityRenderer;
 import com.rzy.dealt_force_skills.client.renderer.BlockbenchProjectileRenderer;
 import com.rzy.dealt_force_skills.client.renderer.DWolfHandCannonGrenadeRenderer;
 import com.rzy.dealt_force_skills.client.renderer.GrappleHookRenderer;
-import com.rzy.dealt_force_skills.client.renderer.BeaconBossRenderer;
 import com.rzy.dealt_force_skills.client.renderer.NoxDecoyRenderer;
+import com.rzy.dealt_force_skills.client.renderer.BeaconBossRenderer;
 import com.rzy.dealt_force_skills.client.renderer.SaeedGuardRenderer;
 import com.rzy.dealt_force_skills.client.renderer.SmokeCloudRenderer;
 import com.rzy.dealt_force_skills.client.renderer.TempestRecallAnchorRenderer;
@@ -72,11 +69,12 @@ import com.rzy.dealt_force_skills.client.visual.ManbaFlashlightBeamRenderer;
 import com.rzy.dealt_force_skills.client.visual.SinevaPlaceholderVisuals;
 import com.rzy.dealt_force_skills.character.sineva.SinevaStateManager;
 import com.rzy.dealt_force_skills.character.toxik.ToxikStateManager;
+import com.rzy.dealt_force_skills.compat.SuperbWarfareCompat;
 import com.rzy.dealt_force_skills.effect.ModItemEffectHelper;
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem;
+import com.rzy.dealt_force_skills.util.TargetingUtil;
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem.Profile;
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem.SpecialAbility;
-import com.rzy.dealt_force_skills.util.TargetingUtil;
 import com.rzy.dealt_force_skills.network.C2S_OpenSelectionOrShop;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.registry.ModEntities;
@@ -90,41 +88,39 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.ParticleEngine;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.ThrownItemRenderer;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.event.entity.player.ItemTooltipEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingEvent;
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public class ClientEvents {
     private static volatile int CORE_LONG_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_LONG_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.client_events.core_long_hold_ticks", 15));
     private static volatile int SHEPHERD_CORE_LONG_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SHEPHERD_CORE_LONG_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.client_events.shepherd_core_long_hold_ticks", 15));
     private static int coreKeyHeldTicks = 0;
     private static boolean coreKeyWasDown = false;
-    /** Keeps stale pseudo-tool handlers from swallowing vanilla screens after local death. */
-    private static boolean localDeathInputOverride;
     private static int suppressHurtAnimationTicks;
     private static boolean forcedCharacterSpinActive;
     private static float forcedCharacterSpinYaw;
@@ -139,10 +135,7 @@ public class ClientEvents {
     private static final String DICH9_UNTIL = "dealt_force_skills.dich9_until";
     private static volatile double MASK1_LOCK_RANGE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MASK1_LOCK_RANGE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("client.client_events.mask1_lock_range", 64.0));
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onClientTickTaczAdrenaline(TickEvent.ClientTickEvent e) {
-        if (e.phase != TickEvent.Phase.END) {
-            return;
-        }
+    public static void onClientTickTaczAdrenaline(ClientTickEvent.Post e) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
             ClientCommanderVehicleState.reset();
@@ -151,15 +144,21 @@ public class ClientEvents {
         tickSuppressHurtAnimation(mc.player);
         CommanderStateManager.ensureVanillaStepHeight(mc.player);
         SinevaStateManager.updateBombSuitStepHeight(mc.player,
-                (ClientSinevaHudState.shouldRender() || ClientCommanderState.inherits(
-                        com.rzy.dealt_force_skills.character.ModCharacters.SINEVA_ID))
+                (ClientSinevaHudState.shouldRender() || ClientCommanderState.inherits(ModCharacters.SINEVA_ID))
                         && ClientSinevaHudState.bombSuitActive(), ClientCommanderState.shouldRender());
-        accelerateTaczAdrenalineClient(mc.player);
-        TaczSpeedMultipliers multipliers = taczSpeedMultipliers(mc.player);
-        boolean shockBlocked = superbWarfareShockBlocked(mc.player);
+        TaczSpeedMultipliers superbWarfareMultipliers = taczSpeedMultipliers(mc.player);
+        boolean superbWarfareDisabled = mc.player.hasEffect(ModEffects.STINGER_DOWNED)
+                || mc.player.hasEffect(ModEffects.VLINDER_VITAL_DOWNED)
+                || mc.player.hasEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED)
+                || mc.player.hasEffect(ModEffects.TEMPEST_DISARMED)
+                || ClientCatDadHudState.actionLocked()
+                || ClientTempestHudState.recalling();
         SuperbWarfareCompat.applyClientWeaponModifiers(mc.player,
-                multipliers.fireRate(), multipliers.aim(), multipliers.aimPenalty(),
-                ClientCommanderVehicleState.isCommanderVehicle(mc.player.getVehicle()), shockBlocked);
+                superbWarfareMultipliers.fireRate(), superbWarfareMultipliers.aim(),
+                superbWarfareMultipliers.aimPenalty(),
+                ClientCommanderVehicleState.isCommanderVehicle(mc.player.getVehicle()),
+                superbWarfareDisabled);
+        accelerateTaczAdrenalineClient(mc.player);
         delayTaczMorseShockClient(mc.player);
     }
 
@@ -216,15 +215,6 @@ public class ClientEvents {
         suppressHurtAnimationTicks--;
     }
 
-    private static boolean superbWarfareShockBlocked(LocalPlayer player) {
-        MobEffectInstance sonic = player.getEffect(ModEffects.SONIC_SHOCK.get());
-        if (sonic != null && Math.floorMod(player.tickCount, sonic.getAmplifier() >= 1 ? 4 : 2) != 0) {
-            return true;
-        }
-        MobEffectInstance morse = player.getEffect(ModEffects.MORSE_STRONG_SHOCK.get());
-        return morse != null && Math.floorMod(player.tickCount, morse.getAmplifier() >= 1 ? 4 : 2) != 0;
-    }
-
     private static void accelerateTaczAdrenalineClient(net.minecraft.client.player.LocalPlayer player) {
         TaczSpeedMultipliers multipliers = taczSpeedMultipliers(player);
         if (!multipliers.hasChange()) {
@@ -235,26 +225,15 @@ public class ClientEvents {
             Method fromLocalPlayer = clientOperatorClass.getMethod("fromLocalPlayer", net.minecraft.client.player.LocalPlayer.class);
             Object operator = fromLocalPlayer.invoke(null, player);
             Object dataHolder = clientOperatorClass.getMethod("getDataHolder").invoke(operator);
-            long fireExtraMillis = extraTaczMillis(multipliers.fireRate());
             long reloadExtraMillis = extraTaczMillis(multipliers.reload());
-            long aimExtraMillis = extraTaczMillis(multipliers.aim());
             long boltExtraMillis = extraTaczMillis(multipliers.bolt());
-            long aimPenaltyMillis = extraTaczMillis(multipliers.aimPenalty());
-            shiftLongFieldIfNonNegative(dataHolder, "clientShootTimestamp", -fireExtraMillis);
-            shiftLongFieldIfNonNegative(dataHolder, "clientLastShootTimestamp", -fireExtraMillis);
-            shiftLongFieldIfNonNegative(dataHolder, "lockTimestamp", -Math.max(fireExtraMillis, Math.max(reloadExtraMillis, boltExtraMillis)));
+            shiftLongFieldIfNonNegative(dataHolder, "lockTimestamp", -Math.max(reloadExtraMillis, boltExtraMillis));
             if (booleanField(dataHolder, "isBolting")) {
                 shiftLongFieldIfNonNegative(dataHolder, "boltTimestamp", -boltExtraMillis);
-            }
-            if (booleanField(dataHolder, "clientIsAiming")) {
-                shiftLongFieldIfNonNegative(dataHolder, "clientAimingTimestamp", -aimExtraMillis + aimPenaltyMillis);
-                boostFloatField(dataHolder, "clientAimingProgress", adrenalineAimProgressBoost(multipliers.aim()), 0.0F, 1.0F);
-                reduceFloatField(dataHolder, "clientAimingProgress", taczAimPenaltyProgress(multipliers.aimPenalty()), 0.0F, 1.0F);
             }
             if (booleanField(dataHolder, "isCharging")) {
                 boostFloatField(dataHolder, "chargeProgress", adrenalineChargeProgressBoost(Math.max(multipliers.fireRate(), multipliers.aim())), 0.0F, Float.MAX_VALUE);
             }
-            setBooleanFieldIfPresent(dataHolder, "isShootRecorded", true);
         } catch (ReflectiveOperationException | LinkageError ignored) {
             // TaCZ is optional; keep the bridge best-effort and non-fatal.
         }
@@ -323,7 +302,8 @@ public class ClientEvents {
     }
 
     private static boolean isGhrothEnhancedGun(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
+        CustomData cd = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = cd != null ? cd.copyTag() : null;
         return tag != null && tag.getBoolean(GhrothTaczEnhancement.ENHANCED_TAG);
     }
 
@@ -336,14 +316,14 @@ public class ClientEvents {
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
         Profile chestProfile = DfsEquipmentItem.profile(chest);
         if (chestProfile != null && chestProfile.ability() == SpecialAbility.TRICK_ASSAULT
-                && now <= chest.getOrCreateTag().getLong(TRICK_UNTIL)) {
-            multiplier *= 1.0D + chest.getOrCreateTag().getInt(TRICK_STACKS) * 0.04D;
+                && now <= chest.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getLong(TRICK_UNTIL)) {
+            multiplier *= 1.0D + chest.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getInt(TRICK_STACKS) * 0.04D;
         }
         ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
         Profile headProfile = DfsEquipmentItem.profile(head);
         if (headProfile != null && headProfile.ability() == SpecialAbility.DICH9_ASSAULT
-                && now <= head.getOrCreateTag().getLong(DICH9_UNTIL)) {
-            multiplier *= 1.0D + head.getOrCreateTag().getInt(DICH9_STACKS) * 0.06D;
+                && now <= head.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getLong(DICH9_UNTIL)) {
+            multiplier *= 1.0D + head.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getInt(DICH9_STACKS) * 0.06D;
         }
         if (isMhsFuryActive(player)) {
             multiplier *= 2.0D;
@@ -378,7 +358,7 @@ public class ClientEvents {
     }
 
     private static void delayTaczMorseShockClient(net.minecraft.client.player.LocalPlayer player) {
-        MobEffectInstance shock = player.getEffect(ModEffects.MORSE_STRONG_SHOCK.get());
+        MobEffectInstance shock = player.getEffect(ModEffects.MORSE_STRONG_SHOCK);
         if (shock == null) {
             return;
         }
@@ -485,11 +465,9 @@ public class ClientEvents {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent e) {
-        if (e.phase != TickEvent.Phase.END) return;
+    public static void onClientTick(ClientTickEvent.Post e) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
-            localDeathInputOverride = true;
             forcedCharacterSpinActive = false;
             ClientToolReleaseAction.reset();
             ClientCharacterSelectionState.resetSession();
@@ -498,12 +476,6 @@ public class ClientEvents {
             DWolfSlideVisuals.reset();
             return;
         }
-        localDeathInputOverride = !mc.player.isAlive();
-        if (localDeathInputOverride) {
-            resetGameplayInputAfterDeath(mc);
-            return;
-        }
-        localDeathInputOverride = false;
         if (mc.player.isSpectator()) {
             forcedCharacterSpinActive = false;
             ClientToolReleaseAction.reset();
@@ -526,6 +498,7 @@ public class ClientEvents {
         ClientChamberHudState.tick();
         ClientShepherdHudState.tick();
         ClientNTwoHudState.tick();
+        com.rzy.dealt_force_skills.client.ClientTeammateRevealState.tick();
         ClientLunaHudState.tick();
         ClientHackclawHudState.tick();
         ClientVyronHudState.tick();
@@ -553,6 +526,10 @@ public class ClientEvents {
         ClientSkillModelVisualState.tick(mc);
         ClientSinevaVisualState.tick(mc);
         ClientSinevaKnockdownState.tick(mc);
+        if (mc.screen != null) {
+            resetCoreSkillKey();
+            return;
+        }
         SinevaShieldInputHandler.tick(mc);
         SinevaInputHandler.tick(mc);
         UluruInputHandler.tick(mc);
@@ -588,10 +565,10 @@ public class ClientEvents {
         RaptorFalconController.tick(mc);
         UluruGhostEntityManager.tick(mc);
         DWolfSlideVisuals.tick();
-        if (mc.player.hasEffect(ModEffects.ROVER_DOWNED.get()) || mc.player.hasEffect(ModEffects.STINGER_DOWNED.get())
-                || mc.player.hasEffect(ModEffects.VLINDER_VITAL_DOWNED.get())
-                || mc.player.hasEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED.get())
-                || mc.player.hasEffect(ModEffects.TEMPEST_DISARMED.get())
+        if (mc.player.hasEffect(ModEffects.ROVER_DOWNED) || mc.player.hasEffect(ModEffects.STINGER_DOWNED)
+                || mc.player.hasEffect(ModEffects.VLINDER_VITAL_DOWNED)
+                || mc.player.hasEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED)
+                || mc.player.hasEffect(ModEffects.TEMPEST_DISARMED)
                 || ClientCatDadHudState.actionLocked()
                 || ClientTempestHudState.recalling()) {
             drainDownedLockedKeys(mc);
@@ -670,59 +647,6 @@ public class ClientEvents {
         }
     }
 
-    /**
-     * Pseudo-tools are normally allowed to own gameplay input, but never while the
-     * local player is dead. Keep their transient camera/control state from ticking
-     * and drain custom mappings so the death/title screens receive vanilla input.
-     */
-    private static void resetGameplayInputAfterDeath(Minecraft minecraft) {
-        ClientToolReleaseAction.reset();
-        ClientGamblerTargetingState.clearAll();
-        UluruMissileController.stop(false);
-        RaptorFalconController.stop(false);
-        SaeedGuardViewController.stop(false);
-        resetCoreSkillKey();
-        drainKey(KeybindRegister.CHARACTER_SELECT);
-        drainKey(KeybindRegister.ACTIVE_SKILL_1);
-        drainKey(KeybindRegister.ACTIVE_SKILL_2);
-        drainKey(KeybindRegister.CORE_SKILL);
-    }
-
-    private static boolean localDeathInputIsOverridden() {
-        Minecraft minecraft = Minecraft.getInstance();
-        return localDeathInputOverride
-                || (minecraft.player != null && !minecraft.player.isAlive());
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-    public static void restoreVanillaInputAfterDeath(InputEvent.MouseButton.Pre event) {
-        if (localDeathInputIsOverridden()) {
-            event.setCanceled(false);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-    public static void restoreVanillaInputAfterDeath(InputEvent.MouseScrollingEvent event) {
-        if (localDeathInputIsOverridden()) {
-            event.setCanceled(false);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-    public static void restoreVanillaInputAfterDeath(InputEvent.InteractionKeyMappingTriggered event) {
-        if (localDeathInputIsOverridden()) {
-            event.setCanceled(false);
-            event.setSwingHand(true);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-    public static void restoreVanillaScreenAfterDeath(ScreenEvent.Opening event) {
-        if (localDeathInputIsOverridden()) {
-            event.setCanceled(false);
-        }
-    }
-
     private static void tickForcedCharacterSpin(LocalPlayer player) {
         float degrees = 0.0F;
         if (ClientDepartmentHudState.shouldRender()) {
@@ -764,8 +688,10 @@ public class ClientEvents {
         if (chestProfile == null || !chestProfile.id().equals("heavy_assault_vest")) {
             return;
         }
-        if (!isClientScopedWeapon(player)) {
-            return;
+        if (!isTaczGunStack(player.getMainHandItem()) || !isTaczClientAiming(player)) {
+            if (!SuperbWarfareCompat.isClientAiming(player)) {
+                return;
+            }
         }
         LivingEntity target = nearestMask1LockTarget(player);
         if (target != null) {
@@ -780,19 +706,16 @@ public class ClientEvents {
                 || !ModCharacters.GHROTH_ID.equals(ClientCharacterSelectionState.selectedCharacterId())) {
             return;
         }
-        if (!isClientScopedWeapon(player)) {
-            return;
+        if (!isTaczGunStack(player.getMainHandItem()) || !isTaczClientAiming(player)) {
+            if (!SuperbWarfareCompat.isClientAiming(player)) {
+                return;
+            }
         }
         LivingEntity target = player.isShiftKeyDown() ? nearestGhrothPlayerTarget(player) : nearestGhrothNonPlayerTarget(player);
         if (target != null) {
             SuperbWarfareCompat.applyClientScopedTargetLock(player, target);
             aimLocalPlayerAt(player, target.getEyePosition());
         }
-    }
-
-    private static boolean isClientScopedWeapon(LocalPlayer player) {
-        return (isTaczGunStack(player.getMainHandItem()) && isTaczClientAiming(player))
-                || SuperbWarfareCompat.isClientAiming(player);
     }
 
     private static LivingEntity nearestMask1LockTarget(LocalPlayer player) {
@@ -900,7 +823,8 @@ public class ClientEvents {
         }
         ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
         Profile headProfile = DfsEquipmentItem.profile(head);
-        CompoundTag tag = head.getTag();
+        CustomData cdHead = head.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = cdHead != null ? cdHead.copyTag() : null;
         return headProfile != null && headProfile.ability() == SpecialAbility.MHS_FURY
                 && tag != null && player.level().getGameTime() <= tag.getLong(MHS_FURY_UNTIL);
     }
@@ -909,16 +833,24 @@ public class ClientEvents {
         if (stack.isEmpty()) {
             return false;
         }
-        CompoundTag tag = stack.getTag();
+        try {
+            Class<?> gunClass = Class.forName("com.tacz.guns.api.item.IGun");
+            if (gunClass.getMethod("getIGunOrNull", ItemStack.class).invoke(null, stack) != null) {
+                return true;
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            // Fall through to legacy data/class-name detection.
+        }
+        CustomData cdStack = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = cdStack != null ? cdStack.copyTag() : null;
         if (tag != null && tag.contains(TACZ_GUN_ID_TAG)) {
             return true;
         }
         return stack.getItem().getClass().getName().startsWith("com.tacz.guns.");
     }
 
-
     private static void reduceAdrenalinePlacementDelay(Minecraft minecraft) {
-        if (minecraft.player == null || !minecraft.player.hasEffect(ModEffects.TOXIK_ADRENALINE.get())) {
+        if (minecraft.player == null || !minecraft.player.hasEffect(ModEffects.TOXIK_ADRENALINE)) {
             return;
         }
         Field field = rightClickDelayField();
@@ -967,8 +899,11 @@ public class ClientEvents {
         int requiredHoldTicks = ClientShepherdHudState.shouldRender()
                 ? SHEPHERD_CORE_LONG_HOLD_TICKS
                 : CORE_LONG_HOLD_TICKS;
-        boolean longHold = coreKeyHeldTicks >= requiredHoldTicks;
-        ClientCharacterSelectionState.useSkill(SkillSlot.CORE, longHold);
+        boolean alternate = ModCharacters.CHAMBER_ID.equals(ClientCharacterSelectionState.selectedCharacterId())
+                && Minecraft.getInstance().player != null
+                ? Minecraft.getInstance().player.isShiftKeyDown()
+                : coreKeyHeldTicks >= requiredHoldTicks;
+        ClientCharacterSelectionState.useSkill(SkillSlot.CORE, alternate);
         coreKeyHeldTicks = 0;
         coreKeyWasDown = false;
     }
@@ -1104,10 +1039,11 @@ public class ClientEvents {
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        NikaidouHiroAnchorMarkerOverlay.render(event);
         UluruGhostEntityManager.render(event);
     }
 
-    @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+    @EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
     public static class ModBusClient {
         @SubscribeEvent
         public static void registerParticleProviders(RegisterParticleProvidersEvent e) {
@@ -1303,6 +1239,6 @@ public class ClientEvents {
     }
 
     private static ResourceLocation model(String path) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, path);
     }
 }

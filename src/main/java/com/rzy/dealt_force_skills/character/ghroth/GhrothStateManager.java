@@ -11,6 +11,7 @@ import com.rzy.dealt_force_skills.network.S2C_TempestStartRoll;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
 import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
+import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -31,7 +32,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -295,10 +296,10 @@ public final class GhrothStateManager {
     }
 
     private static void applyStarsDamage(ServerPlayer player, LivingEntity target, float damage) {
-        if (target == null || target == player || !target.isAlive() || target.isSpectator()) {
+        if (target == null || !TargetingUtil.isHostileLivingFor(player, target)) {
             return;
         }
-        if (target instanceof Player other && (other.isCreative() || shouldCancelCeasefire(player, other))) {
+        if (target instanceof Player other && shouldCancelCeasefire(player, other)) {
             return;
         }
         target.invulnerableTime = 0;
@@ -627,8 +628,8 @@ public final class GhrothStateManager {
         LivingEntity best = null;
         double bestScore = Double.NEGATIVE_INFINITY;
         for (LivingEntity target : player.serverLevel().getEntitiesOfClass(LivingEntity.class, search,
-                target -> target != player && target.isAlive() && !target.isSpectator())) {
-            if (target instanceof Player other && (other.isCreative() || shouldCancelCeasefire(player, other))) {
+                target -> TargetingUtil.isHostileLivingFor(player, target))) {
+            if (target instanceof Player other && shouldCancelCeasefire(player, other)) {
                 continue;
             }
             Vec3 toTarget = target.getBoundingBox().getCenter().subtract(eye);
@@ -665,7 +666,7 @@ public final class GhrothStateManager {
     }
 
     private static String entityTypeKey(EntityType<?> type) {
-        ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(type);
+        ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         return key == null ? "" : key.toString();
     }
 

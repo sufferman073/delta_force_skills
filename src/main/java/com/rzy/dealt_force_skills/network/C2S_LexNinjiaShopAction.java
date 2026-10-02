@@ -4,11 +4,27 @@ import com.rzy.dealt_force_skills.shop.LexNinjiaShopAction;
 import com.rzy.dealt_force_skills.shop.LexNinjiaShopManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record C2S_LexNinjiaShopAction(String artId, LexNinjiaShopAction action) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_LexNinjiaShopAction> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_lex_ninjia_shop_action"));
 
-public record C2S_LexNinjiaShopAction(String artId, LexNinjiaShopAction action) {
+    public static final StreamCodec<FriendlyByteBuf, C2S_LexNinjiaShopAction> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_LexNinjiaShopAction::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public static void encode(C2S_LexNinjiaShopAction msg, FriendlyByteBuf buf) {
         buf.writeUtf(msg.artId, 64);
         buf.writeVarInt(msg.action.ordinal());
@@ -24,13 +40,12 @@ public record C2S_LexNinjiaShopAction(String artId, LexNinjiaShopAction action) 
         return new C2S_LexNinjiaShopAction(artId, action);
     }
 
-    public static void handle(C2S_LexNinjiaShopAction msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_LexNinjiaShopAction msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player != null) {
                 LexNinjiaShopManager.handleAction(player, msg.artId, msg.action);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

@@ -1,8 +1,8 @@
 package com.rzy.dealt_force_skills.block;
 
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -18,6 +18,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 public class HvkClonePrototypeBlock extends BaseEntityBlock {
+    public static final MapCodec<HvkClonePrototypeBlock> CODEC =
+            simpleCodec(p -> new HvkClonePrototypeBlock());
+
     public HvkClonePrototypeBlock() {
         super(BlockBehaviour.Properties.of()
                 .mapColor(MapColor.METAL)
@@ -27,14 +30,13 @@ public class HvkClonePrototypeBlock extends BaseEntityBlock {
     }
 
     @Override
-    public RenderShape getRenderShape(BlockState state) {
-        return RenderShape.MODEL;
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
     }
 
-    @Nullable
     @Override
-    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return ModBlockEntities.HVK_CLONE_PROTOTYPE.get().create(pos, state);
+    public RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
     }
 
     @Nullable
@@ -46,9 +48,15 @@ public class HvkClonePrototypeBlock extends BaseEntityBlock {
         return super.getStateForPlacement(context);
     }
 
+    @Nullable
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return ModBlockEntities.HVK_CLONE_PROTOTYPE.get().create(pos, state);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+                                               BlockHitResult hit) {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }

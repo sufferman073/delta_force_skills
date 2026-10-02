@@ -28,14 +28,15 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraftforge.common.ForgeMod;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.EnumSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 public final class CommanderStateManager {
     private static final String ROOT_TAG = DealtForceSkillsMod.MODID + ".commander";
@@ -55,10 +56,10 @@ public final class CommanderStateManager {
     private static final String DAMAGE_WINDOW_TICK = "DamageWindowTick";
     private static final String DAMAGE_WINDOW_TOTAL = "DamageWindowTotal";
 
-    private static final UUID MAX_HEALTH_MODIFIER = UUID.fromString("a9a2fc61-6f73-4d2a-8e76-4d45495d3325");
-    private static final UUID MOVEMENT_MODIFIER = UUID.fromString("73d64604-f46a-49e8-8b7b-e6d5ce3f1514");
-    private static final UUID LUCK_MODIFIER = UUID.fromString("213c931e-1614-4018-a9dd-adf614a1d75b");
-    private static final UUID STEP_HEIGHT_MODIFIER = UUID.fromString("d68f6f77-5ba1-45f0-a186-b35917c80a3f");
+    private static final ResourceLocation MAX_HEALTH_MODIFIER = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "commander_max_health");
+    private static final ResourceLocation MOVEMENT_MODIFIER = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "commander_movement");
+    private static final ResourceLocation LUCK_MODIFIER = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "commander_luck");
+    private static final ResourceLocation STEP_HEIGHT_MODIFIER = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "commander_step_height");
     private static final double STEP_HEIGHT_BONUS = 0.5D;
     private static final Set<CharacterRole> INHERITABLE_ROLES = EnumSet.of(
             CharacterRole.ASSAULT, CharacterRole.SUPPORT, CharacterRole.ENGINEER, CharacterRole.RECON);
@@ -67,6 +68,8 @@ public final class CommanderStateManager {
     }
 
     public static boolean isCommander(Player player) {
+        // Inherited skill execution temporarily exposes the source character through
+        // getSelectedCharacterId(); Commander identity must use the stored selection.
         return player != null && CharacterSelectionManager.getStoredSelectedCharacterId(player)
                 .map(ModCharacters.COMMANDER_ID::equals)
                 .orElse(false);
@@ -161,7 +164,10 @@ public final class CommanderStateManager {
     /** Keeps stale client-side role state from suppressing vanilla half-block traversal. */
     public static void ensureVanillaStepHeight(Player player) {
         if (player != null && player.maxUpStep() < 0.6F) {
-            player.setMaxUpStep(0.6F);
+            AttributeInstance stepAttr = player.getAttribute(Attributes.STEP_HEIGHT);
+            if (stepAttr != null && stepAttr.getBaseValue() < 0.6D) {
+                stepAttr.setBaseValue(0.6D);
+            }
         }
     }
 
@@ -172,10 +178,10 @@ public final class CommanderStateManager {
         return hasModifier(player.getAttribute(Attributes.MAX_HEALTH), MAX_HEALTH_MODIFIER)
                 || hasModifier(player.getAttribute(Attributes.MOVEMENT_SPEED), MOVEMENT_MODIFIER)
                 || hasModifier(player.getAttribute(Attributes.LUCK), LUCK_MODIFIER)
-                || hasModifier(player.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get()), STEP_HEIGHT_MODIFIER);
+                || hasModifier(player.getAttribute(Attributes.STEP_HEIGHT), STEP_HEIGHT_MODIFIER);
     }
 
-    private static boolean hasModifier(AttributeInstance attribute, UUID id) {
+    private static boolean hasModifier(AttributeInstance attribute, ResourceLocation id) {
         return attribute != null && attribute.getModifier(id) != null;
     }
 
@@ -536,8 +542,8 @@ public final class CommanderStateManager {
         int gene = geneLevel(player);
         if (hasBranchUpgrade(player, CommanderBranchUpgrade.VLINDER_SAVE_ANOTHER)
                 && DealtTeamManager.onlineTeammates(player).stream()
-                .anyMatch(teammate -> teammate.hasEffect(ModEffects.STINGER_DOWNED.get())
-                        || teammate.hasEffect(ModEffects.VLINDER_VITAL_DOWNED.get()))) {
+                .anyMatch(teammate -> teammate.hasEffect(ModEffects.STINGER_DOWNED)
+                        || teammate.hasEffect(ModEffects.VLINDER_VITAL_DOWNED))) {
             return Math.min(amount, Math.max(0.0F, player.getHealth() - 1.0F));
         }
         if (gene < 5 || amount <= 0.0F) {
@@ -618,39 +624,39 @@ public final class CommanderStateManager {
     private static void applyOutgoingDamageEffects(ServerPlayer attacker, LivingEntity target) {
         int gene = geneLevel(attacker);
         if (gene >= 10) {
-            target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), 10, 0, false, true, true));
+            target.addEffect(new MobEffectInstance(ModEffects.STUN, 10, 0, false, true, true));
         }
         if (hasBranchUpgrade(attacker, CommanderBranchUpgrade.SHEPHERD_RESONANT_SONIC)
                 || hasBranchUpgrade(attacker, CommanderBranchUpgrade.RAPTOR_COMPOSITE_PULSE)) {
-            target.addEffect(new MobEffectInstance(ModEffects.SONIC_SHOCK.get(), 10, 0, false, true, true));
+            target.addEffect(new MobEffectInstance(ModEffects.SONIC_SHOCK, 10, 0, false, true, true));
         }
         if (hasBranchUpgrade(attacker, CommanderBranchUpgrade.MORSE_AUTO_FLASH)) {
-            target.addEffect(new MobEffectInstance(ModEffects.MORSE_FLASH_BLIND.get(), 25 * 20, 0, false, true, true));
+            target.addEffect(new MobEffectInstance(ModEffects.MORSE_FLASH_BLIND, 25 * 20, 0, false, true, true));
         }
         if (hasBranchUpgrade(attacker, CommanderBranchUpgrade.HACKCLAW_STRONG_INTERFERENCE)) {
-            target.addEffect(new MobEffectInstance(ModEffects.HACKCLAW_INTERFERENCE.get(), 8 * 20, 0, false, true, true));
+            target.addEffect(new MobEffectInstance(ModEffects.HACKCLAW_INTERFERENCE, 8 * 20, 0, false, true, true));
         }
         if (hasBranchUpgrade(attacker, CommanderBranchUpgrade.TOXIK_FIREFLY_AURA)) {
-            target.addEffect(new MobEffectInstance(ModEffects.TOXIK_FIREFLY_INTERFERENCE.get(), 60 * 20, 0, false, true, true));
+            target.addEffect(new MobEffectInstance(ModEffects.TOXIK_FIREFLY_INTERFERENCE, 60 * 20, 0, false, true, true));
             for (ServerPlayer teammate : DealtTeamManager.onlineTeammates(attacker)) {
                 if (teammate.distanceToSqr(attacker) <= 40.0D * 40.0D) {
-                    teammate.addEffect(new MobEffectInstance(ModEffects.TOXIK_ADRENALINE.get(), 10 * 20, 0,
+                    teammate.addEffect(new MobEffectInstance(ModEffects.TOXIK_ADRENALINE, 10 * 20, 0,
                             false, true, true));
                 }
             }
-            attacker.addEffect(new MobEffectInstance(ModEffects.TOXIK_ADRENALINE.get(), 10 * 20, 0,
+            attacker.addEffect(new MobEffectInstance(ModEffects.TOXIK_ADRENALINE, 10 * 20, 0,
                     false, true, true));
         }
         if (hasBranchUpgrade(attacker, CommanderBranchUpgrade.VLINDER_DUST_AURA)) {
-            target.addEffect(new MobEffectInstance(ModEffects.VLINDER_MEDICAL_WASTE_INTERFERENCE.get(), 15 * 20,
+            target.addEffect(new MobEffectInstance(ModEffects.VLINDER_MEDICAL_WASTE_INTERFERENCE, 15 * 20,
                     0, false, true, true));
             for (ServerPlayer teammate : DealtTeamManager.onlineTeammates(attacker)) {
                 if (teammate.distanceToSqr(attacker) <= 40.0D * 40.0D) {
-                    teammate.addEffect(new MobEffectInstance(ModEffects.VLINDER_HEALING_DUST.get(), 15 * 20, 0,
+                    teammate.addEffect(new MobEffectInstance(ModEffects.VLINDER_HEALING_DUST, 15 * 20, 0,
                             false, true, true));
                 }
             }
-            attacker.addEffect(new MobEffectInstance(ModEffects.VLINDER_HEALING_DUST.get(), 15 * 20, 0,
+            attacker.addEffect(new MobEffectInstance(ModEffects.VLINDER_HEALING_DUST, 15 * 20, 0,
                     false, true, true));
         }
         if (hasBranchUpgrade(attacker, CommanderBranchUpgrade.RAPTOR_VETERAN_EXPERIENCE)
@@ -747,26 +753,26 @@ public final class CommanderStateManager {
         int gene = geneLevel(player);
         normalizeNegativeStepHeightBase(player);
         replaceModifier(player.getAttribute(Attributes.MAX_HEALTH), MAX_HEALTH_MODIFIER,
-                "Commander gene max health", gene * 0.20D, AttributeModifier.Operation.MULTIPLY_BASE);
+                "Commander gene max health", gene * 0.20D, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
         replaceModifier(player.getAttribute(Attributes.MOVEMENT_SPEED), MOVEMENT_MODIFIER,
-                "Commander gene movement", gene * 0.04D, AttributeModifier.Operation.MULTIPLY_BASE);
+                "Commander gene movement", gene * 0.04D, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
         replaceModifier(player.getAttribute(Attributes.LUCK), LUCK_MODIFIER,
-                "Commander gene luck", gene, AttributeModifier.Operation.ADDITION);
-        replaceModifier(player.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get()), STEP_HEIGHT_MODIFIER,
-                "Commander step height", STEP_HEIGHT_BONUS, AttributeModifier.Operation.ADDITION);
+                "Commander gene luck", gene, AttributeModifier.Operation.ADD_VALUE);
+        replaceModifier(player.getAttribute(Attributes.STEP_HEIGHT), STEP_HEIGHT_MODIFIER,
+                "Commander step height", STEP_HEIGHT_BONUS, AttributeModifier.Operation.ADD_VALUE);
         if (player.getHealth() > player.getMaxHealth()) {
             player.setHealth(player.getMaxHealth());
         }
     }
 
-    private static void replaceModifier(AttributeInstance attribute, UUID id, String name, double amount,
+    private static void replaceModifier(AttributeInstance attribute, ResourceLocation id, String name, double amount,
                                         AttributeModifier.Operation operation) {
         if (attribute == null) {
             return;
         }
         attribute.removeModifier(id);
         if (amount != 0.0D) {
-            attribute.addTransientModifier(new AttributeModifier(id, name, amount, operation));
+            attribute.addTransientModifier(new AttributeModifier(id, amount, operation));
         }
     }
 
@@ -774,7 +780,7 @@ public final class CommanderStateManager {
         removeModifier(player.getAttribute(Attributes.MAX_HEALTH), MAX_HEALTH_MODIFIER);
         removeModifier(player.getAttribute(Attributes.MOVEMENT_SPEED), MOVEMENT_MODIFIER);
         removeModifier(player.getAttribute(Attributes.LUCK), LUCK_MODIFIER);
-        removeModifier(player.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get()), STEP_HEIGHT_MODIFIER);
+        removeModifier(player.getAttribute(Attributes.STEP_HEIGHT), STEP_HEIGHT_MODIFIER);
         normalizeNegativeStepHeightBase(player);
         // Attribute removal does not clamp LivingEntity health automatically. A
         // role switch must therefore reduce a Commander-era health value to the
@@ -784,14 +790,14 @@ public final class CommanderStateManager {
         }
     }
 
-    private static void removeModifier(AttributeInstance attribute, UUID id) {
+    private static void removeModifier(AttributeInstance attribute, ResourceLocation id) {
         if (attribute != null) {
             attribute.removeModifier(id);
         }
     }
 
     private static void normalizeNegativeStepHeightBase(Player player) {
-        AttributeInstance stepHeight = player.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get());
+        AttributeInstance stepHeight = player.getAttribute(Attributes.STEP_HEIGHT);
         if (stepHeight != null && stepHeight.getBaseValue() < 0.0D) {
             stepHeight.setBaseValue(0.0D);
         }

@@ -1,0 +1,32 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:assault_ballistic_vest"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

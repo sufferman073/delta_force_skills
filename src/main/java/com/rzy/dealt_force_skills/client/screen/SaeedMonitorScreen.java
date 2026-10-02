@@ -87,7 +87,7 @@ public final class SaeedMonitorScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         int left = panelLeft();
         int top = panelTop();
         graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xEE101722);
@@ -98,6 +98,10 @@ public final class SaeedMonitorScreen extends Screen {
         drawRows(graphics, left, top);
         drawSelected(graphics, left, top);
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     private void drawRows(GuiGraphics graphics, int left, int top) {
@@ -153,15 +157,15 @@ public final class SaeedMonitorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int maxScroll = Math.max(0, guards().size() - VISIBLE_ROWS);
-        int next = clamp(scrollIndex - (int) Math.signum(delta), 0, maxScroll);
+        int next = clamp(scrollIndex - (int) Math.signum(scrollY), 0, maxScroll);
         if (next != scrollIndex) {
             scrollIndex = next;
             refreshWidgets();
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

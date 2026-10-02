@@ -1,0 +1,1 @@
+{"type":"minecraft:block","pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"dealt_force_skills:hvk_advanced_standard_template_constructor"}],"conditions":[{"condition":"minecraft:survives_explosion"}]}]}

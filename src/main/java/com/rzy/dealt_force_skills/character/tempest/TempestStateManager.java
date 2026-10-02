@@ -106,8 +106,7 @@ public final class TempestStateManager {
     public static boolean isTempest(Player player) {
         Optional<String> selected = CharacterSelectionManager.getSelectedCharacterId(player);
         return selected.isPresent() && ModCharacters.TEMPEST_ID.equals(selected.get())
-                || com.rzy.dealt_force_skills.character.commander.CommanderStateManager
-                .inheritsRuntimeSource(player, ModCharacters.TEMPEST_ID);
+                || CommanderStateManager.inheritsRuntimeSource(player, ModCharacters.TEMPEST_ID);
     }
 
     public static void initializeIfNeeded(ServerPlayer player) {
@@ -280,7 +279,7 @@ public final class TempestStateManager {
 
     public static boolean isActionLocked(Player player) {
         return isRecalling(player) || isDowned(player) || PlayerReviveCompat.isBleeding(player)
-                || player.hasEffect(ModEffects.TEMPEST_DISARMED.get());
+                || player.hasEffect(ModEffects.TEMPEST_DISARMED);
     }
 
     public static boolean shouldPreventFatalDamage(ServerPlayer player, float incomingDamage) {
@@ -335,19 +334,19 @@ public final class TempestStateManager {
         data(player).putLong(DOWNED_UNTIL, 0L);
         data(player).putInt(SELF_RESCUE_TICKS, 0);
         PlayerReviveCompat.clearTempestSelfRescue(player);
-        player.removeEffect(ModEffects.TEMPEST_EXPLOSIVE_SPINE.get());
-        player.removeEffect(ModEffects.TEMPEST_DISARMED.get());
-        player.removeEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED.get());
+        player.removeEffect(ModEffects.TEMPEST_EXPLOSIVE_SPINE);
+        player.removeEffect(ModEffects.TEMPEST_DISARMED);
+        player.removeEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED);
     }
 
     public static void triggerExplosiveSpine(ServerPlayer player, SoundEvent sound) {
         if (!isTempest(player)) {
             return;
         }
-        boolean refresh = player.hasEffect(ModEffects.TEMPEST_EXPLOSIVE_SPINE.get());
+        boolean refresh = player.hasEffect(ModEffects.TEMPEST_EXPLOSIVE_SPINE);
         int duration = CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.TEMPEST_HIGH_ENERGY_SPINE)
                 ? EXPLOSIVE_SPINE_TICKS * 3 : EXPLOSIVE_SPINE_TICKS;
-        player.addEffect(new MobEffectInstance(ModEffects.TEMPEST_EXPLOSIVE_SPINE.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.TEMPEST_EXPLOSIVE_SPINE,
                 duration, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.tempest.tempest_state_manager.effect.tempest_explosive_spine.0.amplifier", 0), false, true, true));
         if (refresh) {
             DfsAchievements.recordTempestSpineRefresh(player);
@@ -682,7 +681,7 @@ public final class TempestStateManager {
         tag.putLong(DOWNED_UNTIL, until);
         tag.putInt(SELF_RESCUE_TICKS, 0);
         player.setHealth(Math.max(1.0F, Math.min(player.getHealth(), player.getMaxHealth())));
-        player.addEffect(new MobEffectInstance(ModEffects.TEMPEST_EMERGENCY_DOWNED.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.TEMPEST_EMERGENCY_DOWNED,
                 com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.tempest.tempest_state_manager.effect.tempest_emergency_downed.1.duration_ticks", 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.tempest.tempest_state_manager.effect.tempest_emergency_downed.1.amplifier", 0), false, true, true));
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.TEMPEST_RECALL_DOWNED.get(),
                 SoundSource.PLAYERS, 0.95F, 1.0F, 32.0D);
@@ -694,8 +693,8 @@ public final class TempestStateManager {
         long until = tag.getLong(DOWNED_UNTIL);
         if (until <= 0L) {
             tag.putInt(SELF_RESCUE_TICKS, 0);
-            if (player.hasEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED.get())) {
-                player.removeEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED.get());
+            if (player.hasEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED)) {
+                player.removeEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED);
             }
             return;
         }
@@ -704,9 +703,9 @@ public final class TempestStateManager {
             expireDowned(player);
             return;
         }
-        if (player.getEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED.get()) == null
-                || player.getEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED.get()).getDuration() < remaining - 5) {
-            player.addEffect(new MobEffectInstance(ModEffects.TEMPEST_EMERGENCY_DOWNED.get(),
+        if (player.getEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED) == null
+                || player.getEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED).getDuration() < remaining - 5) {
+            player.addEffect(new MobEffectInstance(ModEffects.TEMPEST_EMERGENCY_DOWNED,
                     remaining, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.tempest.tempest_state_manager.effect.tempest_emergency_downed.2.amplifier", 0), false, true, true));
         }
         player.stopUsingItem();
@@ -730,7 +729,7 @@ public final class TempestStateManager {
         if (ticks >= DOWNED_SELF_RESCUE_TICKS) {
             tag.putLong(DOWNED_UNTIL, 0L);
             tag.putInt(SELF_RESCUE_TICKS, 0);
-            player.removeEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED.get());
+            player.removeEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED);
             DfsAchievements.recordTempestEmergencySelfSave(player, player.getHealth() <= 1.01F, 30 * 20);
             player.setHealth(Math.max(player.getHealth(), Math.min(player.getMaxHealth(), 6.0F)));
             RangedSoundHelper.playFollowingPlayer(player, ModSounds.TEMPEST_RECALL_SELF_RESCUE_COMPLETE.get(),
@@ -743,7 +742,7 @@ public final class TempestStateManager {
         CompoundTag tag = data(player);
         tag.putLong(DOWNED_UNTIL, 0L);
         tag.putInt(SELF_RESCUE_TICKS, 0);
-        player.removeEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED.get());
+        player.removeEffect(ModEffects.TEMPEST_EMERGENCY_DOWNED);
         player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
     }
 
@@ -811,7 +810,7 @@ public final class TempestStateManager {
         path.add(vecTag(node));
         tag.put(PATH, path);
         tag.putDouble(ROPE_LENGTH, length);
-        if (enforceLength && maxLength - length <= 15.0D) {
+        if (enforceLength && ROPE_MAX_LENGTH - length <= 15.0D) {
             warnRope(player);
         }
     }

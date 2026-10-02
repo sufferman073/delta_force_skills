@@ -16,6 +16,8 @@ import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import com.rzy.dealt_force_skills.skill.SkillModelVisual;
 import com.rzy.dealt_force_skills.skill.SkillModelVisualSync;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
+import com.rzy.dealt_force_skills.util.TargetingUtil;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -139,25 +141,25 @@ public final class NikaidouHiroWitchificationStateManager {
     private static final String ATTACK_COOLDOWN_UNTIL = "AttackCooldownUntil";
     private static final String ATTACK_SEQUENCE = "AttackSequence";
     private static final String SPAWNED_SKELETON = "SpawnedSkeleton";
+    private static final String WITCH_SKELETON_OWNER = "DealtForceSkillsWitchSkeletonOwner";
     private static final String FORCE_DEATH = "ForceDeath";
     private static final String LAST_REVEAL_TICK = "LastRevealTick";
     private static final String LAST_WARNING_TICK = "LastWarningTick";
     private static final String TARGET_UNTIL = "Until";
     private static final String TARGET_LAST_DRAIN_TICK = "LastDrainTick";
     private static final String TARGET_OWNER = "Owner";
-    private static final String WITCH_SKELETON_OWNER = DealtForceSkillsMod.MODID + ".nikaidou_witch_skeleton_owner";
     private static final int PHASE_NONE = 0;
     private static final int PHASE_CORE = 1;
     private static final int PHASE_REMNANT_LOCK = 2;
     private static final int PHASE_REMNANT = 3;
     private static final int PHASE_FINAL = 4;
-    private static final UUID MAX_HEALTH_UUID = UUID.fromString("4810feab-0df0-41f2-9de6-f97f10e1f824");
-    private static final UUID SPEED_UUID = UUID.fromString("d693f4a0-8b74-4a60-8dc7-11e60a10b9c8");
+    private static final ResourceLocation MAX_HEALTH_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "nikaidou_witch_max_health");
+    private static final ResourceLocation SPEED_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "nikaidou_witch_speed");
     private static final DustParticleOptions CORE_DUST = new DustParticleOptions(new Vector3f(0.95F, 0.18F, 0.78F), 1.45F);
     private static final DustParticleOptions REMNANT_DUST = new DustParticleOptions(new Vector3f(0.78F, 0.05F, 0.11F), 1.7F);
-    private static final ResourceLocation REMNANT_SOUND_FILE = new ResourceLocation(
+    private static final ResourceLocation REMNANT_SOUND_FILE = ResourceLocation.fromNamespaceAndPath(
             DealtForceSkillsMod.MODID, "nikaidou_hiro_witchification/remnant_enter");
-    private static final ResourceLocation FINAL_SOUND_FILE = new ResourceLocation(
+    private static final ResourceLocation FINAL_SOUND_FILE = ResourceLocation.fromNamespaceAndPath(
             DealtForceSkillsMod.MODID, "nikaidou_hiro_witchification/final_enter");
 
     private NikaidouHiroWitchificationStateManager() {
@@ -271,7 +273,7 @@ public final class NikaidouHiroWitchificationStateManager {
         } else {
             tag.remove(REWIND_RECHARGE_AT);
         }
-        if (tag.contains(ANCHOR_DIM, Tag.TAG_STRING)) {
+        if (tag.contains(ANCHOR_DIM)) {
             tag.putBoolean(ANCHOR_ACTIVE, true);
         }
         updateTransientModifiers(player);
@@ -517,16 +519,18 @@ public final class NikaidouHiroWitchificationStateManager {
     }
 
     public static boolean isPostRemnantPhase(Player player) {
+        if (player == null || !isNikaidouHiroWitchification(player)) {
+            return false;
+        }
         int phase = data(player).getInt(PHASE);
         return isRemnantPhase(phase) || phase == PHASE_FINAL;
     }
 
     public static UUID witchSkeletonOwner(Entity entity) {
-        if (entity == null) {
+        if (entity == null || !entity.getPersistentData().hasUUID(WITCH_SKELETON_OWNER)) {
             return null;
         }
-        CompoundTag tag = entity.getPersistentData();
-        return tag.hasUUID(WITCH_SKELETON_OWNER) ? tag.getUUID(WITCH_SKELETON_OWNER) : null;
+        return entity.getPersistentData().getUUID(WITCH_SKELETON_OWNER);
     }
 
     public static boolean isWeaponActive(Player player) {
@@ -537,16 +541,16 @@ public final class NikaidouHiroWitchificationStateManager {
         return targetRemainingTicks(entity) > 0;
     }
 
-    public static boolean shouldDenyHealingEffect(LivingEntity entity, MobEffect effect) {
+    public static boolean shouldDenyHealingEffect(LivingEntity entity, Holder<MobEffect> effect) {
         return shouldCancelHealing(entity) && isHealingEffect(effect);
     }
 
-    public static boolean shouldDenyIncomingEffect(Player player, MobEffect effect) {
+    public static boolean shouldDenyIncomingEffect(Player player, Holder<MobEffect> effect) {
         if (!isNikaidouHiroWitchification(player) || effect == null) {
             return false;
         }
         int phase = data(player).getInt(PHASE);
-        return isRemnantPhase(phase) && effect != MobEffects.DAMAGE_RESISTANCE;
+        return isRemnantPhase(phase) && effect.value() != MobEffects.DAMAGE_RESISTANCE.value();
     }
 
     public static void tickExternalEffects(LivingEntity entity) {
@@ -679,14 +683,14 @@ public final class NikaidouHiroWitchificationStateManager {
             player.teleportTo(player.serverLevel(), tag.getDouble(LOCK_X), tag.getDouble(LOCK_Y), tag.getDouble(LOCK_Z),
                     player.getYRot(), player.getXRot());
         }
-        player.addEffect(new MobEffectInstance(ModEffects.STUN.get(), 2, 0, false, false, false));
+        player.addEffect(new MobEffectInstance(ModEffects.STUN, 2, 0, false, false, false));
         player.hurtMarked = true;
-        refreshRemnantResistance(player);
         revealNearbyPlayersTo(player, REMNANT_WARNING_RANGE);
         warnNearbyPlayers(player, now);
         if (now % 4L == 0L) {
             spawnCoreParticles(player, REMNANT_DUST);
         }
+        refreshRemnantResistance(player);
         if (now >= data(player).getLong(LOCK_UNTIL)) {
             enterRemnant(player, now);
         }
@@ -765,8 +769,8 @@ public final class NikaidouHiroWitchificationStateManager {
         setEquippedTool(player, NikaidouHiroTool.RITUAL_SWORD);
         player.setHealth(Math.max(1.0F, player.getHealth()));
         updateTransientModifiers(player);
-        play(player, ModSounds.NIKAIDOU_WITCH_FINAL_ENTER.get(), 1.0F, 1.0F);
         DfsAchievements.recordNikaidouWitchFinalEffect(player);
+        play(player, ModSounds.NIKAIDOU_WITCH_FINAL_ENTER.get(), 1.0F, 1.0F);
         syncToClient(player);
     }
 
@@ -862,7 +866,7 @@ public final class NikaidouHiroWitchificationStateManager {
         AABB search = player.getBoundingBox().inflate(range + 1.25D, 1.75D, range + 1.25D);
         int hits = 0;
         for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, search,
-                target -> target.isAlive() && target != player && !target.isSpectator())) {
+                target -> TargetingUtil.isHostileLivingFor(player, target))) {
             AABB hitbox = target.getBoundingBox().inflate(SWEEP_HITBOX_INFLATE);
             Optional<Vec3> directHit = hitbox.clip(eye, rayEnd);
             Vec3 reference = directHit.orElse(target.getBoundingBox().getCenter());
@@ -904,7 +908,7 @@ public final class NikaidouHiroWitchificationStateManager {
         AABB search = player.getBoundingBox().inflate(ERROR_REVEAL_RANGE);
         List<Integer> visibleToPlayer = new ArrayList<>();
         for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, search,
-                target -> target.isAlive() && target != player && !target.isSpectator()
+                target -> TargetingUtil.isHostileLivingFor(player, target)
                         && target.distanceTo(player) < ERROR_REVEAL_RANGE)) {
             visibleToPlayer.add(target.getId());
             if (target instanceof ServerPlayer targetPlayer) {
@@ -919,7 +923,7 @@ public final class NikaidouHiroWitchificationStateManager {
     private static void revealNearbyPlayersTo(ServerPlayer player, double range) {
         AABB search = player.getBoundingBox().inflate(range);
         List<Integer> ids = player.level().getEntitiesOfClass(ServerPlayer.class, search,
-                        target -> target != player && target.isAlive() && !target.isSpectator()
+                        target -> TargetingUtil.isHostilePlayerFor(player, target)
                                 && target.distanceTo(player) <= range)
                 .stream()
                 .map(ServerPlayer::getId)
@@ -952,25 +956,25 @@ public final class NikaidouHiroWitchificationStateManager {
         if (target.hasEffect(MobEffects.REGENERATION)) {
             target.removeEffect(MobEffects.REGENERATION);
         }
-        if (target.hasEffect(ModEffects.STINGER_STIM_HEAL.get())) {
-            target.removeEffect(ModEffects.STINGER_STIM_HEAL.get());
+        if (target.hasEffect(ModEffects.STINGER_STIM_HEAL)) {
+            target.removeEffect(ModEffects.STINGER_STIM_HEAL);
         }
-        if (target.hasEffect(ModEffects.STINGER_SMOKE_REGEN.get())) {
-            target.removeEffect(ModEffects.STINGER_SMOKE_REGEN.get());
+        if (target.hasEffect(ModEffects.STINGER_SMOKE_REGEN)) {
+            target.removeEffect(ModEffects.STINGER_SMOKE_REGEN);
         }
-        if (target.hasEffect(ModEffects.VLINDER_HEALING_DUST.get())) {
-            target.removeEffect(ModEffects.VLINDER_HEALING_DUST.get());
+        if (target.hasEffect(ModEffects.VLINDER_HEALING_DUST)) {
+            target.removeEffect(ModEffects.VLINDER_HEALING_DUST);
         }
     }
 
-    private static boolean isHealingEffect(MobEffect effect) {
+    private static boolean isHealingEffect(Holder<MobEffect> effect) {
         return effect == MobEffects.REGENERATION
                 || effect == MobEffects.HEAL
-                || effect == ModEffects.STINGER_STIM_HEAL.get()
-                || effect == ModEffects.STINGER_SMOKE_REGEN.get()
-                || effect == ModEffects.VLINDER_HEALING_DUST.get()
-                || effect == ModEffects.HELA.get()
-                || effect == ModEffects.PAIN_RELIEF.get();
+                || effect == ModEffects.STINGER_STIM_HEAL
+                || effect == ModEffects.STINGER_SMOKE_REGEN
+                || effect == ModEffects.VLINDER_HEALING_DUST
+                || effect == ModEffects.HELA
+                || effect == ModEffects.PAIN_RELIEF;
     }
 
     private static int targetRemainingTicks(LivingEntity entity) {
@@ -1018,18 +1022,18 @@ public final class NikaidouHiroWitchificationStateManager {
         return isRemnantPhase(phase) || phase == PHASE_FINAL;
     }
 
-    private static boolean isRemnantPhase(int phase) {
-        return phase == PHASE_REMNANT_LOCK || phase == PHASE_REMNANT;
-    }
-
     private static boolean isCoreLikePhase(int phase) {
         return phase == PHASE_CORE || phase == PHASE_REMNANT_LOCK || phase == PHASE_REMNANT || phase == PHASE_FINAL;
+    }
+
+    private static boolean isRemnantPhase(int phase) {
+        return phase == PHASE_REMNANT_LOCK || phase == PHASE_REMNANT;
     }
 
     private static void updateTransientModifiers(ServerPlayer player) {
         double maxHealthAmount = maxHealthMultiplier(player) - 1.0D;
         applyModifier(player.getAttribute(Attributes.MAX_HEALTH), MAX_HEALTH_UUID,
-                "nikaidou_witch_max_health", maxHealthAmount, AttributeModifier.Operation.MULTIPLY_BASE);
+                maxHealthAmount, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
         double speedAmount = active2RemainingTicks(player) > 0 ? ERROR_SPEED_BONUS : 0.0D;
         int phase = data(player).getInt(PHASE);
         if (phase == PHASE_CORE) {
@@ -1038,7 +1042,7 @@ public final class NikaidouHiroWitchificationStateManager {
             speedAmount += CORE_SPEED_BONUS + REMNANT_EXTRA_SPEED_BONUS;
         }
         applyModifier(player.getAttribute(Attributes.MOVEMENT_SPEED), SPEED_UUID,
-                "nikaidou_witch_speed", speedAmount, AttributeModifier.Operation.MULTIPLY_TOTAL);
+                speedAmount, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
         if (player.getHealth() > player.getMaxHealth()) {
             player.setHealth(player.getMaxHealth());
         }
@@ -1048,7 +1052,7 @@ public final class NikaidouHiroWitchificationStateManager {
         MobEffectInstance current = player.getEffect(MobEffects.DAMAGE_RESISTANCE);
         if (current == null
                 || current.getAmplifier() < REMNANT_RESISTANCE_AMPLIFIER
-                || current.getDuration() < 20) {
+                || current.getDuration() < REMNANT_RESISTANCE_DURATION_TICKS / 2) {
             player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,
                     REMNANT_RESISTANCE_DURATION_TICKS, REMNANT_RESISTANCE_AMPLIFIER,
                     false, true, true));
@@ -1068,26 +1072,26 @@ public final class NikaidouHiroWitchificationStateManager {
                 * Math.pow(REWIND_MAX_HEALTH_MULTIPLIER, Math.max(0, data(player).getInt(RESCUE_TRIGGERS)));
     }
 
-    private static void applyModifier(AttributeInstance attribute, UUID uuid, String name, double amount,
+    private static void applyModifier(AttributeInstance attribute, ResourceLocation id, double amount,
                                       AttributeModifier.Operation operation) {
         if (attribute == null) {
             return;
         }
-        AttributeModifier existing = attribute.getModifier(uuid);
-        if (existing != null && Math.abs(existing.getAmount() - amount) <= 0.0001D) {
+        AttributeModifier existing = attribute.getModifier(id);
+        if (existing != null && Math.abs(existing.amount() - amount) <= 0.0001D) {
             return;
         }
         if (existing != null) {
-            attribute.removeModifier(uuid);
+            attribute.removeModifier(id);
         }
         if (Math.abs(amount) > 0.0001D) {
-            attribute.addTransientModifier(new AttributeModifier(uuid, name, amount, operation));
+            attribute.addTransientModifier(new AttributeModifier(id, amount, operation));
         }
     }
 
-    private static void removeModifier(AttributeInstance attribute, UUID uuid) {
-        if (attribute != null && attribute.getModifier(uuid) != null) {
-            attribute.removeModifier(uuid);
+    private static void removeModifier(AttributeInstance attribute, ResourceLocation id) {
+        if (attribute != null && attribute.getModifier(id) != null) {
+            attribute.removeModifier(id);
         }
     }
 
@@ -1170,10 +1174,10 @@ public final class NikaidouHiroWitchificationStateManager {
             maxHealth.setBaseValue(1000.0D);
         }
         skeleton.setHealth(1000.0F);
+        skeleton.getPersistentData().putUUID(WITCH_SKELETON_OWNER, player.getUUID());
         skeleton.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 20 * 60 * 60, 3, false, true, true));
         skeleton.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 20 * 60 * 60, 99, false, true, true));
         skeleton.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 20 * 60 * 60, 1, false, true, true));
-        skeleton.getPersistentData().putUUID(WITCH_SKELETON_OWNER, player.getUUID());
         skeleton.setPersistenceRequired();
         level.addFreshEntity(skeleton);
         level.playSound(null, skeleton.blockPosition(), ModSounds.NIKAIDOU_DOOM_DEATH.get(),

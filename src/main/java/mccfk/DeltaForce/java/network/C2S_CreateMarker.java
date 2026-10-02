@@ -1,81 +1,87 @@
 package mccfk.DeltaForce.java.network;
 
-import com.rzy.dealt_force_skills.network.NetworkHandler;
-import io.netty.handler.codec.DecoderException;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkEvent;
+import io.netty.handler.codec.DecoderException;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public record C2S_CreateMarker(Marker marker) {
-    public static void encode(C2S_CreateMarker message, FriendlyByteBuf buffer) {
-        writeMarker(buffer, message.marker);
-    }
+/**
+ * C2S: 客户端→服务端 - 创建标点请求包
+ */
+public record C2S_CreateMarker(Marker marker) implements CustomPacketPayload {
+    public static final Type<C2S_CreateMarker> TYPE = new Type<>(
+        ResourceLocation.fromNamespaceAndPath("deltaforce", "create_marker")
+    );
 
-    public static C2S_CreateMarker decode(FriendlyByteBuf buffer) {
-        return new C2S_CreateMarker(readMarker(buffer));
-    }
-
-    public static void handle(C2S_CreateMarker message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> {
-            ServerPlayer player = context.getSender();
-            if (player == null) {
-                return;
+    private static final StreamCodec<RegistryFriendlyByteBuf, MarkerType> MARKER_TYPE_CODEC = new StreamCodec<>() {
+        @Override
+        public MarkerType decode(RegistryFriendlyByteBuf buf) {
+            int ordinal = buf.readUnsignedByte();
+            MarkerType[] values = MarkerType.values();
+            if (ordinal >= values.length) {
+                throw new DecoderException("Unknown marker type: " + ordinal);
             }
-            MarkerManager.validateRequest(player, message.marker).ifPresent(marker -> {
-                if (MarkerManager.addMarker(player.getUUID(), marker)) {
-                    NetworkHandler.sendToAll(new S2C_SyncMarkers(MarkerManager.getAllMarkers().stream().toList()));
-                }
-            });
-        });
-        context.setPacketHandled(true);
-    }
-
-    static void writeMarker(FriendlyByteBuf buffer, Marker marker) {
-        buffer.writeUUID(marker.owner());
-        buffer.writeBlockPos(marker.position());
-        buffer.writeByte(marker.type().ordinal());
-        buffer.writeLong(marker.createTime());
-        buffer.writeBoolean(marker.entityType().isPresent());
-        marker.entityType().ifPresent(type -> buffer.writeResourceLocation(BuiltInRegistries.ENTITY_TYPE.getKey(type)));
-        buffer.writeBoolean(marker.containerPos().isPresent());
-        marker.containerPos().ifPresent(buffer::writeBlockPos);
-        buffer.writeBoolean(marker.precisePosition().isPresent());
-        marker.precisePosition().ifPresent(value -> {
-            buffer.writeDouble(value.x);
-            buffer.writeDouble(value.y);
-            buffer.writeDouble(value.z);
-        });
-    }
-
-    static Marker readMarker(FriendlyByteBuf buffer) {
-        UUID owner = buffer.readUUID();
-        BlockPos position = buffer.readBlockPos();
-        int ordinal = buffer.readUnsignedByte();
-        MarkerType[] values = MarkerType.values();
-        if (ordinal >= values.length) {
-            throw new DecoderException("Unknown marker type: " + ordinal);
+            return values[ordinal];
         }
-        long createTime = buffer.readLong();
-        Optional<EntityType<?>> entityType = Optional.empty();
-        if (buffer.readBoolean()) {
-            ResourceLocation id = buffer.readResourceLocation();
-            entityType = BuiltInRegistries.ENTITY_TYPE.getOptional(id).map(value -> (EntityType<?>) value);
+        @Override
+        public void encode(RegistryFriendlyByteBuf buf, MarkerType val) {
+            buf.writeByte(val.ordinal());
         }
-        Optional<BlockPos> containerPos = buffer.readBoolean()
-                ? Optional.of(buffer.readBlockPos()) : Optional.empty();
-        Optional<Vec3> precisePosition = buffer.readBoolean()
-                ? Optional.of(new Vec3(buffer.readDouble(), buffer.readDouble(), buffer.readDouble()))
+    };
+
+    private static final StreamCodec<RegistryFriendlyByteBuf, Optional<EntityType<?>>> ENTITY_TYPE_OPTIONAL =
+        ByteBufCodecs.optional(ByteBufCodecs.registry(net.minecraft.core.registries.Registries.ENTITY_TYPE));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2S_CreateMarker> CODEC = new StreamCodec<>() {
+        @Override
+        public C2S_CreateMarker decode(RegistryFriendlyByteBuf buf) {
+            UUID owner = buf.readUUID();
+            BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
+            MarkerType type = MARKER_TYPE_CODEC.decode(buf);
+            long createTime = buf.readLong();
+            Optional<EntityType<?>> entityType = ENTITY_TYPE_OPTIONAL.decode(buf);
+            Optional<BlockPos> containerPos = buf.readBoolean() ? Optional.of(BlockPos.STREAM_CODEC.decode(buf)) : Optional.empty();
+            Optional<Vec3> precisePos = buf.readBoolean()
+                ? Optional.of(new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()))
                 : Optional.empty();
-        return new Marker(owner, position, values[ordinal], createTime, entityType, containerPos, precisePosition);
+            return new C2S_CreateMarker(new Marker(owner, pos, type, createTime, entityType, containerPos, precisePos));
+        }
+        @Override
+        public void encode(RegistryFriendlyByteBuf buf, C2S_CreateMarker packet) {
+            Marker m = packet.marker();
+            buf.writeUUID(m.owner());
+            BlockPos.STREAM_CODEC.encode(buf, m.position());
+            MARKER_TYPE_CODEC.encode(buf, m.type());
+            buf.writeLong(m.createTime());
+            ENTITY_TYPE_OPTIONAL.encode(buf, m.entityType());
+            if (m.containerPos().isPresent()) {
+                buf.writeBoolean(true);
+                BlockPos.STREAM_CODEC.encode(buf, m.containerPos().get());
+            } else {
+                buf.writeBoolean(false);
+            }
+            if (m.precisePosition().isPresent()) {
+                buf.writeBoolean(true);
+                Vec3 v = m.precisePosition().get();
+                buf.writeDouble(v.x);
+                buf.writeDouble(v.y);
+                buf.writeDouble(v.z);
+            } else {
+                buf.writeBoolean(false);
+            }
+        }
+    };
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

@@ -13,19 +13,20 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class NoxPlaceholderVisuals {
     private static final ResourceLocation ROTOR_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "nox_rotor");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "nox_rotor");
     private static final ResourceLocation FLASH_GRENADE_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "nox_flash_grenade");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "nox_flash_grenade");
 
     private NoxPlaceholderVisuals() {
     }
@@ -62,10 +63,10 @@ public final class NoxPlaceholderVisuals {
                 ? ClientToolReleaseAction.frame(
                         ClientToolReleaseAction.Action.NOX_FLASH_GRENADE,
                         animationFor(tool),
-                        (minecraft.level.getGameTime() + event.getPartialTick()) / 20.0F)
+                        (minecraft.level.getGameTime() + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F)
                 : new ClientToolModelAnimationState.AnimationFrame(
                         animationFor(tool),
-                        (minecraft.level.getGameTime() + event.getPartialTick()) / 20.0F
+                        (minecraft.level.getGameTime() + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F
                                 * ClientToolModelAnimationState.FAST_PLAYBACK_SPEED);
         boolean rendered = tool != NoxTool.NONE && BlockbenchAnimatedModelRenderer.render(
                 modelFor(tool),

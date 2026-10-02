@@ -2,6 +2,8 @@ package com.rzy.dealt_force_skills.event;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.shop.SpecialOperationsBaseManager;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -12,37 +14,40 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.ForgeMod;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerXpEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForgeMod;
+import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent.Added;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent.BreakSpeed;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent.Post;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-import java.util.UUID;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class SpecialOperationsBaseEffects {
-    private static final UUID MOVEMENT_ID = UUID.fromString("bf07bea6-93d3-49b2-9563-2c621b6e2741");
-    private static final UUID SWIM_ID = UUID.fromString("0cd21a56-ab87-4779-93db-440ade722768");
+    private static final ResourceLocation MOVEMENT_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "base_training_movement");
+    private static final ResourceLocation SWIM_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "base_diving_swim");
     private static final String LAST_AIR = DealtForceSkillsMod.MODID + ".base.last_air";
     private static final ThreadLocal<Boolean> RESCALING_EFFECT = ThreadLocal.withInitial(() -> false);
-    private static final Map<UUID, Map<MobEffect, Entity>> PENDING_EFFECTS = new HashMap<>();
+    private static final Map<UUID, Map<Holder<MobEffect>, Entity>> PENDING_EFFECTS = new HashMap<>();
 
     private SpecialOperationsBaseEffects() {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onHurt(LivingHurtEvent event) {
+    public static void onHurt(LivingIncomingDamageEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || event.getAmount() <= 0.0F) {
             return;
         }
@@ -54,7 +59,7 @@ public final class SpecialOperationsBaseEffects {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
+    public static void onBreakSpeed(BreakSpeed event) {
         int level = SpecialOperationsBaseManager.effectiveLevel(event.getEntity(),
                 SpecialOperationsBaseManager.Facility.SHOOTING_RANGE);
         if (level > 0 && event.getNewSpeed() > 0.0F) {
@@ -87,11 +92,8 @@ public final class SpecialOperationsBaseEffects {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-        Player player = event.player;
+    public static void onPlayerTick(Post event) {
+        Player player = event.getEntity();
         if (!player.level().isClientSide) {
             ServerPlayer serverPlayer = (ServerPlayer) player;
             tickAttributesAndAir(serverPlayer);
@@ -102,13 +104,14 @@ public final class SpecialOperationsBaseEffects {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onEffectAdded(MobEffectEvent.Added event) {
+    public static void onEffectAdded(Added event) {
         if (RESCALING_EFFECT.get() || !(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
         MobEffectInstance original = event.getEffectInstance();
-        MobEffect effect = original.getEffect();
-        if (effect.isInstantenous() || effect.getCategory() == MobEffectCategory.NEUTRAL) {
+        Holder<MobEffect> effect = original.getEffect();
+        MobEffect effectValue = effect.value();
+        if (effectValue.isInstantenous() || effectValue.getCategory() == MobEffectCategory.NEUTRAL) {
             return;
         }
         int level = SpecialOperationsBaseManager.effectiveLevel(player,
@@ -120,7 +123,7 @@ public final class SpecialOperationsBaseEffects {
     }
 
     private static void applyPendingEffects(ServerPlayer player) {
-        Map<MobEffect, Entity> pending = PENDING_EFFECTS.remove(player.getUUID());
+        Map<Holder<MobEffect>, Entity> pending = PENDING_EFFECTS.remove(player.getUUID());
         if (pending == null || pending.isEmpty()) {
             return;
         }
@@ -129,21 +132,20 @@ public final class SpecialOperationsBaseEffects {
         if (level <= 0) {
             return;
         }
-        for (Map.Entry<MobEffect, Entity> entry : pending.entrySet()) {
-            MobEffect effect = entry.getKey();
-            MobEffectInstance original = player.getEffect(effect);
-            if (original == null) {
-                continue;
+        for (Map.Entry<Holder<MobEffect>, Entity> entry : pending.entrySet()) {
+            MobEffectInstance original = player.getEffect(entry.getKey());
+            if (original != null) {
+                rescaleEffect(player, original, entry.getValue(), level);
             }
-            rescaleEffect(player, original, entry.getValue(), level);
         }
     }
 
     private static void rescaleEffect(ServerPlayer player, MobEffectInstance original, Entity source, int level) {
-        MobEffect effect = original.getEffect();
+        Holder<MobEffect> effect = original.getEffect();
+        MobEffect effectValue = effect.value();
         int duration;
         int amplifier;
-        if (effect.getCategory() == MobEffectCategory.HARMFUL) {
+        if (effectValue.getCategory() == MobEffectCategory.HARMFUL) {
             duration = scaleDuration(original.getDuration(), Math.max(0.25F, 1.0F - level * 0.25F));
             amplifier = original.getAmplifier() - level;
         } else {
@@ -173,7 +175,7 @@ public final class SpecialOperationsBaseEffects {
                 "Special Operations Base training", training * 0.03D);
         int diving = SpecialOperationsBaseManager.effectiveLevel(player,
                 SpecialOperationsBaseManager.Facility.DIVING_CENTER);
-        applyModifier(player.getAttribute(ForgeMod.SWIM_SPEED.get()), SWIM_ID,
+        applyModifier(player.getAttribute(NeoForgeMod.SWIM_SPEED), SWIM_ID,
                 "Special Operations Base swimming", diving * 0.25D);
 
         int currentAir = player.getAirSupply();
@@ -204,20 +206,18 @@ public final class SpecialOperationsBaseEffects {
 
     }
 
-    private static void applyModifier(AttributeInstance attribute, UUID id, String name, double amount) {
+    private static void applyModifier(AttributeInstance attribute, ResourceLocation id, String name, double amount) {
         if (attribute == null) {
             return;
         }
         AttributeModifier old = attribute.getModifier(id);
-        if (old != null && Math.abs(old.getAmount() - amount) < 0.000001D) {
+        if (old != null && Math.abs(old.amount() - amount) < 0.000001D) {
             return;
         }
-        if (old != null) {
-            attribute.removeModifier(old);
-        }
+        attribute.removeModifier(id);
         if (amount > 0.0D) {
-            attribute.addTransientModifier(new AttributeModifier(id, name, amount,
-                    AttributeModifier.Operation.MULTIPLY_TOTAL));
+            attribute.addTransientModifier(new AttributeModifier(id, amount,
+                    AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
     }
 }

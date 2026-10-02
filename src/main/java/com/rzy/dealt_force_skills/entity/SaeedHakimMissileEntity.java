@@ -8,8 +8,6 @@ import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -28,10 +26,10 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class SaeedHakimMissileEntity extends Projectile implements ItemSupplier {
     private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.saeedhakimmissileentity.life_ticks", 100));
@@ -80,7 +78,7 @@ public class SaeedHakimMissileEntity extends Projectile implements ItemSupplier 
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -154,11 +152,6 @@ public class SaeedHakimMissileEntity extends Projectile implements ItemSupplier 
         tag.putDouble("DirectionY", directionY);
         tag.putDouble("DirectionZ", directionZ);
         tag.putBoolean("AroundObstacle", aroundObstacle);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private Vec3 guidedDirection(ServerLevel level) {

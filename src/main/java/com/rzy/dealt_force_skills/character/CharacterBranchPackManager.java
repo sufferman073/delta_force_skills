@@ -9,7 +9,7 @@ import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -201,6 +201,8 @@ public final class CharacterBranchPackManager {
         }
         if (ModCharacters.LEGACY_CORPS_ID.equals(id)) {
             id = ModCharacters.CORPS_ID;
+        } else if (ModCharacters.LEGACY_COMMANDER_ID.equals(id)) {
+            id = ModCharacters.COMMANDER_ID;
         }
         CharacterDefinition character = charactersById.get(id);
         return character == null ? ModCharacters.get(id) : Optional.of(character);
@@ -426,7 +428,7 @@ public final class CharacterBranchPackManager {
         if (path.endsWith(".json")) {
             path = path.substring(0, path.length() - ".json".length());
         }
-        return new ResourceLocation(file.getNamespace(), path);
+        return ResourceLocation.fromNamespaceAndPath(file.getNamespace(), path);
     }
 
     private static SkillSlot skillSlot(String value) {
@@ -581,19 +583,23 @@ public final class CharacterBranchPackManager {
         JsonObject object = editable.get();
         JsonArray characters = editableCharacters(object);
         boolean changed = false;
-        for (int i = characters.size() - 1; i >= 0; i--) {
-            JsonElement element = characters.get(i);
-            if (!element.isJsonObject()) {
-                continue;
+        JsonArray kept = new JsonArray();
+        for (JsonElement element : characters) {
+            boolean skip = false;
+            if (element.isJsonObject()) {
+                JsonElement id = element.getAsJsonObject().get("id");
+                if (id != null && id.isJsonPrimitive() && SPECIAL_DEFAULT_CHARACTER_IDS.contains(id.getAsString())) {
+                    skip = true;
+                    changed = true;
+                    LOGGER.info("Removed misplaced generated special character {} from {}", id.getAsString(), file);
+                }
             }
-            JsonElement id = element.getAsJsonObject().get("id");
-            if (id != null && id.isJsonPrimitive() && SPECIAL_DEFAULT_CHARACTER_IDS.contains(id.getAsString())) {
-                characters.remove(i);
-                changed = true;
-                LOGGER.info("Removed misplaced generated special character {} from {}", id.getAsString(), file);
+            if (!skip) {
+                kept.add(element);
             }
         }
         if (changed) {
+            object.add("characters", kept);
             writeEditableBranchJson(file, object);
         }
     }

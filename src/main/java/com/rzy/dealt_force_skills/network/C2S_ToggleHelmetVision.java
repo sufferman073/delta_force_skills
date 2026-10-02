@@ -2,16 +2,34 @@ package com.rzy.dealt_force_skills.network;
 
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem;
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem.Profile;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.world.item.component.CustomData;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_ToggleHelmetVision implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_ToggleHelmetVision> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_toggle_helmet_vision"));
 
-public class C2S_ToggleHelmetVision {
+    public static final StreamCodec<FriendlyByteBuf, C2S_ToggleHelmetVision> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_ToggleHelmetVision::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final boolean cycle;
 
     public C2S_ToggleHelmetVision(boolean cycle) {
@@ -26,9 +44,9 @@ public class C2S_ToggleHelmetVision {
         return new C2S_ToggleHelmetVision(buf.readBoolean());
     }
 
-    public static void handle(C2S_ToggleHelmetVision msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_ToggleHelmetVision msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player == null || player.isSpectator()) {
                 return;
             }
@@ -49,11 +67,11 @@ public class C2S_ToggleHelmetVision {
             player.inventoryMenu.broadcastChanges();
             player.displayClientMessage(message(profile, current, next), true);
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static int storedToggleVisionMode(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
+        CustomData cd = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = cd != null ? cd.copyTag() : null;
         if (tag == null || !tag.contains(DfsEquipmentItem.TAG_VISION_MODE)) {
             return DfsEquipmentItem.VISION_OFF;
         }

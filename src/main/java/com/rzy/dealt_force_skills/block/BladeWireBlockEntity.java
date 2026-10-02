@@ -3,9 +3,10 @@ package com.rzy.dealt_force_skills.block;
 import com.rzy.dealt_force_skills.registry.ModBlocks;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
-import com.rzy.dealt_force_skills.team.DealtTeamManager;
 import com.rzy.dealt_force_skills.effect.InjuryManager;
+import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -115,14 +116,18 @@ public class BladeWireBlockEntity extends BlockEntity {
         ServerPlayer owner = be.ownerId == null ? null : serverLevel.getServer().getPlayerList().getPlayer(be.ownerId);
         AABB box = new AABB(pos).inflate(5.0);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box,
-                entity -> entity.isAlive() && (owner == null || entity != owner)
-                        && (owner == null || !DealtTeamManager.areTeammates(owner, entity)))) {
+                entity -> owner != null
+                        ? TargetingUtil.isHostileLivingFor(owner, entity)
+                        : TargetingUtil.isTargetableLiving(entity))) {
             if (!be.isInsideWireArea(level, target.position())) {
                 continue;
             }
 
             Vec3 beforeDamageMovement = target.getDeltaMovement();
-            SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(serverLevel, null, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("deployables.blade_wire_block_entity.skill_hurt.0.damage", 4.0f));
+            boolean damaged = SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(serverLevel, null, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("deployables.blade_wire_block_entity.skill_hurt.0.damage", 4.0f));
+            if (!damaged) {
+                continue;
+            }
             if (target instanceof ServerPlayer player) {
                 InjuryManager.applyBladeWireContact(player);
             }
@@ -250,8 +255,8 @@ public class BladeWireBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         if (ownerId != null) {
             tag.putUUID(OWNER, ownerId);
         }
@@ -269,8 +274,8 @@ public class BladeWireBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         ownerId = tag.hasUUID(OWNER) ? tag.getUUID(OWNER) : null;
         core = tag.getBoolean(CORE);
         linkedWireCount = tag.getInt(LINKED_WIRE_COUNT);

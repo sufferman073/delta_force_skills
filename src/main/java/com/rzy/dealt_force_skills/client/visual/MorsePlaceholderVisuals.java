@@ -9,14 +9,15 @@ import com.rzy.dealt_force_skills.client.renderer.BlockbenchAnimatedModelRendere
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class MorsePlaceholderVisuals {
     private static final ResourceLocation SHOCK_ORB_MODEL = model("morse_shock_orb");
     private static final ResourceLocation FLASH_GRENADE_MODEL = model("morse_flash_grenade");
@@ -45,7 +46,7 @@ public final class MorsePlaceholderVisuals {
 
         Minecraft minecraft = Minecraft.getInstance();
         MorseTool tool = flashAction ? MorseTool.FLASH_GRENADE : ClientMorseHudState.equippedTool();
-        float seconds = (minecraft.player.tickCount + event.getPartialTick()) / 20.0F;
+        float seconds = (minecraft.player.tickCount + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F;
         ClientToolModelAnimationState.AnimationFrame frame = flashAction
                 ? ClientToolReleaseAction.frame(
                         ClientToolReleaseAction.Action.MORSE_FLASH_GRENADE,
@@ -82,6 +83,6 @@ public final class MorsePlaceholderVisuals {
     }
 
     private static ResourceLocation model(String path) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, path);
     }
 }

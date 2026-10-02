@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem;
+import com.rzy.dealt_force_skills.client.renderer.DfsRenderTypes;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Camera;
@@ -17,7 +18,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -28,15 +28,15 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.level.LevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -44,11 +44,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class HelmetVisionClient {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final RenderLevelStageEvent.Stage HELMET_VISION_RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_ENTITIES;
+    private static final RenderLevelStageEvent.Stage HELMET_VISION_RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_LEVEL;
     private static final double MAX_THERMAL_HIGHLIGHT_RANGE = 96.0D;
     private static final int MAX_THERMAL_HIGHLIGHT_TARGETS = 128;
     private static final double MAX_THERMAL_BOX_EDGE = 16.0D;
@@ -92,10 +93,7 @@ public final class HelmetVisionClient {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
+    public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (thermalLevel != minecraft.level) {
             clearThermalHighlightCache();
@@ -128,8 +126,8 @@ public final class HelmetVisionClient {
     }
 
     @SubscribeEvent
-    public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {
-        if (!VanillaGuiOverlay.HOTBAR.id().equals(event.getOverlay().id())) {
+    public static void onRenderGuiLayer(RenderGuiLayerEvent.Post event) {
+        if (!VanillaGuiLayers.HOTBAR.equals(event.getName())) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
@@ -181,14 +179,14 @@ public final class HelmetVisionClient {
         Font font = minecraft.font;
         RenderSystem.disableDepthTest();
         try {
-            var lineBuffer = buffers.getBuffer(RenderType.lines());
+            var lineBuffer = buffers.getBuffer(DfsRenderTypes.xrayLines());
             if (thermal) {
                 renderThermalEntityBoxes(minecraft, player, poseStack, lineBuffer, cameraPos);
             }
             if (hearing) {
                 renderHearingRevealBoxes(minecraft, player, poseStack, lineBuffer, cameraPos);
             }
-            buffers.endBatch(RenderType.lines());
+            buffers.endBatch(DfsRenderTypes.xrayLines());
 
             if (hearing) {
                 renderHearingRevealLabels(minecraft, player, poseStack, buffers, font, camera, cameraPos);
@@ -199,7 +197,7 @@ public final class HelmetVisionClient {
         }
     }
 
-    private static void renderScanLines(RenderGuiOverlayEvent.Post event, int tickCount, int width, int height, int color) {
+    private static void renderScanLines(RenderGuiLayerEvent.Post event, int tickCount, int width, int height, int color) {
         int offset = Math.floorMod(tickCount, 8);
         for (int y = offset; y < height; y += 8) {
             event.getGuiGraphics().fill(0, y, width, y + 1, color);
@@ -302,7 +300,7 @@ public final class HelmetVisionClient {
     }
 
     private static double hearingRevealRange(LocalPlayer player, DfsEquipmentItem.Profile profile) {
-        var amplification = player.getEffect(ModEffects.HEARING_AMPLIFICATION.get());
+        var amplification = player.getEffect(ModEffects.HEARING_AMPLIFICATION);
         int level = amplification == null ? 0 : amplification.getAmplifier() + 1;
         double baseRange = profile == null || profile.hearingBoost() <= 0.0D ? 0.0D
                 : Math.min(MAX_HEARING_REVEAL_RANGE, profile.hearingBoost() * HEARING_REVEAL_RANGE_PER_BOOST);
@@ -497,7 +495,7 @@ public final class HelmetVisionClient {
     }
 
     private static boolean isThermalHiddenTarget(Entity entity) {
-        return entity instanceof Player player && player.hasEffect(ModEffects.NOX_STEALTH.get());
+        return entity instanceof Player player && player.hasEffect(ModEffects.NOX_STEALTH);
     }
 
     private static void restoreThermalHighlights() {

@@ -4,11 +4,12 @@ import com.rzy.dealt_force_skills.loot.HvkTreasureProgress;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 
@@ -26,8 +27,9 @@ public class HvkAdvancedTreasureCompassItem extends BlockItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip,
+                                TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
         addLine(tooltip, 1, ORANGE_RED);
         addLine(tooltip, 2, PALE_RED);
         addLine(tooltip, 3, ORANGE_RED);
@@ -86,7 +88,10 @@ public class HvkAdvancedTreasureCompassItem extends BlockItem {
                 HvkTreasureProgress.requiredOpenedChestLootForCompass()), true);
     }
 
-    private static void refund(ServerPlayer player, net.minecraft.world.item.Item item, int count) {
-        player.getInventory().placeItemBackInInventory(new ItemStack(item, count));
+    private static void refund(ServerPlayer player, Item item, int count) {
+        ItemStack stack = new ItemStack(item, count);
+        if (!player.getInventory().add(stack)) {
+            player.drop(stack, false);
+        }
     }
 }

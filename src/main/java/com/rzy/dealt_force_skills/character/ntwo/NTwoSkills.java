@@ -100,9 +100,7 @@ public final class NTwoSkills {
         if (NTwoStateManager.isCoreActive(player)) {
             if (NTwoStateManager.coreAmmo(player) <= 0) {
                 NTwoStateManager.endCore(player, true);
-                return true;
-            }
-            if (NTwoStateManager.equippedTool(player) == NTwoTool.CONDENSER_LAUNCHER) {
+            } else if (NTwoStateManager.equippedTool(player) == NTwoTool.CONDENSER_LAUNCHER) {
                 NTwoStateManager.setEquippedTool(player, NTwoTool.NONE);
                 player.level().playSound(null, player.blockPosition(), ModSounds.N_TWO_CONDENSED_STOW.get(),
                         SoundSource.PLAYERS, 0.85f, 1.0f);

@@ -1,0 +1,33 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:norepinephrine"
+                        },
+                        {
+                            "item":  "dealt_force_skills:norepinephrine"
+                        },
+                        {
+                            "item":  "dealt_force_skills:coarse_salt"
+                        },
+                        {
+                            "item":  "dealt_force_skills:coarse_salt"
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:water"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "item":  "dealt_force_skills:glass_syringe"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:m1_muscle_booster",
+                   "count":  9
+               }
+}

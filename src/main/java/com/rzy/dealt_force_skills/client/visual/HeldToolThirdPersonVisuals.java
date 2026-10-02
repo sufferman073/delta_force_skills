@@ -45,13 +45,14 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class HeldToolThirdPersonVisuals {
     private HeldToolThirdPersonVisuals() {
     }
@@ -91,8 +92,8 @@ public final class HeldToolThirdPersonVisuals {
             return;
         }
         ToolSpec spec = player == minecraft.player
-                ? currentLocalSpec(player, event.getPartialTick())
-                : visualSpec(ClientHeldToolVisualState.visual(player), event.getPartialTick());
+                ? currentLocalSpec(player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()))
+                : visualSpec(ClientHeldToolVisualState.visual(player), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         if (spec == null) {
             return;
         }
@@ -281,7 +282,7 @@ public final class HeldToolThirdPersonVisuals {
     }
 
     private static ToolSpec flashlight(float seconds) {
-        return new ToolSpec(new ResourceLocation(DealtForceSkillsMod.MODID, "manba_flashlight"),
+        return new ToolSpec(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "manba_flashlight"),
                 "idle_hold", seconds, 0.64F,
                 -0.02D, 0.54D, -0.06D, 0.0F, -6.0F, 0.0F);
     }
@@ -350,7 +351,7 @@ public final class HeldToolThirdPersonVisuals {
             float pitch,
             float roll
     ) {
-        return new ToolSpec(new ResourceLocation(DealtForceSkillsMod.MODID, model),
+        return new ToolSpec(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, model),
                 animation, seconds, scale, -0.06D, 0.18D, -0.08D, yaw, pitch, roll);
     }
 

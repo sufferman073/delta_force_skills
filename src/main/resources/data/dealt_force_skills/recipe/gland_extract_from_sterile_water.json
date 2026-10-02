@@ -1,0 +1,24 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:animal_gland"
+                        },
+                        {
+                            "item":  "dealt_force_skills:sterile_water"
+                        },
+                        {
+                            "item":  "dealt_force_skills:sterile_water"
+                        },
+                        {
+                            "item":  "dealt_force_skills:sterile_water"
+                        },
+                        {
+                            "item":  "dealt_force_skills:sterile_water"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:gland_extract",
+                   "count":  16
+               }
+}

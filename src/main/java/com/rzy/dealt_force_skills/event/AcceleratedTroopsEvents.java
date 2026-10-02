@@ -16,39 +16,30 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class AcceleratedTroopsEvents {
     private static final TagKey<DamageType> TACZ_BULLETS = TagKey.create(
-            Registries.DAMAGE_TYPE, new ResourceLocation("tacz", "bullets"));
+            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("tacz", "bullets"));
 
     private AcceleratedTroopsEvents() {
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onLivingAttack(LivingAttackEvent event) {
+    public static void onLivingHurt(LivingIncomingDamageEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || !PortableAdsDeviceItem.isActive(player)) {
             return;
         }
         if (shouldBlock(player, event.getSource())) {
             event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onLivingHurt(LivingHurtEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player
-                && PortableAdsDeviceItem.isActive(player)
-                && shouldBlock(player, event.getSource())) {
             event.setAmount(0.0F);
-            event.setCanceled(true);
         }
     }
 
@@ -78,19 +69,16 @@ public final class AcceleratedTroopsEvents {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && !event.player.level().isClientSide
-                && event.player instanceof ServerPlayer player) {
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (!event.getEntity().level().isClientSide && event.getEntity() instanceof ServerPlayer player) {
             RespawnBeaconItem.displayMarkerStatus(player);
             PortableAdsDeviceItem.displayActiveStatus(player);
         }
     }
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            AcceleratedTroopsSquadManager.tickServer(event.getServer());
-        }
+    public static void onServerTick(ServerTickEvent.Post event) {
+        AcceleratedTroopsSquadManager.tickServer(event.getServer());
     }
 
     private static boolean isMelee(DamageSource source) {

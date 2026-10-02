@@ -127,7 +127,7 @@ public final class UndeadShopScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         int left = (width - PANEL_WIDTH) / 2;
         int top = (height - PANEL_HEIGHT) / 2;
         graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xED101622);
@@ -181,15 +181,19 @@ public final class UndeadShopScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int maximumScroll = Math.max(0, visibleEntries().size() - VISIBLE_ROWS);
-        int next = Math.max(0, Math.min(maximumScroll, scroll + (delta < 0.0D ? 1 : -1)));
+        int next = Math.max(0, Math.min(maximumScroll, scroll + (scrollY < 0.0D ? 1 : -1)));
         if (next != scroll) {
             scroll = next;
             rebuildWidgets();
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

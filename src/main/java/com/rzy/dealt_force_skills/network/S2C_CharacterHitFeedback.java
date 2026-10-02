@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_CharacterHitFeedback implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_CharacterHitFeedback> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_character_hit_feedback"));
 
-public class S2C_CharacterHitFeedback {
+    public static final StreamCodec<FriendlyByteBuf, S2C_CharacterHitFeedback> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_CharacterHitFeedback::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int hurtEntityId;
     private final float amount;
 
@@ -25,11 +39,7 @@ public class S2C_CharacterHitFeedback {
         return new S2C_CharacterHitFeedback(buf.readVarInt(), buf.readFloat());
     }
 
-    public static void handle(S2C_CharacterHitFeedback msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientPacketHandlers.characterHitFeedback(msg.hurtEntityId, msg.amount)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_CharacterHitFeedback msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientPacketHandlers.characterHitFeedback(msg.hurtEntityId, msg.amount));
     }
 }

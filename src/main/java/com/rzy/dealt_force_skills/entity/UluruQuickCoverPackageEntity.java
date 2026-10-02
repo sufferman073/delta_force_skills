@@ -4,8 +4,6 @@ import com.rzy.dealt_force_skills.character.uluru.UluruSkills;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -20,7 +18,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class UluruQuickCoverPackageEntity extends Projectile implements ItemSupplier {
     private static volatile double MAX_DISTANCE_SQR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_DISTANCE_SQR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.uluruquickcoverpackageentity.max_distance_sqr", 225.0));
@@ -42,7 +40,7 @@ public class UluruQuickCoverPackageEntity extends Projectile implements ItemSupp
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -89,11 +87,6 @@ public class UluruQuickCoverPackageEntity extends Projectile implements ItemSupp
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.putInt("CoverFacing", coverFacing.get3DDataValue());
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private void deploy(BlockHitResult hit) {

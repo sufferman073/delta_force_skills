@@ -1,17 +1,32 @@
 package com.rzy.dealt_force_skills.network;
 
-import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity;
-import com.rzy.dealt_force_skills.block.HvkAdvancedDisassemblyBeamEmitterBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.block.HvkAdvancedDisassemblyBeamEmitterBlockEntity;
+import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_HvkConstructorDetail implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_HvkConstructorDetail> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_hvk_constructor_detail"));
 
-public class C2S_HvkConstructorDetail {
+    public static final StreamCodec<FriendlyByteBuf, C2S_HvkConstructorDetail> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_HvkConstructorDetail::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final BlockPos pos;
     private final ResourceLocation recipeId;
     private final int requestId;
@@ -22,7 +37,7 @@ public class C2S_HvkConstructorDetail {
 
     public C2S_HvkConstructorDetail(BlockPos pos, ResourceLocation recipeId, int requestId) {
         this.pos = pos;
-        this.recipeId = recipeId == null ? new ResourceLocation("minecraft", "air") : recipeId;
+        this.recipeId = recipeId == null ? ResourceLocation.fromNamespaceAndPath("minecraft", "air") : recipeId;
         this.requestId = Math.max(0, requestId);
     }
 
@@ -36,19 +51,19 @@ public class C2S_HvkConstructorDetail {
         return new C2S_HvkConstructorDetail(buf.readBlockPos(), readResourceLocation(buf), buf.readVarInt());
     }
 
-    public static void handle(C2S_HvkConstructorDetail msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player != null) {
-                BlockEntity blockEntity = player.level().getBlockEntity(msg.pos);
-                if (blockEntity instanceof HvkAdvancedStandardTemplateConstructorBlockEntity constructor) {
-                    constructor.sendRecipeDetail(player, msg.recipeId, msg.requestId);
-                } else if (blockEntity instanceof HvkAdvancedDisassemblyBeamEmitterBlockEntity emitter) {
-                    emitter.sendRecipeDetail(player, msg.recipeId, msg.requestId);
-                }
+    public static void handle(C2S_HvkConstructorDetail msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
+            if (player == null) {
+                return;
+            }
+            BlockEntity blockEntity = player.level().getBlockEntity(msg.pos);
+            if (blockEntity instanceof HvkAdvancedStandardTemplateConstructorBlockEntity constructor) {
+                constructor.sendRecipeDetail(player, msg.recipeId, msg.requestId);
+            } else if (blockEntity instanceof HvkAdvancedDisassemblyBeamEmitterBlockEntity emitter) {
+                emitter.sendRecipeDetail(player, msg.recipeId, msg.requestId);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static ResourceLocation readResourceLocation(FriendlyByteBuf buf) {
@@ -56,7 +71,7 @@ public class C2S_HvkConstructorDetail {
         try {
             return ResourceLocation.parse(value);
         } catch (RuntimeException ex) {
-            return new ResourceLocation("minecraft", "air");
+            return ResourceLocation.fromNamespaceAndPath("minecraft", "air");
         }
     }
 }

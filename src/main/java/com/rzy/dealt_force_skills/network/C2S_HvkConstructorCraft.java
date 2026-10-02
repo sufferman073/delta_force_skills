@@ -1,20 +1,36 @@
 package com.rzy.dealt_force_skills.network;
 
-import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity;
-import com.rzy.dealt_force_skills.block.HvkAdvancedDisassemblyBeamEmitterBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.block.HvkAdvancedDisassemblyBeamEmitterBlockEntity;
+import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-public class C2S_HvkConstructorCraft {
+public class C2S_HvkConstructorCraft implements CustomPacketPayload {
     private static final int MAX_SELECTED_OUTPUTS = 64;
+
+    public static final CustomPacketPayload.Type<C2S_HvkConstructorCraft> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_hvk_constructor_craft"));
+
+    public static final StreamCodec<FriendlyByteBuf, C2S_HvkConstructorCraft> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_HvkConstructorCraft::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
 
     private final BlockPos pos;
     private final ResourceLocation recipeId;
@@ -38,9 +54,9 @@ public class C2S_HvkConstructorCraft {
         buf.writeUtf(msg.recipeId == null ? "minecraft:air" : msg.recipeId.toString());
         buf.writeVarInt(msg.count);
         buf.writeVarInt(Math.min(MAX_SELECTED_OUTPUTS, msg.selectedOutputs.size()));
-        for (int i = 0; i < Math.min(MAX_SELECTED_OUTPUTS, msg.selectedOutputs.size()); i++) {
-            ResourceLocation id = msg.selectedOutputs.get(i);
-            buf.writeUtf(id == null ? "minecraft:air" : id.toString());
+        for (int i = 0; i < msg.selectedOutputs.size() && i < MAX_SELECTED_OUTPUTS; i++) {
+            ResourceLocation selected = msg.selectedOutputs.get(i);
+            buf.writeUtf(selected == null ? "minecraft:air" : selected.toString());
         }
     }
 
@@ -56,19 +72,19 @@ public class C2S_HvkConstructorCraft {
         return new C2S_HvkConstructorCraft(pos, recipeId, count, selectedOutputs);
     }
 
-    public static void handle(C2S_HvkConstructorCraft msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player != null) {
-                BlockEntity blockEntity = player.level().getBlockEntity(msg.pos);
-                if (blockEntity instanceof HvkAdvancedStandardTemplateConstructorBlockEntity constructor) {
-                    constructor.craftFromUi(player, msg.recipeId, msg.count);
-                } else if (blockEntity instanceof HvkAdvancedDisassemblyBeamEmitterBlockEntity emitter) {
-                    emitter.disassembleFromUi(player, msg.recipeId, msg.count, msg.selectedOutputs);
-                }
+    public static void handle(C2S_HvkConstructorCraft msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
+            if (player == null) {
+                return;
+            }
+            BlockEntity blockEntity = player.level().getBlockEntity(msg.pos);
+            if (blockEntity instanceof HvkAdvancedStandardTemplateConstructorBlockEntity constructor) {
+                constructor.craftFromUi(player, msg.recipeId, msg.count);
+            } else if (blockEntity instanceof HvkAdvancedDisassemblyBeamEmitterBlockEntity emitter) {
+                emitter.disassembleFromUi(player, msg.recipeId, msg.count, msg.selectedOutputs);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static ResourceLocation readResourceLocation(FriendlyByteBuf buf) {
@@ -76,7 +92,7 @@ public class C2S_HvkConstructorCraft {
         try {
             return ResourceLocation.parse(value);
         } catch (RuntimeException ex) {
-            return new ResourceLocation("minecraft", "air");
+            return ResourceLocation.fromNamespaceAndPath("minecraft", "air");
         }
     }
 }

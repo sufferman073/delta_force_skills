@@ -8,18 +8,19 @@ import net.minecraft.world.entity.player.Player;
 
 public class StaminaCapacityEffect extends MobEffect {
     public StaminaCapacityEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0x78B6FF);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return duration % 20 == 0;
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         if (!entity.level().isClientSide && entity instanceof Player player) {
             StaminaManager.recoverPercent(player, 5 * (amplifier + 1));
         }
+        return true;
     }
 }

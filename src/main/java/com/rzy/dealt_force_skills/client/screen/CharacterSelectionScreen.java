@@ -136,10 +136,14 @@ public class CharacterSelectionScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         drawPanel(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
         drawDisabledButtonOverlays(graphics);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override
@@ -357,20 +361,20 @@ public class CharacterSelectionScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         CharacterDefinition hovered = hoveredDescription(mouseX, mouseY);
         if (hovered == null) {
-            return super.mouseScrolled(mouseX, mouseY, delta);
+            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         }
 
         int textWidth = descriptionWidth(panelWidth() - 24);
         int maxScroll = maxDescriptionScroll(hovered, textWidth);
         if (maxScroll <= 0) {
-            return super.mouseScrolled(mouseX, mouseY, delta);
+            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         }
 
         int current = descriptionScroll.getOrDefault(hovered.id(), 0);
-        int next = clamp(current - (int) Math.round(delta * DESCRIPTION_SCROLL_STEP), 0, maxScroll);
+        int next = clamp(current - (int) Math.round(scrollY * DESCRIPTION_SCROLL_STEP), 0, maxScroll);
         descriptionScroll.put(hovered.id(), next);
         return true;
     }

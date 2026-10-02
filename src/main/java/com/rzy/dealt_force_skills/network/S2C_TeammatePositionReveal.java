@@ -1,20 +1,26 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * Server → client: expose online teammates to the local viewer only.
- * Payload is entity ids + packed team outline RGB (0xRRGGBB). Enemies never receive
- * another team's list, so this never reveals allies to opponents.
  */
-public class S2C_TeammatePositionReveal {
+public class S2C_TeammatePositionReveal implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_TeammatePositionReveal> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(
+                    DealtForceSkillsMod.MODID, "s2c_teammate_position_reveal"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_TeammatePositionReveal> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), S2C_TeammatePositionReveal::decode);
+
     private final List<Entry> entries;
     private final int teamColorRgb;
 
@@ -25,6 +31,11 @@ public class S2C_TeammatePositionReveal {
 
     public static S2C_TeammatePositionReveal clear() {
         return new S2C_TeammatePositionReveal(List.of(), 0x55FFFF);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
     public static void encode(S2C_TeammatePositionReveal msg, FriendlyByteBuf buf) {
@@ -45,18 +56,14 @@ public class S2C_TeammatePositionReveal {
         return new S2C_TeammatePositionReveal(entries, color);
     }
 
-    public static void handle(S2C_TeammatePositionReveal msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> {
-                    List<Integer> ids = new ArrayList<>(msg.entries.size());
-                    for (Entry entry : msg.entries) {
-                        ids.add(entry.entityId);
-                    }
-                    ClientTeammateRevealState.apply(ids, msg.teamColorRgb);
-                }
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_TeammatePositionReveal msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            List<Integer> ids = new ArrayList<>(msg.entries.size());
+            for (Entry entry : msg.entries) {
+                ids.add(entry.entityId);
+            }
+            ClientTeammateRevealState.apply(ids, msg.teamColorRgb);
+        });
     }
 
     public record Entry(int entityId) {

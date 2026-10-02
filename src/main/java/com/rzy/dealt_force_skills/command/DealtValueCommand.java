@@ -15,11 +15,11 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class DealtValueCommand {
     private DealtValueCommand() {
     }
@@ -102,18 +102,6 @@ public final class DealtValueCommand {
         return 0;
     }
 
-    private static int removeMallListing(CommandSourceStack source) throws CommandSyntaxException {
-        ServerPlayer player = source.getPlayerOrException();
-        ItemStack stack = player.getMainHandItem();
-        if (stack.isEmpty() || !GtiTradingHallManager.removeListing(stack)) {
-            source.sendFailure(Component.translatable("commands.dealt_force_skills.dealtvalue.unregistered"));
-            return 0;
-        }
-        source.sendSuccess(() -> Component.translatable("commands.dealt_force_skills.dealtvalue.remove.success",
-                stack.getHoverName()), true);
-        return 1;
-    }
-
     private static int setMallHavoc(CommandSourceStack source, long value, String categoryId) throws CommandSyntaxException {
         GtiTradingHallManager.Category category = GtiTradingHallManager.Category.byId(categoryId).orElse(null);
         if (category == null) {
@@ -129,6 +117,18 @@ public final class DealtValueCommand {
         }
         source.sendSuccess(() -> Component.translatable("commands.dealt_force_skills.dealtvalue.setmallhavoc.success_category",
                 stack.getHoverName(), value, Component.translatable(category.translationKey())), true);
+        return 1;
+    }
+
+    private static int removeMallListing(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        ItemStack stack = player.getMainHandItem();
+        if (stack.isEmpty() || !GtiTradingHallManager.removeListing(stack)) {
+            source.sendFailure(Component.translatable("commands.dealt_force_skills.dealtvalue.unregistered"));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.translatable("commands.dealt_force_skills.dealtvalue.remove.success",
+                stack.getHoverName()), true);
         return 1;
     }
 }

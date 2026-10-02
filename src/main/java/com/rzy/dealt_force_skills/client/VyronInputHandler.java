@@ -8,8 +8,8 @@ import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
 import com.rzy.dealt_force_skills.character.vyron.VyronTool;
 import com.rzy.dealt_force_skills.character.vyron.VyronToolAction;
 import com.rzy.dealt_force_skills.character.vyron.VyronStateManager;
-import com.rzy.dealt_force_skills.client.character.ClientVyronHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
+import com.rzy.dealt_force_skills.client.character.ClientVyronHudState;
 import com.rzy.dealt_force_skills.client.visual.ClientVyronToolAnimationState;
 import com.rzy.dealt_force_skills.stamina.StaminaManager;
 import com.rzy.dealt_force_skills.network.C2S_VyronDash;
@@ -22,15 +22,16 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class VyronInputHandler {
     private static volatile int BOMB_HOLD_EQUIP_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOMB_HOLD_EQUIP_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.vyron_input_handler.bomb_hold_equip_ticks", 8));
     private static volatile int BOMB_FIRE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOMB_FIRE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.vyron_input_handler.bomb_fire_ticks", 5));
@@ -94,8 +95,11 @@ public final class VyronInputHandler {
         if (!ClientVyronHudState.hasEquippedTool() || !isPrimaryOrSecondary(event.getButton())) {
             return;
         }
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         event.setCanceled(true);
-        if (Minecraft.getInstance().screen != null || event.getAction() != GLFW.GLFW_PRESS) {
+        if (event.getAction() != GLFW.GLFW_PRESS) {
             return;
         }
 
@@ -112,6 +116,9 @@ public final class VyronInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!ClientVyronHudState.hasEquippedTool()) {
             return;
         }
@@ -133,6 +140,9 @@ public final class VyronInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (ClientVyronHudState.hasEquippedTool()) {
             event.setCanceled(true);
         }

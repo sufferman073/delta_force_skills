@@ -4,8 +4,6 @@ import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -18,9 +16,9 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
     private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.stingersmokedroneentity.life_ticks", 200));
@@ -58,7 +56,7 @@ public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -114,11 +112,6 @@ public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
         tag.putDouble("DirectionX", directionX);
         tag.putDouble("DirectionY", directionY);
         tag.putDouble("DirectionZ", directionZ);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public static void stopGuidingFor(ServerPlayer owner) {

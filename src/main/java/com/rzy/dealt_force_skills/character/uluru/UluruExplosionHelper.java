@@ -15,7 +15,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.block.AbstractGlassBlock;
+import net.minecraft.world.level.block.TransparentBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.StainedGlassPaneBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -156,7 +156,17 @@ public final class UluruExplosionHelper {
                 target.invulnerableTime = 0;
             }
             Vec3 beforeDamageMovement = target.getDeltaMovement();
-            SkillDamageHelper.hurt(target, source(level, direct, owner), owner, amount);
+            boolean damaged = SkillDamageHelper.hurt(target, source(level, direct, owner), owner, amount);
+            if (!damaged) {
+                if (resetInvulnerability) {
+                    target.invulnerableTime = invulnerableTimeBeforeDamage;
+                }
+                if (preserveVelocity) {
+                    target.setDeltaMovement(beforeDamageMovement);
+                    target.hurtMarked = true;
+                }
+                continue;
+            }
             if (preserveInvulnerabilityAfterDamage) {
                 target.invulnerableTime = invulnerableTimeBeforeDamage;
             }
@@ -165,7 +175,7 @@ public final class UluruExplosionHelper {
                 target.hurtMarked = true;
             }
             if (ignite) {
-                target.setSecondsOnFire(fireSeconds);
+                target.igniteForSeconds(fireSeconds);
             }
         }
     }
@@ -202,7 +212,7 @@ public final class UluruExplosionHelper {
     }
 
     public static boolean isBreakableGlass(BlockState state) {
-        return state.getBlock() instanceof AbstractGlassBlock
+        return state.getBlock() instanceof TransparentBlock
                 || state.getBlock() instanceof StainedGlassPaneBlock
                 || state.is(Blocks.GLASS_PANE);
     }

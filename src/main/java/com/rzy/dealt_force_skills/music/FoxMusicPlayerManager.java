@@ -24,10 +24,10 @@ public final class FoxMusicPlayerManager {
     public enum Action { PAGE, INSERT, TAKE, SELECT, TOGGLE, PREVIOUS, NEXT, MODE }
     private record Key(UUID owner, UUID device) { }
     private static final Map<Key, Session> SESSIONS = new HashMap<>();
-    private static final UUID SPEED = UUID.fromString("630f17b8-8d5d-489d-b8e0-7f46c7ea1401");
-    private static final UUID ARMOR = UUID.fromString("630f17b8-8d5d-489d-b8e0-7f46c7ea1402");
-    private static final UUID TOUGHNESS = UUID.fromString("630f17b8-8d5d-489d-b8e0-7f46c7ea1403");
-    private static final UUID HEALTH = UUID.fromString("630f17b8-8d5d-489d-b8e0-7f46c7ea1404");
+    private static final net.minecraft.resources.ResourceLocation SPEED = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "fox_music_speed");
+    private static final net.minecraft.resources.ResourceLocation ARMOR = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "fox_music_armor");
+    private static final net.minecraft.resources.ResourceLocation TOUGHNESS = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "fox_music_toughness");
+    private static final net.minecraft.resources.ResourceLocation HEALTH = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "fox_music_health");
 
     private FoxMusicPlayerManager() { }
 
@@ -123,10 +123,10 @@ public final class FoxMusicPlayerManager {
         if (!force && player.tickCount % 5 != 0) return;
         List<ItemStack> players = player.isAlive() ? carried(player) : List.of();
         int count = players.stream().mapToInt(FoxMusicData::count).sum();
-        modifier(player.getAttribute(Attributes.ATTACK_SPEED), SPEED, count * 0.025, AttributeModifier.Operation.MULTIPLY_BASE);
-        modifier(player.getAttribute(Attributes.ARMOR), ARMOR, count, AttributeModifier.Operation.ADDITION);
-        modifier(player.getAttribute(Attributes.ARMOR_TOUGHNESS), TOUGHNESS, count * 0.5, AttributeModifier.Operation.ADDITION);
-        modifier(player.getAttribute(Attributes.MAX_HEALTH), HEALTH, count, AttributeModifier.Operation.ADDITION);
+        modifier(player.getAttribute(Attributes.ATTACK_SPEED), SPEED, count * 0.025, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+        modifier(player.getAttribute(Attributes.ARMOR), ARMOR, count, AttributeModifier.Operation.ADD_VALUE);
+        modifier(player.getAttribute(Attributes.ARMOR_TOUGHNESS), TOUGHNESS, count * 0.5, AttributeModifier.Operation.ADD_VALUE);
+        modifier(player.getAttribute(Attributes.MAX_HEALTH), HEALTH, count, AttributeModifier.Operation.ADD_VALUE);
         if (player.getHealth() > player.getMaxHealth()) player.setHealth(player.getMaxHealth());
         Set<Key> active = new HashSet<>();
         for (ItemStack stack : players) {
@@ -144,12 +144,12 @@ public final class FoxMusicPlayerManager {
             }
         }
     }
-    private static void modifier(AttributeInstance attribute, UUID id, double amount, AttributeModifier.Operation operation) {
+    private static void modifier(AttributeInstance attribute, net.minecraft.resources.ResourceLocation id, double amount, AttributeModifier.Operation operation) {
         if (attribute == null) return;
         AttributeModifier old = attribute.getModifier(id);
-        if (old != null && old.getAmount() == amount) return;
+        if (old != null && old.amount() == amount) return;
         attribute.removeModifier(id);
-        if (amount > 0) attribute.addTransientModifier(new AttributeModifier(id, "Fox music collection", amount, operation));
+        if (amount > 0) attribute.addTransientModifier(new AttributeModifier(id, amount, operation));
     }
     public static void logout(ServerPlayer player) {
         var iterator = SESSIONS.entrySet().iterator();

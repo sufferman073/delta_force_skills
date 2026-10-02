@@ -2,15 +2,30 @@ package com.rzy.dealt_force_skills.network;
 
 import com.rzy.dealt_force_skills.character.ntwo.NTwoColdMarker;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_SyncNTwoState {
+public class S2C_SyncNTwoState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncNTwoState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_n_two_state"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncNTwoState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncNTwoState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int trackingCooldownTicks;
     private final int dewarCharges;
     private final int dewarMaxCharges;
@@ -79,10 +94,8 @@ public class S2C_SyncNTwoState {
                 dewarRechargeTicks, coreCooldownTicks, coreActiveTicks, coreAmmo, equippedToolOrdinal, markers);
     }
 
-    public static void handle(S2C_SyncNTwoState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientNTwoHudState.sync(
+    public static void handle(S2C_SyncNTwoState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientNTwoHudState.sync(
                         msg.trackingCooldownTicks,
                         msg.dewarCharges,
                         msg.dewarMaxCharges,
@@ -92,8 +105,6 @@ public class S2C_SyncNTwoState {
                         msg.coreAmmo,
                         msg.equippedToolOrdinal,
                         msg.coldMarkers
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

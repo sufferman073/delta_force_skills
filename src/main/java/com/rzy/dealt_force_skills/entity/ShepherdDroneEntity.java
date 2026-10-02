@@ -9,8 +9,6 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -25,12 +23,12 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 import org.joml.Vector3f;
 
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class ShepherdDroneEntity extends Entity implements ItemSupplier {
     private static final int PHASE_ASCEND = 0;
@@ -82,7 +80,7 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -134,11 +132,6 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
         tag.putInt("PatrolPulses", patrolPulses);
         tag.putDouble("DirectionX", directionX);
         tag.putDouble("DirectionZ", directionZ);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public boolean isOwnedBy(UUID owner) {
@@ -236,7 +229,7 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
             if (distance > STUN_RADIUS) {
                 continue;
             }
-            target.addEffect(new MobEffectInstance(ModEffects.SONIC_SHOCK.get(), durationTicks, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherd_drone_entity.effect.sonic_shock.0.amplifier", 0), false, true, true), owner);
+            target.addEffect(new MobEffectInstance(ModEffects.SONIC_SHOCK, durationTicks, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherd_drone_entity.effect.sonic_shock.0.amplifier", 0), false, true, true), owner);
             affectedTargets++;
             if (target instanceof ServerPlayer) {
                 hitPlayer = true;

@@ -1,7 +1,7 @@
 package com.rzy.dealt_force_skills.skill;
 
-import com.rzy.dealt_force_skills.registry.ModGameRules;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
+import com.rzy.dealt_force_skills.registry.ModGameRules;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;

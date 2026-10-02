@@ -60,7 +60,7 @@ public class HaffShopScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         int left = panelLeft();
         int top = panelTop();
         graphics.fill(left, top, left + panelWidth(), top + panelHeight(), 0xE012171D);
@@ -72,6 +72,10 @@ public class HaffShopScreen extends Screen {
         drawItems(graphics, mouseX, mouseY);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderHoveredTooltip(graphics, mouseX, mouseY);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override
@@ -137,15 +141,15 @@ public class HaffShopScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (inside(mouseX, mouseY, contentLeft(), contentTop(), contentWidth(), contentHeight())) {
             int maxScroll = maxScroll();
             if (maxScroll > 0) {
-                scrollY = clamp(scrollY - (int) Math.round(delta * SCROLL_STEP), 0, maxScroll);
+                this.scrollY = clamp(this.scrollY - (int) Math.round(scrollY * SCROLL_STEP), 0, maxScroll);
                 return true;
             }
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void drawTabs(GuiGraphics graphics, int mouseX, int mouseY) {

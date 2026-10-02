@@ -1,6 +1,6 @@
 package com.rzy.dealt_force_skills.compat;
 
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 
 import java.lang.reflect.Method;
 import java.util.Locale;

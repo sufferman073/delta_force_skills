@@ -7,8 +7,6 @@ import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -27,9 +25,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
     private static volatile float HIT_DAMAGE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("HIT_DAMAGE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.hackclawknifeentity.hit_damage", 50.0F));
@@ -52,7 +50,7 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -105,11 +103,6 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private void hitEntity(EntityHitResult hit) {

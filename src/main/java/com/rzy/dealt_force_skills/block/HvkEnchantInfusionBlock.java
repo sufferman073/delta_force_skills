@@ -1,11 +1,13 @@
 package com.rzy.dealt_force_skills.block;
 
+import com.mojang.serialization.MapCodec;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
@@ -18,10 +20,14 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 public final class HvkEnchantInfusionBlock extends BaseEntityBlock {
+    public static final MapCodec<HvkEnchantInfusionBlock> CODEC = simpleCodec(properties -> new HvkEnchantInfusionBlock());
+
     public HvkEnchantInfusionBlock() {
         super(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).requiresCorrectToolForDrops()
                 .strength(5.0F, 1200.0F).sound(SoundType.METAL));
     }
+
+    @Override protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
     @Override public RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
 
@@ -30,16 +36,15 @@ public final class HvkEnchantInfusionBlock extends BaseEntityBlock {
         return ModBlockEntities.HVK_ENCHANT_INFUSION.get().create(pos, state);
     }
 
-    @Nullable
-    @Override
-    public BlockState getStateForPlacement(net.minecraft.world.item.context.BlockPlaceContext context) {
+    @Nullable @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
         return SpecialWorkBlockConfig.shouldPreventPlacement(context, SpecialWorkBlockConfig.isHvkEnchantInfusionEnabled())
                 ? null : super.getStateForPlacement(context);
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+                                               BlockHitResult hit) {
         if (SpecialWorkBlockConfig.denyUse(level, player, SpecialWorkBlockConfig.isHvkEnchantInfusionEnabled())) {
             return InteractionResult.CONSUME;
         }

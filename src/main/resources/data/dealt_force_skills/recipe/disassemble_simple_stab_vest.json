@@ -1,0 +1,12 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:simple_stab_vest"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:polymer_fabric",
+                   "count":  2
+               }
+}

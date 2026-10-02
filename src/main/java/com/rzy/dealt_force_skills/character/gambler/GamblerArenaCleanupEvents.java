@@ -2,11 +2,11 @@ package com.rzy.dealt_force_skills.character.gambler;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class GamblerArenaCleanupEvents {
     private static final String ROUND_TAG = "DfsGamblerArenaRound";
     private static String round = java.util.UUID.randomUUID().toString();

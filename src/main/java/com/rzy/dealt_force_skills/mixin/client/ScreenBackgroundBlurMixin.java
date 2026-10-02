@@ -9,8 +9,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Screen.class)
 public abstract class ScreenBackgroundBlurMixin {
-    @Inject(method = "renderBackground", at = @At("HEAD"), cancellable = true)
-    private void dealtForceSkills$skipProjectScreenBlur(GuiGraphics graphics, CallbackInfo callback) {
+    @Inject(method = "renderBackground", at = @At("HEAD"), cancellable = true, remap = false)
+    private void dealtForceSkills$skipProjectScreenBlur(GuiGraphics graphics, int mouseX, int mouseY,
+                                                        float partialTick, CallbackInfo callback) {
         String screenClass = getClass().getName();
         if (screenClass.startsWith("com.rzy.dealt_force_skills.")
                 || screenClass.startsWith("mccfk.DeltaForce.")) {

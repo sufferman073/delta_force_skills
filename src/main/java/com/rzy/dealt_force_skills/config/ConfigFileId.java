@@ -11,8 +11,7 @@ public enum ConfigFileId {
     SHOP_SET("dealtshopset.toml", false),
     PLAYER("dealtforceplayer.toml", false),
     GAMBLER("dealtgambler.toml", false),
-    HUD("dealtforceskills-hud.toml", true),
-    TAMARIND_LOOT("dealttamarindloot.toml", false);
+    HUD("dealtforceskills-hud.toml", true);
 
     private final String fileName;
     private final boolean clientLocal;

@@ -14,18 +14,19 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Optional;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class SaeedGuardViewController {
     private static final int MISSING_ENTITY_TIMEOUT_TICKS = 40;
     private static volatile double COMMAND_RAY_RANGE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("COMMAND_RAY_RANGE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("client.saeed_guard_view_controller.command_ray_range", 160.0));
@@ -103,6 +104,9 @@ public final class SaeedGuardViewController {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!isControlling()) {
             return;
         }
@@ -114,6 +118,9 @@ public final class SaeedGuardViewController {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!isControlling()) {
             return;
         }
@@ -123,6 +130,9 @@ public final class SaeedGuardViewController {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (isControlling()) {
             event.setCanceled(true);
         }
@@ -132,7 +142,6 @@ public final class SaeedGuardViewController {
     public static void onScreenOpening(ScreenEvent.Opening event) {
         if (isControlling() && event.getNewScreen() != null) {
             stop(false);
-            event.setCanceled(true);
         }
     }
 

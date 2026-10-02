@@ -8,21 +8,22 @@ import net.minecraft.world.item.ItemStack;
 
 public class TempestDisarmedEffect extends MobEffect {
     public TempestDisarmedEffect() {
-        super(MobEffectCategory.NEUTRAL, 0xFFB347);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         entity.stopUsingItem();
         if (entity instanceof Player player) {
             player.setSprinting(false);
             cooldown(player, player.getMainHandItem());
             cooldown(player, player.getOffhandItem());
         }
+        return true;
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 

@@ -13,19 +13,19 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.Map;
 import java.util.Set;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class OE2CombatStimulantVisuals {
-    private static final ResourceLocation MODEL = new ResourceLocation(
+    private static final ResourceLocation MODEL = ResourceLocation.fromNamespaceAndPath(
             DealtForceSkillsMod.MODID, "oe2_combat_stimulant");
     private static final Set<String> HIDDEN_FIRST_PERSON_GROUPS = Set.of("thirdperson_hand", "camera");
     private static final Set<String> HIDDEN_THIRD_PERSON_GROUPS = Set.of(
@@ -154,17 +154,11 @@ public final class OE2CombatStimulantVisuals {
     ) {
         poseStack.pushPose();
         if (arm == HumanoidArm.RIGHT) {
-            // Match the hidden BBModel guide arm beneath righthand_pos. The
-            // replacement callback is already at the animated hand anchor, so
-            // this converts PlayerRenderer's shoulder-origin geometry into the
-            // guide cube's hand-to-forearm coordinate system.
             poseStack.translate(-8.0D / 16.0D, -8.0D / 16.0D, 10.0D / 16.0D);
             poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F));
             poseStack.translate(9.0D / 16.0D, 6.5D / 16.0D, 8.0D / 16.0D);
             CharacterSkinOverrideVisuals.renderRightHand(poseStack, buffer, packedLight, player);
         } else {
-            // The left guide has its own authored grip angle; retain that exact
-            // local basis instead of mirroring a global first-person offset.
             poseStack.translate(-8.25D / 16.0D, -7.1875D / 16.0D, 9.375D / 16.0D);
             poseStack.mulPose(Axis.ZP.rotationDegrees(-9.97296F));
             poseStack.mulPose(Axis.YP.rotationDegrees(6.22373F));

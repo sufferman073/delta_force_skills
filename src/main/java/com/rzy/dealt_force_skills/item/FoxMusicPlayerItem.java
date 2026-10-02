@@ -22,8 +22,7 @@ public final class FoxMusicPlayerItem extends QualityTooltipItem {
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 
-    @Override public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    @Override protected void addExtraTooltip(ItemStack stack, net.minecraft.world.item.Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.fox_music_player.description").withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.fox_music_player.discs", FoxMusicData.count(stack), FoxMusicData.CAPACITY).withStyle(ChatFormatting.AQUA));
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.fox_music_player.bonuses").withStyle(ChatFormatting.GOLD));

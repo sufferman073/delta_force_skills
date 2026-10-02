@@ -1,0 +1,39 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:swiftness"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:swiftness"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:swiftness"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "item":  "minecraft:glowstone_dust"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:long_goodbye",
+                   "count":  6
+               }
+}

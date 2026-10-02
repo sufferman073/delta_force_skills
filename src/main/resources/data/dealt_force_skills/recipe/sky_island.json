@@ -1,0 +1,39 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:slow_falling"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:slow_falling"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:slow_falling"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:sky_island",
+                   "count":  6
+               }
+}

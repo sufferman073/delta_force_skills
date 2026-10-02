@@ -32,8 +32,8 @@ public final class StaminaManager {
         if (player.level().isClientSide) return data(player).getDouble("Max");
         int training = SpecialOperationsBaseManager.effectiveLevel(player,
                 SpecialOperationsBaseManager.Facility.TRAINING_CENTER);
-        int capacity = player.hasEffect(ModEffects.STAMINA_CAPACITY.get())
-                ? player.getEffect(ModEffects.STAMINA_CAPACITY.get()).getAmplifier() + 1 : 0;
+        int capacity = player.hasEffect(ModEffects.STAMINA_CAPACITY)
+                ? player.getEffect(ModEffects.STAMINA_CAPACITY).getAmplifier() + 1 : 0;
         int boost = boostLevel(player);
         double base = com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
                 "stamina.base_capacity", StaminaRules.BASE_CAPACITY);
@@ -46,8 +46,8 @@ public final class StaminaManager {
     }
 
     public static int boostLevel(Player player) {
-        return player.hasEffect(ModEffects.STAMINA_BOOST.get())
-                ? player.getEffect(ModEffects.STAMINA_BOOST.get()).getAmplifier() + 1 : 0;
+        return player.hasEffect(ModEffects.STAMINA_BOOST)
+                ? player.getEffect(ModEffects.STAMINA_BOOST).getAmplifier() + 1 : 0;
     }
 
     public static double actionMultiplier(Player player) {
@@ -60,7 +60,7 @@ public final class StaminaManager {
     }
 
     public static boolean isFree(Player player) {
-        return player.getAbilities().instabuild || player.hasEffect(ModEffects.BURNING_HEART.get());
+        return player.getAbilities().instabuild || player.hasEffect(ModEffects.BURNING_HEART);
     }
 
     public static ConsumeResult canConsume(Player player, double amount) {
@@ -92,7 +92,7 @@ public final class StaminaManager {
 
     public static void recover(Player player, double amount) {
         if (player == null || player.level().isClientSide || !Double.isFinite(amount) || amount <= 0.0D) return;
-        if (player.hasEffect(ModEffects.CHEST_INJURY.get()) && !InjuryManager.isSuppressed(player)) amount *= 0.25D;
+        if (player.hasEffect(ModEffects.CHEST_INJURY) && !InjuryManager.isSuppressed(player)) amount *= 0.25D;
         data(player).putDouble("Value", Math.min(maximum(player), currentValue(player) + amount));
         sync(player);
     }
@@ -125,7 +125,7 @@ public final class StaminaManager {
 
     public static void sync(Player player) {
         if (player instanceof ServerPlayer serverPlayer
-                && !(player instanceof net.minecraftforge.common.util.FakePlayer)
+                && !(player instanceof net.neoforged.neoforge.common.util.FakePlayer)
                 && serverPlayer.connection != null) {
             CompoundTag state = data(player);
             double value = currentValue(player);

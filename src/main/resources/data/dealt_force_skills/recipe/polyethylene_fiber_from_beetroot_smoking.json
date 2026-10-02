@@ -1,0 +1,11 @@
+{
+    "type":  "minecraft:smoking",
+    "ingredient":  {
+                       "item":  "minecraft:beetroot"
+                   },
+    "result":  {
+                   "id":  "dealt_force_skills:polyethylene_fiber"
+               },
+    "experience":  0.0,
+    "cookingtime":  100
+}

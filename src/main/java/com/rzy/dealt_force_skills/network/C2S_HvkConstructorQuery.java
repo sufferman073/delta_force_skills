@@ -1,16 +1,32 @@
 package com.rzy.dealt_force_skills.network;
 
-import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity;
-import com.rzy.dealt_force_skills.block.HvkAdvancedDisassemblyBeamEmitterBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.block.HvkAdvancedDisassemblyBeamEmitterBlockEntity;
+import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_HvkConstructorQuery implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_HvkConstructorQuery> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_hvk_constructor_query"));
 
-public class C2S_HvkConstructorQuery {
+    public static final StreamCodec<FriendlyByteBuf, C2S_HvkConstructorQuery> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_HvkConstructorQuery::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final BlockPos pos;
     private final String query;
     private final int page;
@@ -31,18 +47,18 @@ public class C2S_HvkConstructorQuery {
         return new C2S_HvkConstructorQuery(buf.readBlockPos(), buf.readUtf(128), buf.readVarInt());
     }
 
-    public static void handle(C2S_HvkConstructorQuery msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player != null) {
-                BlockEntity blockEntity = player.level().getBlockEntity(msg.pos);
-                if (blockEntity instanceof HvkAdvancedStandardTemplateConstructorBlockEntity constructor) {
-                    constructor.sendRecipes(player, msg.query, msg.page);
-                } else if (blockEntity instanceof HvkAdvancedDisassemblyBeamEmitterBlockEntity emitter) {
-                    emitter.sendRecipes(player, msg.query, msg.page);
-                }
+    public static void handle(C2S_HvkConstructorQuery msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
+            if (player == null) {
+                return;
+            }
+            BlockEntity blockEntity = player.level().getBlockEntity(msg.pos);
+            if (blockEntity instanceof HvkAdvancedStandardTemplateConstructorBlockEntity constructor) {
+                constructor.sendRecipes(player, msg.query, msg.page);
+            } else if (blockEntity instanceof HvkAdvancedDisassemblyBeamEmitterBlockEntity emitter) {
+                emitter.sendRecipes(player, msg.query, msg.page);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

@@ -1,0 +1,18 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "tag":  "minecraft:planks"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_nugget"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:screwdriver",
+                   "count":  3
+               }
+}

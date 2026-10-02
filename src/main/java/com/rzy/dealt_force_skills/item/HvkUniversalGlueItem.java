@@ -64,7 +64,7 @@ public class HvkUniversalGlueItem extends Item {
 
         NetworkHandler.sendToDimension(
                 new S2C_SyncGluedPositions(serverLevel.dimension(), HvkClimbGlueManager.allGluedPositions(serverLevel)),
-                serverLevel.dimension());
+                serverLevel);
 
         if (player instanceof ServerPlayer serverPlayer) {
             if (!serverPlayer.getAbilities().instabuild) {
@@ -77,7 +77,7 @@ public class HvkUniversalGlueItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.hvk_universal_glue")
                 .withStyle(ChatFormatting.GRAY));
     }

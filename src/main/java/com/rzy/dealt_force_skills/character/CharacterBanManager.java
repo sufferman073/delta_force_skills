@@ -1,6 +1,7 @@
 package com.rzy.dealt_force_skills.character;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -124,13 +125,13 @@ public final class CharacterBanManager {
 
     private static ServerBanData serverData(MinecraftServer server) {
         return server.overworld().getDataStorage()
-                .computeIfAbsent(ServerBanData::load, ServerBanData::new, DATA_NAME);
+                .computeIfAbsent(new SavedData.Factory<>(ServerBanData::new, ServerBanData::load), DATA_NAME);
     }
 
     private static final class ServerBanData extends SavedData {
         private final Set<String> bannedCharacters = new LinkedHashSet<>();
 
-        private static ServerBanData load(CompoundTag tag) {
+        private static ServerBanData load(CompoundTag tag, HolderLookup.Provider registries) {
             ServerBanData data = new ServerBanData();
             ListTag bans = tag.getList(SERVER_BANS_TAG, Tag.TAG_STRING);
             for (int i = 0; i < bans.size(); i++) {
@@ -140,7 +141,7 @@ public final class CharacterBanManager {
         }
 
         @Override
-        public CompoundTag save(CompoundTag tag) {
+        public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
             ListTag bans = new ListTag();
             dataCopy().forEach(characterId -> bans.add(StringTag.valueOf(characterId)));
             tag.put(SERVER_BANS_TAG, bans);

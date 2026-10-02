@@ -29,30 +29,30 @@ import java.util.UUID;
 public class StartGameScreen {
 
     // 按钮贴图路径
-    private static final ResourceLocation BTN_BUTTON     = new ResourceLocation("deltaforce", "textures/gui/button.png"); // 128x48
-    private static final ResourceLocation BTN_CHAT       = new ResourceLocation("deltaforce", "textures/gui/start_game/chat.png"); // 64x64
-    private static final ResourceLocation BTN_COLLECTION = new ResourceLocation("deltaforce", "textures/gui/start_game/collection.png"); // 64x64
-    private static final ResourceLocation BTN_SHOP       = new ResourceLocation("deltaforce", "textures/gui/start_game/shop.png"); // 64x64
-    private static final ResourceLocation BTN_MARKET     = new ResourceLocation("deltaforce", "textures/gui/start_game/market.png"); // 64x64
-    private static final ResourceLocation BTN_PASS       = new ResourceLocation("deltaforce", "textures/gui/start_game/pass.png"); // 64x64
-    private static final ResourceLocation BTN_EVENT      = new ResourceLocation("deltaforce", "textures/gui/start_game/event.png"); // 64x64
+    private static final ResourceLocation BTN_BUTTON     = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/button.png"); // 128x48
+    private static final ResourceLocation BTN_CHAT       = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/chat.png"); // 64x64
+    private static final ResourceLocation BTN_COLLECTION = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/collection.png"); // 64x64
+    private static final ResourceLocation BTN_SHOP       = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/shop.png"); // 64x64
+    private static final ResourceLocation BTN_MARKET     = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/market.png"); // 64x64
+    private static final ResourceLocation BTN_PASS       = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/pass.png"); // 64x64
+    private static final ResourceLocation BTN_EVENT      = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/event.png"); // 64x64
 
     private static final ResourceLocation[] BTN_TEXTURES = {
         BTN_BUTTON, BTN_CHAT, BTN_COLLECTION, BTN_SHOP, BTN_MARKET, BTN_PASS, BTN_EVENT
     };
 
     // === 右侧新增按钮贴图 ===
-    private static final ResourceLocation BTN_LEADERBOARD = new ResourceLocation("deltaforce", "textures/gui/start_game/leaderboard.png");
-    private static final ResourceLocation BTN_RECRUIT     = new ResourceLocation("deltaforce", "textures/gui/start_game/recruit.png");
-    private static final ResourceLocation BTN_SOCIAL      = new ResourceLocation("deltaforce", "textures/gui/start_game/social.png");
-    private static final ResourceLocation BTN_PLAYER_SLOTS = new ResourceLocation("deltaforce", "textures/gui/start_game/player_slots.png");
+    private static final ResourceLocation BTN_LEADERBOARD = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/leaderboard.png");
+    private static final ResourceLocation BTN_RECRUIT     = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/recruit.png");
+    private static final ResourceLocation BTN_SOCIAL      = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/social.png");
+    private static final ResourceLocation BTN_PLAYER_SLOTS = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/player_slots.png");
 
     // === 右上角信息区贴图 ===
-    private static final ResourceLocation ICON_SETTINGS   = new ResourceLocation("deltaforce", "textures/gui/start_game/settings.png");
-    private static final ResourceLocation ICON_MAIL       = new ResourceLocation("deltaforce", "textures/gui/start_game/mail.png");
-    private static final ResourceLocation ICON_NETWORK    = new ResourceLocation("deltaforce", "textures/gui/start_game/network_latency.png");
-    private static final ResourceLocation ICON_DELTA_COIN = new ResourceLocation("deltaforce", "textures/gui/coin/delta_coin.png");
-    private static final ResourceLocation ICON_HAVOC_COIN = new ResourceLocation("deltaforce", "textures/gui/coin/havoc_coin.png");
+    private static final ResourceLocation ICON_SETTINGS   = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/settings.png");
+    private static final ResourceLocation ICON_MAIL       = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/mail.png");
+    private static final ResourceLocation ICON_NETWORK    = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/network_latency.png");
+    private static final ResourceLocation ICON_DELTA_COIN = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/coin/delta_coin.png");
+    private static final ResourceLocation ICON_HAVOC_COIN = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/coin/havoc_coin.png");
 
     // 从左到右：排行榜 → 招募 → 社交 → 玩家头像1（队友） → 玩家头像2（队友） → 玩家头像3（我的头像）
     private static final ResourceLocation[] NEW_BTN_TEXTURES = {
@@ -86,8 +86,8 @@ public class StartGameScreen {
     private static final float DEPLOY_TEX_SCALE = ICON_TEX_SCALE * 0.5F;  // 部署贴图缩小0.5倍
 
     // === 玩法模式面板贴图（主界面入口，点击打开玩法选择界面）===
-    private static final ResourceLocation BTN_PRE_BATTLE_REP = new ResourceLocation("deltaforce", "textures/gui/start_game/pre_battle_rep.png");
-    private static final ResourceLocation BTN_NO_TARGET = new ResourceLocation("deltaforce", "textures/gui/start_game/no_target.png");
+    private static final ResourceLocation BTN_PRE_BATTLE_REP = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/pre_battle_rep.png");
+    private static final ResourceLocation BTN_NO_TARGET = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/no_target.png");
 
     // 原始尺寸
     private static final int PRE_BATTLE_REP_ORIG_W = 496;
@@ -111,8 +111,8 @@ public class StartGameScreen {
     // === 右上角信息区布局常量 ===
     private static final int TOP_RIGHT_MARGIN_X_RATIO = 1;  // 距右边缘 = 屏幕宽度 * 1 / 100
     private static final int TOP_RIGHT_MARGIN_Y = 10;        // 距上边缘（固定值，窄窗口自动切换为40）
-    private static final int TOP_RIGHT_ICON_SIZE = 20;  // 图标绘制尺寸
-    private static final int TOP_RIGHT_GAP = 4;         // 元素间距
+    private static final int TOP_RIGHT_ICON_SIZE = 20;       // 图标绘制尺寸
+    private static final int TOP_RIGHT_GAP = 4;              // 元素间距
     private static final int TOP_RIGHT_HAVOC_SHIFT = 15;         // 哈夫币数量/图标整体右移基准像素
     private static final int TOP_RIGHT_HAVOC_ICON_LEFT = 10;     // 哈夫币图标在基准上再往左像素
     private static final int TOP_RIGHT_HAVOC_TEXT_LEFT = 13;     // 哈夫币数量文本在基准上再往左像素
@@ -354,15 +354,11 @@ public class StartGameScreen {
         return hovered;
     }
 
-    public static void renderOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY,
-                                     int screenWidth, int screenHeight) {
+    public static void renderOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY, int screenWidth, int screenHeight) {
         panelButtons.clear();
         if (panelMode != PanelMode.NONE) {
             int[] bounds = panelBounds(screenWidth, screenHeight);
-            int x = bounds[0];
-            int y = bounds[1];
-            int width = bounds[2];
-            int height = bounds[3];
+            int x = bounds[0], y = bounds[1], width = bounds[2], height = bounds[3];
             Font font = Minecraft.getInstance().font;
             guiGraphics.fill(x, y, x + width, y + height, 0xFF14191C);
             guiGraphics.fill(x, y, x + width, y + 1, 0xFF58C8D8);
@@ -376,8 +372,7 @@ public class StartGameScreen {
                 default -> "";
             };
             guiGraphics.drawString(font, title, x + 9, y + 8, 0xFFFFFFFF, false);
-            addPanelButton(guiGraphics, font, x + width - 20, y + 5, 15, 15, "×",
-                    PanelAction.CLOSE, null, "");
+            addPanelButton(guiGraphics, font, x + width - 20, y + 5, 15, 15, "×", PanelAction.CLOSE, null, "");
             switch (panelMode) {
                 case ROSTER -> renderRosterPanel(guiGraphics, font, x, y, width, height);
                 case SQUAD -> renderSquadPanel(guiGraphics, font, x, y, width, height);
@@ -390,8 +385,7 @@ public class StartGameScreen {
         renderContextMenu(guiGraphics, screenWidth, screenHeight);
     }
 
-    public static void renderOverlayOnTop(GuiGraphics guiGraphics, int mouseX, int mouseY,
-                                          int screenWidth, int screenHeight) {
+    public static void renderOverlayOnTop(GuiGraphics guiGraphics, int mouseX, int mouseY, int screenWidth, int screenHeight) {
         guiGraphics.flush();
         RenderSystem.disableDepthTest();
         guiGraphics.pose().pushPose();
@@ -409,17 +403,14 @@ public class StartGameScreen {
         return panelMode != PanelMode.NONE || contextMember != null;
     }
 
-    public static boolean handleOverlayClick(int mouseX, int mouseY, int button,
-                                             int screenWidth, int screenHeight) {
+    public static boolean handleOverlayClick(int mouseX, int mouseY, int button, int screenWidth, int screenHeight) {
         for (PanelButton hit : List.copyOf(panelButtons)) {
             if (button == 0 && contains(hit, mouseX, mouseY)) {
                 dispatchPanelAction(hit);
                 return true;
             }
         }
-        if (contextMember != null) {
-            contextMember = null;
-        }
+        if (contextMember != null) contextMember = null;
         if (panelMode != PanelMode.NONE) {
             int[] bounds = panelBounds(screenWidth, screenHeight);
             return mouseX >= bounds[0] && mouseX < bounds[0] + bounds[2]
@@ -431,34 +422,21 @@ public class StartGameScreen {
     public static boolean handleBottomButtonClick(int mouseX, int mouseY, int button,
                                                   int screenWidth, int screenHeight, int selectedTab) {
         int hit = bottomButtonAt(mouseX, mouseY, screenWidth, screenHeight, selectedTab);
-        if (hit < 0) {
-            return false;
-        }
+        if (hit < 0) return false;
         if (hit == 0 && button == 0) {
             panelMode = PanelMode.NONE;
             DFGUI_MAIN.openToLogistics();
             return true;
         }
-        if (hit == 100 && button == 0) {
-            togglePanel(PanelMode.ROSTER);
-            return true;
-        }
-        if (hit == 101 && button == 0) {
-            togglePanel(PanelMode.SQUAD);
-            return true;
-        }
-        if (hit == 102 && button == 0) {
-            togglePanel(PanelMode.INVITE);
-            return true;
-        }
+        if (hit == 100 && button == 0) { togglePanel(PanelMode.ROSTER); return true; }
+        if (hit == 101 && button == 0) { togglePanel(PanelMode.SQUAD); return true; }
+        if (hit == 102 && button == 0) { togglePanel(PanelMode.INVITE); return true; }
         if (hit >= 103 && hit <= 105) {
             int memberIndex = hit - 103;
             if (memberIndex < snapshot.members().size()) {
                 S2C_StartPageSnapshot.MemberEntry member = snapshot.members().get(memberIndex);
                 if (button == 1 && isLocalLeader() && !isLocalPlayer(member.playerId())) {
-                    contextMember = member.playerId();
-                    contextX = mouseX;
-                    contextY = mouseY;
+                    contextMember = member.playerId(); contextX = mouseX; contextY = mouseY;
                 } else if (button == 0) {
                     togglePanel(PanelMode.SQUAD);
                 }
@@ -469,16 +447,13 @@ public class StartGameScreen {
     }
 
     public static boolean handlePanelScroll(double delta) {
-        if (panelMode == PanelMode.NONE || delta == 0.0D) {
-            return false;
-        }
+        if (panelMode == PanelMode.NONE || delta == 0.0D) return false;
         panelScroll = Math.max(0, Math.min(panelMaxScroll, panelScroll + (delta < 0.0D ? 1 : -1)));
         return true;
     }
 
     private static void renderRosterPanel(GuiGraphics guiGraphics, Font font, int x, int y, int width, int height) {
-        int bodyY = y + 29;
-        int rowHeight = 22;
+        int bodyY = y + 29, rowHeight = 22;
         int visible = Math.max(1, (height - 36) / rowHeight);
         panelMaxScroll = Math.max(0, snapshot.roster().size() - visible);
         panelScroll = Math.min(panelScroll, panelMaxScroll);
@@ -494,34 +469,27 @@ public class StartGameScreen {
         for (int index = panelScroll; index < snapshot.roster().size() && index < panelScroll + visible; index++) {
             S2C_StartPageSnapshot.RosterEntry entry = snapshot.roster().get(index);
             int rowY = bodyY + (index - panelScroll) * rowHeight;
-            if (((index - panelScroll) & 1) == 0) {
-                guiGraphics.fill(x + 5, rowY - 2, x + width - 5, rowY + 18, 0x382B363A);
-            }
-            guiGraphics.drawString(font, fit(font, entry.name(), Math.max(54, characterX - nameX - 5)),
-                    nameX, rowY + 3, 0xFFFFFFFF, false);
-            guiGraphics.drawString(font, fit(font, characterName(entry.characterId()),
-                            Math.max(54, statusX - characterX - 5)), characterX, rowY + 3, 0xFFB9E4EA, false);
+            if (((index - panelScroll) & 1) == 0) guiGraphics.fill(x + 5, rowY - 2, x + width - 5, rowY + 18, 0x382B363A);
+            guiGraphics.drawString(font, fit(font, entry.name(), Math.max(54, characterX - nameX - 5)), nameX, rowY + 3, 0xFFFFFFFF, false);
+            guiGraphics.drawString(font, fit(font, characterName(entry.characterId()), Math.max(54, statusX - characterX - 5)), characterX, rowY + 3, 0xFFB9E4EA, false);
             String health = Math.round(entry.health()) + "/" + Math.round(entry.maxHealth()) + "  A" + entry.armor();
-            guiGraphics.drawString(font, fit(font, health, Math.max(54, recordX - statusX - 5)),
-                    statusX, rowY + 3, healthColor(entry.health(), entry.maxHealth()), false);
+            guiGraphics.drawString(font, fit(font, health, Math.max(54, recordX - statusX - 5)), statusX, rowY + 3,
+                    healthColor(entry.health(), entry.maxHealth()), false);
             guiGraphics.drawString(font, fit(font, formatPlayTime(entry.playTimeTicks()) + "  D" + entry.deaths(),
-                            Math.max(32, x + width - recordX - 7)), recordX, rowY + 3, 0xFFD0D5D6, false);
+                    Math.max(32, x + width - recordX - 7)), recordX, rowY + 3, 0xFFD0D5D6, false);
         }
     }
 
     private static void renderSquadPanel(GuiGraphics guiGraphics, Font font, int x, int y, int width, int height) {
-        int bodyY = y + 48;
-        int rowHeight = 24;
+        int bodyY = y + 48, rowHeight = 24;
         int visible = Math.max(1, (height - 56) / rowHeight);
         if (snapshot.teamName().isEmpty()) {
-            addPanelButton(guiGraphics, font, x + width - 86, y + 25, 76, 17, "创建队伍",
-                    PanelAction.CREATE, null, "");
+            addPanelButton(guiGraphics, font, x + width - 86, y + 25, 76, 17, "创建队伍", PanelAction.CREATE, null, "");
             int total = snapshot.invitations().size() + snapshot.teams().size();
             panelMaxScroll = Math.max(0, total - visible);
             panelScroll = Math.min(panelScroll, panelMaxScroll);
             if (total == 0) {
-                guiGraphics.drawString(font, "暂无可加入的队伍，创建后可邀请在线玩家。",
-                        x + 9, bodyY + 18, 0xFF9DA9AC, false);
+                guiGraphics.drawString(font, "暂无可加入的队伍，创建后可邀请在线玩家。", x + 9, bodyY + 18, 0xFF9DA9AC, false);
                 return;
             }
             for (int item = panelScroll; item < total && item < panelScroll + visible; item++) {
@@ -529,28 +497,20 @@ public class StartGameScreen {
                 guiGraphics.fill(x + 6, rowY, x + width - 6, rowY + 21, 0x3A2A3438);
                 if (item < snapshot.invitations().size()) {
                     S2C_StartPageSnapshot.InviteEntry invite = snapshot.invitations().get(item);
-                    guiGraphics.drawString(font, fit(font, "邀请：" + invite.teamName() + " / " + invite.leaderName(),
-                            Math.max(60, width - 132)), x + 10, rowY + 6, 0xFFFFD36A, false);
-                    addPanelButton(guiGraphics, font, x + width - 112, rowY + 3, 48, 16, "接受",
-                            PanelAction.ACCEPT_INVITE, null, invite.teamName());
-                    addPanelButton(guiGraphics, font, x + width - 59, rowY + 3, 48, 16, "拒绝",
-                            PanelAction.DECLINE_INVITE, null, invite.teamName());
+                    guiGraphics.drawString(font, fit(font, "邀请：" + invite.teamName() + " / " + invite.leaderName(), Math.max(60, width - 132)), x + 10, rowY + 6, 0xFFFFD36A, false);
+                    addPanelButton(guiGraphics, font, x + width - 112, rowY + 3, 48, 16, "接受", PanelAction.ACCEPT_INVITE, null, invite.teamName());
+                    addPanelButton(guiGraphics, font, x + width - 59, rowY + 3, 48, 16, "拒绝", PanelAction.DECLINE_INVITE, null, invite.teamName());
                 } else {
                     S2C_StartPageSnapshot.TeamEntry team = snapshot.teams().get(item - snapshot.invitations().size());
-                    guiGraphics.drawString(font, fit(font, team.name() + "  队长 " + team.leaderName()
-                                    + "  " + team.memberCount() + "/3", Math.max(60, width - 88)),
-                            x + 10, rowY + 6, 0xFFFFFFFF, false);
+                    guiGraphics.drawString(font, fit(font, team.name() + "  队长 " + team.leaderName() + "  " + team.memberCount() + "/3", Math.max(60, width - 88)), x + 10, rowY + 6, 0xFFFFFFFF, false);
                     addPanelButton(guiGraphics, font, x + width - 76, rowY + 3, 65, 16,
                             team.joinRequested() ? "已申请" : "申请加入", PanelAction.JOIN, null, team.name());
                 }
             }
             return;
         }
-
-        guiGraphics.drawString(font, fit(font, snapshot.teamName() + "  " + snapshot.members().size() + "/3",
-                Math.max(80, width - 110)), x + 9, y + 29, 0xFFB9E4EA, false);
-        addPanelButton(guiGraphics, font, x + width - 68, y + 25, 58, 17, "退出队伍",
-                PanelAction.LEAVE, null, "");
+        guiGraphics.drawString(font, fit(font, snapshot.teamName() + "  " + snapshot.members().size() + "/3", Math.max(80, width - 110)), x + 9, y + 29, 0xFFB9E4EA, false);
+        addPanelButton(guiGraphics, font, x + width - 68, y + 25, 58, 17, "退出队伍", PanelAction.LEAVE, null, "");
         int total = snapshot.members().size() + snapshot.joinRequests().size();
         panelMaxScroll = Math.max(0, total - visible);
         panelScroll = Math.min(panelScroll, panelMaxScroll);
@@ -560,28 +520,20 @@ public class StartGameScreen {
             if (item < snapshot.members().size()) {
                 S2C_StartPageSnapshot.MemberEntry member = snapshot.members().get(item);
                 boolean leader = member.playerId().equals(snapshot.leaderId());
-                guiGraphics.drawString(font, (leader ? "[队长] " : "") + member.name(),
-                        x + 10, rowY + 6, leader ? 0xFFFFD36A : 0xFFFFFFFF, false);
+                guiGraphics.drawString(font, (leader ? "[队长] " : "") + member.name(), x + 10, rowY + 6, leader ? 0xFFFFD36A : 0xFFFFFFFF, false);
                 String state = member.online() ? "在线" : "离线";
-                guiGraphics.drawString(font, state, x + width - font.width(state) - 12, rowY + 6,
-                        member.online() ? 0xFF7BE09B : 0xFF7B8588, false);
+                guiGraphics.drawString(font, state, x + width - font.width(state) - 12, rowY + 6, member.online() ? 0xFF7BE09B : 0xFF7B8588, false);
             } else {
-                S2C_StartPageSnapshot.JoinRequestEntry request =
-                        snapshot.joinRequests().get(item - snapshot.members().size());
-                guiGraphics.drawString(font, fit(font, "加入申请：" + request.name(), Math.max(60, width - 132)),
-                        x + 10, rowY + 6, 0xFF8FDCE7, false);
-                addPanelButton(guiGraphics, font, x + width - 112, rowY + 3, 48, 16, "同意",
-                        PanelAction.ACCEPT_JOIN, request.playerId(), "");
-                addPanelButton(guiGraphics, font, x + width - 59, rowY + 3, 48, 16, "拒绝",
-                        PanelAction.DECLINE_JOIN, request.playerId(), "");
+                S2C_StartPageSnapshot.JoinRequestEntry request = snapshot.joinRequests().get(item - snapshot.members().size());
+                guiGraphics.drawString(font, fit(font, "加入申请：" + request.name(), Math.max(60, width - 132)), x + 10, rowY + 6, 0xFF8FDCE7, false);
+                addPanelButton(guiGraphics, font, x + width - 112, rowY + 3, 48, 16, "同意", PanelAction.ACCEPT_JOIN, request.playerId(), "");
+                addPanelButton(guiGraphics, font, x + width - 59, rowY + 3, 48, 16, "拒绝", PanelAction.DECLINE_JOIN, request.playerId(), "");
             }
         }
     }
 
     private static void renderPanelScrollbar(GuiGraphics guiGraphics, int x, int y, int width, int height) {
-        if (panelMaxScroll <= 0) {
-            return;
-        }
+        if (panelMaxScroll <= 0) return;
         int trackX = x + width - 4;
         int trackY = y + 25;
         int trackHeight = Math.max(12, height - 30);
@@ -595,58 +547,43 @@ public class StartGameScreen {
     private static void renderInvitePanel(GuiGraphics guiGraphics, Font font, int x, int y, int width, int height) {
         int bodyY = y + 31;
         if (snapshot.teamName().isEmpty()) {
-            panelMaxScroll = 0;
-            guiGraphics.drawString(font, "请先在旗帜按钮中创建或加入队伍。", x + 9, bodyY + 12, 0xFF9DA9AC, false);
-            return;
+            panelMaxScroll = 0; guiGraphics.drawString(font, "请先在旗帜按钮中创建或加入队伍。", x + 9, bodyY + 12, 0xFF9DA9AC, false); return;
         }
         if (!isLocalLeader()) {
-            panelMaxScroll = 0;
-            guiGraphics.drawString(font, "只有队长可以邀请玩家。", x + 9, bodyY + 12, 0xFFFFB067, false);
-            return;
+            panelMaxScroll = 0; guiGraphics.drawString(font, "只有队长可以邀请玩家。", x + 9, bodyY + 12, 0xFFFFB067, false); return;
         }
         if (snapshot.members().size() >= 3) {
-            panelMaxScroll = 0;
-            guiGraphics.drawString(font, "队伍已满（3/3）。", x + 9, bodyY + 12, 0xFFFFB067, false);
-            return;
+            panelMaxScroll = 0; guiGraphics.drawString(font, "队伍已满（3/3）。", x + 9, bodyY + 12, 0xFFFFB067, false); return;
         }
         List<S2C_StartPageSnapshot.RosterEntry> candidates = snapshot.roster().stream()
                 .filter(entry -> !isLocalPlayer(entry.playerId()))
-                .filter(entry -> snapshot.members().stream().noneMatch(member -> member.playerId().equals(entry.playerId())))
-                .toList();
-        int rowHeight = 23;
-        int visible = Math.max(1, (height - 40) / rowHeight);
+                .filter(entry -> snapshot.members().stream().noneMatch(member -> member.playerId().equals(entry.playerId()))).toList();
+        int rowHeight = 23, visible = Math.max(1, (height - 40) / rowHeight);
         panelMaxScroll = Math.max(0, candidates.size() - visible);
         panelScroll = Math.min(panelScroll, panelMaxScroll);
         if (candidates.isEmpty()) {
-            guiGraphics.drawString(font, "当前没有可邀请的在线玩家。", x + 9, bodyY + 12, 0xFF9DA9AC, false);
-            return;
+            guiGraphics.drawString(font, "当前没有可邀请的在线玩家。", x + 9, bodyY + 12, 0xFF9DA9AC, false); return;
         }
         for (int index = panelScroll; index < candidates.size() && index < panelScroll + visible; index++) {
             S2C_StartPageSnapshot.RosterEntry entry = candidates.get(index);
             int rowY = bodyY + (index - panelScroll) * rowHeight;
             guiGraphics.fill(x + 6, rowY, x + width - 6, rowY + 20, 0x3A2A3438);
-            guiGraphics.drawString(font, fit(font, entry.name() + "  " + characterName(entry.characterId()),
-                    Math.max(60, width - 88)), x + 10, rowY + 6, 0xFFFFFFFF, false);
-            addPanelButton(guiGraphics, font, x + width - 67, rowY + 2, 56, 16, "邀请",
-                    PanelAction.INVITE, entry.playerId(), "");
+            guiGraphics.drawString(font, fit(font, entry.name() + "  " + characterName(entry.characterId()), Math.max(60, width - 88)), x + 10, rowY + 6, 0xFFFFFFFF, false);
+            addPanelButton(guiGraphics, font, x + width - 67, rowY + 2, 56, 16, "邀请", PanelAction.INVITE, entry.playerId(), "");
         }
     }
 
     private static void renderContextMenu(GuiGraphics guiGraphics, int screenWidth, int screenHeight) {
         if (contextMember == null || snapshot.members().stream().noneMatch(member -> member.playerId().equals(contextMember))) {
-            contextMember = null;
-            return;
+            contextMember = null; return;
         }
         Font font = Minecraft.getInstance().font;
-        int width = 92;
-        int height = 40;
+        int width = 92, height = 40;
         int x = Math.max(4, Math.min(contextX, screenWidth - width - 4));
         int y = Math.max(4, Math.min(contextY - height, screenHeight - BAR_HEIGHT - height - 2));
         guiGraphics.fill(x, y, x + width, y + height, 0xF2181D20);
-        addPanelButton(guiGraphics, font, x + 4, y + 4, width - 8, 14, "设为队长",
-                PanelAction.PROMOTE, contextMember, "");
-        addPanelButton(guiGraphics, font, x + 4, y + 22, width - 8, 14, "踢出队伍",
-                PanelAction.KICK, contextMember, "");
+        addPanelButton(guiGraphics, font, x + 4, y + 4, width - 8, 14, "设为队长", PanelAction.PROMOTE, contextMember, "");
+        addPanelButton(guiGraphics, font, x + 4, y + 22, width - 8, 14, "踢出队伍", PanelAction.KICK, contextMember, "");
     }
 
     private static void addPanelButton(GuiGraphics guiGraphics, Font font, int x, int y, int width, int height,
@@ -654,17 +591,13 @@ public class StartGameScreen {
         guiGraphics.fill(x, y, x + width, y + height, 0xFF263237);
         guiGraphics.fill(x, y + height - 1, x + width, y + height, 0xFF58C8D8);
         String fitted = fit(font, label, width - 4);
-        guiGraphics.drawString(font, fitted, x + Math.max(2, (width - font.width(fitted)) / 2),
-                y + Math.max(2, (height - font.lineHeight) / 2), 0xFFFFFFFF, false);
+        guiGraphics.drawString(font, fitted, x + Math.max(2, (width - font.width(fitted)) / 2), y + Math.max(2, (height - font.lineHeight) / 2), 0xFFFFFFFF, false);
         panelButtons.add(new PanelButton(x, y, width, height, action, playerId, teamName));
     }
 
     private static void dispatchPanelAction(PanelButton hit) {
         contextMember = null;
-        if (hit.action == PanelAction.CLOSE) {
-            panelMode = PanelMode.NONE;
-            return;
-        }
+        if (hit.action == PanelAction.CLOSE) { panelMode = PanelMode.NONE; return; }
         C2S_StartPageAction.Action action = switch (hit.action) {
             case CREATE -> C2S_StartPageAction.Action.CREATE;
             case JOIN -> C2S_StartPageAction.Action.REQUEST_JOIN;
@@ -683,11 +616,8 @@ public class StartGameScreen {
 
     private static void togglePanel(PanelMode target) {
         panelMode = panelMode == target ? PanelMode.NONE : target;
-        panelScroll = 0;
-        contextMember = null;
-        if (panelMode != PanelMode.NONE) {
-            requestSnapshot();
-        }
+        panelScroll = 0; contextMember = null;
+        if (panelMode != PanelMode.NONE) requestSnapshot();
     }
 
     private static int bottomButtonAt(int mouseX, int mouseY, int screenWidth, int screenHeight, int selectedTab) {
@@ -703,8 +633,7 @@ public class StartGameScreen {
             }
         }
         for (int i = 0; i < NEW_BTN_COUNT; i++) {
-            int x = newButtonX(i, screenWidth);
-            int width = i == 2 ? SOCIAL_DRAW_W : ICON_DRAW_SIZE;
+            int x = newButtonX(i, screenWidth), width = i == 2 ? SOCIAL_DRAW_W : ICON_DRAW_SIZE;
             if (mouseX >= x && mouseX < x + width) return i + 100;
         }
         return -1;
@@ -718,48 +647,32 @@ public class StartGameScreen {
         int social = slot1 - GAP_SOCIAL_DEPLOY - SOCIAL_DRAW_W;
         int recruit = social - GAP_RECRUIT_SOCIAL - ICON_DRAW_SIZE;
         int roster = recruit - GAP_LEADERBOARD_RECRUIT - ICON_DRAW_SIZE;
-        return switch (index) {
-            case 0 -> roster;
-            case 1 -> recruit;
-            case 2 -> social;
-            case 3 -> slot1;
-            case 4 -> slot2;
-            default -> slot3;
-        };
+        return switch (index) { case 0 -> roster; case 1 -> recruit; case 2 -> social; case 3 -> slot1; case 4 -> slot2; default -> slot3; };
     }
 
-    private static void renderMemberHead(GuiGraphics guiGraphics, S2C_StartPageSnapshot.MemberEntry member,
-                                         int x, int y, int size) {
+    private static void renderMemberHead(GuiGraphics guiGraphics, S2C_StartPageSnapshot.MemberEntry member, int x, int y, int size) {
         Minecraft minecraft = Minecraft.getInstance();
         PlayerInfo info = minecraft.getConnection() == null ? null : minecraft.getConnection().getPlayerInfo(member.playerId());
         guiGraphics.fill(x, y, x + size, y + size, member.online() ? 0xFF31464D : 0xFF2B3032);
         if (info != null) {
-            ResourceLocation skin = info.getSkinLocation();
+            ResourceLocation skin = info.getSkin().texture();
             float scale = size / 8.0F;
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(x, y, 0.0F);
-            guiGraphics.pose().scale(scale, scale, 1.0F);
+            guiGraphics.pose().pushPose(); guiGraphics.pose().translate(x, y, 0.0F); guiGraphics.pose().scale(scale, scale, 1.0F);
             guiGraphics.blit(skin, 0, 0, 8, 8, 8, 8, 64, 64);
             guiGraphics.blit(skin, 0, 0, 40, 8, 8, 8, 64, 64);
             guiGraphics.pose().popPose();
         } else {
             String initial = member.name().isEmpty() ? "?" : member.name().substring(0, 1).toUpperCase();
             Font font = minecraft.font;
-            guiGraphics.drawString(font, initial, x + (size - font.width(initial)) / 2,
-                    y + (size - font.lineHeight) / 2, 0xFFFFFFFF, false);
+            guiGraphics.drawString(font, initial, x + (size - font.width(initial)) / 2, y + (size - font.lineHeight) / 2, 0xFFFFFFFF, false);
         }
-        if (!member.online()) {
-            guiGraphics.fill(x, y, x + size, y + size, 0x78000000);
-        }
+        if (!member.online()) guiGraphics.fill(x, y, x + size, y + size, 0x78000000);
         int border = member.playerId().equals(snapshot.leaderId()) ? 0xFFFFD36A : 0xFF718087;
-        guiGraphics.fill(x, y, x + size, y + 1, border);
-        guiGraphics.fill(x, y + size - 1, x + size, y + size, border);
-        guiGraphics.fill(x, y, x + 1, y + size, border);
-        guiGraphics.fill(x + size - 1, y, x + size, y + size, border);
+        guiGraphics.fill(x, y, x + size, y + 1, border); guiGraphics.fill(x, y + size - 1, x + size, y + size, border);
+        guiGraphics.fill(x, y, x + 1, y + size, border); guiGraphics.fill(x + size - 1, y, x + size, y + size, border);
     }
 
-    private static void renderSimpleTooltip(GuiGraphics guiGraphics, Font font, String text, int mouseX, int mouseY,
-                                            int screenWidth, int screenHeight) {
+    private static void renderSimpleTooltip(GuiGraphics guiGraphics, Font font, String text, int mouseX, int mouseY, int screenWidth, int screenHeight) {
         int width = font.width(text) + 8;
         int x = Math.max(3, Math.min(mouseX + 8, screenWidth - width - 3));
         int y = Math.max(3, Math.min(mouseY - 15, screenHeight - font.lineHeight - 7));
@@ -778,13 +691,11 @@ public class StartGameScreen {
     }
 
     private static boolean contains(PanelButton button, int mouseX, int mouseY) {
-        return mouseX >= button.x && mouseX < button.x + button.width
-                && mouseY >= button.y && mouseY < button.y + button.height;
+        return mouseX >= button.x && mouseX < button.x + button.width && mouseY >= button.y && mouseY < button.y + button.height;
     }
 
     private static boolean isLocalLeader() {
-        return snapshot.leaderId() != null && Minecraft.getInstance().player != null
-                && snapshot.leaderId().equals(Minecraft.getInstance().player.getUUID());
+        return snapshot.leaderId() != null && Minecraft.getInstance().player != null && snapshot.leaderId().equals(Minecraft.getInstance().player.getUUID());
     }
 
     private static boolean isLocalPlayer(UUID playerId) {
@@ -793,12 +704,9 @@ public class StartGameScreen {
 
     private static String characterName(String characterId) {
         if (characterId == null || characterId.isBlank()) return "未选择";
-        return CharacterBranchPackManager.findCharacter(characterId)
-                .map(character -> character.displayName().getString())
-                .orElseGet(() -> {
-                    int separator = characterId.indexOf(':');
-                    return separator >= 0 ? characterId.substring(separator + 1) : characterId;
-                });
+        return CharacterBranchPackManager.findCharacter(characterId).map(character -> character.displayName().getString()).orElseGet(() -> {
+            int separator = characterId.indexOf(':'); return separator >= 0 ? characterId.substring(separator + 1) : characterId;
+        });
     }
 
     private static int healthColor(float health, float maxHealth) {
@@ -807,14 +715,12 @@ public class StartGameScreen {
     }
 
     private static String formatPlayTime(long ticks) {
-        long minutes = Math.max(0L, ticks) / 1200L;
-        return (minutes / 60L) + "h" + (minutes % 60L) + "m";
+        long minutes = Math.max(0L, ticks) / 1200L; return (minutes / 60L) + "h" + (minutes % 60L) + "m";
     }
 
     private static String fit(Font font, String text, int width) {
         if (font.width(text) <= width) return text;
-        String ellipsis = "...";
-        return font.plainSubstrByWidth(text, Math.max(0, width - font.width(ellipsis))) + ellipsis;
+        String ellipsis = "..."; return font.plainSubstrByWidth(text, Math.max(0, width - font.width(ellipsis))) + ellipsis;
     }
 
     private static S2C_StartPageSnapshot emptySnapshot() {
@@ -886,10 +792,7 @@ public class StartGameScreen {
      */
     public static int renderTopRightInfo(GuiGraphics guiGraphics, int mouseX, int mouseY, int screenWidth, int screenHeight, int selectedTab) {
         var font = Minecraft.getInstance().font;
-        int y = TOP_RIGHT_MARGIN_Y;
-        if (screenWidth < 640) {
-            y = 40;
-        }
+        int y = screenWidth < 640 ? 40 : TOP_RIGHT_MARGIN_Y;
         int rightEdge = screenWidth - screenWidth * TOP_RIGHT_MARGIN_X_RATIO / 100;
         int hovered = 0;
 
@@ -915,11 +818,9 @@ public class StartGameScreen {
         int settingsX = rightEdge - TOP_RIGHT_ICON_SIZE;
         guiGraphics.blit(ICON_SETTINGS, settingsX, y, 0, 0, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE);
 
-        // 2. mail（常显，往左）
+        // 2. mail（常显，往左）- 无实际功能
         int mailX = settingsX - TOP_RIGHT_GAP - TOP_RIGHT_ICON_SIZE;
         guiGraphics.blit(ICON_MAIL, mailX, y, 0, 0, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE);
-
-        // 无实际功能
         renderWipOverlay(guiGraphics, mailX, y, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE, mouseX, mouseY);
 
         // 当前已绘制区域的最左位置
@@ -983,7 +884,7 @@ public class StartGameScreen {
 
         // 网络延迟悬浮：下方绘制等宽详情窗口
         if (hovered == 4 && showNetwork && networkX >= 0) {
-            renderNetworkTooltip(guiGraphics, font, networkX, y + TOP_RIGHT_ICON_SIZE, screenWidth);
+            renderNetworkTooltip(guiGraphics, font, networkX, y + TOP_RIGHT_ICON_SIZE);
         }
 
         return hovered;
@@ -1082,7 +983,7 @@ public class StartGameScreen {
      * @param iconLeft 网络图标左缘X
      * @param topY 网络图标底部Y
      */
-    private static void renderNetworkTooltip(GuiGraphics guiGraphics, Font font, int iconLeft, int topY, int screenWidth) {
+    private static void renderNetworkTooltip(GuiGraphics guiGraphics, Font font, int iconLeft, int topY) {
         Component name = Component.translatable("deltaforce.network.latency");
         String latencyText = getLatencyText();
 
@@ -1103,8 +1004,9 @@ public class StartGameScreen {
         int x = iconLeft;
         int y = topY + 4;
         // 防止窗口超出屏幕右缘
-        if (x + w > screenWidth) {
-            x = Math.max(screenWidth - w, 0);
+        int guiWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        if (x + w > guiWidth) {
+            x = Math.max(guiWidth - w, 0);
         }
 
         // 背景 + 边框

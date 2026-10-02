@@ -5,6 +5,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 
 public class VlinderRescueProtectionEffect extends MobEffect {
     public VlinderRescueProtectionEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0xFFD86B);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 }

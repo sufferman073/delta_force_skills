@@ -15,12 +15,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
 public class CatDadRoadTruckRenderer extends EntityRenderer<CatDadRoadTruckEntity> {
     private static final ResourceLocation TEXTURE =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "textures/entity/catdad_dayun.png");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "textures/entity/catdad_dayun.png");
     private static final double ROAD_SEGMENT_LENGTH = 4.0D;
     private static final double ROAD_LIFT = 0.09D;
     private static final double ROAD_EDGE_WIDTH = 0.35D;
@@ -39,7 +38,6 @@ public class CatDadRoadTruckRenderer extends EntityRenderer<CatDadRoadTruckEntit
         VertexConsumer roadConsumer = buffer.getBuffer(RenderType.debugQuads());
         PoseStack.Pose pose = poseStack.last();
         Matrix4f matrix = pose.pose();
-        Matrix3f normalMatrix = pose.normal();
         Vec3 dir = entity.direction();
         Vec3 side = new Vec3(-dir.z, 0.0D, dir.x);
         Vec3 current = entity.position();
@@ -47,7 +45,7 @@ public class CatDadRoadTruckRenderer extends EntityRenderer<CatDadRoadTruckEntit
 
         if (entity.roadAge() >= CatDadRoadTruckEntity.WARNING_TICKS) {
             VertexConsumer truckConsumer = buffer.getBuffer(RenderType.entityCutoutNoCull(TEXTURE));
-            renderTruck(truckConsumer, matrix, normalMatrix, packedLight, dir, side);
+            renderTruck(truckConsumer, matrix, pose, packedLight, dir, side);
         }
         super.render(entity, entityYaw, partialTick, poseStack, buffer, packedLight);
     }
@@ -57,7 +55,7 @@ public class CatDadRoadTruckRenderer extends EntityRenderer<CatDadRoadTruckEntit
         return TEXTURE;
     }
 
-    private static void renderTruck(VertexConsumer consumer, Matrix4f matrix, Matrix3f normalMatrix,
+    private static void renderTruck(VertexConsumer consumer, Matrix4f matrix, PoseStack.Pose pose,
                                     int packedLight, Vec3 dir, Vec3 side) {
         double halfWidth = TRUCK_IMAGE_WIDTH * 0.5D;
         double bottom = TRUCK_IMAGE_BOTTOM;
@@ -66,7 +64,7 @@ public class CatDadRoadTruckRenderer extends EntityRenderer<CatDadRoadTruckEntit
         Vec3 rightBottom = side.scale(-halfWidth).add(0.0D, bottom, 0.0D);
         Vec3 rightTop = side.scale(-halfWidth).add(0.0D, top, 0.0D);
         Vec3 leftTop = side.scale(halfWidth).add(0.0D, top, 0.0D);
-        texturedQuad(consumer, matrix, normalMatrix, leftBottom, rightBottom, rightTop, leftTop,
+        texturedQuad(consumer, matrix, pose, leftBottom, rightBottom, rightTop, leftTop,
                 (float) dir.x, 0.0F, (float) dir.z, packedLight);
     }
 
@@ -133,34 +131,34 @@ public class CatDadRoadTruckRenderer extends EntityRenderer<CatDadRoadTruckEntit
 
     private static void quad(VertexConsumer consumer, Matrix4f matrix, Vec3 a, Vec3 b, Vec3 c, Vec3 d,
                              int r, int g, int bl, int alpha) {
-        consumer.vertex(matrix, (float) a.x, (float) a.y, (float) a.z).color(r, g, bl, alpha).endVertex();
-        consumer.vertex(matrix, (float) b.x, (float) b.y, (float) b.z).color(r, g, bl, alpha).endVertex();
-        consumer.vertex(matrix, (float) c.x, (float) c.y, (float) c.z).color(r, g, bl, alpha).endVertex();
-        consumer.vertex(matrix, (float) d.x, (float) d.y, (float) d.z).color(r, g, bl, alpha).endVertex();
-        consumer.vertex(matrix, (float) d.x, (float) d.y, (float) d.z).color(r, g, bl, alpha).endVertex();
-        consumer.vertex(matrix, (float) c.x, (float) c.y, (float) c.z).color(r, g, bl, alpha).endVertex();
-        consumer.vertex(matrix, (float) b.x, (float) b.y, (float) b.z).color(r, g, bl, alpha).endVertex();
-        consumer.vertex(matrix, (float) a.x, (float) a.y, (float) a.z).color(r, g, bl, alpha).endVertex();
+        consumer.addVertex(matrix, (float) a.x, (float) a.y, (float) a.z).setColor(r, g, bl, alpha);
+        consumer.addVertex(matrix, (float) b.x, (float) b.y, (float) b.z).setColor(r, g, bl, alpha);
+        consumer.addVertex(matrix, (float) c.x, (float) c.y, (float) c.z).setColor(r, g, bl, alpha);
+        consumer.addVertex(matrix, (float) d.x, (float) d.y, (float) d.z).setColor(r, g, bl, alpha);
+        consumer.addVertex(matrix, (float) d.x, (float) d.y, (float) d.z).setColor(r, g, bl, alpha);
+        consumer.addVertex(matrix, (float) c.x, (float) c.y, (float) c.z).setColor(r, g, bl, alpha);
+        consumer.addVertex(matrix, (float) b.x, (float) b.y, (float) b.z).setColor(r, g, bl, alpha);
+        consumer.addVertex(matrix, (float) a.x, (float) a.y, (float) a.z).setColor(r, g, bl, alpha);
     }
 
-    private static void texturedQuad(VertexConsumer consumer, Matrix4f matrix, Matrix3f normalMatrix,
+    private static void texturedQuad(VertexConsumer consumer, Matrix4f matrix, PoseStack.Pose pose,
                                      Vec3 a, Vec3 b, Vec3 c, Vec3 d,
                                      float nx, float ny, float nz, int packedLight) {
-        texturedVertex(consumer, matrix, normalMatrix, a, 0.0F, 1.0F, nx, ny, nz, packedLight);
-        texturedVertex(consumer, matrix, normalMatrix, b, 1.0F, 1.0F, nx, ny, nz, packedLight);
-        texturedVertex(consumer, matrix, normalMatrix, c, 1.0F, 0.0F, nx, ny, nz, packedLight);
-        texturedVertex(consumer, matrix, normalMatrix, d, 0.0F, 0.0F, nx, ny, nz, packedLight);
+        texturedVertex(consumer, matrix, pose, a, 0.0F, 1.0F, nx, ny, nz, packedLight);
+        texturedVertex(consumer, matrix, pose, b, 1.0F, 1.0F, nx, ny, nz, packedLight);
+        texturedVertex(consumer, matrix, pose, c, 1.0F, 0.0F, nx, ny, nz, packedLight);
+        texturedVertex(consumer, matrix, pose, d, 0.0F, 0.0F, nx, ny, nz, packedLight);
     }
 
-    private static void texturedVertex(VertexConsumer consumer, Matrix4f matrix, Matrix3f normalMatrix,
+    private static void texturedVertex(VertexConsumer consumer, Matrix4f matrix, PoseStack.Pose pose,
                                        Vec3 point, float u, float v,
                                        float nx, float ny, float nz, int packedLight) {
-        consumer.vertex(matrix, (float) point.x, (float) point.y, (float) point.z)
-                .color(255, 255, 255, 255)
-                .uv(u, v)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(packedLight)
-                .normal(normalMatrix, nx, ny, nz)
-                .endVertex();
+        consumer.addVertex(matrix, (float) point.x, (float) point.y, (float) point.z)
+                .setColor(255, 255, 255, 255)
+                .setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(packedLight)
+                .setNormal(pose, nx, ny, nz)
+                ;
     }
 }

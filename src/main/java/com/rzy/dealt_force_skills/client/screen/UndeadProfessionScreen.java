@@ -47,7 +47,7 @@ public final class UndeadProfessionScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         int centerX = width / 2;
         int centerY = height / 2;
         graphics.fill(centerX - 70, centerY - 30, centerX + 70, centerY + 30, 0xDD101827);
@@ -56,6 +56,10 @@ public final class UndeadProfessionScreen extends Screen {
                 Component.translatable(ClientUndeadHudState.profession().translationKey()),
                 centerX, centerY + 2, 0xFFFFFFFF);
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override

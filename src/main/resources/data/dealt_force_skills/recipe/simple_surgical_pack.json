@@ -1,0 +1,29 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:stick"
+                        },
+                        {
+                            "item":  "minecraft:stick"
+                        },
+                        {
+                            "tag":  "minecraft:wool"
+                        },
+                        {
+                            "tag":  "minecraft:wool"
+                        },
+                        {
+                            "tag":  "minecraft:flowers"
+                        },
+                        {
+                            "tag":  "minecraft:flowers"
+                        },
+                        {
+                            "tag":  "minecraft:flowers"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:simple_surgical_pack"
+               }
+}

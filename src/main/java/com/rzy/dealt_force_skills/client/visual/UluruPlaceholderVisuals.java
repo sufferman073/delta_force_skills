@@ -14,21 +14,22 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class UluruPlaceholderVisuals {
     private static final ResourceLocation INCENDIARY_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "uluru_incendiary_grenade");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "uluru_incendiary_grenade");
     private static final ResourceLocation COVER_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "uluru_quick_cover_package");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "uluru_quick_cover_package");
     private static final ResourceLocation MISSILE_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "uluru_missile_launcher");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "uluru_missile_launcher");
     private static UluruTool lastAnimatedTool = UluruTool.NONE;
 
     private UluruPlaceholderVisuals() {

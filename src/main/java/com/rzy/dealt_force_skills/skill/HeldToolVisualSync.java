@@ -64,6 +64,7 @@ public final class HeldToolVisualSync {
                 default -> HeldToolVisual.NONE;
             };
         }
+
         if (ManbaStateManager.isManba(player) && ManbaStateManager.isFlashlightActive(player)) {
             return HeldToolVisual.MANBA_FLASHLIGHT;
         }

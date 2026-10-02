@@ -1,16 +1,19 @@
 package com.rzy.dealt_force_skills.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import org.joml.Matrix4f;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+/**
+ * Reinstates the world model-view matrix for NeoForge's AFTER_LEVEL callbacks.
+ * That stage is fired after LevelRenderer restores the matrix stack, while
+ * world labels and marker geometry still submit camera-relative vertices.
+ */
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class WorldRenderMatrixCompat {
     private static boolean pushed;
 
@@ -22,10 +25,7 @@ public final class WorldRenderMatrixCompat {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || pushed) {
             return;
         }
-        PoseStack poseStack = event.getPoseStack();
-        Matrix4f modelView = poseStack.last().pose();
-        RenderSystem.getModelViewStack().pushPose();
-        RenderSystem.getModelViewStack().mulPoseMatrix(modelView);
+        RenderSystem.getModelViewStack().pushMatrix().mul(event.getModelViewMatrix());
         RenderSystem.applyModelViewMatrix();
         pushed = true;
     }
@@ -35,7 +35,7 @@ public final class WorldRenderMatrixCompat {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || !pushed) {
             return;
         }
-        RenderSystem.getModelViewStack().popPose();
+        RenderSystem.getModelViewStack().popMatrix();
         RenderSystem.applyModelViewMatrix();
         pushed = false;
     }

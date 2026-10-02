@@ -1,0 +1,24 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:yellow_dye"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:coal"
+                        },
+                        {
+                            "item":  "minecraft:iron_nugget"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:digital_caliper",
+                   "count":  3
+               }
+}

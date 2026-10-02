@@ -2,7 +2,7 @@ package com.rzy.dealt_force_skills.config;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,8 +56,7 @@ public final class DealtBaseConfig {
     public static synchronized void populateRedemptionDefaults() {
         value(REDEMPTION_ENABLED, true);
         value(GTI_REDEMPTION_ENABLED, true);
-        config().setComment(REDEMPTION_ENABLED,
-                "Whether the Special Operations Base redemption/buyback function is available.");
+        config().setComment(REDEMPTION_ENABLED, "Whether players may redeem previously sold items.");
         config().setComment(GTI_REDEMPTION_ENABLED,
                 "Whether the GTI Special Operations access point redemption/buyback function is available.");
         dirty = true;

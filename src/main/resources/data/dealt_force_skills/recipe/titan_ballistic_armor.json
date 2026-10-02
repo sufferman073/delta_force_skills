@@ -1,0 +1,35 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:blueprint"
+                        },
+                        {
+                            "item":  "dealt_force_skills:blueprint"
+                        },
+                        {
+                            "item":  "dealt_force_skills:blueprint"
+                        },
+                        {
+                            "item":  "dealt_force_skills:blueprint"
+                        },
+                        {
+                            "item":  "dealt_force_skills:blueprint"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:titan_ballistic_armor"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

@@ -1,0 +1,35 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:high_output_crushing_pliers"
+                        },
+                        {
+                            "item":  "dealt_force_skills:high_output_crushing_pliers"
+                        },
+                        {
+                            "item":  "dealt_force_skills:blueprint"
+                        },
+                        {
+                            "item":  "dealt_force_skills:blueprint"
+                        },
+                        {
+                            "item":  "dealt_force_skills:digital_caliper"
+                        },
+                        {
+                            "item":  "dealt_force_skills:digital_caliper"
+                        },
+                        {
+                            "item":  "dealt_force_skills:digital_caliper"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:king_kong_body_armor"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

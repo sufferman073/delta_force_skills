@@ -1,13 +1,23 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_SyncGamblerState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncGamblerState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_gambler_state"));
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncGamblerState> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), S2C_SyncGamblerState::decode);
 
-public class S2C_SyncGamblerState {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int chips;
     private final int shield;
     private final int active1CooldownTicks;
@@ -73,10 +83,8 @@ public class S2C_SyncGamblerState {
                 active2UsesLeft, active2ExpiresTicks, coreActive, jackpotTicks, invulnerableTicks, powers);
     }
 
-    public static void handle(S2C_SyncGamblerState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientGamblerHudState.sync(
+    public static void handle(S2C_SyncGamblerState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientGamblerHudState.sync(
                         msg.chips,
                         msg.shield,
                         msg.active1CooldownTicks,
@@ -87,8 +95,6 @@ public class S2C_SyncGamblerState {
                         msg.jackpotTicks,
                         msg.invulnerableTicks,
                         msg.powers
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

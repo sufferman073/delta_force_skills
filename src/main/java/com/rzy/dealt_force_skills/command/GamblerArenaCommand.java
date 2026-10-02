@@ -6,11 +6,11 @@ import com.rzy.dealt_force_skills.character.gambler.GamblerArenaManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class GamblerArenaCommand {
     private GamblerArenaCommand() {
     }

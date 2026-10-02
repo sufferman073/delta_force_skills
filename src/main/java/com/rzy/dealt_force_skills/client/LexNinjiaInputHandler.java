@@ -7,21 +7,22 @@ import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.client.character.ClientLexNinjiaHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCharacterSelectionState;
 import com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaInputAction;
-import com.rzy.dealt_force_skills.network.C2S_LexNinjiaInput;
-import com.rzy.dealt_force_skills.network.C2S_LexNinjiaPresetAction;
 import com.rzy.dealt_force_skills.network.C2S_OpenSelectionOrShop;
 import com.rzy.dealt_force_skills.network.C2S_OpenOwnShop;
+import com.rzy.dealt_force_skills.network.C2S_LexNinjiaInput;
+import com.rzy.dealt_force_skills.network.C2S_LexNinjiaPresetAction;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import mccfk.DeltaForce.java.client.screen.DFGUI_MAIN;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class LexNinjiaInputHandler {
     private static volatile int LONG_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LONG_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.lex_ninjia_input_handler.long_hold_ticks", 10));
     private static boolean sneakWasDown;
@@ -105,8 +106,10 @@ public final class LexNinjiaInputHandler {
                 boolean creative = minecraft.player.getAbilities().instabuild;
                 boolean sneak = minecraft.player.isShiftKeyDown();
                 if ((!creative && !sneak) || (creative && sneak)) {
+                    // 自身长按特殊面板（预设菜单）
                     NetworkHandler.sendToServer(C2S_LexNinjiaPresetAction.openMenu());
                 } else {
+                    // 长按特勤处
                     DFGUI_MAIN.openToLogistics();
                 }
             }
@@ -115,10 +118,13 @@ public final class LexNinjiaInputHandler {
                 boolean creative = minecraft.player.getAbilities().instabuild;
                 boolean sneak = minecraft.player.isShiftKeyDown();
                 if (creative && !sneak) {
+                    // 创造短按→选人
                     DFGUI_MAIN.openToOperator();
                 } else if (sneak && !creative) {
+                    // 非创造潜行短按→通用商店
                     NetworkHandler.sendToServer(new C2S_OpenSelectionOrShop());
                 } else {
+                    // 自身短按特殊面板（自身商店）
                     NetworkHandler.sendToServer(C2S_OpenOwnShop.open());
                 }
             }

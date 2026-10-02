@@ -1,0 +1,19 @@
+{
+    "type":  "minecraft:crafting_shaped",
+    "pattern":  [
+                    " C ",
+                    "CKC",
+                    " C "
+                ],
+    "key":  {
+                "C":  {
+                          "item":  "dealt_force_skills:ballistic_ceramic"
+                      },
+                "K":  {
+                          "item":  "dealt_force_skills:self_made_armor_repair_kit"
+                      }
+            },
+    "result":  {
+                   "id":  "dealt_force_skills:standard_armor_repair_kit"
+               }
+}

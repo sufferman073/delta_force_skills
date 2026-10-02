@@ -1,6 +1,7 @@
 package com.rzy.dealt_force_skills.item;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.RandomSource;
@@ -52,7 +53,8 @@ public class RandomEffectConsumableItem extends DfsUseItem {
             if (effect == null) {
                 continue;
             }
-            player.addEffect(new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier(),
+            player.addEffect(new MobEffectInstance(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect),
+                    entry.durationTicks(), entry.amplifier(),
                     false, true, true), player);
         }
         return true;
@@ -62,7 +64,7 @@ public class RandomEffectConsumableItem extends DfsUseItem {
         if (outcomes.isEmpty()) {
             return List.of();
         }
-        RandomSource safeRandom = random == null ? RandomSource.create() : random;
-        return outcomes.get(safeRandom.nextInt(outcomes.size()));
+        RandomSource source = random == null ? RandomSource.create() : random;
+        return outcomes.get(source.nextInt(outcomes.size()));
     }
 }

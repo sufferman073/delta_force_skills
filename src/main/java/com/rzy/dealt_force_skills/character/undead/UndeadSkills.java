@@ -295,7 +295,7 @@ public final class UndeadSkills {
                             target.invulnerableTime = 0;
                             SkillDamageHelper.hurt(target, delayedPlayer.damageSources().magic(), delayedPlayer, damage);
                             target.addEffect(new MobEffectInstance(
-                                    ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE.get(),
+                                    ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE,
                                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.raptor_electromagnetic_interference.0.duration_ticks", 8 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.raptor_electromagnetic_interference.0.amplifier", 0), false, true, true), delayedPlayer);
                             target.addEffect(new MobEffectInstance(MobEffects.GLOWING, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.glowing.1.duration_ticks", 8 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.glowing.1.amplifier", 0),
                                     false, false, true), delayedPlayer);
@@ -367,7 +367,7 @@ public final class UndeadSkills {
                         victim.invulnerableTime = 0;
                         SkillDamageHelper.hurt(victim, delayedPlayer.damageSources().playerAttack(delayedPlayer),
                                 delayedPlayer, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.undead.undead_skills.skill_hurt.3.damage", 1.0F));
-                        victim.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.stun.2.duration_ticks", 5 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.stun.2.amplifier", 0),
+                        victim.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.stun.2.duration_ticks", 5 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.stun.2.amplifier", 0),
                                 false, true, true), delayedPlayer);
                         particlesAt(delayedPlayer, victim, ParticleTypes.ELECTRIC_SPARK, 28, 0.45D);
                     });
@@ -386,7 +386,7 @@ public final class UndeadSkills {
             }
             LivingEntity victim = target.get();
             if (!UndeadStateManager.isRogueInvisible(player)
-                    && !victim.hasEffect(ModEffects.STUN.get())) {
+                    && !victim.hasEffect(ModEffects.STUN)) {
                 player.displayClientMessage(Component.translatable(
                         "message.dealt_force_skills.undead.rogue_core_condition"), true);
                 return true;

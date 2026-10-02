@@ -192,9 +192,9 @@ public final class DepartmentOfTransportationStateManager {
     public static void clearState(Player player) {
         removeConcealmentRuntime(player);
         player.getPersistentData().remove(ROOT_TAG);
-        player.removeEffect(ModEffects.DEPARTMENT_CONCEALMENT.get());
-        player.removeEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
-        player.removeEffect(ModEffects.DEPARTMENT_VULNERABLE.get());
+        player.removeEffect(ModEffects.DEPARTMENT_CONCEALMENT);
+        player.removeEffect(ModEffects.DEPARTMENT_CALIBRATION);
+        player.removeEffect(ModEffects.DEPARTMENT_VULNERABLE);
     }
 
     public static void clearRuntimeOnDeath(ServerPlayer player) {
@@ -448,7 +448,7 @@ public final class DepartmentOfTransportationStateManager {
         tag.putLong(CORE_ASCEND_UNTIL, 0L);
         tag.putFloat(CORE_SPIN_YAW, player.getYRot());
         setEquippedTool(player, DepartmentTool.NONE);
-        player.addEffect(new MobEffectInstance(ModEffects.STUN.get(), CORE_COUNTDOWN_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.0.amplifier", 0), false, true, true));
+        player.addEffect(new MobEffectInstance(ModEffects.STUN, CORE_COUNTDOWN_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.0.amplifier", 0), false, true, true));
         stunNearby(player.serverLevel(), player, player.position(), 6.0D, 4 * 20);
         play(player, ModSounds.DEPARTMENT_CORE_CAST.get(), 1.0F, 1.0F);
         play(player, ModSounds.DEPARTMENT_CORE_COUNTDOWN.get(), 0.7F, 1.0F);
@@ -461,11 +461,11 @@ public final class DepartmentOfTransportationStateManager {
         if (target == null || !target.isAlive() || !TargetingUtil.isHostileLivingFor(owner, target)) {
             return;
         }
-        MobEffectInstance current = target.getEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
+        MobEffectInstance current = target.getEffect(ModEffects.DEPARTMENT_CALIBRATION);
         int nextAmplifier = current == null
                 ? 0
                 : Math.min(MAX_CALIBRATION_AMPLIFIER, current.getAmplifier() + 1);
-        target.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_CALIBRATION.get(),
+        target.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_CALIBRATION,
                 CALIBRATION_DURATION_TICKS, nextAmplifier, false, true, true), owner);
         if (target instanceof ServerPlayer serverTarget) {
             if (current == null) {
@@ -478,7 +478,7 @@ public final class DepartmentOfTransportationStateManager {
     }
 
     public static boolean handleCalibrationRelease(ServerPlayer player) {
-        MobEffectInstance calibration = player.getEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
+        MobEffectInstance calibration = player.getEffect(ModEffects.DEPARTMENT_CALIBRATION);
         if (calibration == null) {
             return false;
         }
@@ -578,7 +578,7 @@ public final class DepartmentOfTransportationStateManager {
 
     public static void syncToClient(ServerPlayer player) {
         boolean department = isDepartment(player);
-        boolean hasCalibration = player.hasEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
+        boolean hasCalibration = player.hasEffect(ModEffects.DEPARTMENT_CALIBRATION);
         if (!department && !hasCalibration) {
             return;
         }
@@ -715,7 +715,7 @@ public final class DepartmentOfTransportationStateManager {
                         && TargetingUtil.isHostileLivingFor(player, target)
                         && hasExecutionCalibration(target))) {
             CORE_VICTIMS.put(target.getUUID(), new CoreVictim(now + CORE_ASCEND_TICKS, player.getUUID()));
-            target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), CORE_ASCEND_TICKS + 10, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.3.amplifier", 0), false, true, true), player);
+            target.addEffect(new MobEffectInstance(ModEffects.STUN, CORE_ASCEND_TICKS + 10, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.3.amplifier", 0), false, true, true), player);
         }
     }
 
@@ -761,7 +761,7 @@ public final class DepartmentOfTransportationStateManager {
                     && (owner == null || !living.getUUID().equals(owner.getUUID()))) {
                 killedPlayers++;
             }
-            living.removeEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
+            living.removeEffect(ModEffects.DEPARTMENT_CALIBRATION);
         }
         if (owner instanceof ServerPlayer ownerPlayer) {
             DfsAchievements.recordDepartmentCoreKill(ownerPlayer, killedPlayers);
@@ -771,7 +771,7 @@ public final class DepartmentOfTransportationStateManager {
     private static void applyConcealmentRuntime(ServerPlayer player) {
         player.setInvisible(true);
         player.setSilent(true);
-        player.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_CONCEALMENT.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.department_concealment.4.duration_ticks", 40), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.department_concealment.4.amplifier", 0), false, false, false));
+        player.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_CONCEALMENT, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.department_concealment.4.duration_ticks", 40), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.department_concealment.4.amplifier", 0), false, false, false));
     }
 
     private static void removeConcealmentRuntime(Player player) {
@@ -781,7 +781,7 @@ public final class DepartmentOfTransportationStateManager {
         if (!data(serverPlayer).getBoolean(CONCEALMENT_READY) || !isFullyConcealed(serverPlayer)) {
             serverPlayer.setInvisible(false);
             serverPlayer.setSilent(false);
-            serverPlayer.removeEffect(ModEffects.DEPARTMENT_CONCEALMENT.get());
+            serverPlayer.removeEffect(ModEffects.DEPARTMENT_CONCEALMENT);
         }
     }
 
@@ -809,18 +809,18 @@ public final class DepartmentOfTransportationStateManager {
     }
 
     private static boolean hasExecutionCalibration(LivingEntity entity) {
-        MobEffectInstance effect = entity.getEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
+        MobEffectInstance effect = entity.getEffect(ModEffects.DEPARTMENT_CALIBRATION);
         return effect != null && effect.getAmplifier() >= CORE_EXECUTION_MIN_AMPLIFIER;
     }
 
     private static void reduceCalibrationStack(ServerPlayer player, MobEffectInstance calibration) {
         int nextAmplifier = calibration.getAmplifier() - 1;
         int duration = Math.max(20, calibration.getDuration());
-        player.removeEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
+        player.removeEffect(ModEffects.DEPARTMENT_CALIBRATION);
         if (nextAmplifier < 0) {
             return;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_CALIBRATION.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_CALIBRATION,
                 duration, nextAmplifier, false, true, true));
     }
 
@@ -917,7 +917,7 @@ public final class DepartmentOfTransportationStateManager {
             target.setDeltaMovement(before.add(target.position().subtract(center).normalize().scale(0.45D)));
             target.hurtMarked = true;
             if (stunTicks > 0) {
-                target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), stunTicks, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.6.amplifier", 0), false, true, true), owner);
+                target.addEffect(new MobEffectInstance(ModEffects.STUN, stunTicks, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.6.amplifier", 0), false, true, true), owner);
             }
         }
         SuperbWarfareCompat.damageVehicles(level, center, radius, source, directEntity,
@@ -932,7 +932,7 @@ public final class DepartmentOfTransportationStateManager {
                 continue;
             }
             if (target.position().distanceToSqr(center) <= radius * radius) {
-                target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), ticks, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.7.amplifier", 0), false, true, true), owner);
+                target.addEffect(new MobEffectInstance(ModEffects.STUN, ticks, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.7.amplifier", 0), false, true, true), owner);
             }
         }
     }
@@ -1015,9 +1015,9 @@ public final class DepartmentOfTransportationStateManager {
     }
 
     private static void syncVulnerabilityEffect(ServerPlayer player, int vulnerabilityPercent) {
-        player.removeEffect(ModEffects.DEPARTMENT_VULNERABLE.get());
+        player.removeEffect(ModEffects.DEPARTMENT_VULNERABLE);
         if (vulnerabilityPercent > 0) {
-            player.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_VULNERABLE.get(),
+            player.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_VULNERABLE,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.department_vulnerable.8.duration_ticks", 60 * 60 * 20), vulnerabilityPercent - 1, false, true, true));
         }
     }

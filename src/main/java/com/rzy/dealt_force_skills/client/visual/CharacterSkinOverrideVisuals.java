@@ -13,22 +13,24 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.PlayerModelPart;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class CharacterSkinOverrideVisuals {
     private static final Map<String, CharacterSkinArmRenderer> ARM_RENDERERS = new HashMap<>();
 
@@ -38,12 +40,12 @@ public final class CharacterSkinOverrideVisuals {
     public static void registerLayers(EntityRenderersEvent.AddLayers event) {
         ARM_RENDERERS.clear();
         EntityRendererProvider.Context context = createContext(event);
-        for (String skin : event.getSkins()) {
+        for (PlayerSkin.Model skin : event.getSkins()) {
             PlayerRenderer renderer = event.getSkin(skin);
             if (renderer == null) {
                 continue;
             }
-            ARM_RENDERERS.put(skin, new CharacterSkinArmRenderer(context, "slim".equals(skin)));
+            ARM_RENDERERS.put(skin.id(), new CharacterSkinArmRenderer(context, skin == PlayerSkin.Model.SLIM));
         }
     }
 
@@ -54,7 +56,7 @@ public final class CharacterSkinOverrideVisuals {
             AbstractClientPlayer player
     ) {
         CharacterSkinArmRenderer override = ClientCharacterSkinState.skinFor(player).isPresent()
-                ? ARM_RENDERERS.getOrDefault(player.getModelName(), ARM_RENDERERS.get("default"))
+                ? ARM_RENDERERS.getOrDefault(player.getSkin().model().id(), ARM_RENDERERS.get("default"))
                 : null;
         if (override != null) {
             override.renderDirectRightHand(poseStack, buffer, packedLight, player);
@@ -72,7 +74,7 @@ public final class CharacterSkinOverrideVisuals {
             AbstractClientPlayer player
     ) {
         CharacterSkinArmRenderer override = ClientCharacterSkinState.skinFor(player).isPresent()
-                ? ARM_RENDERERS.getOrDefault(player.getModelName(), ARM_RENDERERS.get("default"))
+                ? ARM_RENDERERS.getOrDefault(player.getSkin().model().id(), ARM_RENDERERS.get("default"))
                 : null;
         if (override != null) {
             override.renderDirectLeftHand(poseStack, buffer, packedLight, player);
@@ -84,16 +86,7 @@ public final class CharacterSkinOverrideVisuals {
     }
 
     private static EntityRendererProvider.Context createContext(EntityRenderersEvent.AddLayers event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        return new EntityRendererProvider.Context(
-                minecraft.getEntityRenderDispatcher(),
-                minecraft.getItemRenderer(),
-                minecraft.getBlockRenderer(),
-                minecraft.getEntityRenderDispatcher().getItemInHandRenderer(),
-                minecraft.getResourceManager(),
-                event.getEntityModels(),
-                minecraft.font
-        );
+        return event.getContext();
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -106,7 +99,7 @@ public final class CharacterSkinOverrideVisuals {
             return;
         }
 
-        CharacterSkinArmRenderer renderer = ARM_RENDERERS.getOrDefault(player.getModelName(), ARM_RENDERERS.get("default"));
+        CharacterSkinArmRenderer renderer = ARM_RENDERERS.getOrDefault(player.getSkin().model().id(), ARM_RENDERERS.get("default"));
         if (renderer == null) {
             return;
         }
@@ -147,8 +140,7 @@ public final class CharacterSkinOverrideVisuals {
             poseStack.pushPose();
             poseStack.scale(1.0015F, 1.0015F, 1.0015F);
             VertexConsumer consumer = buffer.getBuffer(RenderType.entityCutoutNoCull(skin.get()));
-            getParentModel().renderToBuffer(poseStack, consumer, packedLight, OverlayTexture.NO_OVERLAY,
-                    1.0F, 1.0F, 1.0F, 1.0F);
+            getParentModel().renderToBuffer(poseStack, consumer, packedLight, OverlayTexture.NO_OVERLAY);
             poseStack.popPose();
         }
     }
@@ -213,7 +205,7 @@ public final class CharacterSkinOverrideVisuals {
         }
     }
 
-    @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+    @EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
     public static final class ModBus {
         private ModBus() {
         }

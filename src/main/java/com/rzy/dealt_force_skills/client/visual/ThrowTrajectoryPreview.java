@@ -33,15 +33,16 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ThrowTrajectoryPreview {
     private static final int MAX_POINTS = 96;
     private static final int TUBE_SIDES = 12;
@@ -64,7 +65,7 @@ public final class ThrowTrajectoryPreview {
             return;
         }
 
-        renderPartialTick = event.getPartialTick();
+        renderPartialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         Preview preview = currentPreview(minecraft.player);
         if (preview == null) {
             return;
@@ -259,8 +260,8 @@ public final class ThrowTrajectoryPreview {
 
     private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, Vec3 point,
                                int red, int green, int blue, int alpha) {
-        consumer.vertex(pose.pose(), (float) point.x, (float) point.y, (float) point.z)
-                .color(red, green, blue, alpha).endVertex();
+        consumer.addVertex(pose.pose(), (float) point.x, (float) point.y, (float) point.z)
+                .setColor(red, green, blue, alpha);
     }
 
     private record Preview(Vec3 start, Vec3 velocity, double gravity, double drag, int maxTicks, int red, int green, int blue) {

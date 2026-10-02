@@ -1,41 +1,44 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.item.EternalLoveBlessingItem;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record C2S_EternalLoveBlessingRemove(ResourceLocation effectId) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_EternalLoveBlessingRemove> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(
+                    DealtForceSkillsMod.MODID, "c2s_eternal_love_blessing_remove"));
 
-public class C2S_EternalLoveBlessingRemove {
-    private final ResourceLocation effectId;
+    public static final StreamCodec<FriendlyByteBuf, C2S_EternalLoveBlessingRemove> STREAM_CODEC =
+            StreamCodec.of(C2S_EternalLoveBlessingRemove::encode, C2S_EternalLoveBlessingRemove::decode);
 
-    public C2S_EternalLoveBlessingRemove(ResourceLocation effectId) {
-        this.effectId = effectId;
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    public static void encode(C2S_EternalLoveBlessingRemove msg, FriendlyByteBuf buf) {
+    private static void encode(FriendlyByteBuf buf, C2S_EternalLoveBlessingRemove msg) {
         buf.writeUtf(msg.effectId == null ? "minecraft:speed" : msg.effectId.toString());
     }
 
-    public static C2S_EternalLoveBlessingRemove decode(FriendlyByteBuf buf) {
-        ResourceLocation id;
+    private static C2S_EternalLoveBlessingRemove decode(FriendlyByteBuf buf) {
         try {
-            id = ResourceLocation.parse(buf.readUtf(512));
+            return new C2S_EternalLoveBlessingRemove(ResourceLocation.parse(buf.readUtf(512)));
         } catch (RuntimeException ignored) {
-            id = new ResourceLocation("minecraft", "speed");
+            return new C2S_EternalLoveBlessingRemove(ResourceLocation.fromNamespaceAndPath("minecraft", "speed"));
         }
-        return new C2S_EternalLoveBlessingRemove(id);
     }
 
-    public static void handle(C2S_EternalLoveBlessingRemove msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player != null) {
+    public static void handle(C2S_EternalLoveBlessingRemove msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (ctx.player() instanceof ServerPlayer player) {
                 EternalLoveBlessingItem.removeRecordFromAnyBlessing(player, msg.effectId);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

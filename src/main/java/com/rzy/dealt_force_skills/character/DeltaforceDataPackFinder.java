@@ -2,13 +2,16 @@ package com.rzy.dealt_force_skills.character;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
-import net.minecraftforge.event.AddPackFindersEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.resource.PathPackResources;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.minecraft.server.packs.PathPackResources;
+import net.neoforged.bus.api.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,9 +19,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.function.Consumer;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, bus = EventBusSubscriber.Bus.MOD)
 public enum DeltaforceDataPackFinder implements net.minecraft.server.packs.repository.RepositorySource {
     INSTANCE;
 
@@ -56,14 +60,17 @@ public enum DeltaforceDataPackFinder implements net.minecraft.server.packs.repos
     private static void createPack(Path path, Consumer<Pack> onLoad) {
         String folderName = path.getFileName().toString();
         String id = DealtForceSkillsMod.MODID + "/deltaforce/" + sanitizePackId(folderName);
-        Pack pack = Pack.readMetaAndCreate(
+        PackLocationInfo locationInfo = new PackLocationInfo(
                 id,
                 Component.literal("Delta Force " + folderName),
-                true,
-                packId -> new PathPackResources(packId, false, path),
+                PackSource.BUILT_IN,
+                Optional.empty()
+        );
+        Pack pack = Pack.readMetaAndCreate(
+                locationInfo,
+                new PathPackResources.PathResourcesSupplier(path),
                 PackType.SERVER_DATA,
-                Pack.Position.TOP,
-                PackSource.BUILT_IN
+                new PackSelectionConfig(true, Pack.Position.TOP, false)
         );
         if (pack != null) {
             onLoad.accept(pack);

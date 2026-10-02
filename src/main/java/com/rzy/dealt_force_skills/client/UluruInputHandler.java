@@ -1,25 +1,26 @@
 package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.uluru.UluruTool;
 import com.rzy.dealt_force_skills.client.character.ClientUluruHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
-import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.client.visual.UluruPlaceholderVisuals;
 import com.rzy.dealt_force_skills.network.C2S_UluruToolAction;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class UluruInputHandler {
     private static int pendingUseTicks;
     private static UluruTool pendingTool = UluruTool.NONE;
@@ -62,6 +63,9 @@ public final class UluruInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!ClientUluruHudState.hasEquippedTool()) {
             return;
         }
@@ -82,6 +86,9 @@ public final class UluruInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (ClientUluruHudState.hasEquippedTool()) {
             event.setCanceled(true);
         }
@@ -152,7 +159,10 @@ public final class UluruInputHandler {
 
     private static boolean shouldReplaceMouse() {
         Minecraft minecraft = Minecraft.getInstance();
-        return ClientUluruHudState.hasEquippedTool() && minecraft.screen == null;
+        return ClientUluruHudState.hasEquippedTool()
+                && (ClientUluruHudState.shouldRender()
+                || ClientCommanderState.inherits(ModCharacters.ULURU_ID))
+                && minecraft.screen == null;
     }
 
     private static boolean isPrimaryOrSecondary(int button) {

@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_SyncNoxState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncNoxState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_nox_state"));
 
-public class S2C_SyncNoxState {
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncNoxState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncNoxState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int rotorCooldownTicks;
     private final int flashCharges;
     private final int flashMaxCharges;
@@ -61,10 +75,8 @@ public class S2C_SyncNoxState {
         );
     }
 
-    public static void handle(S2C_SyncNoxState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientNoxHudState.sync(
+    public static void handle(S2C_SyncNoxState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientNoxHudState.sync(
                         msg.rotorCooldownTicks,
                         msg.flashCharges,
                         msg.flashMaxCharges,
@@ -73,8 +85,6 @@ public class S2C_SyncNoxState {
                         msg.corePrepTicks,
                         msg.stealthTicks,
                         msg.equippedToolOrdinal
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

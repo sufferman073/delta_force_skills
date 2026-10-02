@@ -31,8 +31,8 @@ public final class ModCharacters {
     public static final String GHROTH_ID = DealtForceSkillsMod.MODID + ":boss/ghroth";
     public static final String COMMANDER_ID = DealtForceSkillsMod.MODID + ":boss/commander";
     public static final String LEGACY_COMMANDER_ID = DealtForceSkillsMod.MODID + ":special/commander";
-    public static final String STINGER_ID = DealtForceSkillsMod.MODID + ":support/stinger";
     public static final String ROVER_ID = DealtForceSkillsMod.MODID + ":support/rover";
+    public static final String STINGER_ID = DealtForceSkillsMod.MODID + ":support/stinger";
     public static final String TOXIK_ID = DealtForceSkillsMod.MODID + ":support/toxik";
     public static final String VLINDER_ID = DealtForceSkillsMod.MODID + ":support/vlinder";
     public static final String MANBA_ID = DealtForceSkillsMod.MODID + ":special/manba";

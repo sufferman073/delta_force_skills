@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_SuppressLocalHurtAnimation implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SuppressLocalHurtAnimation> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_suppress_local_hurt_animation"));
 
-public class S2C_SuppressLocalHurtAnimation {
+    public static final StreamCodec<FriendlyByteBuf, S2C_SuppressLocalHurtAnimation> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SuppressLocalHurtAnimation::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int ticks;
 
     public S2C_SuppressLocalHurtAnimation(int ticks) {
@@ -22,11 +36,7 @@ public class S2C_SuppressLocalHurtAnimation {
         return new S2C_SuppressLocalHurtAnimation(buf.readVarInt());
     }
 
-    public static void handle(S2C_SuppressLocalHurtAnimation msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientEvents.suppressLocalHurtAnimation(msg.ticks)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_SuppressLocalHurtAnimation msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientEvents.suppressLocalHurtAnimation(msg.ticks));
     }
 }

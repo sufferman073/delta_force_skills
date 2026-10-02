@@ -1,16 +1,16 @@
 package com.rzy.dealt_force_skills.character.lexninjia;
 
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
+import com.rzy.dealt_force_skills.entity.VisualSmokeCloudEntity;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_SyncLexNinjiaState;
 import com.rzy.dealt_force_skills.registry.ModEffects;
+import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModGameRules;
 import com.rzy.dealt_force_skills.registry.ModParticles;
-import com.rzy.dealt_force_skills.registry.ModEntities;
-import com.rzy.dealt_force_skills.entity.VisualSmokeCloudEntity;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.skill.SkillAnimationScheduler;
 import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
@@ -50,14 +50,16 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BonemealableBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -69,6 +71,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.resources.ResourceLocation;
 
 public final class LexNinjiaStateManager {
     private static final String ART_CONFIG_ROOT = "characters.lex_ninjia.arts.";
@@ -104,78 +107,6 @@ public final class LexNinjiaStateManager {
             "ham_kill_all", "self_damage_max_health_fraction", 4.0F, "ham_kill_all_self_damage_max_health_fraction");
     private static final float HAM_SHADOW_KICK_TICK_SELF_HEALTH_COST_FRACTION = artFloatValue(
             "ham_shadow_kick", "tick_self_health_cost_fraction", 0.025F, "ham_shadow_kick_tick_self_health_cost_fraction");
-
-    // --- Configurable ninjutsu combat values (characters.lex_ninjia.arts.<id>.*) ---
-    private static final double ONE_WORD_CUT_RANGE = artDoubleValue("one_word_cut", "range", 3.0D);
-    private static final double ONE_WORD_CUT_HALF_WIDTH = artDoubleValue("one_word_cut", "half_width", 1.0D);
-    private static final double ONE_WORD_CUT_HALF_HEIGHT = artDoubleValue("one_word_cut", "half_height", 1.0D);
-    private static final int BURNING_BLADE_DURATION_TICKS = artIntValue("burning_blade", "duration_ticks", 5 * 20);
-    private static final int BURNING_BLADE_SLASH_COUNT = artIntValue("burning_blade", "slash_count", 4);
-    private static final int BURNING_BLADE_SLASH_INTERVAL_TICKS = artIntValue("burning_blade", "slash_interval_ticks", 6);
-    private static final float BURNING_BLADE_MAX_HEALTH_BURN_FRACTION = artFloatValue(
-            "burning_blade", "max_health_burn_fraction", 0.025F, "burning_blade_max_health_burn_fraction");
-    private static final int BURNING_BLADE_FIRE_SECONDS = artIntValue("burning_blade", "fire_seconds", 3);
-    private static final int ARASHI_CUT_DURATION_TICKS = artIntValue("arashi_cut", "duration_ticks", 15 * 20);
-    private static final int DEATH_FLAME_DURATION_TICKS = artIntValue("death_flame_smoke", "duration_ticks", 10 * 20);
-    private static final int SHADOW_BLADE_DURATION_TICKS = artIntValue("shadow_blade", "duration_ticks", 12 * 20);
-    private static final float SHADOW_BLADE_TRUE_DAMAGE_FRACTION = artFloatValue(
-            "shadow_blade", "true_damage_max_health_fraction", 0.005F, "shadow_blade_true_damage_fraction");
-    private static final int SHADOW_CLONE_DURATION_TICKS = artIntValue("shadow_clone_cross", "duration_ticks", 120 * 20);
-    private static final int IRON_SWORD_RAIN_DURATION_TICKS = artIntValue("iron_sword_rain", "duration_ticks", 6 * 20);
-    private static final double IRON_SWORD_RAIN_RADIUS = artDoubleValue("iron_sword_rain", "radius", 40.0D);
-    private static final float IRON_SWORD_RAIN_DAMAGE_FRACTION = artFloatValue(
-            "iron_sword_rain", "melee_damage_fraction", 0.90F, "iron_sword_rain_melee_damage_fraction");
-    private static final int IRON_SWORD_RAIN_INTERVAL_TICKS = artIntValue("iron_sword_rain", "interval_ticks", 6);
-    private static final int FD_HAND_DURATION_TICKS = artIntValue("fd_hand", "duration_ticks", 2 * 20);
-    private static final float FIRE_FIST_FLAT_DAMAGE = artFloatValue("fire_fist", "flat_damage", 10.0F, "fire_fist_flat_damage");
-    private static final float FIRE_FIST_MAX_HEALTH_FRACTION = artFloatValue(
-            "fire_fist", "max_health_burn_fraction", 0.01F, "fire_fist_max_health_burn_fraction");
-    private static final int FIRE_FIST_FIRE_SECONDS = artIntValue("fire_fist", "fire_seconds", 3);
-    private static final float LUOHAN_HAND_FLAT_DAMAGE = artFloatValue("luohan_hand", "flat_damage", 12.0F, "luohan_hand_flat_damage");
-    private static final int REFLECT_HAND_DURATION_TICKS = artIntValue("reflect_hand", "duration_ticks", 60 * 20);
-    private static final int REFLECT_HAND_STACKS = artIntValue("reflect_hand", "stacks", 4);
-    private static final int PEA_SHOOTER_DURATION_TICKS = artIntValue("pea_shooter", "duration_ticks", 15 * 20);
-    private static final int PEA_SHOOTER_MAX_STACKS = artIntValue("pea_shooter", "max_stacks", 5);
-    private static final float PEA_SHOOTER_DAMAGE_PER_STACK = artFloatValue(
-            "pea_shooter", "damage_per_stack", 1.0F, "pea_shooter_damage_per_stack");
-    private static final int RETURN_HAND_DURATION_TICKS = artIntValue("return_hand", "duration_ticks", 14 * 20);
-    private static final float RETURN_HAND_HEAL_FRACTION_PER_SECOND = artFloatValue(
-            "return_hand", "heal_max_health_fraction_per_second", 0.04F, "return_hand_heal_fraction");
-    private static final int SHIELD_GUARD_DURATION_TICKS = artIntValue("shield_guard", "duration_ticks", 30 * 20);
-    private static final String HAND_GUARD_SHIELD_TAG = "dealt_force_skills.lex_ninjia.hand_guard_shield";
-    private static final float SPIN_ION_CHARGE_FRACTION_PER_SECOND = 0.05F;
-    private static final float SPIN_ION_BASE_RANGE = 4.0F;
-    private static final float SPIN_ION_RANGE_PER_LEICRA = 0.05F;
-    private static final float SPIN_ION_BASE_WIDTH = 2.0F;
-    private static final float SPIN_ION_WIDTH_PER_LEICRA = 0.01F;
-    private static final double MAX_FRONT_AREA_QUERY_RANGE = 128.0D;
-    private static final int SPIN_ION_FEEDBACK_INTERVAL_TICKS = 10;
-    private static final int SAND_WALL_DURATION_TICKS = artIntValue("sand_wall", "duration_ticks", 30 * 20);
-    private static final int SAND_WALL_FORWARD_DISTANCE = artIntValue("sand_wall", "forward_distance", 4);
-    private static final int SAND_WALL_HALF_WIDTH = artIntValue("sand_wall", "half_width", 2);
-    private static final int SAND_WALL_HEIGHT = artIntValue("sand_wall", "height", 5);
-    private static final double NO_ONE_RETALIATES_RADIUS = artDoubleValue("no_one_retaliates", "radius", 45.0D);
-    private static final int NO_ONE_RETALIATES_DURATION_TICKS = artIntValue("no_one_retaliates", "duration_ticks", 60 * 20);
-    private static final float NO_ONE_RETALIATES_REFLECT_MULTIPLIER = artFloatValue(
-            "no_one_retaliates", "reflect_multiplier", 2.0F, "no_one_retaliates_reflect_multiplier");
-    private static final int NO_ONE_RETALIATES_CASTER_ATTACK_PENALTY_TICKS = artIntValue(
-            "no_one_retaliates", "caster_attack_duration_penalty_ticks", 10 * 20);
-    private static final int SNAKE_POISON_DURATION_TICKS = artIntValue("snake_poison_hand", "duration_ticks", 20 * 20);
-    private static final float SNAKE_POISON_MAX_HEALTH_FRACTION = artFloatValue(
-            "snake_poison_hand", "trigger_max_health_fraction", 0.02F, "snake_poison_trigger_max_health_fraction");
-    private static final int SNAKE_POISON_MAX_TRIGGERS = artIntValue("snake_poison_hand", "max_triggers", 3);
-    private static final int HAM_FRIEND_DURATION_TICKS = artIntValue("ham_friend", "duration_ticks", 600 * 20);
-    private static final int HAM_BERSERK_DURATION_TICKS = artIntValue("ham_berserk", "duration_ticks", 30 * 20);
-    private static final int HAM_SHADOW_KICK_DURATION_TICKS = artIntValue("ham_shadow_kick", "duration_ticks", 15 * 20);
-    private static final double HANDSHAKE_OUTGOING_DAMAGE_MULTIPLIER = artDoubleValue(
-            "handshake", "outgoing_non_art_damage_multiplier", 0.10D);
-    private static final double HANDSHAKE_INCOMING_DAMAGE_MULTIPLIER = artDoubleValue(
-            "handshake", "incoming_damage_multiplier", 0.70D);
-    private static final double HANDSHAKE_TARGET_RANGE = artDoubleValue("handshake", "target_range", 8.0D);
-    private static final double ONE_BLADE_TAUNT_RADIUS = artDoubleValue("one_blade_taunt", "radius", 5.0D);
-    private static final int ONE_BLADE_TAUNT_LOOK_TICKS = artIntValue("one_blade_taunt", "player_look_ticks", 30);
-    private static final int ONE_BLADE_TAUNT_MOB_AGGRO_TICKS = artIntValue("one_blade_taunt", "mob_aggro_ticks", 15 * 20);
-
     private static final String ROOT = DealtForceSkillsMod.MODID + ".lex_ninjia";
     private static final String LEICRA = ROOT + ".leicra";
     private static final String KNOWN = ROOT + ".known";
@@ -187,8 +118,16 @@ public final class LexNinjiaStateManager {
     private static final String FOOD_LEICRA_REGEN_UNTIL = ROOT + ".food_leicra_regen_until";
     private static final String REVIVE_DISABLED_UNTIL = ROOT + ".revive_disabled_until";
     private static final String TACZ_GUN_ID_TAG = "GunId";
-    private static final UUID HAND_SPEED_UUID = UUID.fromString("719f1779-e5f5-4116-9204-58e5d0a62d41");
-    private static final UUID SPIN_SLOW_UUID = UUID.fromString("1e52a8ac-79d4-4e9d-8ebc-af6bda24a6f1");
+    private static final ResourceLocation HAND_SPEED_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "lex_ninjia_state_manager.hand_speed");
+    private static final ResourceLocation SPIN_SLOW_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "lex_ninjia_state_manager.spin_slow");
+    private static final String HAND_GUARD_SHIELD_TAG = "dealt_force_skills.lex_ninjia.hand_guard_shield";
+    private static final float SPIN_ION_CHARGE_FRACTION_PER_SECOND = 0.05F;
+    private static final float SPIN_ION_BASE_RANGE = 4.0F;
+    private static final float SPIN_ION_RANGE_PER_LEICRA = 0.05F;
+    private static final float SPIN_ION_BASE_WIDTH = 2.0F;
+    private static final float SPIN_ION_WIDTH_PER_LEICRA = 0.01F;
+    private static final double MAX_FRONT_AREA_QUERY_RANGE = 128.0D;
+    private static final int SPIN_ION_FEEDBACK_INTERVAL_TICKS = 10;
     private static final Set<LexNinjiaArt> HAND_DAMAGE_ARTS = EnumSet.of(
             LexNinjiaArt.FIRE_FIST,
             LexNinjiaArt.LUOHAN_HAND,
@@ -205,21 +144,6 @@ public final class LexNinjiaStateManager {
                 ART_CONFIG_ROOT + artId + "." + key,
                 defaultValue,
                 LEGACY_STATE_CONFIG_ROOT + legacyKey);
-    }
-
-    private static float artFloatValue(String artId, String key, float defaultValue) {
-        return com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue(
-                ART_CONFIG_ROOT + artId + "." + key, defaultValue);
-    }
-
-    private static int artIntValue(String artId, String key, int defaultValue) {
-        return com.rzy.dealt_force_skills.config.DealtForceConfig.intValue(
-                ART_CONFIG_ROOT + artId + "." + key, defaultValue);
-    }
-
-    private static double artDoubleValue(String artId, String key, double defaultValue) {
-        return com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
-                ART_CONFIG_ROOT + artId + "." + key, defaultValue);
     }
 
     private static int totalEquippableMindCost() {
@@ -306,7 +230,6 @@ public final class LexNinjiaStateManager {
         }
         RuntimeState state = RUNTIME.remove(player.getUUID());
         if (state != null) {
-            // Drop interdiction immediately — caster is gone, zone must not keep reflecting.
             state.noRetaliationUntil = 0L;
             restoreShield(player, state);
         }
@@ -369,7 +292,7 @@ public final class LexNinjiaStateManager {
         }
     }
 
-    private static int effectTicks(LivingEntity entity, net.minecraft.world.effect.MobEffect effect) {
+    private static int effectTicks(LivingEntity entity, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
         MobEffectInstance instance = entity.getEffect(effect);
         return instance == null ? 0 : instance.getDuration();
     }
@@ -456,7 +379,7 @@ public final class LexNinjiaStateManager {
         syncToClient(player);
     }
 
-    public static void handleLivingHurt(LivingHurtEvent event) {
+    public static void handleLivingHurt(LivingIncomingDamageEvent event) {
         if (event.getAmount() <= 0.0F || event.getSource().is(SkillDamageHelper.TRUE_SKILL_DAMAGE)) {
             return;
         }
@@ -505,10 +428,10 @@ public final class LexNinjiaStateManager {
     }
 
     public static void handleFoodFinished(LivingEntity entity, ItemStack stack) {
-        if (!(entity instanceof ServerPlayer player) || stack.isEmpty() || !stack.hasTag()) {
+        if (!(entity instanceof ServerPlayer player) || stack.isEmpty() || !stack.has(DataComponents.CUSTOM_DATA)) {
             return;
         }
-        String artId = stack.getOrCreateTag().getString(FOOD_ART);
+        String artId = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString(FOOD_ART);
         if (artId.isBlank()) {
             return;
         }
@@ -691,10 +614,6 @@ public final class LexNinjiaStateManager {
         syncToClient(player);
     }
 
-    /**
-     * Clears shop-bought arts, mind expansions, scientific tool level/presets, and re-initialises
-     * default-known arts so the player returns to a fresh Lex Ninjia purchase state.
-     */
     public static void clearPurchaseProgress(ServerPlayer player) {
         CompoundTag tag = player.getPersistentData();
         tag.remove(KNOWN);
@@ -822,7 +741,7 @@ public final class LexNinjiaStateManager {
         Vec3 look = player.getLookAngle().normalize();
         return player.level().getEntitiesOfClass(LivingEntity.class,
                         player.getBoundingBox().inflate(6.0D),
-                        target -> target != player && target.isAlive() && player.hasLineOfSight(target))
+                        target -> TargetingUtil.isHostileLivingFor(player, target) && player.hasLineOfSight(target))
                 .stream()
                 .filter(target -> {
                     Vec3 direction = target.getEyePosition().subtract(eye);
@@ -849,7 +768,8 @@ public final class LexNinjiaStateManager {
         if (stack.isEmpty()) {
             return false;
         }
-        CompoundTag tag = stack.getTag();
+        CustomData cd = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = cd != null ? cd.copyTag() : null;
         if (tag != null && tag.contains(TACZ_GUN_ID_TAG)) {
             return true;
         }
@@ -919,7 +839,7 @@ public final class LexNinjiaStateManager {
             player.setSprinting(false);
             Vec3 movement = player.getDeltaMovement();
             player.setDeltaMovement(0.0D, Math.min(0.0D, movement.y), 0.0D);
-            player.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.2.duration_ticks", 5), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.2.amplifier", 0), true, false));
+            player.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.2.duration_ticks", 5), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.2.amplifier", 0), true, false));
         } else if (state.sleepRewardPending) {
             state.sleepRewardPending = false;
             state.sleepUntil = 0L;
@@ -939,10 +859,10 @@ public final class LexNinjiaStateManager {
         if (state.returnHandUntil > now) {
             removeHarmfulEffects(player);
             if (now % 20L == 0L) {
-                player.heal(Math.max(1.0F, player.getMaxHealth() * RETURN_HAND_HEAL_FRACTION_PER_SECOND));
+                player.heal(Math.max(1.0F, player.getMaxHealth() * 0.04F));
             }
         }
-        if (state.ironRainUntil > now && now % IRON_SWORD_RAIN_INTERVAL_TICKS == 0L) {
+        if (state.ironRainUntil > now && now % 6L == 0L) {
             rainIronSwords(player);
         }
         if (state.noRetaliationUntil > 0L && state.noRetaliationUntil <= now) {
@@ -1216,25 +1136,24 @@ public final class LexNinjiaStateManager {
 
     private static void applyArt(ServerPlayer player, RuntimeState state, LexNinjiaArt art, LivingEntity target, long now) {
         switch (art) {
-            case ONE_WORD_CUT -> strikeFrontArea(player, ONE_WORD_CUT_RANGE, ONE_WORD_CUT_HALF_WIDTH, ONE_WORD_CUT_HALF_HEIGHT, meleeDamage(player));
+            case ONE_WORD_CUT -> strikeFrontArea(player, 3.0D, 1.0D, 1.0D, meleeDamage(player));
             case HANDSHAKE -> applyHandshake(player, state);
             case FLASH_CUT_HAND -> {
                 if (canApplyControl(player, target)) {
-                    target.addEffect(new MobEffectInstance(ModEffects.TEMPEST_DISARMED.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.tempest_disarmed.6.duration_ticks", 70), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.tempest_disarmed.6.amplifier", 0)));
+                    target.addEffect(new MobEffectInstance(ModEffects.TEMPEST_DISARMED, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.tempest_disarmed.6.duration_ticks", 70), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.tempest_disarmed.6.amplifier", 0)));
                 }
             }
             case ONE_BLADE_TAUNT -> tauntNearby(player);
             case BURNING_BLADE -> {
-                state.burningBladeUntil = now + BURNING_BLADE_DURATION_TICKS;
-                queueSlashes(state, target, now, BURNING_BLADE_SLASH_COUNT, Math.max(1.0F, meleeDamage(player)),
-                        BURNING_BLADE_SLASH_INTERVAL_TICKS, BURNING_BLADE_SLASH_INTERVAL_TICKS, SlashVisual.BURNING, 0.0D);
+                state.burningBladeUntil = now + 5L * 20L;
+                queueSlashes(state, target, now, 4, Math.max(1.0F, meleeDamage(player)), 6L, 6L, SlashVisual.BURNING, 0.0D);
             }
-            case ARASHI_CUT -> state.arashiUntil = now + ARASHI_CUT_DURATION_TICKS;
+            case ARASHI_CUT -> state.arashiUntil = now + 15L * 20L;
             case DEATH_FLAME_SMOKE -> {
-                state.deathFlameUntil = now + DEATH_FLAME_DURATION_TICKS;
+                state.deathFlameUntil = now + 10L * 20L;
                 state.deathFlameOverflow = 0.0F;
             }
-            case SHADOW_BLADE -> state.shadowBladeUntil = now + SHADOW_BLADE_DURATION_TICKS;
+            case SHADOW_BLADE -> state.shadowBladeUntil = now + 12L * 20L;
             case SHADOW_SMOKE -> shadowSmoke(player);
             case CLIFF_FALL_BLADE -> {
                 if (canApplyControl(player, target)) {
@@ -1248,30 +1167,30 @@ public final class LexNinjiaStateManager {
                     * com.rzy.dealt_force_skills.config.DealtForceConfig.intValue(
                     "experience_growth.lex_ninjia.sharpen_stacks_per_level", 1);
             case SHADOW_CLONE_CROSS -> {
-                state.shadowCloneUntil = now + SHADOW_CLONE_DURATION_TICKS;
+                state.shadowCloneUntil = now + 120L * 20L;
                 spawnShadowCloneVisuals(player, true);
             }
             case TEN_METER_SWORD -> startTenMeterSword(player, state, now);
-            case IRON_SWORD_RAIN -> state.ironRainUntil = now + IRON_SWORD_RAIN_DURATION_TICKS;
-            case FD_HAND -> state.fdHandUntil = now + FD_HAND_DURATION_TICKS;
+            case IRON_SWORD_RAIN -> state.ironRainUntil = now + 6L * 20L;
+            case FD_HAND -> state.fdHandUntil = now + 2L * 20L;
             case FIRE_FIST -> {
-                hurtTrue(player, target, FIRE_FIST_FLAT_DAMAGE + target.getMaxHealth() * FIRE_FIST_MAX_HEALTH_FRACTION);
-                target.setSecondsOnFire(FIRE_FIST_FIRE_SECONDS);
+                hurtTrue(player, target, 10.0F + target.getMaxHealth() * 0.01F);
+                target.igniteForSeconds(3);
             }
-            case LUOHAN_HAND -> hurtTrue(player, target, handDamage(player, LUOHAN_HAND_FLAT_DAMAGE, state));
+            case LUOHAN_HAND -> hurtTrue(player, target, handDamage(player, 12.0F, state));
             case REFLECT_HAND -> {
-                state.reflectStacks = REFLECT_HAND_STACKS;
-                state.reflectUntil = now + REFLECT_HAND_DURATION_TICKS;
+                state.reflectStacks = 4;
+                state.reflectUntil = now + 60L * 20L;
             }
             case STOP_HAND -> {
                 if (canApplyControl(player, target)) {
-                    target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ACTION_PAUSE.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.raptor_action_pause.8.duration_ticks", 4 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.raptor_action_pause.8.amplifier", 0)));
-                    target.addEffect(new MobEffectInstance(ModEffects.NOX_DELAYED_WOUND.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.nox_delayed_wound.9.duration_ticks", 10 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.nox_delayed_wound.9.amplifier", 0)));
+                    target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ACTION_PAUSE, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.raptor_action_pause.8.duration_ticks", 4 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.raptor_action_pause.8.amplifier", 0)));
+                    target.addEffect(new MobEffectInstance(ModEffects.NOX_DELAYED_WOUND, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.nox_delayed_wound.9.duration_ticks", 10 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.nox_delayed_wound.9.amplifier", 0)));
                 }
             }
             case PEA_SHOOTER -> {
-                state.peaStacks = Math.min(PEA_SHOOTER_MAX_STACKS, state.peaStacks + 1);
-                state.peaUntil = now + PEA_SHOOTER_DURATION_TICKS;
+                state.peaStacks = Math.min(5, state.peaStacks + 1);
+                state.peaUntil = now + 15L * 20L;
             }
             case BIG_PORTION -> {
                 hurtSelfPercent(player, BIG_PORTION_SELF_HEALTH_COST_FRACTION);
@@ -1285,26 +1204,26 @@ public final class LexNinjiaStateManager {
                 state.sleepRewardPending = true;
                 player.stopUsingItem();
                 player.setSprinting(false);
-                player.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.10.duration_ticks", 5), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.10.amplifier", 0), true, false));
+                player.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.10.duration_ticks", 5), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.10.amplifier", 0), true, false));
             }
-            case RETURN_HAND -> state.returnHandUntil = now + RETURN_HAND_DURATION_TICKS;
+            case RETURN_HAND -> state.returnHandUntil = now + 14L * 20L;
             case DOUBLE_LUOHAN -> state.doubleLuohanReady = true;
             case ION_HAND -> pullLookTarget(player);
             case SPIN_ION_HAND -> releaseSpinIon(player, state);
             case WHITE_CRANE -> state.whiteCraneReady = true;
             case SHIELD_GUARD -> equipTemporaryShield(player, state, now);
             case SAND_WALL -> createSandWall(player, state, now);
-            case NO_ONE_RETALIATES -> startNoRetaliation(player, state, now);
+            case NO_ONE_RETALIATES -> state.noRetaliationUntil = now + NO_ONE_RETALIATES_DURATION_TICKS;
             case ONE_DEATH_HAND -> executeTarget(player, target);
-            case SNAKE_POISON_HAND -> state.snakePoisonUntil = now + SNAKE_POISON_DURATION_TICKS;
+            case SNAKE_POISON_HAND -> state.snakePoisonUntil = now + 20L * 20L;
             case DEATH_GOD_HAND -> summonDeathGod(player);
             case ALL_HANDS -> releaseAllHands(player, state, now);
             case HAM_FRIEND -> {
-                state.hamPowerUntil = now + HAM_FRIEND_DURATION_TICKS;
+                state.hamPowerUntil = now + 600L * 20L;
                 state.hamFriendPact = true;
             }
             case HAM_BERSERK -> {
-                state.hamBerserkUntil = now + HAM_BERSERK_DURATION_TICKS;
+                state.hamBerserkUntil = now + 30L * 20L;
                 state.hamBerserkStacks = 0;
             }
             case HAM_KILL_ALL -> {
@@ -1312,7 +1231,7 @@ public final class LexNinjiaStateManager {
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_resistance.11.duration_ticks", 10 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_resistance.11.amplifier", 4), true, false));
             }
             case HAM_BEAST -> summonHamBeast(player, state);
-            case HAM_SHADOW_KICK -> state.hamShadowKickUntil = now + HAM_SHADOW_KICK_DURATION_TICKS;
+            case HAM_SHADOW_KICK -> state.hamShadowKickUntil = now + 15L * 20L;
             default -> {
             }
         }
@@ -1386,11 +1305,11 @@ public final class LexNinjiaStateManager {
     private static boolean tryConsumeCookIngredients(ServerPlayer player, LexNinjiaArt art) {
         ItemStack hand = player.getMainHandItem();
         return switch (art) {
-            case SOLDIER_PILL -> hand.isEdible()
+            case SOLDIER_PILL -> hand.has(net.minecraft.core.component.DataComponents.FOOD)
                     && canConsumeMainHand(hand, 1)
-                    && canConsumeInventoryAfterMain(player, stack -> stack.isEdible(), 1, 1)
+                    && canConsumeInventoryAfterMain(player, stack -> stack.has(net.minecraft.core.component.DataComponents.FOOD), 1, 1)
                     && consumeMainHand(player, 1)
-                    && consumeInventory(player, stack -> stack.isEdible(), 1);
+                    && consumeInventory(player, stack -> stack.has(net.minecraft.core.component.DataComponents.FOOD), 1);
             case NANO_SNICKERS -> isSugarLike(hand)
                     && canConsumeMainHand(hand, 1)
                     && canConsumeInventoryAfterMain(player, LexNinjiaStateManager::isSugarLike, 1, 1)
@@ -1448,9 +1367,10 @@ public final class LexNinjiaStateManager {
     private static ItemStack cookFoodStack(LexNinjiaArt art) {
         ItemStack stack = new ItemStack((art == LexNinjiaArt.MILK_BEER || art == LexNinjiaArt.HOT_DRINK)
                 ? Items.HONEY_BOTTLE : Items.COOKIE, art == LexNinjiaArt.MC_NUGGETS ? 6 : art == LexNinjiaArt.SHRIMP_HAND ? 2 : art == LexNinjiaArt.MILK_BEER ? 3 : 1);
-        stack.setHoverName(Component.translatable(art.nameKey()));
-        CompoundTag tag = stack.getOrCreateTag();
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.translatable(art.nameKey()));
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         tag.putString(FOOD_ART, art.id());
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         return stack;
     }
 
@@ -1518,7 +1438,7 @@ public final class LexNinjiaStateManager {
         }
     }
 
-    private static void handleIncomingDamage(ServerPlayer player, LivingHurtEvent event) {
+    private static void handleIncomingDamage(ServerPlayer player, LivingIncomingDamageEvent event) {
         RuntimeState state = state(player);
         long now = SkillCooldownHelper.now(player);
         Entity attacker = event.getSource().getEntity();
@@ -1551,7 +1471,7 @@ public final class LexNinjiaStateManager {
             multiplier *= 0.55F;
         }
         if (attacker != null && attacker.getUUID().equals(state.handshakeTarget)) {
-            multiplier *= (float) HANDSHAKE_INCOMING_DAMAGE_MULTIPLIER;
+            multiplier *= 0.70F;
         }
         int overload = mindOverload(player);
         if (overload > 0) {
@@ -1566,7 +1486,7 @@ public final class LexNinjiaStateManager {
         event.setAmount(event.getAmount() * multiplier);
     }
 
-    private static void handleOutgoingDamage(ServerPlayer attacker, LivingEntity target, LivingHurtEvent event) {
+    private static void handleOutgoingDamage(ServerPlayer attacker, LivingEntity target, LivingIncomingDamageEvent event) {
         RuntimeState state = state(attacker);
         long now = SkillCooldownHelper.now(attacker);
         float multiplier = 1.0F + state.bladeStacks * 0.03F + state.sharpenStacks * 0.01F;
@@ -1578,21 +1498,21 @@ public final class LexNinjiaStateManager {
             attacker.heal(Math.max(0.0F, event.getAmount()) * 0.50F);
         }
         if (target.getUUID().equals(state.handshakeTarget)) {
-            multiplier *= (float) HANDSHAKE_OUTGOING_DAMAGE_MULTIPLIER;
+            multiplier *= 0.10F;
         }
         event.setAmount(event.getAmount() * multiplier);
         if (state.sharpenStacks > 0) {
             state.sharpenStacks--;
         }
         if (state.burningBladeUntil > now) {
-            hurtTrue(attacker, target, target.getMaxHealth() * BURNING_BLADE_MAX_HEALTH_BURN_FRACTION);
-            target.setSecondsOnFire(BURNING_BLADE_FIRE_SECONDS);
+            hurtTrue(attacker, target, target.getMaxHealth() * 0.025F);
+            target.igniteForSeconds(3);
         }
         if (state.arashiUntil > now) {
             queueSlashes(state, target, now, 2, Math.max(1.0F, event.getAmount() * 0.60F), 4L, 4L, SlashVisual.ARASHI, 0.0D);
         }
         if (state.shadowBladeUntil > now) {
-            hurtTrue(attacker, target, target.getMaxHealth() * SHADOW_BLADE_TRUE_DAMAGE_FRACTION);
+            hurtTrue(attacker, target, target.getMaxHealth() * 0.005F);
         }
         if (state.shadowCloneUntil > now) {
             float splitDamage = Math.max(1.0F, event.getAmount()) / 3.0F;
@@ -1601,7 +1521,7 @@ public final class LexNinjiaStateManager {
             queueShadowCloneFollowUps(state, target, now, splitDamage);
         }
         if (state.peaStacks > 0 && state.peaUntil > now) {
-            float peaDamage = state.peaStacks * PEA_SHOOTER_DAMAGE_PER_STACK;
+            float peaDamage = state.peaStacks;
             if (state.fertilizerUntil > now) {
                 peaDamage *= 2.5F;
             }
@@ -1612,28 +1532,15 @@ public final class LexNinjiaStateManager {
         }
     }
 
-    private static void startNoRetaliation(ServerPlayer player, RuntimeState state, long now) {
-        state.noRetaliationUntil = now + NO_ONE_RETALIATES_DURATION_TICKS;
-        double radiusSq = NO_ONE_RETALIATES_RADIUS * NO_ONE_RETALIATES_RADIUS;
-        // The design requires everyone in the zone to be warned; without this, reflected
-        // deaths look like an unexplained "killed by skill" bug to bystanders.
-        for (ServerPlayer nearby : player.serverLevel().players()) {
-            if (nearby.distanceToSqr(player) <= radiusSq) {
-                nearby.displayClientMessage(Component.translatable(
-                        "message.dealt_force_skills.lexninjia.no_retaliation_warning",
-                        player.getDisplayName()), false);
-            }
-        }
-    }
-
-    /**
-     * "我们谁也别还手" zone enforcement.
-     *
-     * <p>Must be resilient under dedicated-server character ban/switch and multi-dimension clocks:
-     * look up the caster via the player list (not {@code Level#getEntity}), require the caster to
-     * still be Lex Ninjia, use the stable skill clock, and force-expire stale RUNTIME entries.</p>
-     */
-    private static void handleNoRetaliation(LivingEntity attacker, LivingEntity target, LivingHurtEvent event) {
+    private static volatile double NO_ONE_RETALIATES_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("NO_ONE_RETALIATES_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.lex_ninjia.arts.no_one_retaliates.radius", 45.0));
+    private static volatile int NO_ONE_RETALIATES_DURATION_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("NO_ONE_RETALIATES_DURATION_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lex_ninjia.arts.no_one_retaliates.duration_ticks", 1200));
+    private static volatile float NO_ONE_RETALIATES_REFLECT_MULTIPLIER = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("NO_ONE_RETALIATES_REFLECT_MULTIPLIER", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue(
+      "characters.lex_ninjia.arts.no_one_retaliates.reflect_multiplier", 2.0F
+   ));
+    private static volatile int NO_ONE_RETALIATES_CASTER_ATTACK_PENALTY_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("NO_ONE_RETALIATES_CASTER_ATTACK_PENALTY_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue(
+      "characters.lex_ninjia.arts.no_one_retaliates.caster_attack_duration_penalty_ticks", 200
+   ));
+    private static void handleNoRetaliation(LivingEntity attacker, LivingEntity target, LivingIncomingDamageEvent event) {
         if (event.isCanceled() || !(target.level() instanceof ServerLevel level)) {
             return;
         }
@@ -1654,7 +1561,6 @@ public final class LexNinjiaStateManager {
             }
             ServerPlayer caster = server.getPlayerList().getPlayer(entry.getKey());
             if (caster == null || !caster.isAlive() || !isLexNinjia(caster)) {
-                // Character disabled / switched / offline: extinguish residual interdiction.
                 state.noRetaliationUntil = 0L;
                 continue;
             }
@@ -1675,18 +1581,13 @@ public final class LexNinjiaStateManager {
             float reflectedDamage = Math.max(1.0F, event.getAmount()) * NO_ONE_RETALIATES_REFLECT_MULTIPLIER;
             event.setCanceled(true);
             event.setAmount(0.0F);
-            if (attacker instanceof ServerPlayer attackerPlayer) {
-                attackerPlayer.displayClientMessage(Component.translatable(
-                        "message.dealt_force_skills.lexninjia.no_retaliation_reflect",
-                        caster.getDisplayName()), true);
-            }
             hurtTrue(caster, attacker, reflectedDamage);
             break;
         }
     }
 
     private static void applyHandshake(ServerPlayer player, RuntimeState state) {
-        nearestLookTarget(player, HANDSHAKE_TARGET_RANGE, 0.92D).ifPresent(target -> {
+        nearestLookTarget(player, 8.0D, 0.92D).ifPresent(target -> {
             if (!canApplyControl(player, target)) {
                 return;
             }
@@ -1698,13 +1599,11 @@ public final class LexNinjiaStateManager {
 
     private static void tauntNearby(ServerPlayer player) {
         for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class,
-                player.getBoundingBox().inflate(ONE_BLADE_TAUNT_RADIUS), entity -> entity != player && entity.isAlive())) {
+                player.getBoundingBox().inflate(5.0D), entity -> entity != player && entity.isAlive())) {
             if (!canApplyControl(player, target)) {
                 continue;
             }
-            target.addEffect(new MobEffectInstance(ModEffects.STUN.get(),
-                    ONE_BLADE_TAUNT_LOOK_TICKS,
-                    com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.34.amplifier", 0)));
+            target.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.34.duration_ticks", 30), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.34.amplifier", 0)));
             if (target instanceof Mob mob) {
                 mob.setTarget(player);
             }
@@ -1730,13 +1629,12 @@ public final class LexNinjiaStateManager {
         state.tenMeterReleaseTick = now + 3L * 20L;
         state.tenMeterOrigin = player.position();
         player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_slowdown.37.duration_ticks", 3 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_slowdown.37.amplifier", 10), true, false));
-        player.getAttribute(Attributes.MOVEMENT_SPEED).addTransientModifier(new AttributeModifier(
-                SPIN_SLOW_UUID, "lex_ninjia_ten_meter_charge", -1.0D, AttributeModifier.Operation.MULTIPLY_TOTAL
+        player.getAttribute(Attributes.MOVEMENT_SPEED).addTransientModifier(new AttributeModifier(SPIN_SLOW_UUID, -1.0D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
         ));
     }
 
     private static void tickTenMeterSword(ServerPlayer player, RuntimeState state, long now) {
-        if (player.hasEffect(ModEffects.STUN.get()) || player.hasEffect(ModEffects.TEMPEST_DISARMED.get())
+        if (player.hasEffect(ModEffects.STUN) || player.hasEffect(ModEffects.TEMPEST_DISARMED)
                 || state.tenMeterOrigin.distanceToSqr(player.position()) > 0.25D) {
             state.tenMeterReleaseTick = 0L;
             player.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPIN_SLOW_UUID);
@@ -1791,13 +1689,13 @@ public final class LexNinjiaStateManager {
         ServerLevel level = player.serverLevel();
         Vec3 look = new Vec3(player.getLookAngle().x, 0.0D, player.getLookAngle().z).normalize();
         Vec3 right = new Vec3(-look.z, 0.0D, look.x);
-        BlockPos center = BlockPos.containing(player.position().add(look.scale(SAND_WALL_FORWARD_DISTANCE)));
-        for (int x = -SAND_WALL_HALF_WIDTH; x <= SAND_WALL_HALF_WIDTH; x++) {
-            for (int y = 0; y < SAND_WALL_HEIGHT; y++) {
+        BlockPos center = BlockPos.containing(player.position().add(look.scale(4.0D)));
+        for (int x = -2; x <= 2; x++) {
+            for (int y = 0; y < 5; y++) {
                 BlockPos pos = BlockPos.containing(center.getX() + right.x * x, center.getY() + y, center.getZ() + right.z * x);
                 if (level.isEmptyBlock(pos)) {
                     level.setBlockAndUpdate(pos, Blocks.SANDSTONE.defaultBlockState());
-                    state.wallBlocks.add(new TimedBlock(pos.immutable(), now + SAND_WALL_DURATION_TICKS));
+                    state.wallBlocks.add(new TimedBlock(pos.immutable(), now + 30L * 20L));
                 }
             }
         }
@@ -1819,27 +1717,30 @@ public final class LexNinjiaStateManager {
 
     private static void equipTemporaryShield(ServerPlayer player, RuntimeState state, long now) {
         if (state.shieldUntil > now) {
-            state.shieldUntil = now + SHIELD_GUARD_DURATION_TICKS;
+            state.shieldUntil = now + 30L * 20L;
             enforceHandGuardShield(player);
             return;
         }
         moveToInventoryOrDrop(player, player.getOffhandItem());
         player.setItemInHand(InteractionHand.OFF_HAND, createHandGuardShield());
         player.getCooldowns().removeCooldown(Items.SHIELD);
-        state.shieldUntil = now + SHIELD_GUARD_DURATION_TICKS;
+        state.shieldUntil = now + 30L * 20L;
     }
 
     private static ItemStack createHandGuardShield() {
         ItemStack shield = new ItemStack(Items.SHIELD);
-        shield.setHoverName(Component.translatable("item.dealt_force_skills.lex_ninjia_guard_shield"));
-        shield.getOrCreateTag().putBoolean("Unbreakable", true);
-        shield.getOrCreateTag().putBoolean(HAND_GUARD_SHIELD_TAG, true);
+        shield.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.translatable("item.dealt_force_skills.lex_ninjia_guard_shield"));
+        shield.set(net.minecraft.core.component.DataComponents.UNBREAKABLE, new net.minecraft.world.item.component.Unbreakable(true));
+        CompoundTag tag = shield.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        tag.putBoolean(HAND_GUARD_SHIELD_TAG, true);
+        shield.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         return shield;
     }
 
     private static boolean isHandGuardShield(ItemStack stack) {
-        return !stack.isEmpty() && stack.is(Items.SHIELD) && stack.hasTag()
-                && stack.getTag().getBoolean(HAND_GUARD_SHIELD_TAG);
+        return !stack.isEmpty() && stack.is(Items.SHIELD)
+                && stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+                .copyTag().getBoolean(HAND_GUARD_SHIELD_TAG);
     }
 
     private static void enforceHandGuardShield(ServerPlayer player) {
@@ -1958,14 +1859,14 @@ public final class LexNinjiaStateManager {
         }
         if (target != null) {
             hurtTrue(player, target, 22.0F);
-            target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ACTION_PAUSE.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.raptor_action_pause.38.duration_ticks", 4 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.raptor_action_pause.38.amplifier", 0)));
+            target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ACTION_PAUSE, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.raptor_action_pause.38.duration_ticks", 4 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.raptor_action_pause.38.amplifier", 0)));
             target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_slowdown.39.duration_ticks", 6 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_slowdown.39.amplifier", 10)));
             addSnakePoison(target, player);
         }
         state.fdHandUntil = now + 2L * 20L;
         state.peaStacks = 5;
         state.peaUntil = now + 15L * 20L;
-        state.returnHandUntil = now + RETURN_HAND_DURATION_TICKS;
+        state.returnHandUntil = now + 14L * 20L;
         createSandWall(player, state, now);
     }
 
@@ -2033,7 +1934,7 @@ public final class LexNinjiaStateManager {
                 continue;
             }
             hurtTrue(player, target, meleeDamage(player) * 0.7F);
-            target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.42.duration_ticks", 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.42.amplifier", 0)));
+            target.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.42.duration_ticks", 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.stun.42.amplifier", 0)));
         }
         breakSoftBlocksAround(player);
     }
@@ -2060,7 +1961,7 @@ public final class LexNinjiaStateManager {
         net.minecraft.core.particles.ItemParticleOption swordParticle =
                 new net.minecraft.core.particles.ItemParticleOption(net.minecraft.core.particles.ParticleTypes.ITEM, new ItemStack(Items.IRON_SWORD));
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class,
-                player.getBoundingBox().inflate(IRON_SWORD_RAIN_RADIUS), entity -> entity != player && entity.isAlive()
+                player.getBoundingBox().inflate(40.0D), entity -> entity != player && entity.isAlive()
                         && level.canSeeSky(entity.blockPosition().above()))) {
             double hitX = target.getX();
             double hitY = target.getY() + target.getBbHeight() * 0.5D;
@@ -2072,7 +1973,7 @@ public final class LexNinjiaStateManager {
                     hitX, hitY, hitZ, 1, 0.0D, 0.0D, 0.0D, 0.0D);
             RangedSoundHelper.playFollowingPlayer(player, SoundEvents.TRIDENT_HIT,
                     SoundSource.PLAYERS, 0.8F, 1.15F, 32.0D);
-            hurtTrue(player, target, meleeDamage(player) * IRON_SWORD_RAIN_DAMAGE_FRACTION);
+            hurtTrue(player, target, meleeDamage(player) * 0.9F);
         }
     }
 
@@ -2196,11 +2097,11 @@ public final class LexNinjiaStateManager {
     }
 
     private static boolean canApplyControl(ServerPlayer player, LivingEntity target) {
-        return !TargetingUtil.shouldSkipFriendlyControl(player, target);
+        return TargetingUtil.isHostileLivingFor(player, target);
     }
 
     private static void executeTarget(ServerPlayer player, LivingEntity target) {
-        if (target == null) {
+        if (target == null || !TargetingUtil.isHostileLivingFor(player, target)) {
             return;
         }
         if (!com.rzy.dealt_force_skills.boss.BossCombatRules.canInstantKill(target) && !(target instanceof Player)) {
@@ -2224,7 +2125,7 @@ public final class LexNinjiaStateManager {
         if (stacks <= 0) {
             return;
         }
-        float damage = entity.getMaxHealth() * SNAKE_POISON_MAX_HEALTH_FRACTION * stacks;
+        float damage = entity.getMaxHealth() * 0.02F * stacks;
         tag.putInt(ROOT + ".snake_poison_stacks", Math.max(0, stacks - 1));
         if (entity.level() instanceof ServerLevel level) {
             entity.hurt(SkillDamageHelper.trueDamage(level, entity, null), damage);
@@ -2233,15 +2134,14 @@ public final class LexNinjiaStateManager {
 
     private static void addSnakePoison(LivingEntity target, ServerPlayer attacker) {
         CompoundTag tag = target.getPersistentData();
-        tag.putInt(ROOT + ".snake_poison_stacks",
-                Math.min(9, tag.getInt(ROOT + ".snake_poison_stacks") + SNAKE_POISON_MAX_TRIGGERS));
+        tag.putInt(ROOT + ".snake_poison_stacks", Math.min(9, tag.getInt(ROOT + ".snake_poison_stacks") + 3));
     }
 
     private static void growPlacedCrop(ServerLevel level, BlockPos pos) {
         for (int i = 0; i < 4; i++) {
             BlockState state = level.getBlockState(pos);
             if (!(state.getBlock() instanceof BonemealableBlock bonemealable)
-                    || !bonemealable.isValidBonemealTarget(level, pos, state, false)
+                    || !bonemealable.isValidBonemealTarget(level, pos, state)
                     || !bonemealable.isBonemealSuccess(level, level.random, pos, state)) {
                 return;
             }
@@ -2303,15 +2203,14 @@ public final class LexNinjiaStateManager {
         }
         attribute.removeModifier(HAND_SPEED_UUID);
         if (stacks > 0) {
-            attribute.addTransientModifier(new AttributeModifier(
-                    HAND_SPEED_UUID, "lex_ninjia_hand_speed", stacks * 0.02D, AttributeModifier.Operation.MULTIPLY_TOTAL
+            attribute.addTransientModifier(new AttributeModifier(HAND_SPEED_UUID, stacks * 0.02D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
             ));
         }
     }
 
     private static void removeHarmfulEffects(LivingEntity entity) {
         for (MobEffectInstance effect : new ArrayList<>(entity.getActiveEffects())) {
-            if (effect.getEffect().getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL) {
+            if (effect.getEffect().value().getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL) {
                 entity.removeEffect(effect.getEffect());
             }
         }
@@ -2373,11 +2272,11 @@ public final class LexNinjiaStateManager {
         ItemStack hand = player.getMainHandItem();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
-            if (!stack.isEmpty() && predicate.test(stack) && !stack.getOrCreateTag().contains(FOOD_ART)) {
+            if (!stack.isEmpty() && predicate.test(stack) && !stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains(FOOD_ART)) {
                 available += stack.getCount();
             }
         }
-        if (!hand.isEmpty() && predicate.test(hand) && !hand.getOrCreateTag().contains(FOOD_ART)) {
+        if (!hand.isEmpty() && predicate.test(hand) && !hand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains(FOOD_ART)) {
             available -= Math.min(reservedMainHandCount, hand.getCount());
         }
         return available >= count;
@@ -2396,7 +2295,7 @@ public final class LexNinjiaStateManager {
         int remaining = count;
         for (int i = 0; i < player.getInventory().getContainerSize() && remaining > 0; i++) {
             ItemStack stack = player.getInventory().getItem(i);
-            if (!stack.isEmpty() && predicate.test(stack) && !stack.getOrCreateTag().contains(FOOD_ART)) {
+            if (!stack.isEmpty() && predicate.test(stack) && !stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains(FOOD_ART)) {
                 int take = Math.min(remaining, stack.getCount());
                 stack.shrink(take);
                 remaining -= take;
@@ -2437,8 +2336,10 @@ public final class LexNinjiaStateManager {
                 || stack.is(Items.COOKED_SALMON) || stack.is(Items.TROPICAL_FISH) || stack.is(Items.PUFFERFISH);
     }
 
-    private static boolean isPotion(ItemStack stack, net.minecraft.world.item.alchemy.Potion potion) {
-        return stack.is(Items.POTION) && net.minecraft.world.item.alchemy.PotionUtils.getPotion(stack) == potion;
+    private static boolean isPotion(ItemStack stack, net.minecraft.core.Holder<net.minecraft.world.item.alchemy.Potion> potion) {
+        if (!stack.is(Items.POTION)) return false;
+        net.minecraft.world.item.alchemy.PotionContents contents = stack.get(net.minecraft.core.component.DataComponents.POTION_CONTENTS);
+        return contents != null && contents.potion().filter(p -> p.is(potion)).isPresent();
     }
 
     private record InputEntry(LexNinjiaComboInput input, long tick) {
@@ -2523,8 +2424,6 @@ public final class LexNinjiaStateManager {
         }
 
         private void clearCombatRuntime(long now) {
-            // Expire all timed combat effects to 0 (not "now") so dimension-clock skew cannot
-            // leave residual zones active when compared against another level's gameTime.
             inputs.clear();
             prepared = null;
             presetDisplayText = "";

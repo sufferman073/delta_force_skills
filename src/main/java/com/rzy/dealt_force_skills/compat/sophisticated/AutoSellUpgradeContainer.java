@@ -22,12 +22,12 @@ public final class AutoSellUpgradeContainer extends UpgradeContainerBase<AutoSel
     }
 
     public FilterLogicContainer<FilterLogic> filter() { return filter; }
-    @Override public void handleMessage(CompoundTag data) {
-        filter.handleMessage(data);
+    @Override public void handlePacket(CompoundTag data) {
+        filter.handlePacket(data);
         if (upgradeWrapper.filter().isAllowList()) upgradeWrapper.filter().setAllowList(false);
     }
 
     public static void register() {
-        UpgradeContainerRegistry.register(new ResourceLocation(DealtForceSkillsMod.MODID, "auto_sell_upgrade"), TYPE);
+        UpgradeContainerRegistry.register(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "auto_sell_upgrade"), TYPE);
     }
 }

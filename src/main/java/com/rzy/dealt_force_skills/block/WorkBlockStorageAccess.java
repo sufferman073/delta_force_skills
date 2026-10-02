@@ -3,6 +3,7 @@ package com.rzy.dealt_force_skills.block;
 import com.rzy.dealt_force_skills.compat.HvkLogisticsBridge;
 import com.rzy.dealt_force_skills.event.CommonEvents;
 import com.rzy.dealt_force_skills.shop.SpecialOperationsBaseManager;
+import mccfk.DeltaForce.java.data.DfWarehouseManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -12,8 +13,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,8 +36,12 @@ public final class WorkBlockStorageAccess {
         if (player.level() == level
                 && player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D)
                 <= OWNER_INVENTORY_RANGE * OWNER_INVENTORY_RANGE) {
-            for (SpecialOperationsBaseManager.WarehouseEntry entry : SpecialOperationsBaseManager.warehouseEntries(player)) {
-                sources.add(new WarehouseSourceSlot(player, entry.slot(), entry.stack()));
+            List<ItemStack> warehouse = DfWarehouseManager.loadWarehouse(player);
+            for (int slot = 0; slot < warehouse.size(); slot++) {
+                ItemStack stack = warehouse.get(slot);
+                if (!stack.isEmpty()) {
+                    sources.add(new WarehouseSourceSlot(player, slot, stack));
+                }
             }
             Inventory inventory = player.getInventory();
             for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
@@ -44,12 +49,11 @@ public final class WorkBlockStorageAccess {
             }
         }
         for (Direction direction : Direction.values()) {
-            BlockEntity neighbor = level.getBlockEntity(pos.relative(direction));
-            if (neighbor == null) {
-                continue;
+            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK,
+                    pos.relative(direction), direction.getOpposite());
+            if (handler != null) {
+                addHandlerSources(sources, handler);
             }
-            neighbor.getCapability(ForgeCapabilities.ITEM_HANDLER, direction.getOpposite())
-                    .ifPresent(handler -> addHandlerSources(sources, handler));
         }
         HvkLogisticsBridge.collectNetworkItemHandlers(level, pos, handler -> addHandlerSources(sources, handler));
         return sources;
@@ -157,7 +161,6 @@ public final class WorkBlockStorageAccess {
         return consumed + (purchased.isEmpty() ? 0 : purchased.getCount());
     }
 
-    /** Returns the Havoc-coin shortfall cost after all physical sources, or -1 when unavailable. */
     public static long redemptionCostForItem(ServerPlayer player, List<SourceSlot> sources,
                                              Item item, int requested) {
         int missing = Math.max(0, requested - countItem(sources, item));
@@ -251,20 +254,17 @@ public final class WorkBlockStorageAccess {
     private static final class WarehouseSourceSlot implements SourceSlot {
         private final ServerPlayer owner;
         private final int slot;
+        private final ItemStack cached;
 
-        private WarehouseSourceSlot(ServerPlayer owner, int slot, ItemStack fallback) {
+        private WarehouseSourceSlot(ServerPlayer owner, int slot, ItemStack cached) {
             this.owner = owner;
             this.slot = slot;
+            this.cached = cached.copy();
         }
 
         @Override
         public ItemStack stack() {
-            for (SpecialOperationsBaseManager.WarehouseEntry entry : SpecialOperationsBaseManager.warehouseEntries(owner)) {
-                if (entry.slot() == slot) {
-                    return entry.stack();
-                }
-            }
-            return ItemStack.EMPTY;
+            return cached;
         }
 
         @Override
@@ -273,7 +273,8 @@ public final class WorkBlockStorageAccess {
             if (current.isEmpty() || !predicate.test(current)) {
                 return 0;
             }
-            ItemStack extracted = SpecialOperationsBaseManager.extractWarehouse(owner, slot, max);
+            ItemStack extracted = DfWarehouseManager.extractMatching(owner, slot, max, predicate);
+            cached.shrink(extracted.getCount());
             return !extracted.isEmpty() && predicate.test(extracted) ? extracted.getCount() : 0;
         }
     }

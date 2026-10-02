@@ -6,6 +6,6 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(LivingEntity.class)
 public interface LivingEntityUseItemAccessor {
-    @Accessor("useItemRemaining")
+    @Accessor(value = "useItemRemaining", remap = false)
     void dealt_force_skills$setUseItemRemaining(int remainingTicks);
 }

@@ -13,14 +13,15 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class VyronPlaceholderVisuals {
     private VyronPlaceholderVisuals() {
     }
@@ -54,7 +55,7 @@ public final class VyronPlaceholderVisuals {
         Minecraft minecraft = Minecraft.getInstance();
         ClientVyronToolAnimationState.observeEquipped(ClientVyronHudState.equippedTool());
         ClientVyronToolAnimationState.AnimationFrame frame = ClientVyronToolAnimationState.frame(
-                tool, (minecraft.level.getGameTime() + minecraft.getFrameTime()) / 20.0F);
+                tool, (minecraft.level.getGameTime() + com.rzy.dealt_force_skills.client.ClientRenderCompat.frameTime(minecraft)) / 20.0F);
         boolean rendered = BlockbenchAnimatedModelRenderer.render(
                 ClientVyronToolAnimationState.modelFor(tool),
                 frame.animation(),

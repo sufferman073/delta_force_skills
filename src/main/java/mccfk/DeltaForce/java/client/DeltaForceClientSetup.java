@@ -11,9 +11,10 @@ import mccfk.DeltaForce.java.client.screen.SettingsScreen;
 import mccfk.DeltaForce.java.client.screen.StaminaBarHudScreen;
 import mccfk.DeltaForce.java.item.creative.DeltaForceCreativeTabs;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.client.ConfigScreenHandler;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModLoadingContext;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,12 +28,10 @@ public final class DeltaForceClientSetup {
     private DeltaForceClientSetup() {
     }
 
-    public static void init(IEventBus modEventBus) {
-        // 注册配置界面入口（Forge 模组列表"Config"按钮 → 打开设置界面）
-        ModLoadingContext.get().registerExtensionPoint(
-            ConfigScreenHandler.ConfigScreenFactory.class,
-            () -> new ConfigScreenHandler.ConfigScreenFactory(
-                (minecraft, parent) -> new SettingsScreen(parent)));
+    public static void init(IEventBus modEventBus, ModContainer modContainer) {
+        // 注册配置界面入口（NeoForge 模组列表"Config"按钮 → 打开设置界面）
+        modContainer.registerExtensionPoint(IConfigScreenFactory.class,
+            (minecraft, parent) -> new SettingsScreen(parent));
 
         // 注册自定义掉落物配置
         CustomDropConfig.bootstrap();

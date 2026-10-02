@@ -11,17 +11,18 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.joml.Matrix4f;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ManbaFlashlightBeamRenderer {
     private static final int RING_SEGMENTS = 32;
     private static final int RED = 255;
@@ -83,7 +84,7 @@ public final class ManbaFlashlightBeamRenderer {
         for (Map.Entry<Integer, Beam> entry : BEAMS.entrySet()) {
             Player player = playerForBeam(minecraft, entry.getKey());
             if (player != null) {
-                BeamGeometry geometry = beamGeometry(player, entry.getValue(), event.getPartialTick());
+                BeamGeometry geometry = beamGeometry(player, entry.getValue(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
                 if (geometry != null) {
                     renderBeamSheets(geometry, matrix, camera, sheetConsumer);
                 }
@@ -95,7 +96,7 @@ public final class ManbaFlashlightBeamRenderer {
         for (Map.Entry<Integer, Beam> entry : BEAMS.entrySet()) {
             Player player = playerForBeam(minecraft, entry.getKey());
             if (player != null) {
-                BeamGeometry geometry = beamGeometry(player, entry.getValue(), event.getPartialTick());
+                BeamGeometry geometry = beamGeometry(player, entry.getValue(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
                 if (geometry != null) {
                     renderBeamLines(geometry, pose, camera, lineConsumer);
                 }
@@ -212,10 +213,10 @@ public final class ManbaFlashlightBeamRenderer {
 
     private static void renderQuad(VertexConsumer consumer, Matrix4f matrix,
                                    Vec3 a, Vec3 b, Vec3 c, Vec3 d, int alpha) {
-        consumer.vertex(matrix, (float) a.x, (float) a.y, (float) a.z).color(RED, GREEN, BLUE, alpha).endVertex();
-        consumer.vertex(matrix, (float) b.x, (float) b.y, (float) b.z).color(RED, GREEN, BLUE, alpha).endVertex();
-        consumer.vertex(matrix, (float) c.x, (float) c.y, (float) c.z).color(RED, GREEN, BLUE, alpha).endVertex();
-        consumer.vertex(matrix, (float) d.x, (float) d.y, (float) d.z).color(RED, GREEN, BLUE, alpha).endVertex();
+        consumer.addVertex(matrix, (float) a.x, (float) a.y, (float) a.z).setColor(RED, GREEN, BLUE, alpha);
+        consumer.addVertex(matrix, (float) b.x, (float) b.y, (float) b.z).setColor(RED, GREEN, BLUE, alpha);
+        consumer.addVertex(matrix, (float) c.x, (float) c.y, (float) c.z).setColor(RED, GREEN, BLUE, alpha);
+        consumer.addVertex(matrix, (float) d.x, (float) d.y, (float) d.z).setColor(RED, GREEN, BLUE, alpha);
     }
 
     private static void renderLine(VertexConsumer consumer, PoseStack.Pose pose, Vec3 camera,
@@ -228,14 +229,14 @@ public final class ManbaFlashlightBeamRenderer {
         } else {
             normal = normal.normalize();
         }
-        consumer.vertex(pose.pose(), (float) a.x, (float) a.y, (float) a.z)
-                .color(RED, GREEN, BLUE, alpha)
-                .normal(pose.normal(), (float) normal.x, (float) normal.y, (float) normal.z)
-                .endVertex();
-        consumer.vertex(pose.pose(), (float) b.x, (float) b.y, (float) b.z)
-                .color(RED, GREEN, BLUE, alpha)
-                .normal(pose.normal(), (float) normal.x, (float) normal.y, (float) normal.z)
-                .endVertex();
+        consumer.addVertex(pose.pose(), (float) a.x, (float) a.y, (float) a.z)
+                .setColor(RED, GREEN, BLUE, alpha)
+                .setNormal(pose, (float) normal.x, (float) normal.y, (float) normal.z)
+                ;
+        consumer.addVertex(pose.pose(), (float) b.x, (float) b.y, (float) b.z)
+                .setColor(RED, GREEN, BLUE, alpha)
+                .setNormal(pose, (float) normal.x, (float) normal.y, (float) normal.z)
+                ;
     }
 
     private static final class Beam {

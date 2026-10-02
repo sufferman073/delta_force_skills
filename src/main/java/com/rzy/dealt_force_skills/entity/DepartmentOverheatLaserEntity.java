@@ -8,8 +8,6 @@ import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -24,13 +22,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 import org.joml.Vector3f;
 
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplier {
     private static volatile double MAX_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.departmentoverheatlaserentity.max_distance", 15.0));
@@ -61,7 +59,7 @@ public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplie
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -125,11 +123,6 @@ public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplie
         tag.putDouble("StartX", startX);
         tag.putDouble("StartY", startY);
         tag.putDouble("StartZ", startZ);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private void hitEntitiesAlong(ServerLevel level, Vec3 from, Vec3 to) {

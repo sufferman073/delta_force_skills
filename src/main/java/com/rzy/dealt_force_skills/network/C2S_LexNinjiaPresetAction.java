@@ -5,18 +5,35 @@ import com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaPreset;
 import com.rzy.dealt_force_skills.shop.LexNinjiaShopManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record C2S_LexNinjiaPresetAction(
         Action action,
         int slot,
         String name,
         List<LexNinjiaComboInput> inputs
-) {
+) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_LexNinjiaPresetAction> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_lex_ninjia_preset_action"));
+
+    public static final StreamCodec<FriendlyByteBuf, C2S_LexNinjiaPresetAction> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_LexNinjiaPresetAction::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private static final int MAX_NETWORK_INPUTS = 12;
 
     public C2S_LexNinjiaPresetAction {
@@ -75,14 +92,13 @@ public record C2S_LexNinjiaPresetAction(
         return new C2S_LexNinjiaPresetAction(action, slot, name, inputs);
     }
 
-    public static void handle(C2S_LexNinjiaPresetAction msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_LexNinjiaPresetAction msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player != null) {
                 LexNinjiaShopManager.handlePresetAction(player, msg);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public enum Action {

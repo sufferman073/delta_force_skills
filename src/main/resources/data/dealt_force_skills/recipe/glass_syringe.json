@@ -1,0 +1,18 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_nugget"
+                        },
+                        {
+                            "item":  "minecraft:glass"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:glass_syringe",
+                   "count":  4
+               }
+}

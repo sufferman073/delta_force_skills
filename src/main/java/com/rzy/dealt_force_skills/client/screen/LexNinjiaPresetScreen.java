@@ -147,7 +147,7 @@ public final class LexNinjiaPresetScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         int left = panelLeft();
         int top = panelTop();
         graphics.fill(left, top, left + panelWidth(), top + panelHeight(), 0xF012151C);
@@ -166,6 +166,10 @@ public final class LexNinjiaPresetScreen extends Screen {
                     left + 130, top + 62, 0xFFB8E9FF, false);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override

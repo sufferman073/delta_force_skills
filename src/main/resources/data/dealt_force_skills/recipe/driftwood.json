@@ -1,0 +1,20 @@
+{
+    "type":  "minecraft:crafting_shaped",
+    "pattern":  [
+                    "RRR",
+                    "RLR",
+                    "RRR"
+                ],
+    "key":  {
+                "R":  {
+                          "item":  "minecraft:rotten_flesh"
+                      },
+                "L":  {
+                          "tag":  "minecraft:logs"
+                      }
+            },
+    "result":  {
+                   "id":  "dealt_force_skills:driftwood",
+                   "count":  1
+               }
+}

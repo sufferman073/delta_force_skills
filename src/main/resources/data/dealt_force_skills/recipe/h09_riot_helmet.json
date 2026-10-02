@@ -1,0 +1,29 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:raw_wood_plank"
+                        },
+                        {
+                            "item":  "dealt_force_skills:raw_wood_plank"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:h09_riot_helmet"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

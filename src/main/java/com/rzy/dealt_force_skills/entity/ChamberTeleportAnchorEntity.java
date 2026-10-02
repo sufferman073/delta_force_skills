@@ -3,8 +3,6 @@ package com.rzy.dealt_force_skills.entity;
 import com.rzy.dealt_force_skills.character.chamber.ChamberStateManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -14,9 +12,9 @@ import net.minecraft.world.entity.projectile.ItemSupplier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class ChamberTeleportAnchorEntity extends Entity implements ItemSupplier {
     private static final double MAX_OWNER_DISTANCE = 75.0D;
@@ -39,7 +37,8 @@ public class ChamberTeleportAnchorEntity extends Entity implements ItemSupplier 
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        // No synched data to define — Entity.defineSynchedData is abstract.
     }
 
     @Override
@@ -83,11 +82,6 @@ public class ChamberTeleportAnchorEntity extends Entity implements ItemSupplier 
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public boolean isOwnedBy(UUID owner) {

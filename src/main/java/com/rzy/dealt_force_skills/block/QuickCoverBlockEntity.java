@@ -9,6 +9,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -123,8 +124,8 @@ public class QuickCoverBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         tag.putBoolean(ROOT, root);
         tag.putInt(HEALTH, health);
         tag.putLong(EXPIRE_AT, expireAt);
@@ -139,8 +140,8 @@ public class QuickCoverBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         root = tag.getBoolean(ROOT);
         health = tag.contains(HEALTH, Tag.TAG_INT) ? tag.getInt(HEALTH) : MAX_HEALTH;
         expireAt = tag.getLong(EXPIRE_AT);

@@ -15,8 +15,8 @@ import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
-import com.rzy.dealt_force_skills.team.DealtTeamManager;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
+import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class SinevaSkills {
     private static volatile double FRONT_DOT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FRONT_DOT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.sineva.sineva_skills.front_dot", Math.cos(Math.toRadians(60.0))));
     private static volatile int BASH_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BASH_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.bash_cooldown_ticks", 10));
-    private static volatile int CHARGE_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CHARGE_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.charge_cooldown_ticks", 10));
+    private static volatile int CHARGE_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CHARGE_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.charge_cooldown_ticks", 20));
     private static volatile int BASH_ACTIVE_STAMINA_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BASH_ACTIVE_STAMINA_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.bash_active_stamina_ticks", 20));
     private static volatile int SILENCE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SILENCE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.silence_ticks", 60));
     private static volatile double PROJECTILE_REFLECT_MIN_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PROJECTILE_REFLECT_MIN_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.sineva.sineva_skills.projectile_reflect_min_speed", 1.4));
@@ -125,7 +125,7 @@ public final class SinevaSkills {
         boolean controlVoicePlayed = false;
         int controlledTargets = 0;
         for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, box,
-                entity -> canShieldBashTarget(player, entity))) {
+                entity -> TargetingUtil.isHostileLivingFor(player, entity))) {
             Vec3 toTarget = target.position().add(0, target.getBbHeight() * 0.5, 0)
                     .subtract(player.getEyePosition()).normalize();
             if (forward.dot(toTarget) < FRONT_DOT) continue;
@@ -137,7 +137,7 @@ public final class SinevaSkills {
                 controlledTargets++;
                 playShieldBashControlVoice(player);
                 controlVoicePlayed = true;
-            } else if (target.hasEffect(ModEffects.STUN.get())) {
+            } else if (target.hasEffect(ModEffects.STUN)) {
                 controlledTargets++;
             }
         }
@@ -194,7 +194,8 @@ public final class SinevaSkills {
             AABB box = player.getBoundingBox().inflate(2.0, 1.0, 2.0);
             reflectProjectiles(player, box, data.direction, 0.0D, data.reflectedProjectiles, PROJECTILE_CHARGE_SPEED_BONUS);
             for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, box,
-                    entity -> canShieldBashTarget(player, entity) && !data.hitEntities.contains(entity))) {
+                    entity -> entity != player && entity.isAlive() && !data.hitEntities.contains(entity)
+                            && TargetingUtil.isHostileLivingFor(player, entity))) {
                 Vec3 toTarget = target.position().subtract(player.position()).normalize();
                 if (data.direction.dot(new Vec3(toTarget.x, 0.0, toTarget.z).normalize()) < 0.0) continue;
 
@@ -211,18 +212,11 @@ public final class SinevaSkills {
         }
     }
 
-    private static boolean canShieldBashTarget(ServerPlayer attacker, LivingEntity target) {
-        return target != attacker
-                && target.isAlive()
-                && !DealtTeamManager.areTeammates(attacker, target)
-                && (!(target instanceof Player player) || (!player.isCreative() && !player.isSpectator()));
-    }
-
     private static boolean applyShieldBashControl(ServerPlayer player, LivingEntity target) {
         if (!target.isAlive()) {
             return false;
         }
-        target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), SILENCE_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.effect.stun.0.amplifier", 0), false, true));
+        target.addEffect(new MobEffectInstance(ModEffects.STUN, SILENCE_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.effect.stun.0.amplifier", 0), false, true));
         SinevaKnockdownState.apply(player, target, SILENCE_TICKS);
         return true;
     }
@@ -298,7 +292,7 @@ public final class SinevaSkills {
     }
 
     public static boolean canUseShieldAction(Player player) {
-        return SinevaStateManager.isShieldDeployed(player) && !player.hasEffect(ModEffects.STUN.get());
+        return SinevaStateManager.isShieldDeployed(player) && !player.hasEffect(ModEffects.STUN);
     }
 
     public static void clearForPlayer(ServerPlayer player) {

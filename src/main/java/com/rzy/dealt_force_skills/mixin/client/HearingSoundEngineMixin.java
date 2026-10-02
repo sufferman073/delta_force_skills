@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Map;
 
-@Mixin(SoundEngine.class)
+@Mixin(value = SoundEngine.class, remap = false)
 public abstract class HearingSoundEngineMixin {
     @Shadow @Final private Map<SoundInstance, ChannelAccess.ChannelHandle> instanceToChannel;
     @Inject(method = "tick(Z)V", at = @At("TAIL"))

@@ -4,9 +4,9 @@ import com.rzy.dealt_force_skills.registry.ModItems;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import mccfk.DeltaForce.java.DeltaForce;
 import mccfk.DeltaForce.java.item.DeltaForceItems;
@@ -18,7 +18,7 @@ public class DeltaForceCreativeTabs {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, DeltaForce.MODID);
 
     // 三角洲行动创造模式标签页
-    public static final RegistryObject<CreativeModeTab> DELTAFORCE_TAB = CREATIVE_MODE_TABS.register("deltaforce",
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> DELTAFORCE_TAB = CREATIVE_MODE_TABS.register("deltaforce",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("tab.deltaforce"))
                     .icon(() -> DeltaForceItems.LOGO_DF.get().getDefaultInstance())

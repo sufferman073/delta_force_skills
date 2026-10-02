@@ -4,15 +4,30 @@ import com.rzy.dealt_force_skills.character.vlinder.VlinderMarkerType;
 import com.rzy.dealt_force_skills.character.vlinder.VlinderWorldMarker;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_SyncVlinderState {
+public class S2C_SyncVlinderState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncVlinderState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_vlinder_state"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncVlinderState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncVlinderState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int medicalCharges;
     private final int medicalMaxCharges;
     private final int medicalRechargeTicks;
@@ -142,10 +157,8 @@ public class S2C_SyncVlinderState {
                 rescueProtectionTicks, activeDefenseTicks, injectionTicks, injectionRequiredTicks, markers);
     }
 
-    public static void handle(S2C_SyncVlinderState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientVlinderHudState.sync(
+    public static void handle(S2C_SyncVlinderState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientVlinderHudState.sync(
                         msg.medicalCharges,
                         msg.medicalMaxCharges,
                         msg.medicalRechargeTicks,
@@ -164,8 +177,6 @@ public class S2C_SyncVlinderState {
                         msg.injectionTicks,
                         msg.injectionRequiredTicks,
                         msg.markers
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

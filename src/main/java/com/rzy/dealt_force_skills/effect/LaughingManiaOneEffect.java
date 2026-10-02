@@ -1,16 +1,19 @@
 package com.rzy.dealt_force_skills.effect;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.resources.ResourceLocation;
 
 public class LaughingManiaOneEffect extends MobEffect {
     public LaughingManiaOneEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0xFF77C8);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
         addAttributeModifier(Attributes.ATTACK_SPEED,
-                "ad4ed317-937d-4bb9-a2f9-46066ce9290c",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.laughing_mania_one.attack_speed"),
                 0.25D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 }

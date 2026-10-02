@@ -7,7 +7,7 @@ import com.rzy.dealt_force_skills.character.CharacterDefinition;
 import com.rzy.dealt_force_skills.character.CharacterRole;
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.SkillSlot;
-import mccfk.DeltaForce.java.client.screen.DFGUI_MAIN;
+import com.rzy.dealt_force_skills.client.screen.CharacterSelectionScreen;
 import com.rzy.dealt_force_skills.network.C2S_SelectCharacter;
 import com.rzy.dealt_force_skills.network.C2S_UseCharacterSkill;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
@@ -25,13 +25,10 @@ import com.rzy.dealt_force_skills.client.visual.ManbaFlashlightBeamRenderer;
 import com.rzy.dealt_force_skills.client.visual.SinevaPlaceholderVisuals;
 import net.minecraft.client.Minecraft;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 public final class ClientCharacterSelectionState {
     private static String selectedCharacterId;
@@ -115,7 +112,6 @@ public final class ClientCharacterSelectionState {
         ClientVlinderHudState.reset();
         ClientTempestHudState.reset();
         ClientSaeedHudState.reset();
-        ClientCommanderState.reset();
         ClientGhrothState.reset();
         ClientSinevaRenderState.reset();
         ClientHackclawCoreVisualState.reset();
@@ -145,9 +141,7 @@ public final class ClientCharacterSelectionState {
         selectedCharacterId = characterId == null || characterId.isBlank() ? null : characterId;
         ClientCharacterSelectionState.normalPlayer = normalPlayer && selectedCharacterId == null;
         ClientCharacterSkinState.syncLocalSelectedCharacter(selectedCharacterId);
-        // Commander owns the inherited character state packets as well. Keep those
-        // client snapshots alive while Commander is selected so inherited HUD bars
-        // and input state do not disappear between selection syncs.
+        // Commander owns inherited character snapshots used by tool models and input state.
         if (!isSelectedCharacter(ModCharacters.COMMANDER_ID)) {
         if (!isSelectedCharacter(ModCharacters.SINEVA_ID)) {
             ClientSinevaHudState.reset();
@@ -236,45 +230,26 @@ public final class ClientCharacterSelectionState {
         }
 
         Minecraft minecraft = Minecraft.getInstance();
+        if (hasSelectedCharacter() && minecraft.screen instanceof CharacterSelectionScreen) {
+            minecraft.setScreen(null);
+        }
     }
 
     public static void syncCharacterAvailability(Map<String, String> reasons) {
         unavailableReasons.clear();
         unavailableReasons.putAll(reasons);
         Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen instanceof CharacterSelectionScreen screen) {
+            screen.refreshCharacterWidgets();
+        }
     }
 
     public static void syncSelectionCatalog(List<CharacterBranch> branches) {
-        selectionCatalog = normalizeSelectionCatalog(branches);
+        selectionCatalog = branches == null ? List.of() : List.copyOf(branches);
         Minecraft minecraft = Minecraft.getInstance();
-    }
-
-    private static List<CharacterBranch> normalizeSelectionCatalog(List<CharacterBranch> branches) {
-        if (branches == null || branches.isEmpty()) {
-            return List.of();
+        if (minecraft.screen instanceof CharacterSelectionScreen screen) {
+            screen.refreshCharacterWidgets();
         }
-        boolean hasCanonicalCorps = branches.stream()
-                .flatMap(branch -> branch.characters().stream())
-                .anyMatch(character -> ModCharacters.CORPS_ID.equals(character.id()));
-        Set<String> seenIds = new HashSet<>();
-        List<CharacterBranch> normalized = new ArrayList<>(branches.size());
-        for (CharacterBranch branch : branches) {
-            List<CharacterDefinition> characters = new ArrayList<>();
-            for (CharacterDefinition character : branch.characters()) {
-                if (hasCanonicalCorps && ModCharacters.LEGACY_CORPS_ID.equals(character.id())) {
-                    continue;
-                }
-                String uniqueId = ModCharacters.LEGACY_CORPS_ID.equals(character.id())
-                        ? ModCharacters.CORPS_ID
-                        : character.id();
-                if (seenIds.add(uniqueId)) {
-                    characters.add(character);
-                }
-            }
-            normalized.add(new CharacterBranch(branch.id(), branch.name(),
-                    branch.nameTranslationKey(), characters));
-        }
-        return List.copyOf(normalized);
     }
 
     public static List<CharacterBranch> selectionCatalog() {
@@ -347,7 +322,9 @@ public final class ClientCharacterSelectionState {
             return;
         }
 
-        DFGUI_MAIN.openToOperator();
+        Minecraft minecraft = Minecraft.getInstance();
+        // 打开 DFGUI_MAIN 主界面的特战干员标签页，而不是独立的 CharacterSelectionScreen
+        mccfk.DeltaForce.java.client.screen.DFGUI_MAIN.openToOperator();
         promptedForCurrentWorld = true;
     }
 
@@ -362,6 +339,7 @@ public final class ClientCharacterSelectionState {
 
         promptedForCurrentWorld = true;
         NetworkHandler.sendToServer(new C2S_SelectCharacter(characterId));
+        Minecraft.getInstance().setScreen(null);
     }
 
     public static boolean canReselectInCurrentMode() {

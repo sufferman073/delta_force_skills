@@ -7,17 +7,32 @@ import com.rzy.dealt_force_skills.character.CharacterRole;
 import com.rzy.dealt_force_skills.character.SkillDefinition;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_SyncCharacterAvailability {
+public class S2C_SyncCharacterAvailability implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncCharacterAvailability> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_character_availability"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncCharacterAvailability> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncCharacterAvailability::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final Map<String, String> unavailableReasons;
     private final List<CharacterBranch> branches;
 
@@ -70,15 +85,11 @@ public class S2C_SyncCharacterAvailability {
         return new S2C_SyncCharacterAvailability(unavailableReasons, branches);
     }
 
-    public static void handle(S2C_SyncCharacterAvailability msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> {
+    public static void handle(S2C_SyncCharacterAvailability msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
                     ClientCharacterSelectionState.syncSelectionCatalog(msg.branches);
                     ClientCharacterSelectionState.syncCharacterAvailability(msg.unavailableReasons);
-                }
-        ));
-        ctx.get().setPacketHandled(true);
+                });
     }
 
     private static void writeCharacter(FriendlyByteBuf buf, CharacterDefinition character) {

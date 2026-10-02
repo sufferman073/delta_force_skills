@@ -4,11 +4,27 @@ import com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaInputAction;
 import com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaStateManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record C2S_LexNinjiaInput(LexNinjiaInputAction action) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_LexNinjiaInput> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_lex_ninjia_input"));
 
-public record C2S_LexNinjiaInput(LexNinjiaInputAction action) {
+    public static final StreamCodec<FriendlyByteBuf, C2S_LexNinjiaInput> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_LexNinjiaInput::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public static void encode(C2S_LexNinjiaInput msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.action.ordinal());
     }
@@ -22,13 +38,12 @@ public record C2S_LexNinjiaInput(LexNinjiaInputAction action) {
         return new C2S_LexNinjiaInput(action);
     }
 
-    public static void handle(C2S_LexNinjiaInput msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_LexNinjiaInput msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player != null && !player.isSpectator()) {
                 LexNinjiaStateManager.handleInput(player, msg.action);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

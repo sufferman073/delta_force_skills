@@ -5,6 +5,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 
 public class CharacterFrameworkEffect extends MobEffect {
     public CharacterFrameworkEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0x55AAFF);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 }

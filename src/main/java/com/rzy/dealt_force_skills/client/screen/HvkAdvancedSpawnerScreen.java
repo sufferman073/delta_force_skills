@@ -88,7 +88,7 @@ public final class HvkAdvancedSpawnerScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int left = (width - PANEL_WIDTH) / 2;
         int top = Math.max(20, (height - 270) / 2);
         graphics.fill(left, top, left + PANEL_WIDTH, top + 270, 0xE0101519);

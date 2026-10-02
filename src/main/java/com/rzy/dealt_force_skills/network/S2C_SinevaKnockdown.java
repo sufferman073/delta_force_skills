@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_SinevaKnockdown implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SinevaKnockdown> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sineva_knockdown"));
 
-public class S2C_SinevaKnockdown {
+    public static final StreamCodec<FriendlyByteBuf, S2C_SinevaKnockdown> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SinevaKnockdown::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int entityId;
     private final int ticks;
     private final float yaw;
@@ -28,11 +42,7 @@ public class S2C_SinevaKnockdown {
         return new S2C_SinevaKnockdown(buf.readVarInt(), buf.readVarInt(), buf.readFloat());
     }
 
-    public static void handle(S2C_SinevaKnockdown msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientSinevaKnockdownState.sync(msg.entityId, msg.ticks, msg.yaw)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_SinevaKnockdown msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientSinevaKnockdownState.sync(msg.entityId, msg.ticks, msg.yaw));
     }
 }

@@ -1,23 +1,26 @@
 package com.rzy.dealt_force_skills.effect;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.resources.ResourceLocation;
 
 public class CorpsDecayedSoldierEffect extends PlannedStatusEffect {
     public CorpsDecayedSoldierEffect() {
-        super(MobEffectCategory.HARMFUL, 0x5A6B45);
+        super(MobEffectCategory.HARMFUL, 0xFFFFFF);
         addAttributeModifier(Attributes.MAX_HEALTH,
-                "10fbe5de-34b6-49ef-b164-ec66c488f7b3",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.corps_decayed_soldier.max_health"),
                 -0.25D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
         addAttributeModifier(Attributes.MOVEMENT_SPEED,
-                "77df719f-a271-40ce-8142-96ac99e046c7",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.corps_decayed_soldier.movement_speed"),
                 -0.25D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
         addAttributeModifier(Attributes.ATTACK_DAMAGE,
-                "07c8fb34-9e24-418e-9d16-ceb71cb9dded",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.corps_decayed_soldier.attack_damage"),
                 -0.50D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 }

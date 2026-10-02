@@ -7,7 +7,6 @@ import com.rzy.dealt_force_skills.client.DWolfInputHandler;
 import com.rzy.dealt_force_skills.client.character.ClientDWolfHudState;
 import com.rzy.dealt_force_skills.client.renderer.BlockbenchAnimatedModelRenderer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -15,20 +14,21 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class DWolfPlaceholderVisuals {
     public static final ResourceLocation HAND_CANNON_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "d_wolf_hand_cannon");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "d_wolf_hand_cannon");
     public static final ResourceLocation SMOKE_GRENADE_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "d_wolf_smoke_grenade");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "d_wolf_smoke_grenade");
     private static final String HAND_CANNON_KEY = "d_wolf_hand_cannon";
     private static final String SMOKE_GRENADE_KEY = "d_wolf_smoke_grenade";
     private static boolean savedThirdPersonArm;
@@ -53,7 +53,7 @@ public final class DWolfPlaceholderVisuals {
         boolean handCannon = ClientDWolfHudState.hasHandCannonEquipped()
                 || ClientToolModelAnimationState.isActive(HAND_CANNON_KEY);
         ResourceLocation model = handCannon ? HAND_CANNON_MODEL : SMOKE_GRENADE_MODEL;
-        float worldSeconds = (minecraft.level.getGameTime() + event.getPartialTick()) / 20.0F
+        float worldSeconds = (minecraft.level.getGameTime() + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F
                 * ClientToolModelAnimationState.FAST_PLAYBACK_SPEED;
         ClientToolModelAnimationState.AnimationFrame frame = ClientToolModelAnimationState.frame(
                 handCannon ? HAND_CANNON_KEY : SMOKE_GRENADE_KEY,
@@ -66,18 +66,6 @@ public final class DWolfPlaceholderVisuals {
                 : 0.0F;
 
         PoseStack poseStack = event.getPoseStack();
-        AbstractClientPlayer player = minecraft.player;
-        if (handCannon && player != null) {
-            poseStack.pushPose();
-            poseStack.translate(0.54D, -0.50D, -0.84D - extension);
-            poseStack.mulPose(Axis.YP.rotationDegrees(-20.0F));
-            poseStack.mulPose(Axis.XP.rotationDegrees(-16.0F));
-            poseStack.scale(0.78F, 0.78F, 0.78F);
-            CharacterSkinOverrideVisuals.renderRightHand(
-                    poseStack, event.getMultiBufferSource(), event.getPackedLight(), player);
-            poseStack.popPose();
-        }
-
         poseStack.pushPose();
         if (handCannon) {
             poseStack.translate(0.47D, -0.47D, -0.82D - extension);
@@ -135,7 +123,7 @@ public final class DWolfPlaceholderVisuals {
         savedRightArmY = rightArm.yRot;
         savedRightArmZ = rightArm.zRot;
         savedThirdPersonArm = true;
-        ClientToolModelAnimationState.AnimationFrame frame = handCannonFrame(event.getPartialTick());
+        ClientToolModelAnimationState.AnimationFrame frame = handCannonFrame(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         if ("fire".equals(frame.animation())) {
             float thrust = Mth.sin(Mth.clamp(frame.seconds() / 0.45F, 0.0F, 1.0F) * Mth.PI);
             rightArm.xRot = -1.45F - thrust * 0.18F;
@@ -158,7 +146,7 @@ public final class DWolfPlaceholderVisuals {
         poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F));
         poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
         poseStack.scale(0.55F, 0.55F, 0.55F);
-        ClientToolModelAnimationState.AnimationFrame frame = handCannonFrame(event.getPartialTick());
+        ClientToolModelAnimationState.AnimationFrame frame = handCannonFrame(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         BlockbenchAnimatedModelRenderer.render(
                 HAND_CANNON_MODEL, frame.animation(), frame.seconds(), poseStack,
                 event.getMultiBufferSource(), event.getPackedLight());

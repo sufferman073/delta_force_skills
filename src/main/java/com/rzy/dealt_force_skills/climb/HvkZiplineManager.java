@@ -23,16 +23,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Server-authoritative "zipline" traversal over a network glued by the HVK Universal Glue item
- * (see {@link HvkClimbGlueManager}). Right-clicking a glued block (handled in
- * {@link HvkZiplineEvents}) picks the end of the glued 6-connected network that best matches the
- * player's look direction and carries the player there.
- * <p>
- * Movement is driven by arc-length parameterization over the full waypoint polyline rather than
- * per-waypoint velocity: waypoints are spaced ~1 block apart while the ride speed can exceed that,
- * so interpolating each tick avoids overshoot/oscillation around individual waypoints.
- */
 public final class HvkZiplineManager {
     private static final ConcurrentHashMap<UUID, Ride> RIDES = new ConcurrentHashMap<>();
     private static final double DEFAULT_SPEED = 2.15D;
@@ -51,7 +41,6 @@ public final class HvkZiplineManager {
         return RIDES.containsKey(player.getUUID());
     }
 
-    /** @return whether a ride was actually started (false if the network has no path to follow from here). */
     public static boolean beginRide(ServerPlayer player, ServerLevel level, BlockPos origin) {
         if (isRiding(player)) {
             return true;

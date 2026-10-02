@@ -5,6 +5,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 
 public class VyronPoweredEffect extends MobEffect {
     public VyronPoweredEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0x53C1FF);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 }

@@ -1,0 +1,23 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:mhs_tactical_helmet"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

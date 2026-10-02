@@ -195,10 +195,6 @@ public final class SaeedStateManager {
         syncToClient(player);
     }
 
-    /**
-     * Clears tactical-point currency and prestige purchase progress (prestige back to 1).
-     * Active guards are left alone; only the shop/recruit purchase state is reset.
-     */
     public static void clearPurchaseProgress(ServerPlayer player) {
         initializeIfNeeded(player);
         CompoundTag tag = data(player);

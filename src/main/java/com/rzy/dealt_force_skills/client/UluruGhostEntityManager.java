@@ -12,7 +12,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,7 +88,7 @@ public final class UluruGhostEntityManager {
         Vec3 cameraPos = event.getCamera().getPosition();
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
-        float partialTick = event.getPartialTick();
+        float partialTick = com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick());
         for (Ghost ghost : GHOSTS.values()) {
             Entity entity = ghost.entity;
             if (entity.isRemoved()) {

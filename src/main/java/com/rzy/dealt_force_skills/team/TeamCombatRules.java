@@ -55,7 +55,7 @@ public final class TeamCombatRules {
             return false;
         }
 
-        MobEffect effect = instance.getEffect();
+        MobEffect effect = instance.getEffect().value();
         boolean harmful = isHarmfulOrControl(effect);
         boolean beneficial = effect.getCategory() == MobEffectCategory.BENEFICIAL;
 

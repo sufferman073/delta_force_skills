@@ -1,0 +1,35 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:mechanical_worker_bee_model"
+                        },
+                        {
+                            "item":  "dealt_force_skills:electric_motor"
+                        },
+                        {
+                            "item":  "dealt_force_skills:electric_motor"
+                        },
+                        {
+                            "item":  "dealt_force_skills:electric_motor"
+                        },
+                        {
+                            "item":  "dealt_force_skills:electric_motor"
+                        },
+                        {
+                            "item":  "dealt_force_skills:lens"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:h70_night_vision_elite_helmet"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

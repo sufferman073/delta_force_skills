@@ -5,6 +5,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 
 public class NoxStealthEffect extends MobEffect {
     public NoxStealthEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0x111821);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 }

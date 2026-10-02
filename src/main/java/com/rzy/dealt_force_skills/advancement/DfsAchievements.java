@@ -15,7 +15,7 @@ import com.rzy.dealt_force_skills.entity.StingerSmokeCloudEntity;
 import com.rzy.dealt_force_skills.entity.ToxikTearGasCloudEntity;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.team.DealtTeamManager;
-import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -23,6 +23,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
@@ -123,14 +124,14 @@ public final class DfsAchievements {
         recordStingerCombatViolation(killer, characterId);
         recordTempestEmergencyKill(killer, victim, characterId, now);
         recordNikaidouCoreKill(killer, characterId, now);
-        recordNikaidouWitchPostRemnantKill(killer, victim, characterId, now);
         recordGhrothNoonKill(killer, victim, characterId, now);
         recordUndeadLowHealthSwitchKill(killer, characterId, now);
         recordToxikAdrenalineAction(killer, "kill");
-        recordSelfExplosionOtherKill(killer, victim, source);
-        recordNoHealKill(killer, data);
+        recordNikaidouWitchPostRemnantKill(killer, victim, characterId, now);
         recordCorpsMaxBoostKill(killer, victim, characterId);
         recordChamberCleanPlayerKill(killer, victim, characterId);
+        recordSelfExplosionOtherKill(killer, victim, source);
+        recordNoHealKill(killer, data);
         if (victim instanceof ServerPlayer targetPlayer) {
             recordBaitPropLookKill(killer, targetPlayer);
         }
@@ -140,7 +141,7 @@ public final class DfsAchievements {
     public static void recordNoxFirstDelayedWound(ServerPlayer owner, LivingEntity target, boolean firstWound) {
         if (owner == null || target == null || !firstWound || target.getHealth() <= 250.0F
                 || !isSelected(owner, ModCharacters.NOX_ID)
-                || !target.hasEffect(ModEffects.NOX_DELAYED_WOUND.get())) {
+                || !target.hasEffect(ModEffects.NOX_DELAYED_WOUND)) {
             return;
         }
         target.getPersistentData().putUUID(NOX_FIRST_WOUND_OWNER, owner.getUUID());
@@ -148,7 +149,7 @@ public final class DfsAchievements {
 
     public static void recordNoxDelayedWoundAssistDeath(ServerLevel level, LivingEntity target, DamageSource source) {
         if (level == null || target == null || source == null
-                || !target.hasEffect(ModEffects.NOX_DELAYED_WOUND.get())) {
+                || !target.hasEffect(ModEffects.NOX_DELAYED_WOUND)) {
             return;
         }
         CompoundTag targetData = target.getPersistentData();
@@ -656,7 +657,7 @@ public final class DfsAchievements {
 
     public static void recordToxikAdrenalineAction(ServerPlayer player, String action) {
         if (player == null || action == null || !isSelected(player, ModCharacters.TOXIK_ID)
-                || !player.hasEffect(ModEffects.TOXIK_ADRENALINE.get())) {
+                || !player.hasEffect(ModEffects.TOXIK_ADRENALINE)) {
             return;
         }
         int actions = windowUnique(data(player), "toxik.adrenaline_actions", normalizeId(action), gameTime(player), 20 * 20);
@@ -1081,26 +1082,26 @@ public final class DfsAchievements {
 
     private static void recordEffectBasedDamageMilestones(ServerPlayer attacker, LivingEntity target, String msg,
                                                           long now, CompoundTag data, String characterId) {
-        if (has(target, ModEffects.MORSE_SONAR_REVEALED.get()) && ModCharacters.MORSE_ID.equals(characterId)) {
+        if (has(target, ModEffects.MORSE_SONAR_REVEALED) && ModCharacters.MORSE_ID.equals(characterId)) {
             recordMorseAlertDamage(attacker, target);
         }
-        if (has(target, ModEffects.HACKCLAW_FLASH_BLIND.get()) && ModCharacters.HACKCLAW_ID.equals(characterId)) {
+        if (has(target, ModEffects.HACKCLAW_FLASH_BLIND) && ModCharacters.HACKCLAW_ID.equals(characterId)) {
             data.putLong("hackclaw.flash_damaged." + target.getUUID(), now + 8L * 20L);
         }
-        if (has(target, ModEffects.RAPTOR_HUMMINGBIRD_MARKED.get()) && ModCharacters.RAPTOR_ID.equals(characterId)) {
+        if (has(target, ModEffects.RAPTOR_HUMMINGBIRD_MARKED) && ModCharacters.RAPTOR_ID.equals(characterId)) {
             data.putLong("raptor.hummingbird_marked." + target.getUUID(), now + 10L * 20L);
         }
-        if (has(target, ModEffects.NIKAIDOU_CORRECTION.get()) && ModCharacters.NIKAIDOU_HIRO_ID.equals(characterId)) {
+        if (has(target, ModEffects.NIKAIDOU_CORRECTION) && ModCharacters.NIKAIDOU_HIRO_ID.equals(characterId)) {
             data.putLong("nikaidou.corrected." + target.getUUID(), now + 10L * 20L);
         }
-        if (has(target, ModEffects.VLINDER_PLASMA_INJECTED.get()) && ModCharacters.VLINDER_ID.equals(characterId)) {
+        if (has(target, ModEffects.VLINDER_PLASMA_INJECTED) && ModCharacters.VLINDER_ID.equals(characterId)) {
             data.putLong("vlinder.plasma." + target.getUUID(), now + 10L * 20L);
         }
-        if (has(target, ModEffects.SONIC_SHOCK.get()) && isMsg(msg, "shepherd_frag_grenade")
+        if (has(target, ModEffects.SONIC_SHOCK) && isMsg(msg, "shepherd_frag_grenade")
                 && ModCharacters.SHEPHERD_ID.equals(characterId)) {
             data.putLong("shepherd.frag_sonic." + target.getUUID(), now + 30L * 20L);
         }
-        if (has(target, ModEffects.NOX_DELAYED_WOUND.get()) && ModCharacters.NOX_ID.equals(characterId)
+        if (has(target, ModEffects.NOX_DELAYED_WOUND) && ModCharacters.NOX_ID.equals(characterId)
                 && target.getMaxHealth() > 250.0F) {
             data.putLong("nox.large_delayed_target." + target.getUUID(), now + 20L * 20L);
         }
@@ -1147,7 +1148,7 @@ public final class DfsAchievements {
             return;
         }
         if (isMsg(msg, "nikaidou_weapon") || isMsg(msg, "nikaidou_decay")) {
-            if (ModCharacters.NIKAIDOU_HIRO_ID.equals(characterId) && has(killer, ModEffects.NIKAIDOU_CORE.get())) {
+            if (ModCharacters.NIKAIDOU_HIRO_ID.equals(characterId) && has(killer, ModEffects.NIKAIDOU_CORE)) {
                 recordNikaidouCoreKill(killer, characterId, now);
             }
         }
@@ -1155,35 +1156,35 @@ public final class DfsAchievements {
 
     private static void recordKillEffectMilestones(ServerPlayer killer, LivingEntity victim, long now,
                                                    CompoundTag data, String characterId) {
-        if (has(victim, ModEffects.HACKCLAW_FLASH_BLIND.get()) && ModCharacters.HACKCLAW_ID.equals(characterId)
+        if (has(victim, ModEffects.HACKCLAW_FLASH_BLIND) && ModCharacters.HACKCLAW_ID.equals(characterId)
                 && data.getLong("hackclaw.double_flash_until") >= now) {
             award(killer, green(26));
         }
-        if (has(victim, ModEffects.NOX_FLASHED.get()) && ModCharacters.NOX_ID.equals(characterId)
+        if (has(victim, ModEffects.NOX_FLASHED) && ModCharacters.NOX_ID.equals(characterId)
                 && data.getLong("nox.flash_four." + victim.getUUID()) >= now) {
             award(killer, purple(6));
         }
-        if (has(victim, ModEffects.HACKCLAW_FLASH_BLIND.get())
-                || has(victim, ModEffects.MORSE_FLASH_BLIND.get())
-                || has(victim, ModEffects.NOX_FLASHED.get())
-                || has(victim, ModEffects.MANBA_BLINDED.get())
-                || has(victim, ModEffects.TOXIK_TEAR_GAS_BLIND.get())) {
+        if (has(victim, ModEffects.HACKCLAW_FLASH_BLIND)
+                || has(victim, ModEffects.MORSE_FLASH_BLIND)
+                || has(victim, ModEffects.NOX_FLASHED)
+                || has(victim, ModEffects.MANBA_BLINDED)
+                || has(victim, ModEffects.TOXIK_TEAR_GAS_BLIND)) {
             markDeathDebuff(killer, victim, "blind", now);
         }
-        if (has(victim, ModEffects.SONIC_SHOCK.get()) || has(victim, ModEffects.MORSE_STRONG_SHOCK.get())) {
+        if (has(victim, ModEffects.SONIC_SHOCK) || has(victim, ModEffects.MORSE_STRONG_SHOCK)) {
             markDeathDebuff(killer, victim, "deaf", now);
         }
-        if (has(victim, ModEffects.HACKCLAW_INTERFERENCE.get())
-                || has(victim, ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE.get())
-                || has(victim, ModEffects.TOXIK_FIREFLY_INTERFERENCE.get())
-                || has(victim, ModEffects.VLINDER_MEDICAL_WASTE_INTERFERENCE.get())) {
+        if (has(victim, ModEffects.HACKCLAW_INTERFERENCE)
+                || has(victim, ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE)
+                || has(victim, ModEffects.TOXIK_FIREFLY_INTERFERENCE)
+                || has(victim, ModEffects.VLINDER_MEDICAL_WASTE_INTERFERENCE)) {
             markDeathDebuff(killer, victim, "interference", now);
         }
         int deathDebuffs = countRecentDeathDebuffs(data, victim.getUUID(), now);
         if (deathDebuffs >= 3) {
             award(killer, purple(50));
         }
-        if (has(victim, ModEffects.RAPTOR_HUMMINGBIRD_MARKED.get()) && ModCharacters.RAPTOR_ID.equals(characterId)) {
+        if (has(victim, ModEffects.RAPTOR_HUMMINGBIRD_MARKED) && ModCharacters.RAPTOR_ID.equals(characterId)) {
             recordRaptorHummingbirdKill(killer, victim instanceof ServerPlayer player ? player : null);
         }
         if (data.getLong("luna.armor_break." + victim.getUUID()) + 5L * 20L >= now
@@ -1264,7 +1265,7 @@ public final class DfsAchievements {
     }
 
     private static void recordNoxStealthKill(ServerPlayer killer, LivingEntity victim, String characterId, long now) {
-        if (!ModCharacters.NOX_ID.equals(characterId) || !has(killer, ModEffects.NOX_STEALTH.get())) {
+        if (!ModCharacters.NOX_ID.equals(characterId) || !has(killer, ModEffects.NOX_STEALTH)) {
             return;
         }
         if (isBehind(killer, victim)) {
@@ -1302,7 +1303,7 @@ public final class DfsAchievements {
         if (!ModCharacters.CORPS_ID.equals(characterId) || victim == null) {
             return;
         }
-        MobEffectInstance boost = killer.getEffect(ModEffects.CORPS_LOYALTY_BOOST.get());
+        MobEffectInstance boost = killer.getEffect(ModEffects.CORPS_LOYALTY_BOOST);
         if (boost == null || boost.getAmplifier() < 19) {
             return;
         }
@@ -1449,8 +1450,8 @@ public final class DfsAchievements {
     }
 
     private static void recordDepartmentLaserCalibration(ServerPlayer attacker, LivingEntity target) {
-        if (target instanceof ServerPlayer && has(target, ModEffects.DEPARTMENT_CALIBRATION.get())) {
-            int stacks = target.getEffect(ModEffects.DEPARTMENT_CALIBRATION.get()).getAmplifier() + 1;
+        if (target instanceof ServerPlayer && has(target, ModEffects.DEPARTMENT_CALIBRATION)) {
+            int stacks = target.getEffect(ModEffects.DEPARTMENT_CALIBRATION).getAmplifier() + 1;
             recordDepartmentCalibration(attacker, target, stacks);
         }
     }
@@ -1480,22 +1481,22 @@ public final class DfsAchievements {
     private static void recordStrongControlChain(ServerPlayer attacker, LivingEntity target, long now) {
         CompoundTag data = data(attacker);
         UUID id = target.getUUID();
-        if (has(target, ModEffects.WEBBED.get())) {
+        if (has(target, ModEffects.WEBBED)) {
             markControl(data, id, "web", now);
         }
-        if (has(target, ModEffects.STUN.get())) {
+        if (has(target, ModEffects.STUN)) {
             markControl(data, id, "stun", now);
         }
-        if (has(target, ModEffects.TEMPEST_DISARMED.get())) {
+        if (has(target, ModEffects.TEMPEST_DISARMED)) {
             markControl(data, id, "disarm", now);
         }
-        if (has(target, ModEffects.TEMPEST_EMERGENCY_DOWNED.get())
-                || has(target, ModEffects.STINGER_DOWNED.get())
-                || has(target, ModEffects.VLINDER_VITAL_DOWNED.get())
-                || has(target, ModEffects.CATDAD_DOWNED.get())) {
+        if (has(target, ModEffects.TEMPEST_EMERGENCY_DOWNED)
+                || has(target, ModEffects.STINGER_DOWNED)
+                || has(target, ModEffects.VLINDER_VITAL_DOWNED)
+                || has(target, ModEffects.CATDAD_DOWNED)) {
             markControl(data, id, "downed", now);
         }
-        if (has(target, ModEffects.RAPTOR_ACTION_PAUSE.get())) {
+        if (has(target, ModEffects.RAPTOR_ACTION_PAUSE)) {
             markControl(data, id, "pause", now);
         }
         if (recentControls(data, id, now) >= 3) {
@@ -1572,8 +1573,8 @@ public final class DfsAchievements {
         if (!isSelected(player, ModCharacters.UNDEAD_ID) || !isNoEquipmentAndHandsBlocksOnly(player)) {
             return;
         }
-        Advancement exploreNether = player.server.getAdvancements()
-                .getAdvancement(new ResourceLocation("minecraft", "nether/explore_nether"));
+        AdvancementHolder exploreNether = player.server.getAdvancements()
+                .get(ResourceLocation.fromNamespaceAndPath("minecraft", "nether/explore_nether"));
         if (exploreNether != null && player.getAdvancements().getOrStartProgress(exploreNether).isDone()) {
             award(player, purple(46));
         }
@@ -1668,7 +1669,7 @@ public final class DfsAchievements {
         return victimHorizontal.normalize().dot(horizontal.normalize()) < -0.45D;
     }
 
-    private static boolean has(LivingEntity entity, MobEffect effect) {
+    private static boolean has(LivingEntity entity, Holder<MobEffect> effect) {
         return entity != null && effect != null && entity.hasEffect(effect);
     }
 
@@ -1684,7 +1685,7 @@ public final class DfsAchievements {
         if (player == null || path == null || path.isBlank()) {
             return;
         }
-        Advancement advancement = advancement(player, path);
+        AdvancementHolder advancement = advancement(player, path);
         if (advancement == null) {
             return;
         }
@@ -1694,28 +1695,18 @@ public final class DfsAchievements {
         }
     }
 
-    public static void awardAll(ServerPlayer player) {
-        if (player == null) return;
-        for (Advancement advancement : player.server.getAdvancements().getAllAdvancements()) {
-            AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancement);
-            List<String> remaining = new ArrayList<>();
-            progress.getRemainingCriteria().forEach(remaining::add);
-            for (String criterion : remaining) player.getAdvancements().award(advancement, criterion);
-        }
-    }
-
-    private static Advancement advancement(ServerPlayer player, String path) {
-        return player.server.getAdvancements().getAdvancement(
-                new ResourceLocation(DealtForceSkillsMod.MODID, "delta_force_skills/" + path));
+    private static AdvancementHolder advancement(ServerPlayer player, String path) {
+        return player.server.getAdvancements().get(
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "delta_force_skills/" + path));
     }
 
     private static boolean isDone(ServerPlayer player, String path) {
-        Advancement advancement = advancement(player, path);
+        AdvancementHolder advancement = advancement(player, path);
         return advancement != null && player.getAdvancements().getOrStartProgress(advancement).isDone();
     }
 
     private static void tryAwardFinal(ServerPlayer player) {
-        Advancement finalAdvancement = advancement(player, FINAL);
+        AdvancementHolder finalAdvancement = advancement(player, FINAL);
         if (finalAdvancement == null || player.getAdvancements().getOrStartProgress(finalAdvancement).isDone()) {
             return;
         }
@@ -1813,5 +1804,15 @@ public final class DfsAchievements {
             paths.add(purple(i));
         }
         return List.copyOf(paths);
+    }
+
+    public static void awardAll(ServerPlayer player) {
+        if (player == null) return;
+        for (AdvancementHolder advancement : player.server.getAdvancements().getAllAdvancements()) {
+            AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancement);
+            List<String> remaining = new ArrayList<>();
+            progress.getRemainingCriteria().forEach(remaining::add);
+            for (String criterion : remaining) player.getAdvancements().award(advancement, criterion);
+        }
     }
 }

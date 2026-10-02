@@ -5,14 +5,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ClientTempestParCoolBridge {
     private static final int CAMERA_DIP_TICKS = 9;
     private static int cameraDipTicks;
@@ -28,20 +28,20 @@ public final class ClientTempestParCoolBridge {
         cameraDipTicks = CAMERA_DIP_TICKS;
         try {
             // 通过反射调用 ParCool Roll，避免编译期硬依赖；若模组未安装则静默跳过
-            Class<?> parkourabilityClass = Class.forName("com.alrex.parcool.common.capability.Parkourability");
+            Class<?> parkourabilityClass = Class.forName("com.alrex.parcool.common.attachment.common.Parkourability");
             Class<?> rollClass = Class.forName("com.alrex.parcool.common.action.impl.Roll");
             Object parkourability = parkourabilityClass.getMethod("get", Player.class).invoke(null, player);
             if (parkourability != null) {
-                float prevFwd = player.input.forwardImpulse;
-                float prevLft = player.input.leftImpulse;
+                float previousForward = player.input.forwardImpulse;
+                float previousLeft = player.input.leftImpulse;
                 try {
                     player.input.forwardImpulse = 1.0F;
                     player.input.leftImpulse = 0.0F;
                     Object roll = parkourabilityClass.getMethod("get", Class.class).invoke(parkourability, rollClass);
                     rollClass.getMethod("startRoll", Player.class).invoke(roll, player);
                 } finally {
-                    player.input.forwardImpulse = prevFwd;
-                    player.input.leftImpulse = prevLft;
+                    player.input.forwardImpulse = previousForward;
+                    player.input.leftImpulse = previousLeft;
                 }
             }
         } catch (ClassNotFoundException | NoClassDefFoundError ignored) {
@@ -62,7 +62,7 @@ public final class ClientTempestParCoolBridge {
             return;
         }
 
-        float partialTick = (float) event.getPartialTick();
+        float partialTick = (float) com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick());
         float elapsed = Mth.clamp(CAMERA_DIP_TICKS - cameraDipTicks + partialTick, 0.0F, (float) CAMERA_DIP_TICKS);
         float progress = elapsed / (float) CAMERA_DIP_TICKS;
         float dip = Mth.sin(progress * (float) Math.PI) * 10.0F;
@@ -72,8 +72,8 @@ public final class ClientTempestParCoolBridge {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || cameraDipTicks <= 0) {
+    public static void onClientTick(ClientTickEvent.Post event) {
+        if (cameraDipTicks <= 0) {
             return;
         }
         if (Minecraft.getInstance().player == null) {

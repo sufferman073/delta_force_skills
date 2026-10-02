@@ -1,16 +1,23 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.config.ConfigEntryData;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-public final class S2C_ConfigSnapshot {
+public final class S2C_ConfigSnapshot implements CustomPacketPayload {
+    public static final Type<S2C_ConfigSnapshot> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_config_snapshot"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_ConfigSnapshot> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), S2C_ConfigSnapshot::decode);
+
     private final int chunkIndex;
     private final int totalChunks;
     private final boolean canEdit;
@@ -28,6 +35,11 @@ public final class S2C_ConfigSnapshot {
         this.canEdit = canEdit;
         this.lastChunk = lastChunk;
         this.entries = entries == null ? List.of() : List.copyOf(entries);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
     public static void encode(S2C_ConfigSnapshot msg, FriendlyByteBuf buf) {
@@ -54,10 +66,8 @@ public final class S2C_ConfigSnapshot {
         return new S2C_ConfigSnapshot(chunkIndex, totalChunks, canEdit, lastChunk, entries);
     }
 
-    public static void handle(S2C_ConfigSnapshot msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                DealtForceConfigScreen.acceptServerChunk(
-                        msg.chunkIndex, msg.totalChunks, msg.canEdit, msg.lastChunk, msg.entries)));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_ConfigSnapshot msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> DealtForceConfigScreen.acceptServerChunk(
+                msg.chunkIndex, msg.totalChunks, msg.canEdit, msg.lastChunk, msg.entries));
     }
 }

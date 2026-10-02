@@ -25,8 +25,7 @@ public final class NoxSkills {
 
     public static boolean useSkill(ServerPlayer player, SkillSlot slot, boolean alternate) {
         NoxStateManager.initializeIfNeeded(player);
-        if (NoxStateManager.isStealthed(player) && slot != SkillSlot.CORE
-                && !NoxStateManager.preservesStealth(player)) {
+        if (NoxStateManager.isStealthed(player) && slot != SkillSlot.CORE) {
             NoxStateManager.endStealthEarly(player);
             return true;
         }
@@ -43,7 +42,7 @@ public final class NoxSkills {
             return false;
         }
         NoxStateManager.initializeIfNeeded(player);
-        if (NoxStateManager.isStealthed(player) && !NoxStateManager.preservesStealth(player)) {
+        if (NoxStateManager.isStealthed(player)) {
             NoxStateManager.endStealthEarly(player);
             return true;
         }

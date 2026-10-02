@@ -1,16 +1,14 @@
 package com.rzy.dealt_force_skills.entity;
 
-import com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper;
 import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
+import com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper;
 import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
@@ -25,7 +23,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupplier {
     private static volatile double FIRE_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FIRE_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.uluruincendiarygrenadeentity.fire_radius", 6.0));
@@ -48,7 +46,7 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -89,11 +87,6 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.putBoolean("EarthFire", earthFire);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private void handleBlockHit(BlockHitResult hit) {

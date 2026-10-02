@@ -14,13 +14,13 @@ import mccfk.DeltaForce.java.client.screen.DFGUI_MAIN;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.InputEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class GamblerInputHandler {
     private static final int POWER_SCREEN_HOLD_TICKS = 15;
     private static final int ACTIVE1_MULTI_HOLD_TICKS = 15;
@@ -46,18 +46,7 @@ public final class GamblerInputHandler {
             ClientGamblerTargetingState.clearAll();
             return;
         }
-        if (minecraft.screen != null) {
-            ClientGamblerTargetingState.clearPending();
-            resetSelection();
-            resetActive1();
-            resetTargetUse();
-            return;
-        }
         ClientGamblerTargetingState.tick(minecraft);
-        if (ClientGamblerTargetingState.hasPendingTargetPower() && anyCharacterKeyDown()) {
-            ClientGamblerTargetingState.clearPending();
-            resetTargetUse();
-        }
         if (handlePowerTargeting(minecraft)) {
             resetSelection();
             resetActive1();
@@ -65,13 +54,6 @@ public final class GamblerInputHandler {
         }
         handleSelectionKey(minecraft);
         handleActive1Key(minecraft);
-    }
-
-    private static boolean anyCharacterKeyDown() {
-        return (KeybindRegister.CHARACTER_SELECT != null && KeybindRegister.CHARACTER_SELECT.isDown())
-                || (KeybindRegister.ACTIVE_SKILL_1 != null && KeybindRegister.ACTIVE_SKILL_1.isDown())
-                || (KeybindRegister.ACTIVE_SKILL_2 != null && KeybindRegister.ACTIVE_SKILL_2.isDown())
-                || (KeybindRegister.CORE_SKILL != null && KeybindRegister.CORE_SKILL.isDown());
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -106,8 +88,10 @@ public final class GamblerInputHandler {
             if (selectionHeldTicks >= POWER_SCREEN_HOLD_TICKS && !selectionLongOpened) {
                 selectionLongOpened = true;
                 if ((!creative && !sneak) || (creative && sneak)) {
+                    // 自身机制面板
                     GamblerPowerScreen.open();
                 } else {
+                    // 长按特勤处
                     DFGUI_MAIN.openToLogistics();
                 }
             }
@@ -119,8 +103,10 @@ public final class GamblerInputHandler {
         if (!selectionLongOpened) {
             boolean creative = minecraft.player != null && minecraft.player.getAbilities().instabuild;
             if (creative) {
+                // 创造短按→选人
                 DFGUI_MAIN.openToOperator();
             } else {
+                // 非创造短按→商店
                 NetworkHandler.sendToServer(new C2S_OpenSelectionOrShop());
             }
         }
@@ -171,7 +157,6 @@ public final class GamblerInputHandler {
             return true;
         }
         if (targetUseWasDown) {
-            ClientGamblerTargetingState.clearPending();
             resetTargetUse();
         }
         return true;

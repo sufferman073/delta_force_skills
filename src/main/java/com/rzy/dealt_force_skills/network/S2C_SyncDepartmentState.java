@@ -3,15 +3,30 @@ package com.rzy.dealt_force_skills.network;
 import com.rzy.dealt_force_skills.character.department.DepartmentTrapMarker;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_SyncDepartmentState {
+public class S2C_SyncDepartmentState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncDepartmentState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_department_state"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncDepartmentState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncDepartmentState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int laserCooldownTicks;
     private final int trapCooldownTicks;
     private final int coreCooldownTicks;
@@ -108,10 +123,8 @@ public class S2C_SyncDepartmentState {
                 trapCharges, markers);
     }
 
-    public static void handle(S2C_SyncDepartmentState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientDepartmentHudState.sync(
+    public static void handle(S2C_SyncDepartmentState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientDepartmentHudState.sync(
                         msg.laserCooldownTicks,
                         msg.trapCooldownTicks,
                         msg.coreCooldownTicks,
@@ -126,8 +139,6 @@ public class S2C_SyncDepartmentState {
                         msg.calibrationWindowStart,
                         msg.trapCharges,
                         msg.trapMarkers
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

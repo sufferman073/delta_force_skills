@@ -12,7 +12,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 
 public final class RoverWolfRenderer extends WolfRenderer {
     private static ResourceLocation texture(String name) {
-        return new ResourceLocation("dealt_force_skills", "textures/entity/rover_wolf/" + name + ".png");
+        return ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "textures/entity/rover_wolf/" + name + ".png");
     }
     private static final ResourceLocation NORMAL = texture("wolf");
     private static final ResourceLocation TAME = texture("wolf_tame");
@@ -26,8 +26,9 @@ public final class RoverWolfRenderer extends WolfRenderer {
             @Override public void render(PoseStack pose, MultiBufferSource buffers, int light, Wolf wolf,
                     float limb, float limbAmount, float partialTick, float age, float yaw, float pitch) {
                 if (wolf.isTame() && !wolf.isInvisible()) {
-                    float[] color = wolf.getCollarColor().getTextureDiffuseColors();
-                    renderColoredCutoutModel(getParentModel(), COLLAR, pose, buffers, light, wolf, color[0], color[1], color[2]);
+                    var vertices = buffers.getBuffer(net.minecraft.client.renderer.RenderType.entityCutoutNoCull(COLLAR));
+                    getParentModel().renderToBuffer(pose, vertices, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
+                            wolf.getCollarColor().getTextureDiffuseColor());
                 }
             }
         });

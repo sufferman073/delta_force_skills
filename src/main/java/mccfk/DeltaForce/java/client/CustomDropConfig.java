@@ -1,7 +1,7 @@
 package mccfk.DeltaForce.java.client;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ public final class CustomDropConfig {
     public static synchronized float hudScale() {
         Object v = value("customdrop.hud.scale", 0.0);
         float raw = v instanceof Number n ? n.floatValue() : 0.0F;
-        return Float.isFinite(raw) ? Math.max(-0.9F, Math.min(1.0F, raw)) : 0.0F;
+        return Math.max(-1.0F, Math.min(1.0F, raw));
     }
 
     /** X偏移（像素），默认 0 */
@@ -71,14 +71,12 @@ public final class CustomDropConfig {
         List<Integer> keys = new ArrayList<>();
         try {
             for (String part : str.split("\\+")) {
-                int key = Integer.parseInt(part.trim());
-                if (key < 32 || key > 348) return List.of();
-                keys.add(key);
+                keys.add(Integer.parseInt(part.trim()));
             }
         } catch (NumberFormatException e) {
-            return List.of(73);
+            keys.add(73);
         }
-        return List.copyOf(keys);
+        return keys;
     }
 
     /** 详情快捷键（单键，兼容旧版，返回组合键中的第一个键） */
@@ -128,7 +126,7 @@ public final class CustomDropConfig {
         value("customdrop.hud.y_offset", 0);
         value("customdrop.hud.simple_mode", false);
         value("customdrop.hud.hotkey_detailed", false);
-        value("customdrop.hud.hotkey", "73"); // I键
+        value("customdrop.hud.hotkey", 73); // I键
         config().setComment("customdrop.hud.enabled",
                 "开启屏幕HUD显示（看向自定义掉落物时在屏幕上显示品质、物品名、物品模型、介绍等信息）");
         config().setComment("customdrop.hud.scale",

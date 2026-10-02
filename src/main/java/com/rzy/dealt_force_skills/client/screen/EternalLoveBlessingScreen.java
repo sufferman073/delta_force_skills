@@ -82,7 +82,7 @@ public final class EternalLoveBlessingScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int left = (width - PANEL_WIDTH) / 2;
         int top = (height - PANEL_HEIGHT) / 2;
         graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xEE24131E);
@@ -109,15 +109,15 @@ public final class EternalLoveBlessingScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int maxScroll = Math.max(0, entries.size() - VISIBLE_ROWS);
-        int next = Math.max(0, Math.min(maxScroll, scroll + (delta < 0.0D ? 1 : -1)));
+        int next = Math.max(0, Math.min(maxScroll, scroll + (scrollY < 0.0D ? 1 : -1)));
         if (next != scroll) {
             scroll = next;
             rebuildWidgets();
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

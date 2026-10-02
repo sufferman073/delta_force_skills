@@ -13,7 +13,7 @@ public final class ModBlockTags {
      * gates and chains). Combine with {@code BlockTags.CLIMBABLE} for the full eligibility check.
      */
     public static final TagKey<Block> HVK_CLIMBABLE = TagKey.create(
-            Registries.BLOCK, new ResourceLocation(DealtForceSkillsMod.MODID, "hvk_climbable"));
+            Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "hvk_climbable"));
 
     private ModBlockTags() {
     }

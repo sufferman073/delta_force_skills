@@ -4,15 +4,19 @@ import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,9 +79,10 @@ public final class DealtShopSetConfig {
 
     public static synchronized ExportResult exportInventory(ServerPlayer player, String requestedId) {
         List<String> savedItems = new ArrayList<>();
-        exportStacks(player.getInventory().items, savedItems);
-        exportStacks(player.getInventory().armor, savedItems);
-        exportStacks(player.getInventory().offhand, savedItems);
+        HolderLookup.Provider registries = player.registryAccess();
+        exportStacks(player.getInventory().items, savedItems, registries);
+        exportStacks(player.getInventory().armor, savedItems, registries);
+        exportStacks(player.getInventory().offhand, savedItems, registries);
         if (savedItems.isEmpty()) {
             return new ExportResult("", 0, false);
         }
@@ -101,7 +106,7 @@ public final class DealtShopSetConfig {
     public static synchronized List<LoadoutSet> enabledSets() {
         List<LoadoutSet> result = new ArrayList<>();
         for (String id : setIds(config())) {
-            readSet(id).filter(LoadoutSet::enabled).ifPresent(result::add);
+            readSet(id, RegistryAccess.EMPTY).filter(LoadoutSet::enabled).ifPresent(result::add);
         }
         return result;
     }
@@ -110,7 +115,7 @@ public final class DealtShopSetConfig {
         if (entryId == null || !entryId.startsWith(ENTRY_PREFIX)) {
             return Optional.empty();
         }
-        return readSet(entryId.substring(ENTRY_PREFIX.length())).filter(LoadoutSet::enabled);
+        return readSet(entryId.substring(ENTRY_PREFIX.length()), RegistryAccess.EMPTY).filter(LoadoutSet::enabled);
     }
 
     public static String entryId(String id) {
@@ -119,31 +124,34 @@ public final class DealtShopSetConfig {
 
     public static ItemStack preview(LoadoutSet set) {
         ItemStack stack = new ItemStack(Items.CHEST);
-        stack.setHoverName(Component.literal(set.name()));
-        CompoundTag display = stack.getOrCreateTagElement("display");
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(set.name()));
+        CompoundTag rootTag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag display = rootTag.getCompound("display");
         ListTag lore = new ListTag();
-        lore.add(StringTag.valueOf(Component.Serializer.toJson(Component.literal("Price: " + set.price()))));
+        lore.add(StringTag.valueOf(Component.Serializer.toJson(Component.literal("Price: " + set.price()), RegistryAccess.EMPTY)));
         for (String line : set.summaryLines()) {
-            lore.add(StringTag.valueOf(Component.Serializer.toJson(Component.literal(line))));
+            lore.add(StringTag.valueOf(Component.Serializer.toJson(Component.literal(line), RegistryAccess.EMPTY)));
         }
         display.put("Lore", lore);
+        rootTag.put("display", display);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(rootTag));
         return stack;
     }
 
-    private static void exportStacks(List<ItemStack> stacks, List<String> savedItems) {
+    private static void exportStacks(List<ItemStack> stacks, List<String> savedItems, HolderLookup.Provider registries) {
         for (ItemStack stack : stacks) {
             if (!stack.isEmpty()) {
-                savedItems.add(stack.save(new CompoundTag()).toString());
+                savedItems.add(stack.save(registries, new CompoundTag()).toString());
             }
         }
     }
 
-    private static Optional<LoadoutSet> readSet(String id) {
+    private static Optional<LoadoutSet> readSet(String id, HolderLookup.Provider registries) {
         String root = "sets." + id + ".";
         boolean enabled = booleanValue(root + "enabled", false);
         String name = stringValue(root + "name", id);
         int price = intValue(root + "price", 0);
-        List<ItemStack> items = itemsValue(root + "items");
+        List<ItemStack> items = itemsValue(root + "items", registries);
         return items.isEmpty() ? Optional.empty() : Optional.of(new LoadoutSet(id, enabled, name, price, items));
     }
 
@@ -183,7 +191,7 @@ public final class DealtShopSetConfig {
         return value instanceof String string && !string.isBlank() ? string : defaultValue;
     }
 
-    private static List<ItemStack> itemsValue(String path) {
+    private static List<ItemStack> itemsValue(String path, HolderLookup.Provider registries) {
         Object value = value(path, List.of());
         if (!(value instanceof List<?> list)) {
             return List.of();
@@ -194,7 +202,7 @@ public final class DealtShopSetConfig {
                 continue;
             }
             try {
-                ItemStack stack = ItemStack.of(TagParser.parseTag(snbt));
+                ItemStack stack = ItemStack.parseOptional(registries, TagParser.parseTag(snbt));
                 if (!stack.isEmpty()) {
                     result.add(stack);
                 }

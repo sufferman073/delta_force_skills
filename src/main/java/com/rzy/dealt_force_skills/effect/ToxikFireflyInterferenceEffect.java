@@ -16,13 +16,15 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.resources.ResourceLocation;
 
 public class ToxikFireflyInterferenceEffect extends MobEffect {
     private static final String OWNER_TAG = DealtForceSkillsMod.MODID + ".toxik_firefly_owner";
     private static final String BASE_MAX_HEALTH_TAG = DealtForceSkillsMod.MODID + ".toxik_firefly_base_max_health";
     private static final String REDUCED_HEALTH_TAG = DealtForceSkillsMod.MODID + ".toxik_firefly_reduced_health";
-    private static final String SLOW_UUID = "ac9182cc-1ec1-4d09-b286-28fe2424c0c6";
-    private static final UUID MAX_HEALTH_MODIFIER_UUID = UUID.fromString("d2b91f85-b6f8-4c63-82b8-ef8b9c89beea");
+    private static final ResourceLocation SLOW_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "effect.toxik_firefly_interference.movement_speed");
+    private static final ResourceLocation MAX_HEALTH_MODIFIER_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "toxik_firefly_interference_effect.max_health_modifier");
     private static final String MAX_HEALTH_MODIFIER_NAME = "Toxik firefly temporary max health reduction";
     private static volatile double MAX_REDUCTION_RATIO = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_REDUCTION_RATIO", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("effects.toxikfireflyinterferenceeffect.max_reduction_ratio", 0.9999));
     private static volatile double PER_LEVEL_REDUCTION_PER_SECOND = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PER_LEVEL_REDUCTION_PER_SECOND", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
@@ -30,11 +32,10 @@ public class ToxikFireflyInterferenceEffect extends MobEffect {
    ));
     private static volatile int REDUCTION_INTERVAL_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("REDUCTION_INTERVAL_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("effects.toxikfireflyinterferenceeffect.reduction_interval_ticks", 5));
     public ToxikFireflyInterferenceEffect() {
-        super(MobEffectCategory.NEUTRAL, 0xA6FF3D);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
         addAttributeModifier(Attributes.MOVEMENT_SPEED,
-                SLOW_UUID,
-                -0.5D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                SLOW_ID,
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL, amplifier -> -0.5D);
     }
 
     public static void setOwner(LivingEntity target, LivingEntity owner) {
@@ -44,24 +45,17 @@ public class ToxikFireflyInterferenceEffect extends MobEffect {
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         if (!(entity.level() instanceof ServerLevel level) || !entity.isAlive()) {
-            return;
+            return false;
         }
         applyStackingHealthReduction(level, entity, amplifier);
+        return true;
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return duration % REDUCTION_INTERVAL_TICKS == 0;
-    }
-
-    @Override
-    public double getAttributeModifierValue(int amplifier, AttributeModifier modifier) {
-        if (SLOW_UUID.equals(modifier.getId().toString())) {
-            return -0.5D;
-        }
-        return super.getAttributeModifierValue(amplifier, modifier);
     }
 
     public static void clearCaps(LivingEntity entity) {
@@ -109,9 +103,8 @@ public class ToxikFireflyInterferenceEffect extends MobEffect {
         maxHealth.removeModifier(MAX_HEALTH_MODIFIER_UUID);
         maxHealth.addTransientModifier(new AttributeModifier(
                 MAX_HEALTH_MODIFIER_UUID,
-                MAX_HEALTH_MODIFIER_NAME,
                 -newReduced,
-                AttributeModifier.Operation.ADDITION));
+                AttributeModifier.Operation.ADD_VALUE));
         tag.putDouble(REDUCED_HEALTH_TAG, newReduced);
         owner(level, entity).ifPresent(owner ->
                 DfsAchievements.recordToxikFireflyMaxHealthLoss(owner, entity, newReduced / baseMaxHealth));

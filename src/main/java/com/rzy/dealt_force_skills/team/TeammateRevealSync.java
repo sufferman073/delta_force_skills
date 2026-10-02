@@ -34,8 +34,7 @@ public final class TeammateRevealSync {
         if (viewer == null) {
             return;
         }
-        // Neutral players (no Dealt Force team): never wallhack anyone, never appear on others' lists
-        // (onlineTeammates already returns empty for non-members; still hard-gate here).
+        // Neutral players: no wallhack; never receive teammate outlines.
         if (!DealtTeamManager.isInTeam(viewer)) {
             NetworkHandler.sendToPlayer(S2C_TeammatePositionReveal.clear(), viewer);
             return;
@@ -61,7 +60,6 @@ public final class TeammateRevealSync {
             if (teammate.level() != viewer.level()) {
                 continue;
             }
-            // Strict same-team only: neutrals and other teams never appear.
             if (!DealtTeamManager.areTeammates(viewer, teammate)) {
                 continue;
             }

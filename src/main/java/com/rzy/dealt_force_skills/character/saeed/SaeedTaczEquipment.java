@@ -1,14 +1,16 @@
 package com.rzy.dealt_force_skills.character.saeed;
 
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 public final class SaeedTaczEquipment {
-    private static final ResourceLocation TACZ_GUN_ITEM = new ResourceLocation("tacz", "modern_kinetic_gun");
+    private static final ResourceLocation TACZ_GUN_ITEM = ResourceLocation.fromNamespaceAndPath("tacz", "modern_kinetic_gun");
     private static final String GUN_ID_TAG = "GunId";
     private static final String GUN_FIRE_MODE_TAG = "GunFireMode";
     private static final String GUN_CURRENT_AMMO_COUNT_TAG = "GunCurrentAmmoCount";
@@ -29,7 +31,8 @@ public final class SaeedTaczEquipment {
     }
 
     public static boolean isTaczGun(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
+        CustomData cd = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = cd != null ? cd.copyTag() : null;
         return tag != null && tag.contains(GUN_ID_TAG);
     }
 
@@ -37,29 +40,30 @@ public final class SaeedTaczEquipment {
         if (stack.isEmpty() || !isTaczGun(stack)) {
             return;
         }
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         tag.putInt(GUN_CURRENT_AMMO_COUNT_TAG, Math.max(tag.getInt(GUN_CURRENT_AMMO_COUNT_TAG), magazineSize(type)));
         tag.putBoolean(GUN_HAS_BULLET_IN_BARREL_TAG, true);
         tag.putInt(GUN_DUMMY_AMMO_TAG, Math.max(tag.getInt(GUN_DUMMY_AMMO_TAG), 9999));
         tag.putInt(GUN_MAX_DUMMY_AMMO_TAG, Math.max(tag.getInt(GUN_MAX_DUMMY_AMMO_TAG), 9999));
-    }
-
-    public static void clearReserveAmmo(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !isTaczGun(stack)) {
-            return;
-        }
-        CompoundTag tag = stack.getOrCreateTag();
-        tag.putInt(GUN_DUMMY_AMMO_TAG, 0);
-        tag.putInt(GUN_MAX_DUMMY_AMMO_TAG, 0);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     public static ResourceLocation gunId(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
+        CustomData cd = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = cd != null ? cd.copyTag() : null;
         return tag == null ? null : ResourceLocation.tryParse(tag.getString(GUN_ID_TAG));
     }
 
+    public static void clearReserveAmmo(ItemStack stack) {
+        if (stack == null || stack.isEmpty() || !isTaczGun(stack)) return;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        tag.putInt(GUN_DUMMY_AMMO_TAG, 0);
+        tag.putInt(GUN_MAX_DUMMY_AMMO_TAG, 0);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+    }
+
     private static ItemStack taczGun(SaeedGuardType type) {
-        Item item = ForgeRegistries.ITEMS.getValue(TACZ_GUN_ITEM);
+        Item item = BuiltInRegistries.ITEM.get(TACZ_GUN_ITEM);
         if (item == null || item == Items.AIR) {
             return ItemStack.EMPTY;
         }
@@ -68,13 +72,14 @@ public final class SaeedTaczEquipment {
             return ItemStack.EMPTY;
         }
         ItemStack stack = new ItemStack(item);
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         tag.putString(GUN_ID_TAG, gunId);
         tag.putInt(GUN_CURRENT_AMMO_COUNT_TAG, magazineSize(type));
         tag.putBoolean(GUN_HAS_BULLET_IN_BARREL_TAG, true);
         tag.putString(GUN_FIRE_MODE_TAG, fireMode(type));
         tag.putInt(GUN_DUMMY_AMMO_TAG, 9999);
         tag.putInt(GUN_MAX_DUMMY_AMMO_TAG, 9999);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         return stack;
     }
 

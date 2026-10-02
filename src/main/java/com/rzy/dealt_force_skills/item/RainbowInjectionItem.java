@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.item;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -30,10 +31,11 @@ public class RainbowInjectionItem extends DfsUseItem {
     protected boolean applyUseEffect(ItemStack stack, Level level, ServerPlayer player) {
         if (player.getRandom().nextBoolean()) {
             for (MobEffect effect : BuiltInRegistries.MOB_EFFECT) {
+                Holder<MobEffect> holder = BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect);
                 if (effect.getCategory() == MobEffectCategory.BENEFICIAL
-                        && effect != MobEffects.LEVITATION
+                        && !holder.is(MobEffects.LEVITATION)
                         && !isExcludedModEffect(effect)) {
-                    player.addEffect(new MobEffectInstance(effect, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.rainbow_injection_item.effect.custom.0.duration_ticks", 360 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.rainbow_injection_item.effect.custom.0.amplifier", 3), false, true, true), player);
+                    player.addEffect(new MobEffectInstance(holder, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.rainbow_injection_item.effect.custom.0.duration_ticks", 360 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.rainbow_injection_item.effect.custom.0.amplifier", 3), false, true, true), player);
                 }
             }
         } else {

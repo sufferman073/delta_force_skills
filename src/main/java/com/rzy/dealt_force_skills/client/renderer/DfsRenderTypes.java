@@ -48,17 +48,17 @@ public final class DfsRenderTypes extends RenderType {
             "dfs_xray_lines",
             DefaultVertexFormat.POSITION_COLOR_NORMAL,
             VertexFormat.Mode.LINES,
-            RenderType.TRANSIENT_BUFFER_SIZE,
+            TRANSIENT_BUFFER_SIZE,
             false,
             false,
             RenderType.CompositeState.builder()
-                    .setShaderState(RenderType.RENDERTYPE_LINES_SHADER)
-                    .setLineState(new RenderType.LineStateShard(OptionalDouble.empty()))
-                    .setLayeringState(RenderType.VIEW_OFFSET_Z_LAYERING)
-                    .setTransparencyState(RenderType.TRANSLUCENT_TRANSPARENCY)
-                    .setDepthTestState(RenderType.NO_DEPTH_TEST)
-                    .setWriteMaskState(RenderType.COLOR_WRITE)
-                    .setCullState(RenderType.NO_CULL)
+                    .setShaderState(RENDERTYPE_LINES_SHADER)
+                    .setLineState(new LineStateShard(OptionalDouble.empty()))
+                    .setLayeringState(VIEW_OFFSET_Z_LAYERING)
+                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .setDepthTestState(NO_DEPTH_TEST)
+                    .setWriteMaskState(COLOR_WRITE)
+                    .setCullState(NO_CULL)
                     .createCompositeState(false)
     );
 

@@ -6,7 +6,10 @@ import com.rzy.dealt_force_skills.network.S2C_OpenHvkEnchantInfusion;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,14 +19,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class HvkEnchantInfusionBlockEntity extends BlockEntity {
     private ItemStack stored = ItemStack.EMPTY;
@@ -34,17 +36,16 @@ public final class HvkEnchantInfusionBlockEntity extends BlockEntity {
 
     public void open(ServerPlayer player) {
         if (!accessible(player)) return;
-        Map<Enchantment, Integer> current = EnchantmentHelper.getEnchantments(stored);
+        ItemEnchantments current = EnchantmentHelper.getEnchantmentsForCrafting(stored);
         List<S2C_OpenHvkEnchantInfusion.Entry> entries = new ArrayList<>();
         if (!stored.isEmpty()) {
-            for (Map.Entry<net.minecraft.resources.ResourceKey<Enchantment>, Enchantment> registryEntry
-                    : BuiltInRegistries.ENCHANTMENT.entrySet()) {
-                Enchantment enchantment = registryEntry.getValue();
-                int existing = current.getOrDefault(enchantment, 0);
-                if (existing > 0 || stored.is(Items.ENCHANTED_BOOK) || enchantment.canEnchant(stored)) {
-                    entries.add(new S2C_OpenHvkEnchantInfusion.Entry(registryEntry.getKey().location().toString(),
+            Registry<Enchantment> registry = player.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+            for (Holder.Reference<Enchantment> enchantment : registry.holders().toList()) {
+                int existing = current.getLevel(enchantment);
+                if (existing > 0 || stored.is(Items.ENCHANTED_BOOK) || stored.supportsEnchantment(enchantment)) {
+                    entries.add(new S2C_OpenHvkEnchantInfusion.Entry(enchantment.key().location().toString(),
                             existing, ApotheosisCompat.enchantmentMaxLevel(enchantment,
-                            enchantment.getMaxLevel()) * 5));
+                            enchantment.value().getMaxLevel()) * 5));
                 }
             }
         }
@@ -82,21 +83,22 @@ public final class HvkEnchantInfusionBlockEntity extends BlockEntity {
     public void apply(ServerPlayer player, String enchantmentId, int requestedLevel) {
         if (!accessible(player) || stored.isEmpty()) return;
         ResourceLocation id = ResourceLocation.tryParse(enchantmentId);
-        Enchantment enchantment = id == null ? null : BuiltInRegistries.ENCHANTMENT.getOptional(id).orElse(null);
+        Registry<Enchantment> registry = player.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        Holder.Reference<Enchantment> enchantment = id == null ? null : registry.getHolder(
+                net.minecraft.resources.ResourceKey.create(Registries.ENCHANTMENT, id)).orElse(null);
         if (enchantment == null) return;
-        Map<Enchantment, Integer> current = new LinkedHashMap<>(EnchantmentHelper.getEnchantments(stored));
-        int oldLevel = current.getOrDefault(enchantment, 0);
-        int max = ApotheosisCompat.enchantmentMaxLevel(enchantment, enchantment.getMaxLevel()) * 5;
+        ItemEnchantments current = EnchantmentHelper.getEnchantmentsForCrafting(stored);
+        int oldLevel = current.getLevel(enchantment);
+        int max = ApotheosisCompat.enchantmentMaxLevel(enchantment, enchantment.value().getMaxLevel()) * 5;
         int level = Math.max(0, Math.min(max, requestedLevel));
-        if (oldLevel == 0 && !stored.is(Items.ENCHANTED_BOOK) && !enchantment.canEnchant(stored)) return;
+        if (oldLevel == 0 && !stored.is(Items.ENCHANTED_BOOK) && !stored.supportsEnchantment(enchantment)) return;
         int delta = level - oldLevel;
         if (delta > 0 && !player.getAbilities().instabuild && player.experienceLevel < delta) {
             player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                     "message.dealt_force_skills.hvk_enchant_infusion.no_experience", delta), true);
             return;
         }
-        if (level == 0) current.remove(enchantment); else current.put(enchantment, level);
-        EnchantmentHelper.setEnchantments(current, stored);
+        EnchantmentHelper.updateEnchantments(stored, mutable -> mutable.set(enchantment, level));
         if (!player.getAbilities().instabuild && delta != 0) player.giveExperienceLevels(-delta);
         if (delta > 0) {
             player.level().playSound(null, player.blockPosition(), ModSounds.HVK_ENCHANT_INFUSION_UPGRADE.get(),
@@ -124,7 +126,11 @@ public final class HvkEnchantInfusionBlockEntity extends BlockEntity {
                     "message.dealt_force_skills.hvk_enchant_infusion.no_experience_points", value), true);
             return;
         }
-        if (!ApotheosisCompat.applyAffix(stored, affixId, value)) return;
+        ItemStack before = stored.copy();
+        if (!ApotheosisCompat.applyAffix(stored, affixId, value)) {
+            stored = before;
+            return;
+        }
         if (!player.getAbilities().instabuild && value > 0) player.giveExperiencePoints(-value);
         player.level().playSound(null, player.blockPosition(), value > 0
                         ? ModSounds.HVK_ENCHANT_INFUSION_UPGRADE.get()
@@ -147,13 +153,13 @@ public final class HvkEnchantInfusionBlockEntity extends BlockEntity {
                 worldPosition.getY() + 0.5D, worldPosition.getZ() + 0.5D) <= 64.0D;
     }
 
-    @Override protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
-        if (!stored.isEmpty()) tag.put("Stored", stored.save(new CompoundTag()));
+    @Override protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        if (!stored.isEmpty()) tag.put("Stored", stored.save(registries, new CompoundTag()));
     }
 
-    @Override public void load(CompoundTag tag) {
-        super.load(tag);
-        stored = tag.contains("Stored") ? ItemStack.of(tag.getCompound("Stored")) : ItemStack.EMPTY;
+    @Override protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        stored = tag.contains("Stored") ? ItemStack.parseOptional(registries, tag.getCompound("Stored")) : ItemStack.EMPTY;
     }
 }

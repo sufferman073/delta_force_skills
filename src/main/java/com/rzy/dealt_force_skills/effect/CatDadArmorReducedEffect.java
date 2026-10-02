@@ -1,20 +1,23 @@
 package com.rzy.dealt_force_skills.effect;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.resources.ResourceLocation;
 
 public class CatDadArmorReducedEffect extends MobEffect {
     public CatDadArmorReducedEffect() {
-        super(MobEffectCategory.NEUTRAL, 0x8C6B4B);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
         addAttributeModifier(Attributes.ARMOR,
-                "ad367c34-ce58-4694-a0f3-cdd519584044",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.cat_dad_armor_reduced.armor"),
                 -0.75D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
         addAttributeModifier(Attributes.ARMOR_TOUGHNESS,
-                "c5388c63-58b6-4f4a-9a1b-03ab83d5f033",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.cat_dad_armor_reduced.armor_toughness"),
                 -0.75D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 }

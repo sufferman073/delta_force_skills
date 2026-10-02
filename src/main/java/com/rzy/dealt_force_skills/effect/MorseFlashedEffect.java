@@ -13,12 +13,13 @@ public class MorseFlashedEffect extends MobEffect {
     private static final String WAS_NO_AI = DealtForceSkillsMod.MODID + ".morseFlashWasNoAi";
 
     public MorseFlashedEffect() {
-        super(MobEffectCategory.NEUTRAL, 0x050505);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         suppressHostileTargeting(entity);
+        return true;
     }
 
     public static void suppressHostileTargeting(LivingEntity entity) {
@@ -48,7 +49,7 @@ public class MorseFlashedEffect extends MobEffect {
             return;
         }
         boolean wasNoAi = tag.getBoolean(WAS_NO_AI);
-        if (!wasNoAi && !entity.hasEffect(ModEffects.MORSE_STRONG_SHOCK.get())) {
+        if (!wasNoAi && !entity.hasEffect(ModEffects.MORSE_STRONG_SHOCK)) {
             mob.setNoAi(false);
         }
         tag.remove(FORCED_NO_AI);
@@ -56,7 +57,7 @@ public class MorseFlashedEffect extends MobEffect {
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 }

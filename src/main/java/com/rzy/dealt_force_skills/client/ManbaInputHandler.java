@@ -16,14 +16,15 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ManbaInputHandler {
     private static volatile int DUEL_LOCK_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DUEL_LOCK_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.manba_input_handler.duel_lock_ticks", 10));
     private static volatile double DUEL_LOCK_RANGE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DUEL_LOCK_RANGE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("client.manba_input_handler.duel_lock_range", 32.0));

@@ -4,16 +4,14 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 import org.slf4j.Logger;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,15 +19,19 @@ import java.util.Set;
 public final class ApotheosisCompat {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String MOD_ID = "apotheosis";
-    private static final String ENCH_MODULE = "dev.shadowsoffire.apotheosis.ench.EnchModule";
-    private static final String AFFIX_REGISTRY = "dev.shadowsoffire.apotheosis.adventure.affix.AffixRegistry";
-    private static final String AFFIX_HELPER = "dev.shadowsoffire.apotheosis.adventure.affix.AffixHelper";
-    private static final String AFFIX_INSTANCE = "dev.shadowsoffire.apotheosis.adventure.affix.AffixInstance";
-    private static final String AFFIX = "dev.shadowsoffire.apotheosis.adventure.affix.Affix";
-    private static final String LOOT_CATEGORY = "dev.shadowsoffire.apotheosis.adventure.loot.LootCategory";
-    private static final String RARITY_REGISTRY = "dev.shadowsoffire.apotheosis.adventure.loot.RarityRegistry";
+    private static final String ENCHANTING_MOD_ID = "apothic_enchanting";
+    private static final String ENCHANTING = "dev.shadowsoffire.apothic_enchanting.ApothicEnchanting";
+    private static final String ENCHANTMENT_DATA_MAPS = "dev.shadowsoffire.apothic_enchanting.Ench$DataMaps";
+    private static final String AFFIX_REGISTRY = "dev.shadowsoffire.apotheosis.affix.AffixRegistry";
+    private static final String AFFIX_HELPER = "dev.shadowsoffire.apotheosis.affix.AffixHelper";
+    private static final String AFFIX = "dev.shadowsoffire.apotheosis.affix.Affix";
+    private static final String ITEM_AFFIXES = "dev.shadowsoffire.apotheosis.affix.ItemAffixes";
+    private static final String LOOT_CATEGORY = "dev.shadowsoffire.apotheosis.loot.LootCategory";
+    private static final String COMPONENTS = "dev.shadowsoffire.apotheosis.Apoth$Components";
+    private static final String RARITY_REGISTRY = "dev.shadowsoffire.apotheosis.loot.RarityRegistry";
     private static volatile boolean enchantmentApiUnavailable;
     private static volatile boolean affixApiUnavailable;
+    private static volatile boolean affixReadFailureLogged;
     private static volatile boolean affixWriteFailureLogged;
 
     private ApotheosisCompat() {
@@ -38,19 +40,18 @@ public final class ApotheosisCompat {
     public record AffixEntry(String id, String name, int currentValue, int maxValue) {
     }
 
-    public static int enchantmentMaxLevel(Enchantment enchantment, int fallback) {
+    public static int enchantmentMaxLevel(Object enchantmentHolder, int fallback) {
         int safeFallback = Math.max(1, fallback);
-        if (enchantment == null || enchantmentApiUnavailable || !ModList.get().isLoaded(MOD_ID)) {
-            return safeFallback;
-        }
+        if (enchantmentHolder == null || enchantmentApiUnavailable
+                || !ModList.get().isLoaded(ENCHANTING_MOD_ID)) return safeFallback;
         try {
-            Class<?> module = load(ENCH_MODULE);
-            Object info = invokeStatic(module, "getEnchInfo", enchantment);
+            Object info = enchantmentInfo(enchantmentHolder);
+            if (info == null) return safeFallback;
             Object value = invoke(info, "getMaxLevel");
             return value instanceof Number number && number.intValue() > 0 ? number.intValue() : safeFallback;
         } catch (ReflectiveOperationException | LinkageError | RuntimeException error) {
             enchantmentApiUnavailable = true;
-            LOGGER.warn("Apotheosis was detected, but its enchantment-level API was unavailable; using vanilla limits", error);
+            LOGGER.warn("Apothic Enchanting was detected, but its enchantment-level API was unavailable; using vanilla limits", error);
             return safeFallback;
         }
     }
@@ -74,9 +75,10 @@ public final class ApotheosisCompat {
         try {
             Object registry = staticField(load(AFFIX_REGISTRY), "INSTANCE");
             Object rawKeys = invoke(registry, "getKeys");
-            Object rawCurrent = invokeStatic(load(AFFIX_HELPER), "getAffixes", stack);
-            if (!(rawKeys instanceof Set<?> keys) || !(rawCurrent instanceof Map<?, ?> current)) return List.of();
-
+            Object rawAffixes = invokeStatic(load(AFFIX_HELPER), "getAffixes", stack);
+            if (!(rawKeys instanceof Set<?> keys) || !(rawAffixes instanceof Map<?, ?> affixes)) {
+                throw new IllegalStateException("Apotheosis affix registry returned an unsupported data shape");
+            }
             int maxValue = Math.max(1, Math.round(readAffixBaseMax() * 3.0F * 100.0F));
             Object category = invokeStatic(load(LOOT_CATEGORY), "forItem", stack);
             Object rarity = validationRarity(stack);
@@ -85,16 +87,23 @@ public final class ApotheosisCompat {
                 if (!(key instanceof ResourceLocation id)) continue;
                 Object holder = invoke(registry, "holder", id);
                 if (!isBound(holder)) continue;
-                int currentValue = affixValue(current, holder);
-                Object affix = invoke(holder, "get");
-                if (currentValue == 0 && !canApplyAffix(stack, affix, category, rarity)) continue;
-                String name = componentString(invoke(affix, "getName", false), id.toString());
-                entries.add(new AffixEntry(id.toString(), name, currentValue, maxValue));
+                try {
+                    int currentValue = affixValue(affixes, holder);
+                    Object affix = invoke(holder, "get");
+                    if (currentValue == 0 && !canApplyAffix(stack, affix, category, rarity)) continue;
+                    String name = componentString(invoke(affix, "getName", false), id.toString());
+                    entries.add(new AffixEntry(id.toString(), name, currentValue, maxValue));
+                } catch (RuntimeException error) {
+                    logAffixReadFailure(error);
+                }
             }
             entries.sort(Comparator.comparing(AffixEntry::id));
             return List.copyOf(entries);
-        } catch (ReflectiveOperationException | LinkageError | RuntimeException error) {
+        } catch (ReflectiveOperationException | LinkageError error) {
             markAffixUnavailable(error);
+            return List.of();
+        } catch (RuntimeException error) {
+            logAffixReadFailure(error);
             return List.of();
         }
     }
@@ -109,8 +118,11 @@ public final class ApotheosisCompat {
             if (!isBound(holder)) return false;
             return canApplyAffix(stack, invoke(holder, "get"),
                     invokeStatic(load(LOOT_CATEGORY), "forItem", stack), validationRarity(stack));
-        } catch (ReflectiveOperationException | LinkageError | RuntimeException error) {
+        } catch (ReflectiveOperationException | LinkageError error) {
             markAffixUnavailable(error);
+            return false;
+        } catch (RuntimeException error) {
+            logAffixReadFailure(error);
             return false;
         }
     }
@@ -119,60 +131,38 @@ public final class ApotheosisCompat {
         if (stack.isEmpty() || !isAffixEditingAvailable()) return false;
         ResourceLocation id = ResourceLocation.tryParse(affixId);
         if (id == null) return false;
-        ItemStack backup = null;
         try {
             int maxValue = Math.max(1, Math.round(readAffixBaseMax() * 3.0F * 100.0F));
             int value = Math.max(0, Math.min(maxValue, requestedValue));
-            Class<?> registryClass = load(AFFIX_REGISTRY);
-            Object registry = staticField(registryClass, "INSTANCE");
+            Object registry = staticField(load(AFFIX_REGISTRY), "INSTANCE");
             Object holder = invoke(registry, "holder", id);
             if (!isBound(holder)) return false;
 
-            Class<?> helper = load(AFFIX_HELPER);
-            Object rawCurrent = invokeStatic(helper, "getAffixes", stack);
-            if (!(rawCurrent instanceof Map<?, ?> current)) return false;
-            Map<Object, Object> updated = new LinkedHashMap<>();
-            current.forEach(updated::put);
-            Object existingKey = findAffixKey(updated, holder);
-            Object existing = existingKey == null ? null : updated.get(existingKey);
-            int currentValue = affixValue(updated, holder);
+            Object current = getItemAffixes(stack);
+            int currentValue = Math.max(0,
+                    Math.round(((Number) invoke(current, "getLevel", holder)).floatValue() * 100.0F));
             if (currentValue == value) return false;
-
+            if (value > 0 && !canApplyAffix(stack, invoke(holder, "get"),
+                    invokeStatic(load(LOOT_CATEGORY), "forItem", stack), validationRarity(stack))) return false;
+            Object builder = invoke(current, "toBuilder");
             if (value == 0) {
-                backup = stack.copy();
-                updated.remove(existingKey);
-                invokeStatic(helper, "setAffixes", stack, updated);
+                invoke(builder, "remove", holder);
             } else {
-                Object rarity = validationRarity(stack);
-                if (!canApplyAffix(stack, invoke(holder, "get"),
-                        invokeStatic(load(LOOT_CATEGORY), "forItem", stack), rarity)) return false;
-                backup = stack.copy();
-                rarity = ensureRarity(stack);
-                Object replacement = newAffixInstance(holder, stack, rarity, value / 100.0F);
-                if (existing == null) {
-                    invokeStatic(helper, "applyAffix", stack, replacement);
-                } else {
-                    updated.remove(existingKey);
-                    invokeStatic(helper, "setAffixes", stack, updated);
-                    invokeStatic(helper, "applyAffix", stack, replacement);
-                }
+                ensureMinimumRarity(stack);
+                putAffixLevel(builder, holder, value / 100.0F);
             }
-            Object rawWritten = invokeStatic(helper, "getAffixes", stack);
-            int writtenValue = rawWritten instanceof Map<?, ?> written ? affixValue(written, holder) : -1;
+            Object updated = invoke(builder, "build");
+            invokeStatic(load(AFFIX_HELPER), "setAffixes", stack, updated);
+            int writtenValue = Math.max(0, Math.round(((Number) invoke(
+                    getItemAffixes(stack), "getLevel", holder)).floatValue() * 100.0F));
             if (writtenValue != value) {
-                throw new IllegalStateException("Apotheosis affix write did not persist: " + id
-                        + " requested=" + value + " readback=" + writtenValue);
+                throw new IllegalStateException("Apotheosis affix write did not persist: " + id);
             }
             return true;
         } catch (ReflectiveOperationException | LinkageError | RuntimeException error) {
-            if (backup != null) restoreStackTag(stack, backup);
             logAffixWriteFailure(error);
             return false;
         }
-    }
-
-    private static void restoreStackTag(ItemStack stack, ItemStack backup) {
-        stack.setTag(backup.getTag() == null ? null : backup.getTag().copy());
     }
 
     private static boolean canApplyAffix(ItemStack stack, Object affix, Object category, Object rarity)
@@ -180,27 +170,57 @@ public final class ApotheosisCompat {
         return Boolean.TRUE.equals(invoke(affix, "canApplyTo", stack, category, invoke(rarity, "get")));
     }
 
+    private static void putAffixLevel(Object builder, Object holder, float level)
+            throws ReflectiveOperationException {
+        if (level <= readAffixBaseMax()) {
+            invoke(builder, "put", holder, level);
+            return;
+        }
+        Field valuesField = null;
+        for (Field field : builder.getClass().getDeclaredFields()) {
+            if (Map.class.isAssignableFrom(field.getType())) {
+                valuesField = field;
+                break;
+            }
+        }
+        if (valuesField == null) {
+            throw new NoSuchFieldException(builder.getClass().getName() + " affix values");
+        }
+        valuesField.setAccessible(true);
+        Object values = valuesField.get(builder);
+        if (!(values instanceof Map<?, ?>)) {
+            throw new IllegalStateException("Apotheosis affix builder returned an unsupported value map");
+        }
+        invoke(values, "put", holder, level);
+    }
+
+    private static Object enchantmentInfo(Object enchantmentHolder) throws ReflectiveOperationException {
+        try {
+            return invokeStatic(load(ENCHANTING), "getEnchInfo", enchantmentHolder);
+        } catch (ClassNotFoundException | NoSuchMethodException ignored) {
+            Object dataMap = staticField(load(ENCHANTMENT_DATA_MAPS), "ENCHANTMENT_INFO");
+            return invoke(enchantmentHolder, "getData", dataMap);
+        }
+    }
+
+    private static Object getItemAffixes(ItemStack stack) throws ReflectiveOperationException {
+        Object component = staticField(load(COMPONENTS), "AFFIXES");
+        Object affixes = invoke(stack, "get", component);
+        return affixes == null ? staticField(load(ITEM_AFFIXES), "EMPTY") : affixes;
+    }
+
+    private static void ensureMinimumRarity(ItemStack stack) throws ReflectiveOperationException {
+        Class<?> helper = load(AFFIX_HELPER);
+        Object rarity = invokeStatic(helper, "getRarity", stack);
+        if (isBound(rarity)) return;
+
+        Object minimum = minimumRarity();
+        invokeStatic(helper, "setRarity", stack, invoke(minimum, "get"));
+    }
+
     private static Object validationRarity(ItemStack stack) throws ReflectiveOperationException {
         Object rarity = invokeStatic(load(AFFIX_HELPER), "getRarity", stack);
-        return isBound(rarity) ? rarity : invokeStatic(load(RARITY_REGISTRY), "getMinRarity");
-    }
-
-    private static Object ensureRarity(ItemStack stack) throws ReflectiveOperationException {
-        Object rarity = invokeStatic(load(AFFIX_HELPER), "getRarity", stack);
-        if (isBound(rarity)) return rarity;
-        rarity = invokeStatic(load(RARITY_REGISTRY), "getMinRarity");
-        invokeStatic(load(AFFIX_HELPER), "setRarity", stack, invoke(rarity, "get"));
-        return rarity;
-    }
-
-    private static Object newAffixInstance(Object holder, ItemStack stack, Object rarity, float level)
-            throws ReflectiveOperationException {
-        Class<?> type = load(AFFIX_INSTANCE);
-        Object[] arguments = {holder, stack, rarity, level};
-        for (Constructor<?> constructor : type.getConstructors()) {
-            if (compatible(constructor.getParameterTypes(), arguments)) return constructor.newInstance(arguments);
-        }
-        throw new NoSuchMethodException(AFFIX_INSTANCE + " compatible constructor");
+        return isBound(rarity) ? rarity : minimumRarity();
     }
 
     private static int affixValue(Map<?, ?> affixes, Object holder) throws ReflectiveOperationException {
@@ -215,7 +235,7 @@ public final class ApotheosisCompat {
     }
 
     private static Object findAffixKey(Map<?, ?> affixes, Object holder) throws ReflectiveOperationException {
-        if (affixes.get(holder) != null) return holder;
+        if (affixes.containsKey(holder)) return holder;
         Object id = invoke(holder, "getId");
         for (Map.Entry<?, ?> entry : affixes.entrySet()) {
             if (entry.getKey() != null && id.equals(invoke(entry.getKey(), "getId"))) return entry.getKey();
@@ -223,20 +243,44 @@ public final class ApotheosisCompat {
         return null;
     }
 
-    private static float readAffixBaseMax() throws ReflectiveOperationException {
-        try {
-            Object value = staticField(load(AFFIX), "MAX_LEVEL");
-            if (value instanceof Number number && number.floatValue() > 0.0F) return number.floatValue();
-        } catch (NoSuchFieldException ignored) {
-            // Apotheosis 6/7 use normalized affix levels in the range [0, 1].
+    private static Object minimumRarity() throws ReflectiveOperationException {
+        Class<?> registryClass = load(RARITY_REGISTRY);
+        Object rawRarities = invokeStatic(registryClass, "getSortedRarities");
+        if (!(rawRarities instanceof List<?> rarities) || rarities.isEmpty()) {
+            throw new IllegalStateException("Apotheosis rarity registry is empty");
         }
-        return 1.0F;
+        Object minimum = null;
+        int minimumSortIndex = Integer.MAX_VALUE;
+        for (Object candidate : rarities) {
+            Object rawSortIndex = invoke(candidate, "sortIndex");
+            if (rawSortIndex instanceof Number number && number.intValue() < minimumSortIndex) {
+                minimum = candidate;
+                minimumSortIndex = number.intValue();
+            }
+        }
+        if (minimum == null) throw new IllegalStateException("Apotheosis rarities have no sort index");
+        Object registry = staticField(registryClass, "INSTANCE");
+        Object holder = invoke(registry, "holder", minimum);
+        if (!isBound(holder)) throw new IllegalStateException("Apotheosis minimum rarity is unbound");
+        return holder;
+    }
+
+    private static float readAffixBaseMax() throws ReflectiveOperationException {
+        Object value = staticField(load(AFFIX), "MAX_LEVEL");
+        return value instanceof Number number && number.floatValue() > 0.0F ? number.floatValue() : 1.0F;
     }
 
     private static void markAffixUnavailable(Throwable error) {
         if (!affixApiUnavailable) {
             affixApiUnavailable = true;
             LOGGER.warn("Apotheosis was detected, but its affix API was unavailable; affix editing is disabled", error);
+        }
+    }
+
+    private static void logAffixReadFailure(Throwable error) {
+        if (!affixReadFailureLogged) {
+            affixReadFailureLogged = true;
+            LOGGER.warn("Apotheosis rejected affix data for an item; unsupported entries were skipped", error);
         }
     }
 
@@ -265,12 +309,24 @@ public final class ApotheosisCompat {
     }
 
     private static Object invokeStatic(Class<?> type, String name, Object... arguments) throws ReflectiveOperationException {
-        return findMethod(type, name, arguments).invoke(null, arguments);
+        return invokeMethod(findMethod(type, name, arguments), null, arguments);
     }
 
     private static Object invoke(Object target, String name, Object... arguments) throws ReflectiveOperationException {
         if (target == null) throw new NullPointerException(name + " target");
-        return findMethod(target.getClass(), name, arguments).invoke(target, arguments);
+        return invokeMethod(findMethod(target.getClass(), name, arguments), target, arguments);
+    }
+
+    private static Object invokeMethod(Method method, Object target, Object[] arguments)
+            throws ReflectiveOperationException {
+        try {
+            return method.invoke(target, arguments);
+        } catch (InvocationTargetException error) {
+            Throwable cause = error.getCause();
+            if (cause instanceof RuntimeException runtime) throw runtime;
+            if (cause instanceof Error targetError) throw targetError;
+            throw error;
+        }
     }
 
     private static Method findMethod(Class<?> type, String name, Object[] arguments) throws NoSuchMethodException {

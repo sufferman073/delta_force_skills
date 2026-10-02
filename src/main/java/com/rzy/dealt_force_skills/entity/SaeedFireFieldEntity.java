@@ -6,8 +6,6 @@ import com.rzy.dealt_force_skills.character.saeed.SaeedGuardType;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -20,10 +18,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
     private static volatile int DEFAULT_LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DEFAULT_LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.saeedfirefieldentity.default_life_ticks", 120));
@@ -84,7 +82,7 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -104,8 +102,7 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
             AABB box = new AABB(position(), position()).inflate(radius);
             int burningTargets = 0;
             for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-                if (isFriendlyTarget(target) || TargetingUtil.isPlayerOwnedSummonOf(damageOwner, target)
-                        || target.distanceToSqr(position()) > radius * radius) {
+                if (!isValidHostileTarget(damageOwner, target) || target.distanceToSqr(position()) > radius * radius) {
                     continue;
                 }
                 target.invulnerableTime = 0;
@@ -118,15 +115,18 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
                 if (KIND_NAPALM.equals(fieldKind)) {
                     damaged = SkillDamageHelper.hurt(target, SkillDamageHelper.trueDamage(level, this, damageOwner),
                             damageOwner, appliedDamage);
-                    target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.saeed_fire_field_entity.effect.movement_slowdown.0.duration_ticks", 30), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.saeed_fire_field_entity.effect.movement_slowdown.0.amplifier", 0), false, true, true));
                 } else {
                     damaged = SkillDamageHelper.hurt(target, damageSources().mobProjectile(this, damageOwner),
                             damageOwner, appliedDamage);
                 }
-                target.setSecondsOnFire(fireSeconds);
-                if (damaged) {
-                    burningTargets++;
+                if (!damaged) {
+                    continue;
                 }
+                if (KIND_NAPALM.equals(fieldKind)) {
+                    target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.saeed_fire_field_entity.effect.movement_slowdown.0.duration_ticks", 30), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.saeed_fire_field_entity.effect.movement_slowdown.0.amplifier", 0), false, true, true));
+                }
+                target.igniteForSeconds(fireSeconds);
+                burningTargets++;
             }
             if (burningTargets > 0) {
                 int finalBurningTargets = burningTargets;
@@ -168,11 +168,6 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
         tag.putString("FieldKind", fieldKind);
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
     private LivingEntity owner(ServerLevel level) {
         if (ownerId == null) {
             return null;
@@ -184,6 +179,13 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
     private Optional<ServerPlayer> teamOwner(ServerLevel level) {
         UUID teamOwner = teamOwnerUuid().orElse(null);
         return teamOwner == null ? Optional.empty() : Optional.ofNullable(level.getServer().getPlayerList().getPlayer(teamOwner));
+    }
+
+    private boolean isValidHostileTarget(LivingEntity source, LivingEntity target) {
+        return (source != null
+                ? TargetingUtil.isHostileLivingFor(source, target)
+                : TargetingUtil.isTargetableLiving(target))
+                && !isFriendlyTarget(target);
     }
 
     public Optional<UUID> teamOwnerUuid() {

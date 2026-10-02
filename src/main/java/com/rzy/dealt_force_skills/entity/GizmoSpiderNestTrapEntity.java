@@ -8,8 +8,6 @@ import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -25,11 +23,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
     private static final int READY_SOUND_INTERVAL_TICKS = 8;
@@ -70,7 +68,7 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -166,11 +164,6 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
         tag.putBoolean("CarrierModule", carrierModule);
         tag.putBoolean("PositionDefense", positionDefense);
         tag.putBoolean("SmartSpider", smartSpider);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public boolean isOwnedBy(UUID owner) {

@@ -5,6 +5,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 
 public class StingerSmokeRegenEffect extends MobEffect {
     public StingerSmokeRegenEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0x6CFF8F);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 }

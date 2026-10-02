@@ -1,24 +1,25 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.shop.DealtShopAccessManager;
 import com.rzy.dealt_force_skills.shop.GtiTradingHallManager;
 import com.rzy.dealt_force_skills.shop.SpecialOperationsBaseManager;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record C2S_SpecialOperationsBaseAction(Action action, String target, int index, int count,
+                                               long amount, int page) implements CustomPacketPayload {
+    public static final Type<C2S_SpecialOperationsBaseAction> TYPE = new Type<>(
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_special_operations_base_action"));
+    public static final StreamCodec<FriendlyByteBuf, C2S_SpecialOperationsBaseAction> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), C2S_SpecialOperationsBaseAction::decode);
 
-public record C2S_SpecialOperationsBaseAction(Action action, String target, int index, int count, long amount, int page) {
     public enum Action {
-        OPEN,
-        PAGE,
-        UPGRADE,
-        SELL,
-        REDEEM,
-        DEPOSIT,
-        WITHDRAW,
-        EXCHANGE
+        OPEN, PAGE, UPGRADE, SELL, REDEEM, DEPOSIT, WITHDRAW, EXCHANGE
     }
 
     public static C2S_SpecialOperationsBaseAction open() {
@@ -29,7 +30,12 @@ public record C2S_SpecialOperationsBaseAction(Action action, String target, int 
         return new C2S_SpecialOperationsBaseAction(Action.PAGE, "", 0, 0, 0L, page);
     }
 
-    public static void encode(C2S_SpecialOperationsBaseAction msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private static void encode(C2S_SpecialOperationsBaseAction msg, FriendlyByteBuf buf) {
         buf.writeEnum(msg.action);
         buf.writeUtf(msg.target == null ? "" : msg.target);
         buf.writeVarInt(msg.index);
@@ -38,14 +44,14 @@ public record C2S_SpecialOperationsBaseAction(Action action, String target, int 
         buf.writeVarInt(msg.page);
     }
 
-    public static C2S_SpecialOperationsBaseAction decode(FriendlyByteBuf buf) {
+    private static C2S_SpecialOperationsBaseAction decode(FriendlyByteBuf buf) {
         return new C2S_SpecialOperationsBaseAction(buf.readEnum(Action.class), buf.readUtf(256),
                 buf.readVarInt(), buf.readVarInt(), buf.readLong(), buf.readVarInt());
     }
 
-    public static void handle(C2S_SpecialOperationsBaseAction msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_SpecialOperationsBaseAction msg, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
             if (player == null) return;
             boolean gtiAccess = GtiTradingHallManager.hasBaseAccess(player);
             if (!gtiAccess && !DealtShopAccessManager.isAllowed(DealtShopAccessManager.Service.BASE, player)) return;
@@ -62,8 +68,8 @@ public record C2S_SpecialOperationsBaseAction(Action action, String target, int 
                     catch (IllegalArgumentException ignored) { }
                 }
                 case REDEEM -> success = SpecialOperationsBaseManager.redeem(player, msg.index, msg.count, gtiAccess);
-                case DEPOSIT -> success = SpecialOperationsBaseManager.depositInventory(player, msg.index, msg.count);
-                case WITHDRAW -> success = SpecialOperationsBaseManager.withdrawToInventory(player, msg.index, msg.count);
+                // This port uses the shared warehouse menu; legacy in-base storage actions stay unsupported.
+                case DEPOSIT, WITHDRAW -> { }
                 case EXCHANGE -> success = SpecialOperationsBaseManager.exchange(player, msg.target, msg.amount);
             }
             if (msg.action != Action.OPEN && msg.action != Action.PAGE && msg.action != Action.UPGRADE) {
@@ -72,6 +78,5 @@ public record C2S_SpecialOperationsBaseAction(Action action, String target, int 
             }
             NetworkHandler.sendToPlayer(S2C_SpecialOperationsBaseSnapshot.capture(player, msg.page), player);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

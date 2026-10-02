@@ -10,21 +10,21 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Fox;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.living.LivingHealEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStoppedEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.living.LivingHealEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class FoxMusicEvents {
     private FoxMusicEvents() { }
-    @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && event.player instanceof ServerPlayer player) FoxMusicPlayerManager.tick(player, false);
+    @SubscribeEvent public static void tick(PlayerTickEvent.Post event) {
+        if (event.getEntity() instanceof ServerPlayer player) FoxMusicPlayerManager.tick(player, false);
     }
     @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) FoxMusicPlayerManager.logout(player);
@@ -55,7 +55,7 @@ public final class FoxMusicEvents {
         double critical = roll < Math.min(1.0, discs * 0.01) ? 1.5 + discs * 0.02 : 1.0;
         return (float) ((1.0 + discs * 0.025) * critical);
     }
-    @SubscribeEvent(priority = EventPriority.HIGH) public static void damage(LivingHurtEvent event) {
+    @SubscribeEvent(priority = EventPriority.HIGH) public static void damage(LivingIncomingDamageEvent event) {
         ServerPlayer owner = owner(event.getSource());
         if (owner == null || event.getAmount() <= 0 || event.getEntity() == owner) return;
         int count = FoxMusicPlayerManager.discCount(owner);

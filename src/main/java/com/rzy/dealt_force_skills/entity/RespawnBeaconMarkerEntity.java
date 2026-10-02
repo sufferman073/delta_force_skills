@@ -2,14 +2,12 @@ package com.rzy.dealt_force_skills.entity;
 
 import com.rzy.dealt_force_skills.registry.ModItems;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.projectile.ItemSupplier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
@@ -27,7 +25,7 @@ public final class RespawnBeaconMarkerEntity extends Entity implements ItemSuppl
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     public void setOwnerId(UUID ownerId) {
@@ -70,8 +68,4 @@ public final class RespawnBeaconMarkerEntity extends Entity implements ItemSuppl
         return new ItemStack(ModItems.RESPAWN_BEACON.get());
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
 }

@@ -13,6 +13,7 @@ import com.rzy.dealt_force_skills.registry.ModItems;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -45,7 +46,7 @@ public final class AcceleratedTroopsEntity extends SaeedGuardEntity implements S
     private static final EntityDataAccessor<Boolean> DATA_SHIELD_ACTIVE =
             SynchedEntityData.defineId(AcceleratedTroopsEntity.class, EntityDataSerializers.BOOLEAN);
     private static final TagKey<DamageType> TACZ_BULLETS = TagKey.create(
-            Registries.DAMAGE_TYPE, new ResourceLocation("tacz", "bullets"));
+            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("tacz", "bullets"));
     private static final String SQUAD_ID = "AcceleratedTroopsSquad";
     private static final String SHIELD = "AcceleratedTroopsShield";
     private static final String SHIELD_RECOVER_AT = "AcceleratedTroopsShieldRecoverAt";
@@ -89,9 +90,9 @@ public final class AcceleratedTroopsEntity extends SaeedGuardEntity implements S
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        entityData.define(DATA_SHIELD_ACTIVE, true);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_SHIELD_ACTIVE, true);
     }
 
     @Override
@@ -559,8 +560,7 @@ public final class AcceleratedTroopsEntity extends SaeedGuardEntity implements S
         return switch (kind) {
             case TRIPLE_HAND_CANNON -> 2.05D;
             case TIGER_CANNON -> 1.9D;
-            case WALL_DRILL, SUPPRESSION_STIM -> 2.25D;
-            case COMPOSITE_INCENDIARY -> 2.25D;
+            case WALL_DRILL, SUPPRESSION_STIM, COMPOSITE_INCENDIARY -> 2.25D;
             case SHOCK_ARROW -> 2.5D;
             case SHOCK_ORB, FRAG -> 1.45D;
             case DEWAR, TEAR_GAS -> 1.1D;
@@ -594,7 +594,7 @@ public final class AcceleratedTroopsEntity extends SaeedGuardEntity implements S
         return count;
     }
 
-    private void setBase(net.minecraft.world.entity.ai.attributes.Attribute attribute, double value) {
+    private void setBase(Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, double value) {
         if (getAttribute(attribute) != null) {
             getAttribute(attribute).setBaseValue(value);
         }

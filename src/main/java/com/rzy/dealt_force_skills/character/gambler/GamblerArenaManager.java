@@ -12,6 +12,8 @@ import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
@@ -26,9 +28,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Unit;
 import net.minecraft.util.Mth;
-import net.minecraft.world.damagesource.CombatRules;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -36,20 +36,20 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.monster.warden.Warden;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,7 +57,6 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,7 +68,7 @@ import java.util.UUID;
 public final class GamblerArenaManager {
     public static final ResourceKey<Level> ARENA_LEVEL = ResourceKey.create(
             Registries.DIMENSION,
-            new ResourceLocation(DealtForceSkillsMod.MODID, "gambler_arena"));
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "gambler_arena"));
 
     private static final int ARENA_Y = 80;
     private static final int ARENA_RADIUS = 30;
@@ -77,13 +76,10 @@ public final class GamblerArenaManager {
     private static final int ARENA_CLEAR_RADIUS = 48;
     private static final int ARENA_ENTITY_CLEANUP_RADIUS = 128;
     private static final int ARENA_RAIL_TOP_Y = ARENA_Y + 4;
-    // Spectator platform hangs low over the arena so duels can be watched up close through the barrier floor.
-    private static final int SPECTATOR_FLOOR_Y = ARENA_Y + 8;
-    private static final int SPECTATOR_HEADROOM = 6;
     private static final int ARENA_PULLBACK_MIN_Y = ARENA_Y - 1;
-    private static final int ARENA_PULLBACK_MAX_Y = SPECTATOR_FLOOR_Y - 1;
-    private static final int PREVIEW_MOB_TICKS = 20 * 20;
-    private static final int PREVIEW_PVP_TICKS = 10 * 20;
+    private static final int ARENA_PULLBACK_MAX_Y = ARENA_RAIL_TOP_Y + 5;
+    private static final int PREVIEW_MOB_TICKS = 12 * 20;
+    private static final int PREVIEW_PVP_TICKS = 6 * 20;
     private static final int DRAIN_START_TICKS = 2 * 60 * 20;
     private static final int HARD_SETTLE_TICKS = 5 * 60 * 20;
     private static final int MOB_STALEMATE_TICKS = 2 * 60 * 20;
@@ -97,8 +93,10 @@ public final class GamblerArenaManager {
     private static final int BGM_REPLAY_TICKS = 111 * 20;
     private static final double SELECTION_RANGE = 30.0D;
     private static final double ARENA_BGM_RADIUS = 96.0D;
-    private static final int DUEL_EVENT_REFRESH_TICKS = 40;
-    private static final float DUEL_EVENT_CHANCE = 0.55F;
+    private static final int SPECTATOR_FLOOR_Y = ARENA_Y + 9;
+    private static final int SPECTATOR_Z = ARENA_RADIUS + ARENA_RAIL_THICKNESS + 5;
+    private static final int SPECTATOR_HALF_X = 12;
+    private static final int SPECTATOR_HALF_Z = 5;
 
     private static final Map<UUID, ArenaSession> SESSIONS = new HashMap<>();
     private static final Map<UUID, UUID> PLAYER_TO_SESSION = new HashMap<>();
@@ -124,16 +122,14 @@ public final class GamblerArenaManager {
             return true;
         }
         if (alternate) {
-            // Long press opens the invite screen; the session starts once the gambler confirms a selection.
             NetworkHandler.sendToPlayer(new S2C_OpenGamblerDuelInvite(), gambler);
             return true;
         }
-        return beginSession(gambler, arena, selectedPlayers(gambler), false);
+        return beginSession(gambler, arena, selectedPlayers(gambler, false), false);
     }
 
     public static boolean startWithInvited(ServerPlayer gambler, List<UUID> invitedIds) {
-        ArenaSession existing = sessionForPlayer(gambler);
-        if (existing != null) {
+        if (sessionForPlayer(gambler) != null) {
             gambler.displayClientMessage(Component.translatable("message.dealt_force_skills.gambler.arena.already_active"), true);
             return true;
         }
@@ -365,7 +361,6 @@ public final class GamblerArenaManager {
         if (session.phase != ArenaPhase.FIGHTING) {
             return;
         }
-        applyDuelEventEffects(session, server, now);
         if (session.isPvpMode()) {
             applyPvpDrain(session, server, now);
             Optional<ArenaSide> winner = pvpWinner(session, server);
@@ -388,7 +383,6 @@ public final class GamblerArenaManager {
 
     private static void configureSession(ArenaSession session, List<ServerPlayer> players, long seed) {
         Random random = new Random(seed);
-        rollDuelEvents(session, random);
         int count = players.size();
         if (count <= 1) {
             session.mode = ArenaMode.SOLO_MOB;
@@ -537,7 +531,6 @@ public final class GamblerArenaManager {
         Random random = new Random(now ^ session.id.getMostSignificantBits() ^ (long) session.soloWinStreak << 32);
         session.leftArmy = randomArmyName(random);
         session.rightArmy = differentArmy(random, session.leftArmy);
-        rollDuelEvents(session, random);
         prepareArena(arena);
         movePlayerToArena(gambler, arena, session.spawnFor(gambler.getUUID()));
         applyModes(session, server);
@@ -655,12 +648,11 @@ public final class GamblerArenaManager {
         for (int x = -ARENA_CLEAR_RADIUS; x <= ARENA_CLEAR_RADIUS; x++) {
             for (int z = -ARENA_CLEAR_RADIUS; z <= ARENA_CLEAR_RADIUS; z++) {
                 double dist = Math.sqrt(x * x + z * z);
-                for (int y = ARENA_Y; y <= SPECTATOR_FLOOR_Y + SPECTATOR_HEADROOM + 2; y++) {
+                for (int y = ARENA_Y; y <= ARENA_Y + 12; y++) {
                     arena.setBlock(pos.set(x, y, z), Blocks.AIR.defaultBlockState(), 3);
                 }
                 if (dist <= ARENA_RADIUS) {
                     arena.setBlock(pos.set(x, ARENA_Y - 1, z), Blocks.SMOOTH_STONE.defaultBlockState(), 3);
-                    arena.setBlock(pos.set(x, SPECTATOR_FLOOR_Y, z), Blocks.BARRIER.defaultBlockState(), 3);
                 } else if (dist <= ARENA_RADIUS + ARENA_RAIL_THICKNESS) {
                     arena.setBlock(pos.set(x, ARENA_Y - 1, z), Blocks.BLACKSTONE.defaultBlockState(), 3);
                     for (int y = ARENA_Y; y <= ARENA_Y + 2; y++) {
@@ -668,9 +660,6 @@ public final class GamblerArenaManager {
                     }
                     for (int y = ARENA_Y + 3; y <= ARENA_RAIL_TOP_Y; y++) {
                         arena.setBlock(pos.set(x, y, z), Blocks.IRON_BARS.defaultBlockState(), 3);
-                    }
-                    for (int y = SPECTATOR_FLOOR_Y; y <= SPECTATOR_FLOOR_Y + SPECTATOR_HEADROOM; y++) {
-                        arena.setBlock(pos.set(x, y, z), Blocks.BARRIER.defaultBlockState(), 3);
                     }
                 } else {
                     arena.setBlock(pos.set(x, ARENA_Y - 1, z), Blocks.AIR.defaultBlockState(), 3);
@@ -680,6 +669,11 @@ public final class GamblerArenaManager {
         for (int z = -3; z <= 3; z++) {
             arena.setBlock(new BlockPos(-22, ARENA_Y, z), Blocks.RED_WOOL.defaultBlockState(), 3);
             arena.setBlock(new BlockPos(22, ARENA_Y, z), Blocks.BLUE_WOOL.defaultBlockState(), 3);
+        }
+        for (int x = -SPECTATOR_HALF_X; x <= SPECTATOR_HALF_X; x++) {
+            for (int z = SPECTATOR_Z - SPECTATOR_HALF_Z; z <= SPECTATOR_Z + SPECTATOR_HALF_Z; z++) {
+                arena.setBlock(new BlockPos(x, SPECTATOR_FLOOR_Y, z), Blocks.BARRIER.defaultBlockState(), 3);
+            }
         }
         discardNonPlayerArenaEntities(arena);
         } finally {
@@ -894,7 +888,7 @@ public final class GamblerArenaManager {
 
     private static List<DynamicArmyUnit> dynamicArmyCandidates(ServerLevel arena) {
         Map<EntityType<?>, DynamicArmyUnit> candidates = new HashMap<>();
-        for (EntityType<?> type : ForgeRegistries.ENTITY_TYPES.getValues()) {
+        for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
             addDynamicCandidate(candidates, unit(type, 1), arena);
         }
         return new ArrayList<>(candidates.values());
@@ -1131,7 +1125,7 @@ public final class GamblerArenaManager {
         if (location == null) {
             return Optional.empty();
         }
-        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(location);
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(location);
         if (type == null || type == EntityType.PLAYER) {
             return Optional.empty();
         }
@@ -1232,7 +1226,7 @@ public final class GamblerArenaManager {
         if (id == null) {
             return ItemStack.EMPTY;
         }
-        Item item = ForgeRegistries.ITEMS.getValue(id);
+        Item item = BuiltInRegistries.ITEM.get(id);
         if (item == null || item == Items.AIR) {
             return ItemStack.EMPTY;
         }
@@ -1240,7 +1234,7 @@ public final class GamblerArenaManager {
         if (!spec.nbt().isBlank()) {
             try {
                 CompoundTag tag = TagParser.parseTag(spec.nbt());
-                stack.setTag(tag);
+                stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
             } catch (CommandSyntaxException ignored) {
                 return stack;
             }
@@ -1578,11 +1572,10 @@ public final class GamblerArenaManager {
     }
 
     private static boolean isInsideObservationArea(ServerPlayer player) {
-        double horizontalDistanceSqr = player.getX() * player.getX() + player.getZ() * player.getZ();
-        double limit = ARENA_RADIUS + ARENA_RAIL_THICKNESS - 1.0D;
-        return horizontalDistanceSqr <= limit * limit
+        return Math.abs(player.getX()) <= SPECTATOR_HALF_X - 1
+                && Math.abs(player.getZ() - SPECTATOR_Z) <= SPECTATOR_HALF_Z - 1
                 && player.getY() >= SPECTATOR_FLOOR_Y
-                && player.getY() <= SPECTATOR_FLOOR_Y + SPECTATOR_HEADROOM;
+                && player.getY() <= SPECTATOR_FLOOR_Y + 5;
     }
 
     private static boolean isInsideStagingArea(ServerPlayer player, ArenaSide side) {
@@ -1630,166 +1623,24 @@ public final class GamblerArenaManager {
     private static void broadcastStart(ArenaSession session, MinecraftServer server) {
         MutableComponent left = sideButton(ArenaSide.LEFT);
         MutableComponent right = sideButton(ArenaSide.RIGHT);
-        LineupSummary leftLineup = lineupSummary(session, server, ArenaSide.LEFT);
-        LineupSummary rightLineup = lineupSummary(session, server, ArenaSide.RIGHT);
         for (UUID playerId : session.players) {
             ServerPlayer player = playerById(server, playerId);
             if (player == null) {
                 continue;
             }
-            player.sendSystemMessage(Component.translatable("message.dealt_force_skills.gambler.arena.started"));
-            player.sendSystemMessage(Component.translatable("message.dealt_force_skills.gambler.arena.lineup_side",
-                    sideName(ArenaSide.LEFT), leftLineup.count(), leftLineup.text()).withStyle(ArenaSide.LEFT.format));
-            player.sendSystemMessage(Component.translatable("message.dealt_force_skills.gambler.arena.lineup_side",
-                    sideName(ArenaSide.RIGHT), rightLineup.count(), rightLineup.text()).withStyle(ArenaSide.RIGHT.format));
-            for (ArenaSide side : ArenaSide.values()) {
-                DuelEvent event = session.sideEvents.get(side);
-                if (event != null) {
-                    player.sendSystemMessage(Component.translatable("message.dealt_force_skills.gambler.arena.event_side",
-                            sideName(side), event.displayName(), event.description())
-                            .withStyle(ChatFormatting.LIGHT_PURPLE));
-                }
-            }
+            Component leftName = session.isMobMode()
+                    ? armyName(session.leftArmy)
+                    : sideName(ArenaSide.LEFT);
+            Component rightName = session.isMobMode()
+                    ? armyName(session.rightArmy)
+                    : sideName(ArenaSide.RIGHT);
+            player.sendSystemMessage(Component.translatable("message.dealt_force_skills.gambler.arena.started",
+                    leftName, rightName));
             if (session.canBet(playerId)) {
                 player.sendSystemMessage(Component.translatable("message.dealt_force_skills.gambler.arena.bet_prompt", left, right));
             }
         }
     }
-
-    private static LineupSummary lineupSummary(ArenaSession session, MinecraftServer server, ArenaSide side) {
-        StringJoiner joiner = new StringJoiner(Component.translatable(
-                "message.dealt_force_skills.gambler.arena.lineup_separator").getString());
-        int total = 0;
-        if (session.isMobMode()) {
-            Map<String, Integer> counts = new LinkedHashMap<>();
-            for (Map.Entry<UUID, ArenaSide> entry : session.mobTeams.entrySet()) {
-                if (entry.getValue() != side) {
-                    continue;
-                }
-                Entity entity = entityById(server, entry.getKey());
-                if (entity == null) {
-                    continue;
-                }
-                counts.merge(entity.getType().getDescription().getString(), 1, Integer::sum);
-                total++;
-            }
-            counts.entrySet().stream()
-                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                    .forEach(entry -> joiner.add(entry.getKey() + "x" + entry.getValue()));
-        } else {
-            for (Map.Entry<UUID, ArenaSide> entry : session.teams.entrySet()) {
-                if (entry.getValue() != side) {
-                    continue;
-                }
-                ServerPlayer player = playerById(server, entry.getKey());
-                if (player != null) {
-                    joiner.add(player.getGameProfile().getName());
-                    total++;
-                }
-            }
-        }
-        String text = joiner.toString();
-        if (text.isEmpty()) {
-            text = Component.translatable("message.dealt_force_skills.gambler.arena.lineup_empty").getString();
-        }
-        return new LineupSummary(total, text);
-    }
-
-    private static void rollDuelEvents(ArenaSession session, Random random) {
-        session.sideEvents.clear();
-        for (ArenaSide side : ArenaSide.values()) {
-            if (random.nextFloat() >= DUEL_EVENT_CHANCE) {
-                continue;
-            }
-            DuelEventType type = DuelEventType.values()[random.nextInt(DuelEventType.values().length)];
-            int level = 1 + random.nextInt(type.maxLevel);
-            session.sideEvents.put(side, new DuelEvent(type, level));
-        }
-    }
-
-    private static void applyDuelEventEffects(ArenaSession session, MinecraftServer server, long now) {
-        if (session.sideEvents.isEmpty() || now % DUEL_EVENT_REFRESH_TICKS != 0L) {
-            return;
-        }
-        for (Map.Entry<ArenaSide, DuelEvent> entry : session.sideEvents.entrySet()) {
-            MobEffect effect = entry.getValue().type().effect();
-            if (effect == null) {
-                continue;
-            }
-            int amplifier = entry.getValue().level() - 1;
-            for (LivingEntity member : sideMembers(session, server, entry.getKey())) {
-                member.addEffect(new MobEffectInstance(effect, DUEL_EVENT_REFRESH_TICKS * 3, amplifier, false, false, true));
-            }
-        }
-    }
-
-    private static List<LivingEntity> sideMembers(ArenaSession session, MinecraftServer server, ArenaSide side) {
-        List<LivingEntity> members = new ArrayList<>();
-        for (Map.Entry<UUID, ArenaSide> entry : session.teams.entrySet()) {
-            if (entry.getValue() != side || session.eliminatedPlayers.contains(entry.getKey())) {
-                continue;
-            }
-            ServerPlayer player = playerById(server, entry.getKey());
-            if (player != null && player.isAlive()) {
-                members.add(player);
-            }
-        }
-        for (Map.Entry<UUID, ArenaSide> entry : session.mobTeams.entrySet()) {
-            if (entry.getValue() != side || session.deadMobs.contains(entry.getKey())) {
-                continue;
-            }
-            if (entityById(server, entry.getKey()) instanceof LivingEntity living && living.isAlive()) {
-                members.add(living);
-            }
-        }
-        return members;
-    }
-
-    public static float modifyDuelDamage(LivingEntity target, DamageSource source, float amount) {
-        if (amount <= 0.0F) {
-            return amount;
-        }
-        ArenaSession session = sessionForEntity(target);
-        Entity attacker = rootAttacker(source);
-        if (session == null && attacker != null) {
-            session = sessionForEntity(attacker);
-        }
-        if (session == null || session.phase != ArenaPhase.FIGHTING || session.sideEvents.isEmpty()) {
-            return amount;
-        }
-        ArenaSide targetSide = sideFor(session, target);
-        ArenaSide attackerSide = sideFor(session, attacker);
-        float result = amount;
-        if (attackerSide != null && attackerSide != targetSide) {
-            DuelEvent event = session.sideEvents.get(attackerSide);
-            if (event != null) {
-                if (event.type() == DuelEventType.DAMAGE_BOOST) {
-                    result *= 1.0F + 0.15F * event.level();
-                } else if (event.type() == DuelEventType.ARMOR_PIERCE) {
-                    result = compensateArmor(target, result);
-                }
-            }
-        }
-        if (targetSide != null && targetSide != attackerSide) {
-            DuelEvent event = session.sideEvents.get(targetSide);
-            if (event != null && event.type() == DuelEventType.DAMAGE_REDUCTION) {
-                result *= 1.0F - 0.15F * event.level();
-            }
-        }
-        return Math.max(0.0F, result);
-    }
-
-    // Pre-scales the damage so that after vanilla armor absorption the victim takes roughly the original amount.
-    private static float compensateArmor(LivingEntity target, float amount) {
-        float armor = target.getArmorValue();
-        float toughness = (float) target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        float afterArmor = CombatRules.getDamageAfterAbsorb(amount, armor, toughness);
-        if (afterArmor <= 0.001F) {
-            return amount * 4.0F;
-        }
-        return Math.min(amount * 4.0F, amount * (amount / afterArmor));
-    }
-
 
     private static void broadcastResult(ArenaSession session, MinecraftServer server, ArenaSide winner) {
         for (UUID playerId : session.players) {
@@ -1857,6 +1708,14 @@ public final class GamblerArenaManager {
         return Component.translatable("message.dealt_force_skills.gambler.arena.side." + side.id);
     }
 
+    private static Component armyName(String army) {
+        return switch (army) {
+            case "undead", "arthropod", "illager", "atlantis", "coalition", "ancient", "nether", "ender" ->
+                    Component.translatable("message.dealt_force_skills.gambler.army." + army);
+            default -> Component.literal(army);
+        };
+    }
+
     private static void playArenaBgm(ArenaSession session, MinecraftServer server, long now) {
         for (UUID playerId : session.players) {
             ServerPlayer player = playerById(server, playerId);
@@ -1874,12 +1733,23 @@ public final class GamblerArenaManager {
                 SoundSource.PLAYERS, ARENA_BGM_RADIUS + 16.0D);
     }
 
-    private static List<ServerPlayer> selectedPlayers(ServerPlayer gambler) {
+    private static List<ServerPlayer> selectedPlayers(ServerPlayer gambler, boolean alternate) {
         List<ServerPlayer> players = new ArrayList<>();
         players.add(gambler);
-        ServerPlayer target = lookTarget(gambler).orElse(null);
-        if (target != null) {
-            players.add(target);
+        if (alternate) {
+            gambler.server.getPlayerList().getPlayers().stream()
+                    .filter(player -> player != gambler
+                            && player.serverLevel() == gambler.serverLevel()
+                            && player.isAlive()
+                            && !player.isSpectator()
+                            && player.distanceToSqr(gambler) <= SELECTION_RANGE * SELECTION_RANGE)
+                    .sorted(Comparator.comparingDouble(gambler::distanceToSqr))
+                    .forEach(players::add);
+        } else {
+            ServerPlayer target = lookTarget(gambler).orElse(null);
+            if (target != null) {
+                players.add(target);
+            }
         }
         return players;
     }
@@ -2035,7 +1905,6 @@ public final class GamblerArenaManager {
         private final Set<UUID> spectators = new HashSet<>();
         private final Set<UUID> eliminatedPlayers = new HashSet<>();
         private final Set<UUID> deadMobs = new HashSet<>();
-        private final Map<ArenaSide, DuelEvent> sideEvents = new EnumMap<>(ArenaSide.class);
         private ArenaMode mode = ArenaMode.SOLO_MOB;
         private ArenaPhase phase = ArenaPhase.PREVIEW;
         private long fightStartTick;
@@ -2080,7 +1949,7 @@ public final class GamblerArenaManager {
 
         private ArenaSpawn spawnFor(UUID playerId) {
             if (isObservationOnly(playerId)) {
-                return new ArenaSpawn(0.5D, SPECTATOR_FLOOR_Y + 1.0D, 0.5D, 0.0F);
+                return new ArenaSpawn(0.5D, SPECTATOR_FLOOR_Y + 1.0D, SPECTATOR_Z + 0.5D, 180.0F);
             }
             ArenaSide side = teams.getOrDefault(playerId, ArenaSide.LEFT);
             if (side == ArenaSide.LEFT) {
@@ -2152,60 +2021,5 @@ public final class GamblerArenaManager {
 
     private record PendingVillagerConversion(UUID sessionId, ArenaSide side, int power,
                                              double x, double y, double z, long expiresTick) {
-    }
-
-    private record LineupSummary(int count, String text) {
-    }
-
-    private enum DuelEventType {
-        STRENGTH("strength", 3, MobEffects.DAMAGE_BOOST),
-        WEAKNESS("weakness", 3, MobEffects.WEAKNESS),
-        SPEED("speed", 2, MobEffects.MOVEMENT_SPEED),
-        SLOWNESS("slowness", 2, MobEffects.MOVEMENT_SLOWDOWN),
-        RESISTANCE("resistance", 2, MobEffects.DAMAGE_RESISTANCE),
-        REGENERATION("regeneration", 2, MobEffects.REGENERATION),
-        DAMAGE_BOOST("damage_boost", 3, null),
-        DAMAGE_REDUCTION("damage_reduction", 3, null),
-        ARMOR_PIERCE("armor_pierce", 1, null);
-
-        private final String id;
-        private final int maxLevel;
-        private final MobEffect effect;
-
-        DuelEventType(String id, int maxLevel, MobEffect effect) {
-            this.id = id;
-            this.maxLevel = maxLevel;
-            this.effect = effect;
-        }
-
-        private MobEffect effect() {
-            return effect;
-        }
-    }
-
-    private record DuelEvent(DuelEventType type, int level) {
-        private Component displayName() {
-            MutableComponent name = Component.translatable(
-                    "message.dealt_force_skills.gambler.arena.event." + type.id);
-            return type.maxLevel > 1 ? name.append(" " + roman(level)) : name;
-        }
-
-        private Component description() {
-            String key = "message.dealt_force_skills.gambler.arena.event." + type.id + ".desc";
-            return switch (type) {
-                case DAMAGE_BOOST, DAMAGE_REDUCTION -> Component.translatable(key, 15 * level);
-                case ARMOR_PIERCE -> Component.translatable(key);
-                default -> Component.translatable(key, roman(level));
-            };
-        }
-
-        private static String roman(int level) {
-            return switch (level) {
-                case 1 -> "I";
-                case 2 -> "II";
-                case 3 -> "III";
-                default -> Integer.toString(level);
-            };
-        }
     }
 }

@@ -15,8 +15,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
+import net.minecraft.core.Registry;
 import net.minecraft.core.SectionPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -72,19 +72,17 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingDropsEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.living.MobSpawnEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.server.ServerLifecycleHooks;
-import net.minecraftforge.common.ForgeMod;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -98,7 +96,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class HvkAsaraArenaManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String INSTANCE_X = "HvkAsaraArenaX";
@@ -111,23 +109,32 @@ public final class HvkAsaraArenaManager {
     private static final String LAST_STAND_AT = "HvkAsaraLastStandAt";
     private static final String ABSORPTION_AT = "HvkAsaraAbsorptionAt";
     private static final String BLINK_AT = "HvkAsaraBlinkAt";
-    private static final ResourceLocation WOODLAND_MANSION = ResourceLocation.tryParse("minecraft:woodland_mansion");
-    private static final ResourceLocation STRONGHOLD = ResourceLocation.tryParse("minecraft:stronghold");
-    private static final ResourceLocation NETHER_FORTRESS = ResourceLocation.tryParse("minecraft:fortress");
-    private static final ResourceLocation NETHER_EFFECTS = ResourceLocation.tryParse("minecraft:the_nether");
-    private static final ResourceLocation END_EFFECTS = ResourceLocation.tryParse("minecraft:the_end");
+    private static final ResourceLocation WOODLAND_MANSION = ResourceLocation.parse("minecraft:woodland_mansion");
+    private static final ResourceLocation STRONGHOLD = ResourceLocation.parse("minecraft:stronghold");
+    private static final ResourceLocation NETHER_FORTRESS = ResourceLocation.parse("minecraft:fortress");
+    private static final ResourceLocation NETHER_EFFECTS = ResourceLocation.parse("minecraft:the_nether");
+    private static final ResourceLocation END_EFFECTS = ResourceLocation.parse("minecraft:the_end");
     private static final ResourceKey<Level> OVERWORLD_ARENA = arenaKey("hvk_asara_arena_overworld");
     private static final ResourceKey<Level> NETHER_ARENA = arenaKey("hvk_asara_arena_nether");
     private static final ResourceKey<Level> END_ARENA = arenaKey("hvk_asara_arena_end");
-    private static final UUID ARMOR_EFFECT_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4001");
-    private static final UUID BLADE_REACH_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4002");
-    private static final UUID ARMOR_FLOOR_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4003");
-    private static final UUID TOUGHNESS_FLOOR_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4004");
-    private static final UUID MARCH_SPEED_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4005");
-    private static final UUID GUARD_HEALTH_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4006");
-    private static final UUID TRAINED_HEALTH_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4007");
-    private static final UUID TRAINED_DAMAGE_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4008");
-    private static final UUID TRAINED_SPEED_UUID = UUID.fromString("44f77864-13e0-460d-bbeb-24dbf61a4009");
+    private static final ResourceLocation ARMOR_EFFECT_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_armor_effect");
+    private static final ResourceLocation BLADE_REACH_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_blade_reach");
+    private static final ResourceLocation ARMOR_FLOOR_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_armor_floor");
+    private static final ResourceLocation TOUGHNESS_FLOOR_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_toughness_floor");
+    private static final ResourceLocation MARCH_SPEED_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_march_speed");
+    private static final ResourceLocation GUARD_HEALTH_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_guard_health");
+    private static final ResourceLocation TRAINED_HEALTH_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_trained_health");
+    private static final ResourceLocation TRAINED_DAMAGE_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_trained_damage");
+    private static final ResourceLocation TRAINED_SPEED_ID = ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "hvk_asara_trained_speed");
     private static final int INSTANCE_RADIUS = 512;
     private static final int INSTANCE_SPACING = 1152;
     private static final int INSTANCE_Y = 80;
@@ -179,7 +186,7 @@ public final class HvkAsaraArenaManager {
                     "message.dealt_force_skills.hvk_asara_arena.already_active"), true);
             return false;
         }
-        var structureRegistry = player.server.registryAccess().registryOrThrow(Registries.STRUCTURE);
+        Registry<Structure> structureRegistry = player.server.registryAccess().registryOrThrow(Registries.STRUCTURE);
         Structure structure = structureRegistry.get(structureId);
         if (structure == null) {
             return false;
@@ -200,8 +207,8 @@ public final class HvkAsaraArenaManager {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || !(event.player instanceof ServerPlayer player)) {
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
         Session session = SESSIONS.get(player.getUUID());
@@ -221,7 +228,6 @@ public final class HvkAsaraArenaManager {
         applyPlayerModifiers(player, session, now);
         spawnExpectedStructureHostiles(arena, session, now);
         spawnNaturalHostiles(arena, session, now);
-
         List<LivingEntity> living = arena.getEntitiesOfClass(LivingEntity.class, bounds(session), LivingEntity::isAlive);
         for (LivingEntity entity : living) {
             entity.addEffect(new MobEffectInstance(MobEffects.GLOWING, 40, 0, false, false, false));
@@ -229,10 +235,8 @@ public final class HvkAsaraArenaManager {
                 markAndApplyMob(entity, session);
             }
         }
-        List<LivingEntity> activeHostiles = living.stream()
-                .filter(entity -> entity != player && isSessionHostile(entity, session))
-                .sorted(java.util.Comparator.comparingDouble(player::distanceToSqr))
-                .toList();
+        List<LivingEntity> activeHostiles = living.stream().filter(entity -> entity != player && isSessionHostile(entity, session))
+                .sorted(java.util.Comparator.comparingDouble(player::distanceToSqr)).toList();
         syncArenaStatus(player, session, activeHostiles, now);
 
         if (session.successReturnAt > 0L) {
@@ -264,14 +268,8 @@ public final class HvkAsaraArenaManager {
     }
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server != null) {
-            tickPendingBuilds(server);
-        }
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (event.getServer() != null) tickPendingBuilds(event.getServer());
     }
 
     @SubscribeEvent
@@ -281,22 +279,19 @@ public final class HvkAsaraArenaManager {
         }
         Session session = sessionAt(living);
         if (session != null && !living.getUUID().equals(session.playerId)) {
+            if (living instanceof Mob && (living.level().getGameTime() >= session.spawnEndAt
+                    || isHostile(living) && session.challengeHostiles.size() >= MAX_CHALLENGE_HOSTILES)
+                    && (!living.getPersistentData().hasUUID(MOB_SESSION)
+                    || !living.getPersistentData().getUUID(MOB_SESSION).equals(session.id))) {
+                event.setCanceled(true);
+                return;
+            }
             markAndApplyMob(living, session);
         }
     }
 
-    @SubscribeEvent
-    public static void onFinalizeSpawn(MobSpawnEvent.FinalizeSpawn event) {
-        Session session = sessionAt(event.getEntity());
-        if (session != null && (event.getEntity().level().getGameTime() >= session.spawnEndAt
-                || event.getEntity() instanceof Enemy && session.challengeHostiles.size() >= MAX_CHALLENGE_HOSTILES)) {
-            event.setSpawnCancelled(true);
-            event.setCanceled(true);
-        }
-    }
-
     @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void onLivingHurt(LivingHurtEvent event) {
+    public static void onLivingHurt(LivingIncomingDamageEvent event) {
         LivingEntity target = event.getEntity();
         Session session = sessionAt(target);
         if (session == null) {
@@ -404,14 +399,6 @@ public final class HvkAsaraArenaManager {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingDeath(LivingDeathEvent event) {
-        Session defeatedSession = sessionAt(event.getEntity());
-        if (defeatedSession != null
-                && event.getSource().getEntity() instanceof ServerPlayer killer
-                && killer.getUUID().equals(defeatedSession.playerId)
-                && (isHostile(event.getEntity())
-                || defeatedSession.challengeHostiles.contains(event.getEntity().getUUID()))) {
-            defeatedSession.hostileKills.add(event.getEntity().getUUID());
-        }
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
@@ -447,9 +434,7 @@ public final class HvkAsaraArenaManager {
 
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
-            return;
-        }
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
         Session session = SESSIONS.get(player.getUUID());
         if (session != null) {
             fail(player, session, "message.dealt_force_skills.hvk_asara_arena.failed");
@@ -459,13 +444,9 @@ public final class HvkAsaraArenaManager {
 
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
-            return;
-        }
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
         ReturnPoint point = loadActiveReturn(player);
-        if (point == null) {
-            return;
-        }
+        if (point == null) return;
         teleportToReturn(player, point);
         player.getPersistentData().remove(ACTIVE_RETURN);
         player.displayClientMessage(Component.translatable(
@@ -480,29 +461,19 @@ public final class HvkAsaraArenaManager {
     }
 
     private static void tickPendingBuilds(MinecraftServer server) {
-        if (PENDING_BUILDS.isEmpty()) {
-            return;
-        }
+        if (PENDING_BUILDS.isEmpty()) return;
         BuildJob job = PENDING_BUILDS.values().iterator().next();
         ServerPlayer player = server.getPlayerList().getPlayer(job.playerId);
-        if (player == null) {
-            job.cancel();
-        }
+        if (player == null) job.cancel();
         try {
-            if (job.tick(server, player)) {
-                PENDING_BUILDS.remove(job.playerId);
-            }
+            if (job.tick(server, player)) PENDING_BUILDS.remove(job.playerId);
         } catch (RuntimeException exception) {
             LOGGER.error("Failed to build HVK Asara arena structure {} for {}",
                     job.structureId, player == null ? job.playerId : player.getGameProfile().getName(), exception);
             job.rollbackPlayer(server, player);
-            if (player != null) {
-                player.displayClientMessage(Component.translatable(
-                        "message.dealt_force_skills.hvk_asara_arena.place_failed", job.structureId.toString()), false);
-            }
-            if (!job.beginFailureCleanup()) {
-                PENDING_BUILDS.remove(job.playerId);
-            }
+            if (player != null) player.displayClientMessage(Component.translatable(
+                    "message.dealt_force_skills.hvk_asara_arena.place_failed", job.structureId.toString()), false);
+            if (!job.beginFailureCleanup()) PENDING_BUILDS.remove(job.playerId);
         }
     }
 
@@ -519,11 +490,11 @@ public final class HvkAsaraArenaManager {
         int armor = HvkAsaraArenaModifier.tier(selected, "armor");
         if (armor > 0) {
             equipArmor(entity, armor);
-            applyAttributeFloorModifier(entity.getAttribute(Attributes.ARMOR), ARMOR_FLOOR_UUID,
-                    "hvk_asara_armor_floor", 6.0D + armor * 2.0D);
-            applyAttributeFloorModifier(entity.getAttribute(Attributes.ARMOR_TOUGHNESS), TOUGHNESS_FLOOR_UUID,
-                    "hvk_asara_toughness_floor", armor * 2.0D);
-            applyAttributeModifier(entity.getAttribute(Attributes.ARMOR), ARMOR_EFFECT_UUID,
+            applyAttributeFloorModifier(entity.getAttribute(Attributes.ARMOR), ARMOR_FLOOR_ID,
+                    6.0D + armor * 2.0D);
+            applyAttributeFloorModifier(entity.getAttribute(Attributes.ARMOR_TOUGHNESS), TOUGHNESS_FLOOR_ID,
+                    armor * 2.0D);
+            applyAttributeModifier(entity.getAttribute(Attributes.ARMOR), ARMOR_EFFECT_ID,
                     "hvk_asara_armor_effect", armor * 0.5D);
         }
         int blade = HvkAsaraArenaModifier.tier(selected, "blade");
@@ -532,27 +503,27 @@ public final class HvkAsaraArenaManager {
                     : blade == 2 ? Items.DIAMOND_AXE : Items.NETHERITE_AXE));
         }
         if (blade > 0) {
-            applyAttributeModifier(entity.getAttribute(ForgeMod.ENTITY_REACH.get()), BLADE_REACH_UUID,
+            applyAttributeModifier(entity.getAttribute(Attributes.ENTITY_INTERACTION_RANGE), BLADE_REACH_ID,
                     "hvk_asara_blade_reach", blade);
         }
         int march = HvkAsaraArenaModifier.tier(selected, "march");
         if (march > 0) {
-            applyAttributeModifier(entity.getAttribute(Attributes.MOVEMENT_SPEED), MARCH_SPEED_UUID,
+            applyAttributeModifier(entity.getAttribute(Attributes.MOVEMENT_SPEED), MARCH_SPEED_ID,
                     "hvk_asara_march_speed", march * 0.25D);
         }
         int guard = HvkAsaraArenaModifier.tier(selected, "guard");
         if (guard > 0) {
             double multiplier = guard == 1 ? 2.0D : guard == 2 ? 3.5D : 7.0D;
-            applyAttributeModifier(entity.getAttribute(Attributes.MAX_HEALTH), GUARD_HEALTH_UUID,
+            applyAttributeModifier(entity.getAttribute(Attributes.MAX_HEALTH), GUARD_HEALTH_ID,
                     "hvk_asara_guard_health", multiplier - 1.0D);
             entity.setHealth(entity.getMaxHealth());
         }
         if (selected.contains(HvkAsaraArenaModifier.TRAINED)) {
-            applyAttributeModifier(entity.getAttribute(Attributes.MAX_HEALTH), TRAINED_HEALTH_UUID,
+            applyAttributeModifier(entity.getAttribute(Attributes.MAX_HEALTH), TRAINED_HEALTH_ID,
                     "hvk_asara_trained_health", 0.25D);
-            applyAttributeModifier(entity.getAttribute(Attributes.ATTACK_DAMAGE), TRAINED_DAMAGE_UUID,
+            applyAttributeModifier(entity.getAttribute(Attributes.ATTACK_DAMAGE), TRAINED_DAMAGE_ID,
                     "hvk_asara_trained_damage", 0.25D);
-            applyAttributeModifier(entity.getAttribute(Attributes.MOVEMENT_SPEED), TRAINED_SPEED_UUID,
+            applyAttributeModifier(entity.getAttribute(Attributes.MOVEMENT_SPEED), TRAINED_SPEED_ID,
                     "hvk_asara_trained_speed", 0.25D);
             entity.setHealth(entity.getMaxHealth());
         }
@@ -651,7 +622,7 @@ public final class HvkAsaraArenaManager {
             player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 40, 0, false, false, false));
         }
         if (selected.contains(HvkAsaraArenaModifier.MAGNETIC_DISORDER)) {
-            player.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE.get(),
+            player.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE,
                     40, 0, false, false, true));
         }
         if (selected.contains(HvkAsaraArenaModifier.FROZEN_WORLD)) {
@@ -714,11 +685,6 @@ public final class HvkAsaraArenaManager {
                     "message.dealt_force_skills.hvk_asara_arena.success", session.score), false);
             level.playSound(null, player.blockPosition(), ModSounds.HVK_ASARA_ARENA_SUCCESS.get(),
                     SoundSource.BLOCKS, 1.0F, 1.0F);
-            if (session.score == 830 && session.hostileKills.size() >= 50) {
-                give(player, new ItemStack(com.rzy.dealt_force_skills.registry.ModItems.HOOK_AUTHOR_BLESSING.get()));
-                player.displayClientMessage(Component.translatable(
-                        "message.dealt_force_skills.hook_author_blessing.obtained"), false);
-            }
         } else {
             player.displayClientMessage(Component.translatable(
                     "message.dealt_force_skills.hvk_asara_arena.exploration_complete", session.score), false);
@@ -752,24 +718,19 @@ public final class HvkAsaraArenaManager {
 
     private static void teleportToReturn(ServerPlayer player, ReturnPoint point) {
         ServerLevel returnLevel = player.server.getLevel(point.dimension);
-        if (returnLevel == null) {
-            returnLevel = player.server.overworld();
-        }
+        if (returnLevel == null) returnLevel = player.server.overworld();
         player.teleportTo(returnLevel, point.x, point.y, point.z, point.yRot, point.xRot);
     }
 
     private static ReturnPoint loadActiveReturn(ServerPlayer player) {
         CompoundTag data = player.getPersistentData();
-        if (!data.contains(ACTIVE_RETURN)) {
-            return null;
-        }
-        return ReturnPoint.load(data.getCompound(ACTIVE_RETURN));
+        return data.contains(ACTIVE_RETURN) ? ReturnPoint.load(data.getCompound(ACTIVE_RETURN)) : null;
     }
 
     private static void clearNegativeEffects(LivingEntity entity) {
-        List<net.minecraft.world.effect.MobEffect> remove = entity.getActiveEffects().stream()
+        List<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> remove = entity.getActiveEffects().stream()
                 .map(MobEffectInstance::getEffect)
-                .filter(effect -> effect.getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL)
+                .filter(effect -> effect.value().getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL)
                 .toList();
         remove.forEach(entity::removeEffect);
     }
@@ -802,14 +763,10 @@ public final class HvkAsaraArenaManager {
         return session.challengeHostiles.contains(entity.getUUID()) || isHostile(entity);
     }
 
-    private static void syncArenaStatus(ServerPlayer player, Session session, List<LivingEntity> activeHostiles,
-                                        long now) {
-        if (now < session.nextHudSyncAt) {
-            return;
-        }
+    private static void syncArenaStatus(ServerPlayer player, Session session, List<LivingEntity> activeHostiles, long now) {
+        if (now < session.nextHudSyncAt) return;
         session.nextHudSyncAt = now + HUD_SYNC_INTERVAL_TICKS;
-        List<BlockPos> positions = activeHostiles.size() < 8
-                ? activeHostiles.stream().map(Entity::blockPosition).toList() : List.of();
+        List<BlockPos> positions = activeHostiles.size() < 8 ? activeHostiles.stream().map(Entity::blockPosition).toList() : List.of();
         NetworkHandler.sendToPlayer(new S2C_HvkAsaraArenaStatus(activeHostiles.size(), positions), player);
     }
 
@@ -853,18 +810,18 @@ public final class HvkAsaraArenaManager {
                 : tier == 2 ? Items.DIAMOND_BOOTS : Items.NETHERITE_BOOTS));
     }
 
-    private static void applyAttributeModifier(AttributeInstance attribute, UUID id, String name, double amount) {
+    private static void applyAttributeModifier(AttributeInstance attribute, ResourceLocation id, String name, double amount) {
         if (attribute == null) {
             return;
         }
         if (attribute.getModifier(id) != null) {
             attribute.removeModifier(id);
         }
-        attribute.addPermanentModifier(new AttributeModifier(id, name, amount,
-                AttributeModifier.Operation.MULTIPLY_TOTAL));
+        attribute.addPermanentModifier(new AttributeModifier(id, amount,
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 
-    private static void applyAttributeFloorModifier(AttributeInstance attribute, UUID id, String name, double floor) {
+    private static void applyAttributeFloorModifier(AttributeInstance attribute, ResourceLocation id, double floor) {
         if (attribute == null || !Double.isFinite(floor)) {
             return;
         }
@@ -873,8 +830,8 @@ public final class HvkAsaraArenaManager {
         }
         double amount = Math.max(0.0D, floor - attribute.getValue());
         if (amount > 0.0D) {
-            attribute.addPermanentModifier(new AttributeModifier(id, name, amount,
-                    AttributeModifier.Operation.ADDITION));
+            attribute.addPermanentModifier(new AttributeModifier(id, amount,
+                    AttributeModifier.Operation.ADD_VALUE));
         }
     }
 
@@ -884,15 +841,23 @@ public final class HvkAsaraArenaManager {
             if (stack.isEmpty()) {
                 continue;
             }
-            List<Enchantment> candidates = BuiltInRegistries.ENCHANTMENT.stream()
-                    .filter(enchantment -> enchantment.canEnchant(stack)).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-            Map<Enchantment, Integer> enchantments = new HashMap<>(EnchantmentHelper.getEnchantments(stack));
+            Registry<Enchantment> registry = entity.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+            List<Holder.Reference<Enchantment>> candidates = registry.holders()
+                    .filter(stack::supportsEnchantment)
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+            List<Holder.Reference<Enchantment>> selected = new ArrayList<>();
+            List<Integer> levels = new ArrayList<>();
             for (int index = 0; index < count && !candidates.isEmpty(); index++) {
-                Enchantment enchantment = candidates.remove(entity.getRandom().nextInt(candidates.size()));
+                Holder.Reference<Enchantment> enchantment = candidates.remove(entity.getRandom().nextInt(candidates.size()));
                 int level = maxLevel == 6 ? 6 : 1 + entity.getRandom().nextInt(Math.max(1, maxLevel));
-                enchantments.put(enchantment, level);
+                selected.add(enchantment);
+                levels.add(level);
             }
-            EnchantmentHelper.setEnchantments(enchantments, stack);
+            EnchantmentHelper.updateEnchantments(stack, enchantments -> {
+                for (int index = 0; index < selected.size(); index++) {
+                    enchantments.set(selected.get(index), levels.get(index));
+                }
+            });
         }
     }
 
@@ -945,7 +910,7 @@ public final class HvkAsaraArenaManager {
 
     private static ResourceKey<Level> arenaKey(String path) {
         return ResourceKey.create(Registries.DIMENSION,
-                ResourceLocation.tryParse(DealtForceSkillsMod.MODID + ":" + path));
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, path));
     }
 
     private static boolean isArenaDimension(ResourceKey<Level> dimension) {
@@ -968,9 +933,7 @@ public final class HvkAsaraArenaManager {
         CompoundTag data = player.getPersistentData();
         if (data.contains(INSTANCE_X) && data.contains(INSTANCE_Z)) {
             BlockPos stored = new BlockPos(data.getInt(INSTANCE_X), INSTANCE_Y, data.getInt(INSTANCE_Z));
-            if (!instanceOccupied(stored, player.getUUID())) {
-                return stored;
-            }
+            if (!instanceOccupied(stored, player.getUUID())) return stored;
         }
         UUID playerId = player.getUUID();
         long mixed = playerId.getMostSignificantBits() ^ Long.rotateLeft(playerId.getLeastSignificantBits(), 21);
@@ -1000,9 +963,7 @@ public final class HvkAsaraArenaManager {
         Set<ResourceKey<Level>> seen = new HashSet<>();
         ServerLevel[] preferred = {server.overworld(), server.getLevel(Level.NETHER), server.getLevel(Level.END)};
         for (ServerLevel level : preferred) {
-            if (level != null && seen.add(level.dimension())) {
-                result.add(level);
-            }
+            if (level != null && seen.add(level.dimension())) result.add(level);
         }
         for (ServerLevel level : server.getAllLevels()) {
             if (!GamblerArenaManager.ARENA_LEVEL.equals(level.dimension())
@@ -1014,27 +975,18 @@ public final class HvkAsaraArenaManager {
     }
 
     private static boolean supportsStructure(ServerLevel level, Structure structure) {
-        return level.getChunkSource().getGenerator().getBiomeSource().possibleBiomes().stream()
-                .anyMatch(structure.biomes()::contains);
+        return level.getChunkSource().getGenerator().getBiomeSource().possibleBiomes().stream().anyMatch(structure.biomes()::contains);
     }
 
     private static ChunkPos previewProbeChunk(ChunkPos center, long probe) {
-        if (probe == 0L) {
-            return center;
-        }
+        if (probe == 0L) return center;
         int radius = (int) Math.ceil((Math.sqrt(probe + 1.0D) - 1.0D) * 0.5D);
         long ringStart = (long) (radius * 2 - 1) * (radius * 2 - 1);
         int offset = (int) (probe - ringStart);
         int side = radius * 2;
-        if (offset < side) {
-            return new ChunkPos(center.x - radius + offset, center.z - radius);
-        }
-        if (offset < side * 2) {
-            return new ChunkPos(center.x + radius, center.z - radius + offset - side);
-        }
-        if (offset < side * 3) {
-            return new ChunkPos(center.x + radius - offset + side * 2, center.z + radius);
-        }
+        if (offset < side) return new ChunkPos(center.x - radius + offset, center.z - radius);
+        if (offset < side * 2) return new ChunkPos(center.x + radius, center.z - radius + offset - side);
+        if (offset < side * 3) return new ChunkPos(center.x + radius - offset + side * 2, center.z + radius);
         return new ChunkPos(center.x - radius, center.z + radius - offset + side * 3);
     }
 
@@ -1056,11 +1008,9 @@ public final class HvkAsaraArenaManager {
             if (placement instanceof ConcentricRingsStructurePlacement rings) {
                 List<ChunkPos> positions = state.getRingPositionsFor(rings);
                 if (positions != null) {
-                    positions.stream()
-                            .filter(pos -> withinPreviewRadius(center, pos))
+                    positions.stream().filter(pos -> withinPreviewRadius(center, pos))
                             .sorted(java.util.Comparator.comparingLong(pos -> chunkDistanceSqr(center, pos)))
-                            .limit(STRUCTURE_PREVIEW_PROBES)
-                            .forEach(candidates::add);
+                            .limit(STRUCTURE_PREVIEW_PROBES).forEach(candidates::add);
                 }
             } else if (placement instanceof RandomSpreadStructurePlacement randomSpread) {
                 int spacing = Math.max(1, randomSpread.spacing());
@@ -1068,21 +1018,15 @@ public final class HvkAsaraArenaManager {
                 for (int ring = 0; ring <= maxRing && candidates.size() < STRUCTURE_PREVIEW_PROBES; ring++) {
                     for (int dx = -ring; dx <= ring && candidates.size() < STRUCTURE_PREVIEW_PROBES; dx++) {
                         for (int dz = -ring; dz <= ring && candidates.size() < STRUCTURE_PREVIEW_PROBES; dz++) {
-                            if (Math.abs(dx) != ring && Math.abs(dz) != ring) {
-                                continue;
-                            }
+                            if (Math.abs(dx) != ring && Math.abs(dz) != ring) continue;
                             ChunkPos candidate = randomSpread.getPotentialStructureChunk(state.getLevelSeed(),
                                     center.x + spacing * dx, center.z + spacing * dz);
-                            if (withinPreviewRadius(center, candidate)) {
-                                candidates.add(candidate);
-                            }
+                            if (withinPreviewRadius(center, candidate)) candidates.add(candidate);
                         }
                     }
                 }
             }
-            if (candidates.size() >= STRUCTURE_PREVIEW_PROBES) {
-                break;
-            }
+            if (candidates.size() >= STRUCTURE_PREVIEW_PROBES) break;
         }
         return List.copyOf(candidates);
     }
@@ -1121,9 +1065,7 @@ public final class HvkAsaraArenaManager {
         int offsetX = (targetChunk.x - sourceChunk.x) * 16;
         int offsetZ = (targetChunk.z - sourceChunk.z) * 16;
         if (offsetX != 0 || offsetZ != 0) {
-            for (var piece : start.getPieces()) {
-                piece.move(offsetX, 0, offsetZ);
-            }
+            for (var piece : start.getPieces()) piece.move(offsetX, 0, offsetZ);
         }
         return new StructureStart(structure, targetChunk, start.getReferences(),
                 new PiecesContainer(List.copyOf(start.getPieces())));
@@ -1282,12 +1224,8 @@ public final class HvkAsaraArenaManager {
     }
 
     private static BlockState arenaFloor(ResourceKey<Level> arenaDimension) {
-        if (NETHER_ARENA.equals(arenaDimension)) {
-            return net.minecraft.world.level.block.Blocks.NETHERRACK.defaultBlockState();
-        }
-        if (END_ARENA.equals(arenaDimension)) {
-            return net.minecraft.world.level.block.Blocks.END_STONE.defaultBlockState();
-        }
+        if (NETHER_ARENA.equals(arenaDimension)) return net.minecraft.world.level.block.Blocks.NETHERRACK.defaultBlockState();
+        if (END_ARENA.equals(arenaDimension)) return net.minecraft.world.level.block.Blocks.END_STONE.defaultBlockState();
         return net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState();
     }
 
@@ -1328,17 +1266,11 @@ public final class HvkAsaraArenaManager {
     }
 
     private static void spawnNaturalHostiles(ServerLevel level, Session session, long now) {
-        if (now >= session.spawnEndAt || now % 10L != 0L
-                || session.challengeHostiles.size() >= MAX_CHALLENGE_HOSTILES
-                || level.getDifficulty() == Difficulty.PEACEFUL
-                || !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) {
-            return;
-        }
+        if (now >= session.spawnEndAt || now % 10L != 0L || session.challengeHostiles.size() >= MAX_CHALLENGE_HOSTILES
+                || level.getDifficulty() == Difficulty.PEACEFUL || !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) return;
         for (int attempt = 0; attempt < 2 && session.challengeHostiles.size() < MAX_CHALLENGE_HOSTILES; attempt++) {
             BlockPos spawnPos = findStructureFloor(level, session);
-            if (spawnPos != null) {
-                spawnStructureMonster(level, session, spawnPos);
-            }
+            if (spawnPos != null) spawnStructureMonster(level, session, spawnPos);
         }
     }
 
@@ -1350,14 +1282,10 @@ public final class HvkAsaraArenaManager {
                 level.getBiome(spawnPos), level.structureManager(), MobCategory.MONSTER, spawnPos)
                 : override.spawns();
         var spawnData = possibleSpawns.getRandom(level.random).orElse(null);
-        if (spawnData == null) {
-            return false;
-        }
+        if (spawnData == null) return false;
         Entity created = spawnData.type.create(level);
         if (!(created instanceof Mob mob)) {
-            if (created != null) {
-                created.discard();
-            }
+            if (created != null) created.discard();
             return false;
         }
         mob.moveTo(spawnPos.getX() + 0.5D, spawnPos.getY(), spawnPos.getZ() + 0.5D,
@@ -1367,37 +1295,29 @@ public final class HvkAsaraArenaManager {
             return false;
         }
         mob.setPersistenceRequired();
-        mob.finalizeSpawn(level, level.getCurrentDifficultyAt(spawnPos), MobSpawnType.STRUCTURE, null, null);
-        if (!level.addFreshEntity(mob)) {
-            return false;
-        }
+        mob.finalizeSpawn(level, level.getCurrentDifficultyAt(spawnPos), MobSpawnType.STRUCTURE, null);
+        if (!level.addFreshEntity(mob)) return false;
         markAndApplyMob(mob, session);
         return true;
     }
 
     private static void spawnExpectedStructureHostiles(ServerLevel level, Session session, long now) {
-        if (now >= session.spawnEndAt || now % 20L != 0L
-                || session.challengeHostiles.size() >= MAX_CHALLENGE_HOSTILES
-                || level.getDifficulty() == Difficulty.PEACEFUL
-                || !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)
-                || expectedStructureMonster(session) == null) {
-            return;
-        }
+        if (now >= session.spawnEndAt || now % 20L != 0L || session.challengeHostiles.size() >= MAX_CHALLENGE_HOSTILES
+                || level.getDifficulty() == Difficulty.PEACEFUL || !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)
+                || expectedStructureMonster(session) == null) return;
         for (int count = 0; count < 2 && session.challengeHostiles.size() < MAX_CHALLENGE_HOSTILES; count++) {
             BlockPos spawnPos = findStructureFloor(level, session);
             EntityType<?> type = expectedStructureMonster(session);
             session.structureSpawnCount++;
             Entity created = spawnPos == null ? null : type.create(level);
-            if (!(created instanceof Mob mob)) {
-                continue;
-            }
+            if (!(created instanceof Mob mob)) continue;
             mob.moveTo(spawnPos, level.random.nextFloat() * 360.0F, 0.0F);
             if (!mob.checkSpawnObstruction(level)) {
                 mob.discard();
                 continue;
             }
             mob.setPersistenceRequired();
-            mob.finalizeSpawn(level, level.getCurrentDifficultyAt(spawnPos), MobSpawnType.STRUCTURE, null, null);
+            mob.finalizeSpawn(level, level.getCurrentDifficultyAt(spawnPos), MobSpawnType.STRUCTURE, null);
             if (level.addFreshEntity(mob)) {
                 markAndApplyMob(mob, session);
             }
@@ -1442,19 +1362,14 @@ public final class HvkAsaraArenaManager {
                         && level.getBlockState(feet).getCollisionShape(level, feet).isEmpty()
                         && level.getBlockState(feet.above()).getCollisionShape(level, feet.above()).isEmpty()
                         && level.getBlockState(feet.above(2)).getCollisionShape(level, feet.above(2)).isEmpty()
-                        && level.getFluidState(feet).isEmpty()
-                        && level.getFluidState(feet.above()).isEmpty()
+                        && level.getFluidState(feet).isEmpty() && level.getFluidState(feet.above()).isEmpty()
                         && level.getFluidState(feet.above(2)).isEmpty()) {
                     if (level.canSeeSky(feet)) {
                         exposedCount++;
-                        if (level.random.nextInt(exposedCount) == 0) {
-                            exposed = feet;
-                        }
+                        if (level.random.nextInt(exposedCount) == 0) exposed = feet;
                     } else {
                         coveredCount++;
-                        if (level.random.nextInt(coveredCount) == 0) {
-                            covered = feet;
-                        }
+                        if (level.random.nextInt(coveredCount) == 0) covered = feet;
                     }
                 }
             }
@@ -1469,20 +1384,15 @@ public final class HvkAsaraArenaManager {
 
         private CompoundTag save() {
             CompoundTag tag = new CompoundTag();
-            tag.putInt("MinX", minX);
-            tag.putInt("MinY", minY);
-            tag.putInt("MinZ", minZ);
-            tag.putInt("MaxX", maxX);
-            tag.putInt("MaxY", maxY);
-            tag.putInt("MaxZ", maxZ);
+            tag.putInt("MinX", minX); tag.putInt("MinY", minY); tag.putInt("MinZ", minZ);
+            tag.putInt("MaxX", maxX); tag.putInt("MaxY", maxY); tag.putInt("MaxZ", maxZ);
             return tag;
         }
 
         private static ResetBounds load(CompoundTag tag) {
             ResetBounds bounds = new ResetBounds(tag.getInt("MinX"), tag.getInt("MinY"), tag.getInt("MinZ"),
                     tag.getInt("MaxX"), tag.getInt("MaxY"), tag.getInt("MaxZ"));
-            return bounds.maxX >= bounds.minX && bounds.maxY >= bounds.minY && bounds.maxZ >= bounds.minZ
-                    ? bounds : null;
+            return bounds.maxX >= bounds.minX && bounds.maxY >= bounds.minY && bounds.maxZ >= bounds.minZ ? bounds : null;
         }
     }
 
@@ -1569,10 +1479,8 @@ public final class HvkAsaraArenaManager {
         private boolean tick(MinecraftServer server, ServerPlayer player) {
             if (!cleanupOnly && ++activeTicks > MAX_BUILD_TICKS) {
                 rollbackPlayer(server, player);
-                if (player != null) {
-                    player.displayClientMessage(Component.translatable(
-                            "message.dealt_force_skills.hvk_asara_arena.place_failed", structureId.toString()), false);
-                }
+                if (player != null) player.displayClientMessage(Component.translatable(
+                        "message.dealt_force_skills.hvk_asara_arena.place_failed", structureId.toString()), false);
                 return !beginFailureCleanup();
             }
             long deadline = System.nanoTime() + BUILD_TICK_BUDGET_NANOS;
@@ -1589,18 +1497,14 @@ public final class HvkAsaraArenaManager {
                 case COMPLETE -> complete(player);
                 case CANCELLED -> true;
             };
-            if (!finished && !cleanupOnly && player != null) {
-                reportProgress(player);
-            }
+            if (!finished && !cleanupOnly && player != null) reportProgress(player);
             return finished;
         }
 
         private void reportProgress(ServerPlayer player) {
             int progress = progressPercent();
             int reportedProgress = progress >= 100 ? 100 : progress / 10 * 10;
-            if (reportedProgress <= lastReportedProgress && activeTicks < nextProgressReminderTick) {
-                return;
-            }
+            if (reportedProgress <= lastReportedProgress && activeTicks < nextProgressReminderTick) return;
             lastReportedProgress = Math.max(lastReportedProgress, reportedProgress);
             nextProgressReminderTick = activeTicks + 40;
             player.displayClientMessage(Component.translatable(
@@ -1628,9 +1532,7 @@ public final class HvkAsaraArenaManager {
         }
 
         private static int phaseProgress(int start, int span, long completed, long total) {
-            if (total <= 0L) {
-                return start + span;
-            }
+            if (total <= 0L) return start + span;
             double fraction = Math.min(1.0D, Math.max(0.0D, (double) completed / total));
             return start + (int) Math.floor(span * fraction);
         }
@@ -1650,20 +1552,15 @@ public final class HvkAsaraArenaManager {
                 UnregisterTarget target = unregisterTargets.get(index);
                 long targetTotal = (long) (target.maxChunkX - target.minChunkX + 1)
                         * (target.maxChunkZ - target.minChunkZ + 1);
-                if (index < unregisterTargetIndex) {
-                    completed += targetTotal;
-                } else if (index == unregisterTargetIndex) {
-                    completed += Math.min(targetTotal, unregisterChunkIndex);
-                }
+                if (index < unregisterTargetIndex) completed += targetTotal;
+                else if (index == unregisterTargetIndex) completed += Math.min(targetTotal, unregisterChunkIndex);
             }
             return completed;
         }
 
         private long entityTotal() {
             long total = 0L;
-            for (EntityTarget target : entityTargets) {
-                total += entityChunkCount(target);
-            }
+            for (EntityTarget target : entityTargets) total += entityChunkCount(target);
             return total;
         }
 
@@ -1671,11 +1568,8 @@ public final class HvkAsaraArenaManager {
             long completed = 0L;
             for (int index = 0; index < entityTargets.size(); index++) {
                 long targetTotal = entityChunkCount(entityTargets.get(index));
-                if (index < entityTargetIndex) {
-                    completed += targetTotal;
-                } else if (index == entityTargetIndex) {
-                    completed += Math.min(targetTotal, entityChunkIndex);
-                }
+                if (index < entityTargetIndex) completed += targetTotal;
+                else if (index == entityTargetIndex) completed += Math.min(targetTotal, entityChunkIndex);
             }
             return completed;
         }
@@ -1690,9 +1584,7 @@ public final class HvkAsaraArenaManager {
 
         private long clearTotal() {
             long total = 0L;
-            for (ClearTarget target : clearTargets) {
-                total += target.bounds.volume();
-            }
+            for (ClearTarget target : clearTargets) total += target.bounds.volume();
             return total;
         }
 
@@ -1700,11 +1592,8 @@ public final class HvkAsaraArenaManager {
             long completed = 0L;
             for (int index = 0; index < clearTargets.size(); index++) {
                 long targetTotal = clearTargets.get(index).bounds.volume();
-                if (index < clearTargetIndex) {
-                    completed += targetTotal;
-                } else if (index == clearTargetIndex) {
-                    completed += Math.min(targetTotal, clearBlockIndex);
-                }
+                if (index < clearTargetIndex) completed += targetTotal;
+                else if (index == clearTargetIndex) completed += Math.min(targetTotal, clearBlockIndex);
             }
             return completed;
         }
@@ -1718,24 +1607,17 @@ public final class HvkAsaraArenaManager {
         }
 
         private boolean processPreview(MinecraftServer server, ServerPlayer player, long deadline) {
-            if (player == null) {
-                return true;
-            }
-            if (previewSources == null) {
-                previewSources = sourceLevels(server).stream()
-                        .filter(level -> supportsStructure(level, structure))
-                        .toList();
-            }
+            if (player == null) return true;
+        if (previewSources == null) previewSources = sourceLevels(server).stream().filter(level -> supportsStructure(level, structure)).toList();
             ChunkPos targetChunk = new ChunkPos(origin);
             int checked = 0;
             int generated = 0;
             while (previewSourceIndex < previewSources.size()
-                    && checked < STRUCTURE_PLACEMENT_CHECKS_PER_TICK
-                    && generated < 1
+                    && checked < STRUCTURE_PLACEMENT_CHECKS_PER_TICK && generated < 1
                     && (checked == 0 || System.nanoTime() < deadline)) {
                 ServerLevel source = previewSources.get(previewSourceIndex);
                 if (previewPlacementSourceIndex != previewSourceIndex) {
-                    var registry = server.registryAccess().registryOrThrow(Registries.STRUCTURE);
+                    Registry<Structure> registry = server.registryAccess().registryOrThrow(Registries.STRUCTURE);
                     previewPlacements = source.getChunkSource().getGeneratorState()
                             .getPlacementsForStructure(registry.wrapAsHolder(structure));
                     BlockPos centerPos = Level.OVERWORLD.equals(source.dimension())
@@ -1763,9 +1645,7 @@ public final class HvkAsaraArenaManager {
                     boolean legal = previewPlacements.isEmpty()
                             || previewPlacements.stream().anyMatch(placement -> placement.isStructureChunk(
                             source.getChunkSource().getGeneratorState(), candidateChunk.x, candidateChunk.z));
-                    if (!legal) {
-                        continue;
-                    }
+                    if (!legal) continue;
                     previewGenerationAttempts++;
                     generated++;
                     StructureStart candidate = generateStructureAt(source, structure, candidateChunk);
@@ -1832,9 +1712,7 @@ public final class HvkAsaraArenaManager {
 
         private void addUnregisterTarget(MinecraftServer server, ServerLevel level, CompoundTag tag) {
             ResourceLocation oldStructureId = ResourceLocation.tryParse(tag.getString("Structure"));
-            if (oldStructureId == null) {
-                return;
-            }
+            if (oldStructureId == null) return;
             Structure oldStructure = server.registryAccess().registryOrThrow(Registries.STRUCTURE).get(oldStructureId);
             int minChunkX = tag.getInt("MinChunkX");
             int maxChunkX = tag.getInt("MaxChunkX");
@@ -1886,18 +1764,13 @@ public final class HvkAsaraArenaManager {
                     var referencesByStructure = new HashMap<>(chunk.getAllReferences());
                     var updatedReferences = new LongOpenHashSet(references);
                     updatedReferences.remove(reference);
-                    if (updatedReferences.isEmpty()) {
-                        referencesByStructure.remove(target.structure);
-                    } else {
-                        referencesByStructure.put(target.structure, updatedReferences);
-                    }
+                    if (updatedReferences.isEmpty()) referencesByStructure.remove(target.structure);
+                    else referencesByStructure.put(target.structure, updatedReferences);
                     chunk.setAllReferences(referencesByStructure);
                     chunk.setUnsaved(true);
                 }
             }
-            if (unregisterTargetIndex >= unregisterTargets.size()) {
-                stage = BuildStage.ENTITIES;
-            }
+            if (unregisterTargetIndex >= unregisterTargets.size()) stage = BuildStage.ENTITIES;
             return false;
         }
 
@@ -1924,17 +1797,15 @@ public final class HvkAsaraArenaManager {
                 int chunkZ = minChunkZ + entityChunkIndex % depth;
                 entityChunkIndex++;
                 processed++;
-                AABB area = new AABB(Math.max(minX, chunkX << 4), target.level.getMinBuildHeight(),
-                        Math.max(minZ, chunkZ << 4), Math.min(maxX + 1.0D, (chunkX << 4) + 16.0D),
-                        target.level.getMaxBuildHeight(), Math.min(maxZ + 1.0D, (chunkZ << 4) + 16.0D));
-                target.level.getChunk(chunkX, chunkZ);
-                for (Entity entity : target.level.getEntities((Entity) null, area, entity -> !(entity instanceof Player))) {
+        AABB area = new AABB(Math.max(minX, chunkX << 4), target.level.getMinBuildHeight(),
+                Math.max(minZ, chunkZ << 4), Math.min(maxX + 1.0D, (chunkX << 4) + 16.0D),
+                target.level.getMaxBuildHeight(), Math.min(maxZ + 1.0D, (chunkZ << 4) + 16.0D));
+        target.level.getChunk(chunkX, chunkZ);
+        for (Entity entity : target.level.getEntities((Entity) null, area, entity -> !(entity instanceof Player))) {
                     entity.discard();
                 }
             }
-            if (entityTargetIndex >= entityTargets.size()) {
-                stage = BuildStage.CLEAR;
-            }
+            if (entityTargetIndex >= entityTargets.size()) stage = BuildStage.CLEAR;
             return false;
         }
 
@@ -2107,18 +1978,25 @@ public final class HvkAsaraArenaManager {
             return true;
         }
 
+        private void rollbackPlayer(MinecraftServer server, ServerPlayer player) {
+            SESSIONS.remove(playerId);
+            if (player == null) return;
+            if (arena != null && resetBounds != null) player.getPersistentData().remove(INSTANCE_STATE);
+            player.removeEffect(MobEffects.GLOWING);
+            ServerLevel returnLevel = server.getLevel(returnPoint.dimension);
+            if (returnLevel == null) returnLevel = server.overworld();
+            player.teleportTo(returnLevel, returnPoint.x, returnPoint.y, returnPoint.z,
+                    returnPoint.yRot, returnPoint.xRot);
+        }
+
         private boolean abort(ServerPlayer player, String messageKey) {
             player.displayClientMessage(Component.translatable(messageKey, structureId.toString()), false);
             return true;
         }
 
         private void cancel() {
-            if (cleanupOnly) {
-                return;
-            }
-            if (!beginFailureCleanup()) {
-                stage = BuildStage.CANCELLED;
-            }
+            if (cleanupOnly) return;
+            if (!beginFailureCleanup()) stage = BuildStage.CANCELLED;
         }
 
         private boolean beginFailureCleanup() {
@@ -2132,22 +2010,17 @@ public final class HvkAsaraArenaManager {
                 return false;
             }
             if (startRegistered) {
-                int minChunkX = SectionPos.blockToSectionCoord(structureBox.minX());
-                int maxChunkX = SectionPos.blockToSectionCoord(structureBox.maxX());
-                int minChunkZ = SectionPos.blockToSectionCoord(structureBox.minZ());
-                int maxChunkZ = SectionPos.blockToSectionCoord(structureBox.maxZ());
                 unregisterTargets.add(new UnregisterTarget(arena, structure, preview.getChunkPos(),
-                        minChunkX, maxChunkX, minChunkZ, maxChunkZ));
+                        SectionPos.blockToSectionCoord(structureBox.minX()),
+                        SectionPos.blockToSectionCoord(structureBox.maxX()),
+                        SectionPos.blockToSectionCoord(structureBox.minZ()),
+                        SectionPos.blockToSectionCoord(structureBox.maxZ())));
             }
             if (clearTargets.stream().noneMatch(target -> target.level == arena && target.bounds.equals(resetBounds))) {
                 clearTargets.add(new ClearTarget(arena, resetBounds));
             }
             addEntityTarget(arena, origin);
-            unregisterTargetIndex = 0;
-            unregisterChunkIndex = 0;
-            entityTargetIndex = 0;
-            entityChunkIndex = 0;
-            clearTargetIndex = 0;
+            unregisterTargetIndex = unregisterChunkIndex = entityTargetIndex = entityChunkIndex = clearTargetIndex = 0;
             clearBlockIndex = 0L;
             clearLoadedLevel = null;
             stage = BuildStage.UNREGISTER;
@@ -2161,23 +2034,6 @@ public final class HvkAsaraArenaManager {
                 case CLEAR -> clearBlockIndex++;
                 default -> stage = BuildStage.CANCELLED;
             }
-        }
-
-        private void rollbackPlayer(MinecraftServer server, ServerPlayer player) {
-            SESSIONS.remove(playerId);
-            if (player == null) {
-                return;
-            }
-            if (arena != null && resetBounds != null) {
-                player.getPersistentData().remove(INSTANCE_STATE);
-            }
-            player.removeEffect(MobEffects.GLOWING);
-            ServerLevel returnLevel = server.getLevel(returnPoint.dimension);
-            if (returnLevel == null) {
-                returnLevel = server.overworld();
-            }
-            player.teleportTo(returnLevel, returnPoint.x, returnPoint.y, returnPoint.z,
-                    returnPoint.yRot, returnPoint.xRot);
         }
 
         private static long structureChunkCount(BoundingBox box) {
@@ -2197,6 +2053,7 @@ public final class HvkAsaraArenaManager {
         }
     }
 
+
     private static final class Session {
         private final UUID id;
         private final UUID playerId;
@@ -2211,7 +2068,6 @@ public final class HvkAsaraArenaManager {
         private final ReturnPoint returnPoint;
         private final Set<HvkAsaraArenaModifier> modifiers;
         private final Set<UUID> challengeHostiles = new HashSet<>();
-        private final Set<UUID> hostileKills = new HashSet<>();
         private final int score;
         private final long startedAt;
         private final long spawnEndAt;
@@ -2223,8 +2079,8 @@ public final class HvkAsaraArenaManager {
         private double lastY;
         private double lastZ;
         private long nextMovementColdAt;
-        private int structureSpawnCount;
-        private long nextHudSyncAt;
+    private int structureSpawnCount;
+    private long nextHudSyncAt;
 
         private Session(UUID id, UUID playerId, ResourceKey<Level> arenaDimension, BlockPos origin,
                         BlockPos arrival, AABB structureBounds, List<BoundingBox> structurePieces,
@@ -2272,9 +2128,7 @@ public final class HvkAsaraArenaManager {
 
         private static ReturnPoint load(CompoundTag tag) {
             ResourceLocation id = ResourceLocation.tryParse(tag.getString("Dimension"));
-            if (id == null) {
-                return null;
-            }
+            if (id == null) return null;
             return new ReturnPoint(ResourceKey.create(Registries.DIMENSION, id), tag.getDouble("X"),
                     tag.getDouble("Y"), tag.getDouble("Z"), tag.getFloat("YRot"), tag.getFloat("XRot"));
         }

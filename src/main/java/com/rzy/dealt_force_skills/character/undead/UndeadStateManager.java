@@ -24,6 +24,8 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.core.Holder;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -35,13 +37,14 @@ import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.resources.ResourceLocation;
 
 public final class UndeadStateManager {
     public static float baseMaxEnergy() {
@@ -114,18 +117,12 @@ public final class UndeadStateManager {
     private static final String FROZEN_BLADE_STACKS = DealtForceSkillsMod.MODID + ".undead_frozen_blade_stacks";
     private static final String FROZEN_BLADE_UNTIL = DealtForceSkillsMod.MODID + ".undead_frozen_blade_until";
     public static final String HUNTER_RETREAT_OWNER = DealtForceSkillsMod.MODID + ".undead_hunter_retreat_owner";
-    private static final UUID FROZEN_BLADE_SPEED_UUID =
-            UUID.fromString("155db8b0-76b1-48cc-941a-5f698a9bc190");
+    private static final ResourceLocation FROZEN_BLADE_SPEED_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "undead_state_manager.frozen_blade_speed");
 
-    private static final UUID HUNTER_SPEED_UUID =
-            UUID.fromString("41d8012b-870b-4aed-b62f-e49944398a7d");
-    private static final UUID HUNTER_SCATTER_SLOW_UUID =
-            UUID.fromString("959b6fc7-f622-45f4-a082-f9e42c0c9512");
-    private static final AttributeModifier HUNTER_SPEED = new AttributeModifier(
-            HUNTER_SPEED_UUID,
-            "Undead hunter jetpack speed",
-            0.5D,
-            AttributeModifier.Operation.MULTIPLY_TOTAL
+    private static final ResourceLocation HUNTER_SPEED_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "undead_state_manager.hunter_speed");
+    private static final ResourceLocation HUNTER_SCATTER_SLOW_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "undead_state_manager.hunter_scatter_slow");
+    private static final AttributeModifier HUNTER_SPEED = new AttributeModifier(HUNTER_SPEED_UUID, 0.5D,
+            AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
     );
 
     private UndeadStateManager() {
@@ -170,7 +167,7 @@ public final class UndeadStateManager {
         clearHunterSpeed(player);
         clearHunterScatterSlow(player);
         clearRuntimeInvisibility(player);
-        player.removeEffect(ModEffects.UNDEAD_HUNTER_SCATTER.get());
+        player.removeEffect(ModEffects.UNDEAD_HUNTER_SCATTER);
         UndeadUpgradeManager.clearAttributes(player);
     }
 
@@ -242,7 +239,7 @@ public final class UndeadStateManager {
         player.displayClientMessage(Component.translatable(
                 "message.dealt_force_skills.undead.profession_changed",
                 Component.translatable(next.translationKey())), true);
-        player.level().playSound(null, player.blockPosition(), SoundEvents.ARMOR_EQUIP_CHAIN,
+        player.level().playSound(null, player.blockPosition(), SoundEvents.ARMOR_EQUIP_CHAIN.value(),
                 SoundSource.PLAYERS, 0.7F, 1.15F);
         syncToClient(player);
     }
@@ -407,7 +404,7 @@ public final class UndeadStateManager {
     public static boolean recordScholarTarget(ServerPlayer player, LivingEntity target) {
         String id = target instanceof Player
                 ? "minecraft:player"
-                : String.valueOf(ForgeRegistries.ENTITY_TYPES.getKey(target.getType()));
+                : String.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()));
         CompoundTag records = scholarRecords(player);
         int current = Math.max(0, records.getInt(id));
         if (current >= 2) {
@@ -425,7 +422,7 @@ public final class UndeadStateManager {
     public static int scholarRecordCount(Player player, LivingEntity target) {
         String id = target instanceof Player
                 ? "minecraft:player"
-                : String.valueOf(ForgeRegistries.ENTITY_TYPES.getKey(target.getType()));
+                : String.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()));
         return Math.max(0, scholarRecords(player).getInt(id));
     }
 
@@ -629,7 +626,7 @@ public final class UndeadStateManager {
             player.serverLevel().playSound(null, player.blockPosition(),
                     SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0F, 0.65F);
             if (source.getEntity() instanceof LivingEntity attacker) {
-                attacker.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.duration_ticks", 3 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.amplifier", 0),
+                attacker.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.duration_ticks", 3 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.amplifier", 0),
                         false, true, true), player);
                 player.serverLevel().sendParticles(ParticleTypes.CRIT,
                         attacker.getX(), attacker.getY() + attacker.getBbHeight() * 0.5D, attacker.getZ(),
@@ -724,9 +721,9 @@ public final class UndeadStateManager {
                     && isBehindTarget(player, target)) {
                 adjusted *= 2.0F;
             }
-            if (target.hasEffect(ModEffects.STUN.get())) {
+            if (target.hasEffect(ModEffects.STUN)) {
                 adjusted *= 3.0F;
-                target.removeEffect(ModEffects.STUN.get());
+                target.removeEffect(ModEffects.STUN);
             }
         } else if (profession == UndeadProfession.SCHOLAR) {
             int records = scholarRecordCount(player, target);
@@ -863,7 +860,7 @@ public final class UndeadStateManager {
                     ? 8.4F
                     : 6.0F;
             SkillDamageHelper.hurt(target, player.damageSources().playerAttack(player), player, damage);
-            target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.3.duration_ticks", 30), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.3.amplifier", 0),
+            target.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.3.duration_ticks", 30), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.3.amplifier", 0),
                     false, true, true), player);
             player.serverLevel().sendParticles(ParticleTypes.CRIT,
                     target.getX(), target.getY() + target.getBbHeight() * 0.5D, target.getZ(),
@@ -980,7 +977,7 @@ public final class UndeadStateManager {
                 target.hurtMarked = true;
             }
             target.getPersistentData().putLong(RITUAL_DANCE_UNTIL, now + 10L);
-            target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE.get(),
+            target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.raptor_electromagnetic_interference.5.duration_ticks", 12), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.raptor_electromagnetic_interference.5.amplifier", 0), false, true, true), player);
             if (player.tickCount % 20 == 0) {
                 target.invulnerableTime = 0;
@@ -1075,7 +1072,7 @@ public final class UndeadStateManager {
         setEnergy(player, 0.0F);
         tag.putBoolean(HUNTER_SCATTER, false);
         tag.putLong(HUNTER_EXHAUSTED_UNTIL, now + 5L * 20L);
-        player.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.6.duration_ticks", 5 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.6.amplifier", 0),
+        player.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.6.duration_ticks", 5 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.6.amplifier", 0),
                 false, true, true));
     }
 
@@ -1087,7 +1084,7 @@ public final class UndeadStateManager {
         if (invisible) {
             tag.putBoolean(RUNTIME_INVISIBLE, true);
             player.setInvisible(true);
-            refreshVisualMarker(player, ModEffects.UNDEAD_TRUE_INVISIBILITY.get());
+            refreshVisualMarker(player, ModEffects.UNDEAD_TRUE_INVISIBILITY);
             clearMobTargets(player);
         } else {
             clearRuntimeInvisibility(player);
@@ -1096,13 +1093,13 @@ public final class UndeadStateManager {
 
     private static void updateHunterScatterVisual(ServerPlayer player, CompoundTag tag) {
         if (profession(player) == UndeadProfession.HUNTER && tag.getBoolean(HUNTER_SCATTER)) {
-            refreshVisualMarker(player, ModEffects.UNDEAD_HUNTER_SCATTER.get());
+            refreshVisualMarker(player, ModEffects.UNDEAD_HUNTER_SCATTER);
         } else {
-            player.removeEffect(ModEffects.UNDEAD_HUNTER_SCATTER.get());
+            player.removeEffect(ModEffects.UNDEAD_HUNTER_SCATTER);
         }
     }
 
-    private static void refreshVisualMarker(ServerPlayer player, net.minecraft.world.effect.MobEffect effect) {
+    private static void refreshVisualMarker(ServerPlayer player, Holder<MobEffect> effect) {
         MobEffectInstance current = player.getEffect(effect);
         if (current == null || current.getDuration() <= 5) {
             player.addEffect(new MobEffectInstance(effect, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.custom.7.duration_ticks", 10), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.custom.7.amplifier", 0),
@@ -1116,7 +1113,7 @@ public final class UndeadStateManager {
             tag.putBoolean(RUNTIME_INVISIBLE, false);
             player.setInvisible(false);
         }
-        player.removeEffect(ModEffects.UNDEAD_TRUE_INVISIBILITY.get());
+        player.removeEffect(ModEffects.UNDEAD_TRUE_INVISIBILITY);
     }
 
     private static void clearMobTargets(ServerPlayer player) {
@@ -1177,7 +1174,7 @@ public final class UndeadStateManager {
         CompoundTag tag = target.getPersistentData();
         tag.putLong(OPAL_BURN_UNTIL, now + 2L * 20L + 1L);
         tag.putLong(OPAL_BURN_NEXT, now + 20L);
-        target.setSecondsOnFire(2);
+        target.igniteForSeconds(2);
     }
 
     private static void applyFrozenBlade(LivingEntity target) {
@@ -1203,13 +1200,10 @@ public final class UndeadStateManager {
         }
         AttributeModifier existing = attribute.getModifier(FROZEN_BLADE_SPEED_UUID);
         double amount = -0.10D * stacks;
-        if (existing == null || Math.abs(existing.getAmount() - amount) > 1.0E-6D) {
+        if (existing == null || Math.abs(existing.amount() - amount) > 1.0E-6D) {
             attribute.removeModifier(FROZEN_BLADE_SPEED_UUID);
-            attribute.addTransientModifier(new AttributeModifier(
-                    FROZEN_BLADE_SPEED_UUID,
-                    "Undead frozen blade",
-                    amount,
-                    AttributeModifier.Operation.MULTIPLY_TOTAL
+            attribute.addTransientModifier(new AttributeModifier(FROZEN_BLADE_SPEED_UUID, amount,
+                    AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
             ));
         }
     }
@@ -1311,11 +1305,8 @@ public final class UndeadStateManager {
     private static void applyHunterScatterSlow(Player player) {
         var attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (attribute != null && attribute.getModifier(HUNTER_SCATTER_SLOW_UUID) == null) {
-            attribute.addTransientModifier(new AttributeModifier(
-                    HUNTER_SCATTER_SLOW_UUID,
-                    "Undead hunter scatter slow",
-                    -0.50D,
-                    AttributeModifier.Operation.MULTIPLY_TOTAL
+            attribute.addTransientModifier(new AttributeModifier(HUNTER_SCATTER_SLOW_UUID, -0.50D,
+                    AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
             ));
         }
     }

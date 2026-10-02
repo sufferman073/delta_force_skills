@@ -1,0 +1,17 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "minecraft:glowstone_dust"
+                        },
+                        {
+                            "item":  "dealt_force_skills:car_first_aid_kit"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:strong_injector"
+               }
+}

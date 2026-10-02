@@ -23,7 +23,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 import org.joml.Vector3f;
 import java.util.UUID;
 
@@ -46,8 +45,8 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
         entityData.set(RADIUS, (float) Math.max(0.1, smoke ? RoverConfig.SMOKE_RADIUS : RoverConfig.INJECTOR_RADIUS));
     }
 
-    @Override protected void defineSynchedData() {
-        entityData.define(SMOKE, false); entityData.define(LIFE, 60); entityData.define(RADIUS, 3F);
+    @Override protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(SMOKE, false); builder.define(LIFE, 60); builder.define(RADIUS, 3F);
     }
     public double radius() { return entityData.get(RADIUS); }
     @Override public int smokeLifetimeTicks() { return entityData.get(LIFE); }
@@ -69,7 +68,7 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
                 entity -> entity.isAlive() && entity.distanceToSqr(this) <= radius * radius)) {
             if (!smoke) {
                 RoverStateManager.applyAerosol(owner, target, pulse);
-                if (target instanceof ServerPlayer listener && target.hasEffect(ModEffects.ROVER_PURIFIED.get())
+                if (target instanceof ServerPlayer listener && target.hasEffect(ModEffects.ROVER_PURIFIED)
                         && com.rzy.dealt_force_skills.team.DealtTeamManager.isSelfOrTeammate(owner, target)
                         && purifiedListeners.add(target.getUUID())) {
                     RoverStateManager.sound(listener, com.rzy.dealt_force_skills.character.rover.RoverSounds.PURIFIED);
@@ -78,7 +77,7 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
                 if (target instanceof Player) {
                     target.addEffect(new MobEffectInstance(MobEffects.CONFUSION, Math.max(1, RoverConfig.SMOKE_DEBUFF_DURATION), Math.max(0, RoverConfig.SMOKE_NAUSEA_AMPLIFIER)), owner);
                     target.addEffect(new MobEffectInstance(MobEffects.WITHER, Math.max(1, RoverConfig.SMOKE_DEBUFF_DURATION), Math.max(0, RoverConfig.WITHER_AMPLIFIER)), owner);
-                    target.addEffect(new MobEffectInstance(ModEffects.ROVER_VULNERABLE.get(), Math.max(1, RoverConfig.SMOKE_VULNERABILITY_DURATION)), owner);
+                    target.addEffect(new MobEffectInstance(ModEffects.ROVER_VULNERABLE, Math.max(1, RoverConfig.SMOKE_VULNERABILITY_DURATION)), owner);
                 } else {
                     if (SkillDamageHelper.hurt(target, SkillDamageHelper.trueDamage(level, this, owner), owner,
                             (float) (target.getMaxHealth() * Math.max(0, RoverConfig.SMOKE_MOB_FRACTION)))) RoverStateManager.damageFeedback(owner);
@@ -109,7 +108,6 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
     @Override public boolean isPickable() { return false; }
     @Override public boolean isAttackable() { return false; }
     @Override public boolean shouldRenderAtSqrDistance(double distance) { return distance < 512 * 512; }
-    @Override public Packet<ClientGamePacketListener> getAddEntityPacket() { return NetworkHooks.getEntitySpawningPacket(this); }
     @Override protected void addAdditionalSaveData(CompoundTag tag) {
         net.minecraft.nbt.ListTag listeners = new net.minecraft.nbt.ListTag();
         for (UUID id : purifiedListeners) listeners.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));

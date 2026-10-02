@@ -81,8 +81,7 @@ public final class MorseStateManager {
     public static boolean isMorse(Player player) {
         Optional<String> selected = CharacterSelectionManager.getSelectedCharacterId(player);
         return selected.isPresent() && ModCharacters.MORSE_ID.equals(selected.get())
-                || com.rzy.dealt_force_skills.character.commander.CommanderStateManager
-                .inheritsRuntimeSource(player, ModCharacters.MORSE_ID);
+                || CommanderStateManager.inheritsRuntimeSource(player, ModCharacters.MORSE_ID);
     }
 
     public static void initializeIfNeeded(ServerPlayer player) {
@@ -340,8 +339,8 @@ public final class MorseStateManager {
             return;
         }
         if (equippedTool(player) != MorseTool.SONAR_DETECTOR
-                || player.hasEffect(ModEffects.STUN.get())
-                || player.hasEffect(ModEffects.WEBBED.get())
+                || player.hasEffect(ModEffects.STUN)
+                || player.hasEffect(ModEffects.WEBBED)
                 || player.position().distanceToSqr(new Vec3(tag.getDouble(DEPLOY_START_X),
                 tag.getDouble(DEPLOY_START_Y), tag.getDouble(DEPLOY_START_Z))) > DEPLOY_CANCEL_DISTANCE_SQR) {
             cancelSonarDeploy(player);

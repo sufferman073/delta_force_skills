@@ -4,23 +4,24 @@ import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class StunInputHandler {
     private StunInputHandler() {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
+    public static void onClientTick(ClientTickEvent.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null) {
             return;
         }
 
@@ -32,7 +33,6 @@ public final class StunInputHandler {
             return;
         }
 
-        Minecraft minecraft = Minecraft.getInstance();
         drainKey(KeybindRegister.CHARACTER_SELECT);
         drainKey(KeybindRegister.ACTIVE_SKILL_1);
         drainKey(KeybindRegister.ACTIVE_SKILL_2);
@@ -49,40 +49,38 @@ public final class StunInputHandler {
         drainKey(minecraft.options.keyRight);
         drainKey(minecraft.options.keyJump);
         drainKey(minecraft.options.keyShift);
-        if (minecraft.screen != null && !(minecraft.screen instanceof net.minecraft.client.gui.screens.DeathScreen)) {
-            minecraft.setScreen(null);
-        }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
-        if (isStunned() || (isDowned() && Minecraft.getInstance().screen == null)) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
+        if (isStunned() || isDowned()) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        if (isStunned() || (isDowned() && Minecraft.getInstance().screen == null)) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
+        if (isStunned() || isDowned()) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!isStunned() && !isDowned()) {
             return;
         }
         event.setSwingHand(false);
         event.setCanceled(true);
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onScreenOpening(ScreenEvent.Opening event) {
-        if (isStunned() && event.getNewScreen() != null
-                && !(event.getNewScreen() instanceof net.minecraft.client.gui.screens.DeathScreen)) {
-            event.setCanceled(true);
-        }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -109,8 +107,7 @@ public final class StunInputHandler {
         return minecraft.player != null
                 && minecraft.player.isAlive()
                 && !minecraft.player.isSpectator()
-                && !com.rzy.dealt_force_skills.compat.PlayerReviveCompat.isBleeding(minecraft.player)
-                && minecraft.player.hasEffect(ModEffects.STUN.get());
+                && minecraft.player.hasEffect(ModEffects.STUN);
     }
 
     private static boolean isDowned() {
@@ -118,7 +115,7 @@ public final class StunInputHandler {
         return minecraft.player != null
                 && minecraft.player.isAlive()
                 && !minecraft.player.isSpectator()
-                && (minecraft.player.hasEffect(ModEffects.STINGER_DOWNED.get()) || minecraft.player.hasEffect(ModEffects.ROVER_DOWNED.get()));
+                && (minecraft.player.hasEffect(ModEffects.STINGER_DOWNED) || minecraft.player.hasEffect(ModEffects.ROVER_DOWNED));
     }
 
     private static void drainDownedKeys() {

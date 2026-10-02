@@ -5,16 +5,17 @@ import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ClientSinevaKnockdownState {
     private static final int FADE_TICKS = 6;
     private static final Map<Integer, KnockdownVisual> ACTIVE = new HashMap<>();
@@ -44,7 +45,7 @@ public final class ClientSinevaKnockdownState {
                 iterator.remove();
                 continue;
             }
-            if (entity == minecraft.player && !minecraft.player.hasEffect(ModEffects.STUN.get())) {
+            if (entity == minecraft.player && !minecraft.player.hasEffect(ModEffects.STUN)) {
                 iterator.remove();
                 continue;
             }
@@ -74,7 +75,7 @@ public final class ClientSinevaKnockdownState {
             return;
         }
 
-        float fade = visual.fade((float) event.getPartialTick());
+        float fade = visual.fade((float) com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         event.setYaw(visual.yaw);
         event.setPitch(Mth.clamp(event.getPitch(), -18.0F, 18.0F) * (1.0F - 0.65F * fade));
         event.setRoll(event.getRoll() + 90.0F * fade);

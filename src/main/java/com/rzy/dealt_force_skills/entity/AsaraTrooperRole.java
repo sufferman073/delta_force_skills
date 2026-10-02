@@ -38,15 +38,7 @@ public enum AsaraTrooperRole {
         return attributeMultiplier;
     }
 
-    public double speedMultiplier() {
-        return speedMultiplier;
-    }
-
-    public double targetRangeMultiplier() {
-        return targetRangeMultiplier;
-    }
-
-    public double damageMultiplier() {
-        return damageMultiplier;
-    }
+    public double speedMultiplier() { return speedMultiplier; }
+    public double targetRangeMultiplier() { return targetRangeMultiplier; }
+    public double damageMultiplier() { return damageMultiplier; }
 }

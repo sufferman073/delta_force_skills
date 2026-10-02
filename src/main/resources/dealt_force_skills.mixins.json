@@ -1,18 +1,19 @@
 {
   "required": true,
   "package": "com.rzy.dealt_force_skills.mixin",
-  "refmap": "dealt_force_skills.refmap.json",
   "plugin": "com.rzy.dealt_force_skills.mixin.DealtForceMixinConfigPlugin",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_21",
   "minVersion": "0.8",
   "mixins": [
     "HearingSoundBroadcastMixin",
     "ServerPlayerSelfSkillDamageMixin",
     "LivingEntityUseItemAccessor",
     "apotheosis.ItemAffixesMixin",
-    "pmmo.CoreObjectModifierMapMixin",
     "tacz.AbstractGunItemMixin",
-    "tacz.AttachmentDataUtilsMixin"
+    "tacz.AttachmentDataUtilsMixin",
+    "tacz.LivingEntityAimSpeedMixin",
+    "tacz.LivingEntityReloadSpeedMixin",
+    "tacz.LivingEntityShootSpeedMixin"
   ],
   "client": [
     "client.HearingSoundEngineMixin",
@@ -22,6 +23,8 @@
     "client.MinecraftSpectatorOutlineMixin",
     "client.PlayerRendererSkinMixin",
     "client.ScreenBackgroundBlurMixin",
+    "tacz.LocalPlayerAimSpeedMixin",
+    "tacz.LocalPlayerShootSpeedMixin",
     "client.VaultCameraMixin"
   ],
   "injectors": {

@@ -1,17 +1,45 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
 import com.rzy.dealt_force_skills.character.commander.CommanderSupport;
 import com.rzy.dealt_force_skills.character.commander.CommanderSupportManager;
 import mccfk.DeltaForce.java.network.MarkerManager;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_CommanderSupport implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_CommanderSupport> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_commander_support"));
 
-public record C2S_CommanderSupport(CommanderSupport support, Vec3 position, int targetId, String vehicleId) {
+    public static final StreamCodec<FriendlyByteBuf, C2S_CommanderSupport> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_CommanderSupport::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private final CommanderSupport support;
+    private final Vec3 position;
+    private final int targetId;
+    private final String vehicleId;
+
+    public C2S_CommanderSupport(CommanderSupport support, Vec3 position, int targetId, String vehicleId) {
+        this.support = support;
+        this.position = position;
+        this.targetId = targetId;
+        this.vehicleId = vehicleId;
+    }
+
     public static void encode(C2S_CommanderSupport msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.support.ordinal());
         buf.writeDouble(msg.position.x);
@@ -29,9 +57,9 @@ public record C2S_CommanderSupport(CommanderSupport support, Vec3 position, int 
         return new C2S_CommanderSupport(support, position, buf.readVarInt(), buf.readUtf(256));
     }
 
-    public static void handle(C2S_CommanderSupport msg, Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> {
-            ServerPlayer player = context.get().getSender();
+    public static void handle(C2S_CommanderSupport msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player != null && CommanderStateManager.isCommander(player)) {
                 Vec3 validated = msg.support.targeted()
                         ? MarkerManager.validatePosition(player, msg.position).orElse(null)
@@ -39,6 +67,5 @@ public record C2S_CommanderSupport(CommanderSupport support, Vec3 position, int 
                 CommanderSupportManager.use(player, msg.support, validated, msg.targetId, msg.vehicleId);
             }
         });
-        context.get().setPacketHandled(true);
     }
 }

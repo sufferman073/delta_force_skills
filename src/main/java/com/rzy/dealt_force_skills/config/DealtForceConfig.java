@@ -2,7 +2,7 @@ package com.rzy.dealt_force_skills.config;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,20 +40,21 @@ public final class DealtForceConfig {
             "com.rzy.dealt_force_skills.block.BladeWireBlockEntity",
             "com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity",
             "com.rzy.dealt_force_skills.block.QuickCoverBlockEntity",
+            "com.rzy.dealt_force_skills.boss.BeaconSummonManager",
             "com.rzy.dealt_force_skills.character.catdad.CatDadStateManager",
-            "com.rzy.dealt_force_skills.character.corps.CorpsStateManager",
             "com.rzy.dealt_force_skills.character.department.DepartmentOfTransportationStateManager",
-            "com.rzy.dealt_force_skills.character.gambler.GamblerStateManager",
             "com.rzy.dealt_force_skills.character.department.DepartmentPlacementHelper",
             "com.rzy.dealt_force_skills.character.dwolf.DWolfSkills",
             "com.rzy.dealt_force_skills.character.dwolf.DWolfStateManager",
             "com.rzy.dealt_force_skills.character.ghroth.GhrothStateManager",
             "com.rzy.dealt_force_skills.character.ghroth.GhrothTaczEnhancement",
             "com.rzy.dealt_force_skills.character.gizmo.GizmoPlacementHelper",
+            "com.rzy.dealt_force_skills.character.gambler.GamblerStateManager",
             "com.rzy.dealt_force_skills.character.gizmo.GizmoStateManager",
             "com.rzy.dealt_force_skills.character.hackclaw.HackclawSkills",
             "com.rzy.dealt_force_skills.character.hackclaw.HackclawStateManager",
             "com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaArt",
+            "com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaPreset",
             "com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaStateManager",
             "com.rzy.dealt_force_skills.character.luna.LunaSkills",
             "com.rzy.dealt_force_skills.character.luna.LunaStateManager",
@@ -64,6 +65,7 @@ public final class DealtForceConfig {
             "com.rzy.dealt_force_skills.character.manba.ManbaStateManager",
             "com.rzy.dealt_force_skills.character.morse.MorseStateManager",
             "com.rzy.dealt_force_skills.character.nikaidou.NikaidouHiroStateManager",
+            "com.rzy.dealt_force_skills.character.nikaidou.NikaidouHiroWitchificationStateManager",
             "com.rzy.dealt_force_skills.character.nox.NoxSkills",
             "com.rzy.dealt_force_skills.character.nox.NoxStateManager",
             "com.rzy.dealt_force_skills.character.raptor.RaptorStateManager",
@@ -71,7 +73,9 @@ public final class DealtForceConfig {
             "com.rzy.dealt_force_skills.character.saeed.SaeedStateManager",
             "com.rzy.dealt_force_skills.character.shepherd.ShepherdPlacementHelper",
             "com.rzy.dealt_force_skills.character.shepherd.ShepherdStateManager",
+            "com.rzy.dealt_force_skills.character.sineva.SinevaGrappleTargeting",
             "com.rzy.dealt_force_skills.character.sineva.SinevaKnockdownState",
+            "com.rzy.dealt_force_skills.character.sineva.SinevaShieldGeometry",
             "com.rzy.dealt_force_skills.character.sineva.SinevaSkills",
             "com.rzy.dealt_force_skills.character.sineva.SinevaStateManager",
             "com.rzy.dealt_force_skills.character.stinger.StingerSkills",
@@ -81,8 +85,10 @@ public final class DealtForceConfig {
             "com.rzy.dealt_force_skills.character.uluru.UluruStateManager",
             "com.rzy.dealt_force_skills.character.undead.UndeadSkills",
             "com.rzy.dealt_force_skills.character.undead.UndeadStateManager",
+            "com.rzy.dealt_force_skills.character.undead.UndeadUpgradeManager",
             "com.rzy.dealt_force_skills.character.vlinder.VlinderStateManager",
             "com.rzy.dealt_force_skills.character.vyron.VyronStateManager",
+            "com.rzy.dealt_force_skills.effect.InjuryManager",
             "com.rzy.dealt_force_skills.effect.ToxikAdrenalineEffect",
             "com.rzy.dealt_force_skills.effect.ToxikFireflyInterferenceEffect",
             "com.rzy.dealt_force_skills.entity.CatDadRoadTruckEntity",
@@ -190,7 +196,6 @@ public final class DealtForceConfig {
         }
     }
 
-    /** Exposed for the graphical config editor; prefer {@code *Value} readers in gameplay code. */
     public static synchronized CommentedFileConfig rawConfig() {
         return config();
     }
@@ -204,11 +209,7 @@ public final class DealtForceConfig {
         initialPopulationComplete = true;
     }
 
-    /**
-     * Registers a static gameplay field whose value must be recomputed after a config reload.
-     * The caller class is captured during its static initialization, so private fields and
-     * nested classes do not need a separate generated registry.
-     */
+    /** Registers a static gameplay field that must be recomputed after config reload. */
     public static synchronized <T> T bind(String fieldName, Supplier<T> reader) {
         Class<?> owner = CALLER_WALKER.getCallerClass();
         T value = reader.get();
@@ -216,7 +217,6 @@ public final class DealtForceConfig {
         return value;
     }
 
-    /** Refreshes all already-loaded config-backed static fields. */
     public static synchronized boolean refreshLiveValues() {
         boolean success = true;
         for (LiveBinding<?> binding : List.copyOf(LIVE_BINDINGS)) {
@@ -265,11 +265,8 @@ public final class DealtForceConfig {
     }
 
     public static void populateGameplayDefaults() {
-        try {
-            Class.forName("com.rzy.dealt_force_skills.character.rover.RoverConfig");
-        } catch (ClassNotFoundException error) {
-            throw new IllegalStateException(error);
-        }
+        try { Class.forName("com.rzy.dealt_force_skills.character.rover.RoverConfig"); }
+        catch (ClassNotFoundException error) { throw new IllegalStateException(error); }
         intValue("client.fov.maximum_degrees", 120);
         GeneratedGameplayDefaults.populate();
         for (String className : GAMEPLAY_DEFAULT_CLASSES) {
@@ -327,10 +324,7 @@ public final class DealtForceConfig {
         return value instanceof String string ? string : defaultValue;
     }
 
-    /**
-     * Read a configured value without seeding a default. Used by other config files
-     * for one-time migration of legacy keys.
-     */
+    
     public static synchronized Object peekValue(String path) {
         if (path == null || path.isBlank()) {
             return null;

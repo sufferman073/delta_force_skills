@@ -2,7 +2,7 @@ package com.rzy.dealt_force_skills.compat;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;

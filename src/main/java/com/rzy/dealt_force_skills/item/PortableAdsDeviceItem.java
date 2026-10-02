@@ -1,6 +1,8 @@
 package com.rzy.dealt_force_skills.item;
 
 import com.rzy.dealt_force_skills.config.DealtBossesConfig;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -9,6 +11,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 
 public final class PortableAdsDeviceItem extends QualityTooltipItem {
@@ -28,7 +31,8 @@ public final class PortableAdsDeviceItem extends QualityTooltipItem {
         ItemStack stack = player.getItemInHand(hand);
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             long now = serverPlayer.serverLevel().getGameTime();
-            long cooldownUntil = stack.getOrCreateTag().getLong(COOLDOWN_UNTIL);
+            CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            long cooldownUntil = tag.getLong(COOLDOWN_UNTIL);
             if (cooldownUntil > now) {
                 serverPlayer.displayClientMessage(Component.translatable(
                         "message.dealt_force_skills.portable_ads_device.cooldown",
@@ -37,7 +41,8 @@ public final class PortableAdsDeviceItem extends QualityTooltipItem {
             }
             serverPlayer.getPersistentData().putLong(ACTIVE_UNTIL, now + activeTicks());
             serverPlayer.removeAllEffects();
-            stack.getOrCreateTag().putLong(COOLDOWN_UNTIL, now + cooldownTicks());
+            tag.putLong(COOLDOWN_UNTIL, now + cooldownTicks());
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
             serverPlayer.displayClientMessage(Component.translatable(
                     "message.dealt_force_skills.portable_ads_device.activated"), true);
         }

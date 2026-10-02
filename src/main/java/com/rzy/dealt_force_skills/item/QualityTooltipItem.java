@@ -5,7 +5,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
 import java.util.List;
 
@@ -32,7 +31,7 @@ public class QualityTooltipItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         Component qualityLine = Component.translatable("tooltip.dealt_force_skills.quality",
                 Component.translatable("quality.dealt_force_skills." + quality.key()));
         tooltip.add(quality == DfsItemQuality.COLORFUL
@@ -45,7 +44,7 @@ public class QualityTooltipItem extends Item {
         if (tooltipKey != null && !tooltipKey.isBlank()) {
             tooltip.add(Component.translatable(tooltipKey).withStyle(ChatFormatting.DARK_GRAY));
         }
-        addExtraTooltip(stack, level, tooltip, flag);
+        addExtraTooltip(stack, context, tooltip, flag);
     }
 
     @Override
@@ -53,6 +52,6 @@ public class QualityTooltipItem extends Item {
         return super.isBarVisible(stack);
     }
 
-    protected void addExtraTooltip(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    protected void addExtraTooltip(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
     }
 }

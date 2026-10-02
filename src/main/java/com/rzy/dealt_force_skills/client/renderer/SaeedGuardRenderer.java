@@ -39,7 +39,7 @@ public class SaeedGuardRenderer extends LivingEntityRenderer<SaeedGuardEntity, P
     private static final ResourceLocation ACCELERATED_TROOPS =
             asaraTexture("accelerated_troops");
     private static final ResourceLocation SINEVA_RIOT_SHIELD =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "sineva_riot_shield");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "sineva_riot_shield");
 
     public SaeedGuardRenderer(EntityRendererProvider.Context context) {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.45F);
@@ -93,11 +93,11 @@ public class SaeedGuardRenderer extends LivingEntityRenderer<SaeedGuardEntity, P
     }
 
     private static ResourceLocation texture(String name) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, "textures/entity/saeed/" + name + ".png");
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "textures/entity/saeed/" + name + ".png");
     }
 
     private static ResourceLocation asaraTexture(String name) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, "textures/entity/asara/" + name + ".png");
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "textures/entity/asara/" + name + ".png");
     }
 
     private static final class AcceleratedTroopsShieldLayer

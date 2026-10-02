@@ -1,0 +1,41 @@
+{
+    "type":  "minecraft:crafting_shaped",
+    "category":  "misc",
+    "pattern":  [
+                    "CSA",
+                    "TIE",
+                    "BLO"
+                ],
+    "key":  {
+                "C":  {
+                          "item":  "dealt_force_skills:hvk_advanced_standard_template_constructor"
+                      },
+                "S":  {
+                          "item":  "dealt_force_skills:hvk_advanced_spawner"
+                      },
+                "A":  {
+                          "item":  "dealt_force_skills:hvk_asara_arena"
+                      },
+                "T":  {
+                          "item":  "dealt_force_skills:hvk_advanced_treasure_compass"
+                      },
+                "I":  {
+                          "item":  "dealt_force_skills:interdimensional_block"
+                      },
+                "E":  {
+                          "item":  "dealt_force_skills:hvk_enchant_infusion"
+                      },
+                "B":  {
+                          "item":  "dealt_force_skills:hvk_advanced_disassembly_beam_emitter"
+                      },
+                "L":  {
+                          "item":  "dealt_force_skills:eternal_love_blessing"
+                      },
+                "O":  {
+                          "item":  "dealt_force_skills:hvk_clone_prototype"
+                      }
+            },
+    "result":  {
+                   "id":  "dealt_force_skills:hook_author_blessing"
+               }
+}

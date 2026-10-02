@@ -9,7 +9,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
 /** Optional API boundary. Unsupported installations keep the registry item but never link the upgrade. */
@@ -28,7 +28,7 @@ public final class SophisticatedBackpackCompat {
 
     private static boolean detect() {
         if (!ModList.get().isLoaded("sophisticatedbackpacks") || !ModList.get().isLoaded("sophisticatedcore")) return false;
-        if (!atLeast("sophisticatedcore", "0.5.115") || !atLeast("sophisticatedbackpacks", "3.19.7")) {
+        if (!atLeast("sophisticatedcore", "1.0.2") || !atLeast("sophisticatedbackpacks", "3.20.27")) {
             disable("versions precede the supported upgrade API", null);
             return false;
         }
@@ -50,7 +50,12 @@ public final class SophisticatedBackpackCompat {
             try { ticker.getMethod("tick", Entity.class, Level.class, BlockPos.class); }
             catch (NoSuchMethodException oldApi) { ticker.getMethod("tick", LivingEntity.class, Level.class, BlockPos.class); }
             Class<?> filter = api("upgrades.FilterLogic");
-            filter.getConstructor(ItemStack.class, java.util.function.Consumer.class, int.class);
+            filter.getConstructor(ItemStack.class, java.util.function.Consumer.class, int.class,
+                    net.neoforged.neoforge.registries.DeferredHolder.class);
+            if (api("init.ModCoreDataComponents").getField("FILTER_ATTRIBUTES").getType()
+                    != net.neoforged.neoforge.registries.DeferredHolder.class) {
+                throw new NoSuchFieldException("FILTER_ATTRIBUTES type");
+            }
             filter.getMethod("setAllowByDefault", boolean.class);
             filter.getMethod("matchesFilter", ItemStack.class);
             filter.getMethod("isAllowList");

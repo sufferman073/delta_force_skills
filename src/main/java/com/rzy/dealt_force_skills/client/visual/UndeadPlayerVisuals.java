@@ -7,17 +7,18 @@ import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.client.event.RenderLivingEvent;
-import net.minecraftforge.client.event.RenderNameTagEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
+import net.neoforged.neoforge.client.event.RenderNameTagEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.util.TriState;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.ModList;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -27,7 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class UndeadPlayerVisuals {
     private static final EquipmentSlot[] HIDDEN_EQUIPMENT_SLOTS = {
             EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD,
@@ -55,11 +56,11 @@ public final class UndeadPlayerVisuals {
     public static void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
         Player player = event.getEntity();
         if (player == Minecraft.getInstance().player
-                || !player.hasEffect(ModEffects.UNDEAD_HUNTER_SCATTER.get())) {
+                || !player.hasEffect(ModEffects.UNDEAD_HUNTER_SCATTER)) {
             return;
         }
         event.getPoseStack().pushPose();
-        float angle = (player.tickCount + event.getPartialTick()) * 18.0F;
+        float angle = (player.tickCount + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) * 18.0F;
         event.getPoseStack().mulPose(Axis.YP.rotationDegrees(angle));
         ROTATED_PLAYERS.add(player.getId());
     }
@@ -81,7 +82,7 @@ public final class UndeadPlayerVisuals {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderNameTag(RenderNameTagEvent event) {
         if (event.getEntity() instanceof Player player && shouldHideCompletely(player)) {
-            event.setResult(Event.Result.DENY);
+            event.setCanRender(TriState.FALSE);
         }
     }
 
@@ -102,7 +103,7 @@ public final class UndeadPlayerVisuals {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onRenderLevelEnd(RenderLevelStageEvent event) {
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
             restoreYsmEquipment(Minecraft.getInstance());
         }
     }
@@ -157,9 +158,9 @@ public final class UndeadPlayerVisuals {
     }
 
     private static boolean shouldHideCompletely(Player player) {
-        return player.hasEffect(ModEffects.UNDEAD_TRUE_INVISIBILITY.get())
-                || player.hasEffect(ModEffects.DEPARTMENT_CONCEALMENT.get())
-                || (player.hasEffect(ModEffects.NOX_STEALTH.get())
+        return player.hasEffect(ModEffects.UNDEAD_TRUE_INVISIBILITY)
+                || player.hasEffect(ModEffects.DEPARTMENT_CONCEALMENT)
+                || (player.hasEffect(ModEffects.NOX_STEALTH)
                 && !ClientNoxHudState.isEntityRevealed(player.getId()));
     }
 

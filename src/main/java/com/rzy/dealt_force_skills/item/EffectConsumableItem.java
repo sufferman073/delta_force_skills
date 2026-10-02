@@ -1,6 +1,7 @@
 package com.rzy.dealt_force_skills.item;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffect;
@@ -42,7 +43,8 @@ public class EffectConsumableItem extends DfsUseItem {
             if (effect == null) {
                 continue;
             }
-            player.addEffect(new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier(),
+            player.addEffect(new MobEffectInstance(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect),
+                    entry.durationTicks(), entry.amplifier(),
                     false, true, true), player);
         }
         return true;

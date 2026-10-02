@@ -1,0 +1,26 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:leather"
+                        },
+                        {
+                            "item":  "minecraft:leather"
+                        },
+                        {
+                            "item":  "minecraft:leather"
+                        },
+                        {
+                            "item":  "minecraft:leather"
+                        },
+                        {
+                            "tag":  "minecraft:wool"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:light_body_armor"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

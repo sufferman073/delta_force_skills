@@ -1,14 +1,39 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public record S2C_CommanderVehicleState(int entityId, UUID entityUuid, boolean active) {
+public class S2C_CommanderVehicleState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_CommanderVehicleState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_commander_vehicle_state"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_CommanderVehicleState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_CommanderVehicleState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private final int entityId;
+    private final UUID entityUuid;
+    private final boolean active;
+
+    public S2C_CommanderVehicleState(int entityId, UUID entityUuid, boolean active) {
+        this.entityId = entityId;
+        this.entityUuid = entityUuid;
+        this.active = active;
+    }
+
     public static void encode(S2C_CommanderVehicleState message, FriendlyByteBuf buffer) {
         buffer.writeVarInt(message.entityId);
         buffer.writeUUID(message.entityUuid);
@@ -19,11 +44,8 @@ public record S2C_CommanderVehicleState(int entityId, UUID entityUuid, boolean a
         return new S2C_CommanderVehicleState(buffer.readVarInt(), buffer.readUUID(), buffer.readBoolean());
     }
 
-    public static void handle(S2C_CommanderVehicleState message,
-                              Supplier<NetworkEvent.Context> contextSupplier) {
-        contextSupplier.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientCommanderVehicleState.sync(
-                        message.entityId, message.entityUuid, message.active)));
-        contextSupplier.get().setPacketHandled(true);
+    public static void handle(S2C_CommanderVehicleState message, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientCommanderVehicleState.sync(
+                message.entityId, message.entityUuid, message.active));
     }
 }

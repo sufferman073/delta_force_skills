@@ -1,46 +1,40 @@
 package com.rzy.dealt_force_skills.recipe;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.rzy.dealt_force_skills.registry.ModRecipeSerializers;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.effect.MobEffectCategory;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.alchemy.PotionUtils;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.neoforged.neoforge.common.crafting.ICustomIngredient;
+import net.neoforged.neoforge.common.crafting.IngredientType;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class PotionIngredient extends Ingredient {
-    private final Optional<MobEffectCategory> category;
-    private final boolean allContainers;
-    private ItemStack[] cachedStacks;
+public record PotionIngredient(Optional<MobEffectCategory> category, boolean allContainers) implements ICustomIngredient {
+    public static final MapCodec<PotionIngredient> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            Codec.STRING.comapFlatMap(PotionIngredient::parseCategory, MobEffectCategory::name)
+                    .optionalFieldOf("category").forGetter(PotionIngredient::category),
+            Codec.BOOL.optionalFieldOf("all_containers", false).forGetter(PotionIngredient::allContainers)
+    ).apply(instance, PotionIngredient::new));
 
-    public static void register() {
-        CraftingHelper.register(new ResourceLocation(DealtForceSkillsMod.MODID, "potion"), Serializer.INSTANCE);
-    }
-
-    public PotionIngredient(Optional<MobEffectCategory> category, boolean allContainers) {
-        super(Stream.empty());
-        this.category = category;
-        this.allContainers = allContainers;
+    private static DataResult<MobEffectCategory> parseCategory(String name) {
+        try {
+            return DataResult.success(MobEffectCategory.valueOf(name));
+        } catch (IllegalArgumentException exception) {
+            return DataResult.error(() -> "Unknown potion effect category: " + name);
+        }
     }
 
     @Override
     public boolean test(ItemStack stack) {
-        if (stack == null) {
-            return false;
-        }
         if (!stack.is(Items.POTION) && !(allContainers
                 && (stack.is(Items.SPLASH_POTION) || stack.is(Items.LINGERING_POTION)))) {
             return false;
@@ -48,14 +42,14 @@ public class PotionIngredient extends Ingredient {
         if (category.isEmpty()) {
             return true;
         }
-        List<MobEffectInstance> effects = PotionUtils.getMobEffects(stack);
         boolean matches = false;
-        for (MobEffectInstance effect : effects) {
+        for (var effect : stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY).getAllEffects()) {
+            // The harmful brewing recipe has always taken precedence for mixed-effect potions.
             if (category.get() == MobEffectCategory.BENEFICIAL
-                    && effect.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
+                    && effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
                 return false;
             }
-            if (effect.getEffect().getCategory() == category.get()) {
+            if (effect.getEffect().value().getCategory() == category.get()) {
                 matches = true;
             }
         }
@@ -63,24 +57,15 @@ public class PotionIngredient extends Ingredient {
     }
 
     @Override
-    public ItemStack[] getItems() {
-        if (cachedStacks != null) {
-            return cachedStacks;
-        }
+    public Stream<ItemStack> getItems() {
         Stream<Item> containers = allContainers
                 ? Stream.of(Items.POTION, Items.SPLASH_POTION, Items.LINGERING_POTION) : Stream.of(Items.POTION);
-        List<ItemStack> stacks = new ArrayList<>();
-        containers.forEach(item -> {
-            for (net.minecraft.world.item.alchemy.Potion potion : ForgeRegistries.POTIONS.getValues()) {
-                ItemStack stack = new ItemStack(item);
-                PotionUtils.setPotion(stack, potion);
-                if (this.test(stack)) {
-                    stacks.add(stack);
-                }
-            }
-        });
-        cachedStacks = stacks.toArray(new ItemStack[0]);
-        return cachedStacks;
+        // Match arbitrary custom effects at runtime, but give browsers concrete registered potions to display.
+        return containers.flatMap(item -> BuiltInRegistries.POTION.holders().map(potion -> {
+            ItemStack stack = new ItemStack(item);
+            stack.set(DataComponents.POTION_CONTENTS, new PotionContents(potion));
+            return stack;
+        })).filter(this::test);
     }
 
     @Override
@@ -89,54 +74,7 @@ public class PotionIngredient extends Ingredient {
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", DealtForceSkillsMod.MODID + ":potion");
-        category.ifPresent(cat -> json.addProperty("category", cat.name()));
-        if (allContainers) {
-            json.addProperty("all_containers", true);
-        }
-        return json;
-    }
-
-    public static final class Serializer implements IIngredientSerializer<PotionIngredient> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        private Serializer() {
-        }
-
-        @Override
-        public PotionIngredient parse(FriendlyByteBuf buffer) {
-            boolean allContainers = buffer.readBoolean();
-            boolean hasCategory = buffer.readBoolean();
-            Optional<MobEffectCategory> category = hasCategory
-                    ? Optional.of(buffer.readEnum(MobEffectCategory.class)) : Optional.empty();
-            return new PotionIngredient(category, allContainers);
-        }
-
-        @Override
-        public PotionIngredient parse(JsonObject json) {
-            boolean allContainers = json.has("all_containers") && json.get("all_containers").getAsBoolean();
-            Optional<MobEffectCategory> category = Optional.empty();
-            if (json.has("category")) {
-                try {
-                    category = Optional.of(MobEffectCategory.valueOf(json.get("category").getAsString()));
-                } catch (IllegalArgumentException ignored) {
-                }
-            }
-            return new PotionIngredient(category, allContainers);
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buffer, PotionIngredient ingredient) {
-            buffer.writeBoolean(ingredient.allContainers);
-            buffer.writeBoolean(ingredient.category.isPresent());
-            ingredient.category.ifPresent(buffer::writeEnum);
-        }
+    public IngredientType<?> getType() {
+        return ModRecipeSerializers.POTION_INGREDIENT.get();
     }
 }

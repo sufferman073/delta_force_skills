@@ -1,1 +1,0 @@
-{"type":"minecraft:campfire_cooking","ingredient":{"type":"forge:nbt","item":"minecraft:potion","nbt":"{Potion:\"minecraft:water\"}"},"result":"dealt_force_skills:sterile_water","experience":0.0,"cookingtime":600}

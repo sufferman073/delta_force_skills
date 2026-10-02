@@ -1,0 +1,26 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:h07_tactical_helmet"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

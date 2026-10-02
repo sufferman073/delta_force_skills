@@ -8,7 +8,7 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 
 public final class RoverFieldRenderer extends EntityRenderer<RoverFieldEntity> {
-    private static final ResourceLocation MODEL = new ResourceLocation("dealt_force_skills", "generic_gray_smoke");
+    private static final ResourceLocation MODEL = ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "generic_gray_smoke");
     private final SmokeCloudRenderer<RoverFieldEntity> smoke;
     public RoverFieldRenderer(EntityRendererProvider.Context context) {
         super(context); smoke = new SmokeCloudRenderer<>(context, MODEL, 1F);

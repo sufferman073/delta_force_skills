@@ -12,8 +12,6 @@ import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -35,7 +33,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
@@ -68,11 +65,11 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_STUCK, false);
-        entityData.define(DATA_NORMAL_X, 0.0F);
-        entityData.define(DATA_NORMAL_Y, 1.0F);
-        entityData.define(DATA_NORMAL_Z, 0.0F);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_STUCK, false);
+        builder.define(DATA_NORMAL_X, 0.0F);
+        builder.define(DATA_NORMAL_Y, 1.0F);
+        builder.define(DATA_NORMAL_Z, 0.0F);
     }
 
     @Override
@@ -144,11 +141,6 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
         if (stuckEntityId != null) {
             tag.putUUID("StuckEntity", stuckEntityId);
         }
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private void stickToEntity(EntityHitResult hit) {
@@ -237,7 +229,7 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
             if (distance > radius || !hasLineOfSight(center, targetCenter)) {
                 continue;
             }
-            float damage = 100.0f * Math.max(0.0f, 1.0f - (float) (distance * falloff));
+            float damage = 100.0f * Math.max(0.0f, 1.0f - (float) distance * (float) falloff);
             if (damage <= 0.0f) {
                 continue;
             }

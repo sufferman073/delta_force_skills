@@ -1,7 +1,5 @@
 package com.rzy.dealt_force_skills.skill;
 
-import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
-
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.registry.ModSounds;
@@ -56,7 +54,7 @@ public final class SkillSoundFeedback {
     public static void onSkillResult(ServerPlayer player, String characterId, SkillSlot slot, boolean handled) {
         CompoundTag data = data(player);
         String key = key(characterId, slot);
-        long now = SkillCooldownHelper.now(player);
+        long now = player.level().getGameTime();
         Map<String, Long> before = ATTEMPT_COOLDOWNS.remove(player.getUUID());
         Map<String, Long> after = collectCooldownDeadlines(player);
         long changedReadyAt = changedCooldownDeadline(before, after, now, characterId);
@@ -93,7 +91,7 @@ public final class SkillSoundFeedback {
             return;
         }
         CompoundTag data = data(player);
-        long now = SkillCooldownHelper.now(player);
+        long now = player.level().getGameTime();
         String selectedPrefix = selectedCharacterId + KEY_SEPARATOR;
         boolean selectedSkillReady = false;
         for (String key : new ArrayList<>(data.getAllKeys())) {
@@ -170,7 +168,7 @@ public final class SkillSoundFeedback {
 
     private static Map<String, Long> collectCooldownDeadlines(ServerPlayer player) {
         Map<String, Long> deadlines = new HashMap<>();
-        collectCooldownDeadlines(player.getPersistentData(), "", SkillCooldownHelper.now(player), deadlines);
+        collectCooldownDeadlines(player.getPersistentData(), "", player.level().getGameTime(), deadlines);
         return deadlines;
     }
 

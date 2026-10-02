@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "TET",
+    "ENE",
+    "TET"
+  ],
+  "key": {
+    "N": { "item": "minecraft:nether_star" },
+    "T": { "item": "minecraft:totem_of_undying" },
+    "E": { "item": "minecraft:emerald_block" }
+  },
+  "result": {
+    "id": "dealt_force_skills:hvk_asara_arena",
+    "count": 1
+  }
+}

@@ -3,7 +3,6 @@ package com.rzy.dealt_force_skills.character.gambler;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
-import com.rzy.dealt_force_skills.stamina.StaminaManager;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_SyncGamblerState;
 import com.rzy.dealt_force_skills.registry.ModEffects;
@@ -19,6 +18,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -45,9 +45,9 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 
 public final class GamblerStateManager {
     public static final int MAX_SHIELD = 100;
@@ -117,7 +117,8 @@ public final class GamblerStateManager {
     private static final String SPLASH_BEHIND_UNTIL = "SplashBehindUntil";
     private static final String STINK_CLOUD_UNTIL = "StinkCloudUntil";
     private static final String MOVEMENT_MODIFIER_ACTIVE = "MovementModifierActive";
-    private static final UUID JACKPOT_SPEED_UUID = UUID.fromString("6fae9ea2-8a29-42f1-98f4-28d509f174bc");
+    private static final ResourceLocation JACKPOT_SPEED_ID =
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "gambler_jackpot_speed");
 
     private GamblerStateManager() {
     }
@@ -234,7 +235,7 @@ public final class GamblerStateManager {
         return GamblerArenaManager.start(player, alternate);
     }
 
-    public static void confirmFinalBetInvite(ServerPlayer player, java.util.List<java.util.UUID> invitedIds) {
+    public static void confirmFinalBetInvite(ServerPlayer player, List<UUID> invitedIds) {
         if (!isGambler(player)) {
             return;
         }
@@ -425,7 +426,7 @@ public final class GamblerStateManager {
             }
         }
         if (now <= tag.getLong(FREEZE_ON_HIT_UNTIL)) {
-            target.addEffect(new MobEffectInstance(ModEffects.N_TWO_FROZEN.get(), 40, 0));
+            target.addEffect(new MobEffectInstance(ModEffects.N_TWO_FROZEN, 40, 0));
         }
         syncToClient(attacker);
         return adjusted;
@@ -486,7 +487,7 @@ public final class GamblerStateManager {
 
     public static boolean isCoveredByOrangeShield(ServerPlayer target) {
         ServerLevel level = target.serverLevel();
-        long now = SkillCooldownHelper.now(level);
+        long now = level.getGameTime();
         for (ServerPlayer player : level.players()) {
             if (player == target || !isGambler(player)) {
                 continue;
@@ -852,7 +853,7 @@ public final class GamblerStateManager {
         tag.putBoolean(CORE_ACTIVE, false);
         tag.putInt(CORE_NO_JACKPOT_DRAWS, 0);
         tag.putLong(JACKPOT_UNTIL, now + JACKPOT_TICKS);
-        player.addEffect(new MobEffectInstance(ModEffects.BURNING_HEART.get(), JACKPOT_TICKS, 0, false, true, true));
+        player.addEffect(new MobEffectInstance(ModEffects.BURNING_HEART, JACKPOT_TICKS, 0, false, true, true));
         player.setHealth(player.getMaxHealth());
         player.addEffect(new MobEffectInstance(MobEffects.LUCK, JACKPOT_LUCK_TICKS, 9, false, true, true));
         applyJackpotSpeed(player);
@@ -879,7 +880,7 @@ public final class GamblerStateManager {
             }
             case EARTHSHAKING_SLAM -> {
                 if (target instanceof Player) {
-                    target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), 6 * 20, 0));
+                    target.addEffect(new MobEffectInstance(ModEffects.STUN, 6 * 20, 0));
                 } else {
                     forceKill(player, target);
                 }
@@ -896,7 +897,7 @@ public final class GamblerStateManager {
                 healPercent(player, 0.30F);
             }
             case FROZEN_TUNDRA -> entitiesInCone(player, 90.0D, 140.0D).forEach(entity ->
-                    entity.addEffect(new MobEffectInstance(ModEffects.N_TWO_FROZEN.get(), 10 * 20, 0)));
+                    entity.addEffect(new MobEffectInstance(ModEffects.N_TWO_FROZEN, 10 * 20, 0)));
             case INSPIRATION -> {
                 for (int i = 0; i < 3; i++) {
                     addPower(player, GamblerSuperpower.randomAtLeastGold(random(player)));
@@ -938,7 +939,7 @@ public final class GamblerStateManager {
             case TOMBSTONE_CODE -> {
                 target.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 10 * 20, 4));
                 target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 10 * 20, 9));
-                target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), 10 * 20, 0));
+                target.addEffect(new MobEffectInstance(ModEffects.STUN, 10 * 20, 0));
             }
             case BRUTE_FORCE -> target.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 60 * 20, 0));
             case STONE_WALL -> target.addEffect(new MobEffectInstance(MobEffects.HEALTH_BOOST, 60 * 20, 2));
@@ -995,7 +996,7 @@ public final class GamblerStateManager {
             }
             case METEOR_IMPACT -> {
                 dealDamage(player, target, 20.0F);
-                target.setSecondsOnFire(20);
+                target.setRemainingFireTicks(Math.max(target.getRemainingFireTicks(), 20 * 20));
             }
             case GIGANTIFY -> {
                 target.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 30 * 20, 0));
@@ -1006,7 +1007,7 @@ public final class GamblerStateManager {
                 putCopyUntil(targetPlayer, RADIANT_COPY_UNTIL, now + 30 * 20L);
             }
             case POLYMORPH -> weakenMobToFraction(target, 0.25D);
-            case FREEZE -> target.addEffect(new MobEffectInstance(ModEffects.N_TWO_FROZEN.get(), 5 * 20, 0));
+            case FREEZE -> target.addEffect(new MobEffectInstance(ModEffects.N_TWO_FROZEN, 5 * 20, 0));
             case WEED_ATTACK -> {
                 target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 60 * 20, 0));
                 target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 60 * 20, 0));
@@ -1394,9 +1395,9 @@ public final class GamblerStateManager {
         if (attribute == null) {
             return;
         }
-        if (attribute.getModifier(JACKPOT_SPEED_UUID) == null) {
+        if (attribute.getModifier(JACKPOT_SPEED_ID) == null) {
             attribute.addTransientModifier(new AttributeModifier(
-                    JACKPOT_SPEED_UUID, "gambler_jackpot_speed", 0.25D, AttributeModifier.Operation.MULTIPLY_TOTAL));
+                    JACKPOT_SPEED_ID, 0.25D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
         data(player).putBoolean(MOVEMENT_MODIFIER_ACTIVE, true);
     }
@@ -1411,10 +1412,9 @@ public final class GamblerStateManager {
 
     private static void removeTransientModifiers(Player player) {
         AttributeInstance attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (attribute != null && attribute.getModifier(JACKPOT_SPEED_UUID) != null) {
-            attribute.removeModifier(JACKPOT_SPEED_UUID);
+        if (attribute != null && attribute.getModifier(JACKPOT_SPEED_ID) != null) {
+            attribute.removeModifier(JACKPOT_SPEED_ID);
         }
-
     }
 
     private static void clearTemporaryFlight(Player player) {

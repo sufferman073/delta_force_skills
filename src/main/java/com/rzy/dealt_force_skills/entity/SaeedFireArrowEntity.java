@@ -8,8 +8,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
@@ -28,7 +26,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.saeedfirearrowentity.bounce_factor", 0.62));
@@ -55,7 +53,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -101,10 +99,14 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
         if (!(target instanceof LivingEntity living) || !living.isAlive()) {
             return false;
         }
-        if (isFriendlyTarget(target)) {
+        Entity owner = targetingOwner();
+        if (owner != null && !TargetingUtil.isHostileLivingFor(owner, living)) {
             return false;
         }
-        if (getOwner() instanceof Player && !TargetingUtil.isTargetableLiving(living)) {
+        if (owner == null && !TargetingUtil.isTargetableLiving(living)) {
+            return false;
+        }
+        if (isFriendlyTarget(target)) {
             return false;
         }
         return super.canHitEntity(target);
@@ -134,19 +136,14 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
         }
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
     private void handleEntityHit(ServerLevel level, EntityHitResult hit) {
         if (hit.getEntity() instanceof LivingEntity target) {
             LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
             target.invulnerableTime = 0;
             boolean damaged = SkillDamageHelper.hurt(target, SkillDamageHelper.trueDamage(level, this, owner), owner,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.saeed_fire_arrow_entity.skill_hurt.0.damage", 10.0F));
-            target.setSecondsOnFire(8);
             if (damaged) {
+                target.igniteForSeconds(8);
                 playHitVoiceOnce(level, target.position());
             }
             fixAt(level, target.position());
@@ -191,13 +188,16 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
                 120, FIELD_RADIUS * 0.82D, 0.35D, FIELD_RADIUS * 0.82D, 0.02D);
         AABB box = new AABB(center, center).inflate(FIELD_RADIUS);
         boolean damagedAny = false;
+        Entity targetingOwner = targetingOwner();
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (isFriendlyTarget(target) || TargetingUtil.isPlayerOwnedSummonOf(owner, target)
-                    || target.distanceToSqr(center) > FIELD_RADIUS * FIELD_RADIUS) {
+            if (!isValidHostileTarget(targetingOwner, target) || target.distanceToSqr(center) > FIELD_RADIUS * FIELD_RADIUS) {
                 continue;
             }
-            damagedAny |= SkillDamageHelper.hurt(target, damageSources().mobProjectile(this, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.saeed_fire_arrow_entity.skill_hurt.1.damage", 12.0F));
-            target.setSecondsOnFire(8);
+            boolean damaged = SkillDamageHelper.hurt(target, damageSources().mobProjectile(this, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.saeed_fire_arrow_entity.skill_hurt.1.damage", 12.0F));
+            if (damaged) {
+                target.igniteForSeconds(8);
+                damagedAny = true;
+            }
         }
         if (damagedAny) {
             playHitVoiceOnce(level, center);
@@ -234,6 +234,23 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
             }
         }
         return center;
+    }
+
+    private Entity targetingOwner() {
+        Entity owner = getOwner();
+        if (owner instanceof SaeedGuardEntity guard && level() instanceof ServerLevel serverLevel) {
+            return guard.ownerUuid()
+                    .<Entity>map(uuid -> serverLevel.getServer().getPlayerList().getPlayer(uuid))
+                    .orElse(owner);
+        }
+        return owner;
+    }
+
+    private boolean isValidHostileTarget(Entity owner, LivingEntity target) {
+        return (owner != null
+                ? TargetingUtil.isHostileLivingFor(owner, target)
+                : TargetingUtil.isTargetableLiving(target))
+                && !isFriendlyTarget(target);
     }
 
     private boolean isFriendlyTarget(Entity target) {

@@ -1,0 +1,29 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:high_output_crushing_pliers"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:hmp_special_duty_body_armor"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

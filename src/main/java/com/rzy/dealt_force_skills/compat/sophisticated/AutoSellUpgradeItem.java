@@ -35,13 +35,13 @@ public final class AutoSellUpgradeItem extends UpgradeItemBase<AutoSellUpgradeIt
 
         public Wrapper(IStorageWrapper storage, ItemStack upgrade, Consumer<ItemStack> saveHandler) {
             super(storage, upgrade, saveHandler);
-            filter = new FilterLogic(upgrade, saveHandler, FILTER_SLOTS);
+            filter = new FilterLogic(upgrade, saveHandler, FILTER_SLOTS, net.p3pp3rf1y.sophisticatedcore.init.ModCoreDataComponents.FILTER_ATTRIBUTES);
             filter.setAllowByDefault(false);
         }
 
         public FilterLogic filter() { return filter; }
-        private CompoundTag data() { return upgrade.getOrCreateTag().getCompound(DATA_KEY).copy(); }
-        private void saveData(CompoundTag data) { upgrade.getOrCreateTag().put(DATA_KEY, data); save(); }
+        private CompoundTag data() { return upgrade.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag().getCompound(DATA_KEY); }
+        private void saveData(CompoundTag data) { CompoundTag root = upgrade.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag(); root.put(DATA_KEY, data); upgrade.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(root)); save(); }
 
         @Override public boolean isEnabled() { return data().getBoolean("Enabled"); }
         @Override public void setEnabled(boolean enabled) {

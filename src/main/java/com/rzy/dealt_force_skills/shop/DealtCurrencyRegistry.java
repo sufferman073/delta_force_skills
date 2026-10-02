@@ -90,8 +90,7 @@ public final class DealtCurrencyRegistry {
 
     public static synchronized Optional<DealtCurrencyProvider> findActiveSpecial(ServerPlayer player) {
         return PROVIDERS.stream()
-                .filter(provider -> !provider.id().equals("haff_coins")
-                        && !provider.id().equals("havoc_coin"))
+                .filter(provider -> !provider.id().equals("haff_coins") && !provider.id().equals("havoc_coin"))
                 .filter(provider -> provider.supports(player))
                 .findFirst();
     }

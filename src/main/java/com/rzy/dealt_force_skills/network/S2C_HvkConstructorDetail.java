@@ -5,18 +5,32 @@ import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBl
 import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity.RecipeDetail;
 import com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity.RecipeTreeLine;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_HvkConstructorDetail {
+public class S2C_HvkConstructorDetail implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_HvkConstructorDetail> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_hvk_constructor_detail"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2C_HvkConstructorDetail> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_HvkConstructorDetail::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private static final int MAX_MISSING = 4096;
     private static final int MAX_ALTERNATIVES =
             HvkAdvancedStandardTemplateConstructorBlockEntity.MAX_RECIPE_TREE_ALTERNATIVES;
@@ -32,10 +46,10 @@ public class S2C_HvkConstructorDetail {
     public S2C_HvkConstructorDetail(BlockPos pos, int requestId, RecipeDetail detail) {
         this.pos = pos;
         this.requestId = Math.max(0, requestId);
-        this.detail = detail == null ? RecipeDetail.empty(new ResourceLocation("minecraft", "air")) : detail;
+        this.detail = detail == null ? RecipeDetail.empty(ResourceLocation.fromNamespaceAndPath("minecraft", "air")) : detail;
     }
 
-    public static void encode(S2C_HvkConstructorDetail msg, FriendlyByteBuf buf) {
+    public static void encode(S2C_HvkConstructorDetail msg, RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(msg.pos);
         buf.writeVarInt(msg.requestId);
         buf.writeUtf(msg.detail.id().toString());
@@ -67,7 +81,7 @@ public class S2C_HvkConstructorDetail {
         buf.writeEnum(msg.detail.status());
     }
 
-    public static S2C_HvkConstructorDetail decode(FriendlyByteBuf buf) {
+    public static S2C_HvkConstructorDetail decode(RegistryFriendlyByteBuf buf) {
         BlockPos pos = buf.readBlockPos();
         int requestId = Math.max(0, buf.readVarInt());
         ResourceLocation id = readResourceLocation(buf);
@@ -103,37 +117,41 @@ public class S2C_HvkConstructorDetail {
                         truncated, truncationReason, status));
     }
 
-    public static void handle(S2C_HvkConstructorDetail msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> HvkConstructorScreen.updateDetail(msg.pos, msg.requestId, msg.detail)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_HvkConstructorDetail msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> HvkConstructorScreen.updateDetail(msg.pos, msg.requestId, msg.detail));
     }
 
-    private static ResourceLocation readResourceLocation(FriendlyByteBuf buf) {
+    private static ResourceLocation readResourceLocation(RegistryFriendlyByteBuf buf) {
         String value = buf.readUtf(512);
         try {
             return ResourceLocation.parse(value);
         } catch (RuntimeException ex) {
-            return new ResourceLocation("minecraft", "air");
+            return ResourceLocation.fromNamespaceAndPath("minecraft", "air");
         }
     }
 
-    private static void writeCountedItem(FriendlyByteBuf buf, ItemStack stack) {
+    private static void writeItem(RegistryFriendlyByteBuf buf, ItemStack stack) {
+        ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
+    }
+
+    private static ItemStack readItem(RegistryFriendlyByteBuf buf) {
+        return ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+    }
+
+    private static void writeCountedItem(RegistryFriendlyByteBuf buf, ItemStack stack) {
         if (stack == null || stack.isEmpty() || stack.getCount() <= 0) {
-            buf.writeItem(ItemStack.EMPTY);
+            writeItem(buf, ItemStack.EMPTY);
             buf.writeVarInt(0);
             return;
         }
         ItemStack wireStack = stack.copy();
         wireStack.setCount(1);
-        buf.writeItem(wireStack);
+        writeItem(buf, wireStack);
         buf.writeVarInt(stack.getCount());
     }
 
-    private static ItemStack readCountedItem(FriendlyByteBuf buf) {
-        ItemStack stack = buf.readItem();
+    private static ItemStack readCountedItem(RegistryFriendlyByteBuf buf) {
+        ItemStack stack = readItem(buf);
         int count = Math.max(0, buf.readVarInt());
         if (stack.isEmpty() || count <= 0) {
             return ItemStack.EMPTY;

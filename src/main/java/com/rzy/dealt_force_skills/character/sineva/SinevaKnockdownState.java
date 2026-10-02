@@ -25,7 +25,7 @@ public final class SinevaKnockdownState {
         if (!(target instanceof ServerPlayer player) || ticks <= 0 || !player.isAlive()) {
             return;
         }
-        if (player.hasEffect(ModEffects.SHAKEHANDS.get())) {
+        if (player.hasEffect(ModEffects.SHAKEHANDS)) {
             return;
         }
 
@@ -52,7 +52,7 @@ public final class SinevaKnockdownState {
             return;
         }
 
-        if (!player.isAlive() || !player.hasEffect(ModEffects.STUN.get()) || data.remainingTicks <= 0) {
+        if (!player.isAlive() || !player.hasEffect(ModEffects.STUN) || data.remainingTicks <= 0) {
             clear(player);
             return;
         }

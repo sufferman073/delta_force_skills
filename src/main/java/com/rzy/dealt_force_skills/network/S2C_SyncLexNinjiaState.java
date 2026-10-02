@@ -1,11 +1,11 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record S2C_SyncLexNinjiaState(
         float leicra,
@@ -23,7 +23,21 @@ public record S2C_SyncLexNinjiaState(
         int hamPowerTicks,
         int hamBerserkTicks,
         int scientificToolLevel
-) {
+) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncLexNinjiaState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_lex_ninjia_state"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncLexNinjiaState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncLexNinjiaState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public static void encode(S2C_SyncLexNinjiaState msg, FriendlyByteBuf buf) {
         buf.writeFloat(msg.leicra);
         buf.writeFloat(msg.maxLeicra);
@@ -62,10 +76,8 @@ public record S2C_SyncLexNinjiaState(
         );
     }
 
-    public static void handle(S2C_SyncLexNinjiaState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientLexNinjiaHudState.sync(
+    public static void handle(S2C_SyncLexNinjiaState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientLexNinjiaHudState.sync(
                         msg.leicra,
                         msg.maxLeicra,
                         msg.handStacks,
@@ -81,8 +93,6 @@ public record S2C_SyncLexNinjiaState(
                         msg.hamPowerTicks,
                         msg.hamBerserkTicks,
                         msg.scientificToolLevel
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

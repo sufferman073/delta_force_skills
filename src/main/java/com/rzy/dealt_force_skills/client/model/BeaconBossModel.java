@@ -15,7 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 
 public final class BeaconBossModel extends PlayerModel<BeaconBossEntity> {
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
-            new ResourceLocation(DealtForceSkillsMod.MODID, "beacon_boss"), "main");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "beacon_boss"), "main");
 
     public BeaconBossModel(ModelPart root) {
         super(root, false);

@@ -1,38 +1,36 @@
 package com.rzy.dealt_force_skills.effect;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.resources.ResourceLocation;
 
 public class SonicShockEffect extends MobEffect {
     public SonicShockEffect() {
-        super(MobEffectCategory.NEUTRAL, 0xF2C84B);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
         addAttributeModifier(Attributes.MOVEMENT_SPEED,
-                "10d9565f-2099-4142-968c-38a8341bc8af",
-                -0.3D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.sonic_shock.movement_speed"),
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL, amplifier -> amplifier >= 1 ? -0.75D : -0.30D);
         addAttributeModifier(Attributes.ATTACK_SPEED,
-                "4d0f4d63-4884-4231-8f2a-f90de61c2d73",
-                -0.3D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.sonic_shock.attack_speed"),
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL, amplifier -> amplifier >= 1 ? -0.75D : -0.30D);
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         double factor = amplifier >= 1 ? 0.20D : 0.55D;
         entity.setDeltaMovement(entity.getDeltaMovement().multiply(factor, 1.0D, factor));
         entity.hurtMarked = true;
+        return true;
     }
 
-    @Override
-    public double getAttributeModifierValue(int amplifier, AttributeModifier modifier) {
-        return amplifier >= 1 ? -0.75D : -0.30D;
-    }
 }

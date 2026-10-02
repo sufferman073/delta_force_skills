@@ -9,11 +9,27 @@ import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.team.RoundStartFreezeManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_ToxikToolAction implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_ToxikToolAction> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_toxik_tool_action"));
 
-public class C2S_ToxikToolAction {
+    public static final StreamCodec<FriendlyByteBuf, C2S_ToxikToolAction> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_ToxikToolAction::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final ToxikToolAction action;
     private final boolean alternate;
 
@@ -38,14 +54,14 @@ public class C2S_ToxikToolAction {
         return new C2S_ToxikToolAction(action, buf.readBoolean());
     }
 
-    public static void handle(C2S_ToxikToolAction msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_ToxikToolAction msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player == null || player.isSpectator() || UluruLoiteringMissileEntity.isPlayerControlling(player)) {
                 return;
             }
-            if (player.hasEffect(ModEffects.STUN.get())
-                    || player.hasEffect(ModEffects.WEBBED.get())
+            if (player.hasEffect(ModEffects.STUN)
+                    || player.hasEffect(ModEffects.WEBBED)
                     || StingerStateManager.isDowned(player)
                     || RoundStartFreezeManager.isFrozen(player)) {
                 return;
@@ -53,6 +69,5 @@ public class C2S_ToxikToolAction {
             ToxikSkills.handleToolAction(player, msg.action, msg.alternate);
             ToxikStateManager.syncToClient(player);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

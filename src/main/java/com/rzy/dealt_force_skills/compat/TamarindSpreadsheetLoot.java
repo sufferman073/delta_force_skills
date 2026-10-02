@@ -1,9 +1,9 @@
 package com.rzy.dealt_force_skills.compat;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
@@ -50,7 +50,7 @@ public final class TamarindSpreadsheetLoot {
             if (stream == null) {
                 throw new IllegalStateException("Missing " + RESOURCE);
             }
-            JsonObject root = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+            JsonObject root = new Gson().fromJson(new InputStreamReader(stream, StandardCharsets.UTF_8), JsonObject.class);
             Map<String, String> containers = new LinkedHashMap<>();
             for (Map.Entry<String, JsonElement> entry : root.getAsJsonObject("containers").entrySet()) {
                 containers.put(entry.getKey(), entry.getValue().getAsString());

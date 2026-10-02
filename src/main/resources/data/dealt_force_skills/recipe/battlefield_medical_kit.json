@@ -1,0 +1,23 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:outdoor_medical_kit"
+                        },
+                        {
+                            "item":  "dealt_force_skills:outdoor_medical_kit"
+                        },
+                        {
+                            "item":  "dealt_force_skills:dve_painkiller"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:battlefield_medical_kit"
+               }
+}

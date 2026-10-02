@@ -3,8 +3,6 @@ package com.rzy.dealt_force_skills.entity;
 import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -21,9 +19,9 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplier {
     public static volatile double SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.vlinderremotesmokeroundentity.speed", 0.3));
@@ -51,7 +49,7 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -109,11 +107,6 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
         tag.putDouble("DirectionX", directionX);
         tag.putDouble("DirectionY", directionY);
         tag.putDouble("DirectionZ", directionZ);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private boolean canHitEntity(Entity entity) {

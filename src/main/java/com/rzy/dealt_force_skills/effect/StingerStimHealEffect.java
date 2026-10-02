@@ -14,24 +14,21 @@ public class StingerStimHealEffect extends MobEffect {
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         for (MobEffectInstance effect : new ArrayList<>(entity.getActiveEffects())) {
-            if (effect.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
+            if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
                 entity.removeEffect(effect.getEffect());
             }
         }
-        // 5% max health per second while the stim heal effect is active.
-        if (!entity.level().isClientSide
-                && entity.getHealth() > 0.0F
-                && entity.tickCount % 20 == 0) {
-            entity.heal(entity.getMaxHealth()
-                    * Math.max(0.0F, StingerStateManager.STIM_HEAL_PER_SECOND_FRACTION)
+        if (!entity.level().isClientSide && entity.getHealth() > 0.0F && entity.tickCount % 20 == 0) {
+            entity.heal(entity.getMaxHealth() * Math.max(0.0F, StingerStateManager.STIM_HEAL_PER_SECOND_FRACTION)
                     * (amplifier + 1));
         }
+        return true;
     }
 }

@@ -1,0 +1,35 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:leather"
+                        },
+                        {
+                            "item":  "minecraft:leather"
+                        },
+                        {
+                            "item":  "minecraft:leather"
+                        },
+                        {
+                            "item":  "minecraft:leather"
+                        },
+                        {
+                            "item":  "minecraft:string"
+                        },
+                        {
+                            "item":  "minecraft:string"
+                        },
+                        {
+                            "item":  "minecraft:string"
+                        },
+                        {
+                            "item":  "minecraft:string"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:nylon_body_armor"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

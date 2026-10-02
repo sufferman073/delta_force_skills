@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class HookAuthorChargeSoundPitchMixin {
     private static final float MAX_CHARGE_PITCH = 20.0F;
 
-    @Inject(method = "calculatePitch", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "calculatePitch", at = @At("HEAD"), cancellable = true, remap = false)
     private void dealt_force_skills$allowHighChargePitch(SoundInstance sound,
                                                           CallbackInfoReturnable<Float> cir) {
         ResourceLocation location = sound.getLocation();

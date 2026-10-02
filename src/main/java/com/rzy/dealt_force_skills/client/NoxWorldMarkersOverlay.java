@@ -16,14 +16,15 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class NoxWorldMarkersOverlay {
     private static volatile double FLASH_MARKER_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_MARKER_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("client.nox_world_markers_overlay.flash_marker_distance", 36.0));
     private NoxWorldMarkersOverlay() {
@@ -31,7 +32,7 @@ public final class NoxWorldMarkersOverlay {
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();

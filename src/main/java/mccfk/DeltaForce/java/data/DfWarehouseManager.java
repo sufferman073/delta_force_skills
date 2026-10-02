@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * DF 仓库管理器（独立于特勤处仓库）
@@ -50,7 +51,7 @@ public final class DfWarehouseManager {
      * 初始化仓库目录（服务端启动时调用）
      */
     public static void init(Path worldSavePath) {
-        // Kept for the existing startup contract. Warehouse data is player-persistent NBT.
+        // 保留现有启动约定，仓库数据使用玩家持久化NBT存储
     }
 
     /**
@@ -89,7 +90,7 @@ public final class DfWarehouseManager {
             CompoundTag entry = stored.getCompound(i);
             int slot = entry.getInt("Slot");
             if (slot >= 0 && slot < total) {
-                stacks.set(slot, ItemStack.of(entry.getCompound("Stack")));
+                stacks.set(slot, ItemStack.parseOptional(player.registryAccess(), entry.getCompound("Stack")));
             }
         }
         return stacks;
@@ -112,18 +113,16 @@ public final class DfWarehouseManager {
             if (!stack.isEmpty()) {
                 CompoundTag entry = new CompoundTag();
                 entry.putInt("Slot", slot);
-                entry.put("Stack", stack.save(new CompoundTag()));
+                entry.put("Stack", stack.saveOptional(player.registryAccess()));
                 result.add(entry);
             }
         }
         root(player).put(WAREHOUSE_TAG, result);
     }
 
-    /**
-     * 从仓库指定槽位提取符合条件物品，用于自动化提取
-     */
+    /** Extracts from one warehouse slot only when its current stack still matches. */
     public static ItemStack extractMatching(ServerPlayer player, int slot, int count,
-                                            java.util.function.Predicate<ItemStack> predicate) {
+                                            Predicate<ItemStack> predicate) {
         if (player == null || slot < 0 || count <= 0 || predicate == null) {
             return ItemStack.EMPTY;
         }
@@ -221,7 +220,7 @@ public final class DfWarehouseManager {
             if (remainder.isEmpty()) {
                 break;
             }
-            if (!stored.isEmpty() && ItemStack.isSameItemSameTags(stored, remainder)) {
+            if (!stored.isEmpty() && ItemStack.isSameItemSameComponents(stored, remainder)) {
                 int move = Math.min(remainder.getCount(), stored.getMaxStackSize() - stored.getCount());
                 stored.grow(move);
                 remainder.shrink(move);
@@ -248,7 +247,7 @@ public final class DfWarehouseManager {
             if (remainder.isEmpty()) {
                 break;
             }
-            if (!stored.isEmpty() && ItemStack.isSameItemSameTags(stored, remainder)) {
+            if (!stored.isEmpty() && ItemStack.isSameItemSameComponents(stored, remainder)) {
                 int move = Math.min(remainder.getCount(), stored.getMaxStackSize() - stored.getCount());
                 stored.grow(move);
                 remainder.shrink(move);
@@ -292,7 +291,7 @@ public final class DfWarehouseManager {
                 source.shrink(move);
             }
             player.getInventory().items.set(to, placed);
-        } else if (ItemStack.isSameItemSameTags(target, source)) {
+        } else if (ItemStack.isSameItemSameComponents(target, source)) {
             int add = Math.min(move, target.getMaxStackSize() - target.getCount());
             if (add <= 0) {
                 return false;
@@ -334,7 +333,7 @@ public final class DfWarehouseManager {
                 source.shrink(move);
             }
             wh.set(to, placed);
-        } else if (ItemStack.isSameItemSameTags(target, source)) {
+        } else if (ItemStack.isSameItemSameComponents(target, source)) {
             int add = Math.min(move, target.getMaxStackSize() - target.getCount());
             if (add <= 0) {
                 return false;
@@ -372,7 +371,7 @@ public final class DfWarehouseManager {
         int move = Math.min(count, source.getCount());
         ItemStack target = wh.get(whTarget);
         if (!target.isEmpty()) {
-            if (!ItemStack.isSameItemSameTags(target, source)) {
+            if (!ItemStack.isSameItemSameComponents(target, source)) {
                 player.displayClientMessage(Component.translatable("warehouse.deltaforce.slot_occupied"), false);
                 return false;
             }
@@ -412,7 +411,7 @@ public final class DfWarehouseManager {
         extracted.setCount(move);
         ItemStack target = player.getInventory().getItem(invTarget);
         if (!target.isEmpty()) {
-            if (!ItemStack.isSameItemSameTags(target, extracted)) {
+            if (!ItemStack.isSameItemSameComponents(target, extracted)) {
                 if (move == wh.get(whSlot).getCount()) {
                     wh.set(whSlot, target.copy());
                     player.getInventory().items.set(invTarget, extracted);
@@ -541,7 +540,7 @@ public final class DfWarehouseManager {
         }
         ItemStack target = player.getInventory().getItem(invTarget);
         if (!target.isEmpty()) {
-            if (!ItemStack.isSameItemSameTags(target, worn)) {
+            if (!ItemStack.isSameItemSameComponents(target, worn)) {
                 player.displayClientMessage(Component.translatable("warehouse.deltaforce.backpack_slot_occupied"), false);
                 return false;
             }
@@ -614,7 +613,7 @@ public final class DfWarehouseManager {
         }
         ItemStack target = wh.get(whTarget);
         if (!target.isEmpty()) {
-            if (!ItemStack.isSameItemSameTags(target, worn)) {
+            if (!ItemStack.isSameItemSameComponents(target, worn)) {
                 player.displayClientMessage(Component.translatable("warehouse.deltaforce.slot_occupied"), false);
                 return false;
             }

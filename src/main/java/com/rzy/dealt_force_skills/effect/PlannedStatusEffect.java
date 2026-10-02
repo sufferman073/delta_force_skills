@@ -8,6 +8,10 @@ import net.minecraft.world.effect.MobEffectCategory;
  * Gameplay logic should be moved into dedicated effect classes when each skill is implemented.
  */
 public class PlannedStatusEffect extends MobEffect {
+    public PlannedStatusEffect(MobEffectCategory category) {
+        this(category, 0xFFFFFF);
+    }
+
     public PlannedStatusEffect(MobEffectCategory category, int color) {
         super(category, color);
     }

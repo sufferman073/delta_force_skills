@@ -3,6 +3,7 @@ package com.rzy.dealt_force_skills.effect;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
 import com.rzy.dealt_force_skills.registry.ModEffects;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -15,7 +16,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.AttributeMap;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -72,9 +73,13 @@ public final class ModItemEffectHelper {
         return effect != null && shouldSuppressHarmfulImpact(entity, effect.getEffect());
     }
 
+    public static boolean shouldSuppressHarmfulImpact(LivingEntity entity, Holder<MobEffect> effect) {
+        return effect != null && shouldSuppressHarmfulImpact(entity, effect.value());
+    }
+
     public static boolean shouldSuppressHarmfulImpact(LivingEntity entity, MobEffect effect) {
         return entity instanceof Player player
-                && (player.hasEffect(ModEffects.PAIN_RELIEF.get()) || player.hasEffect(ModEffects.SEDATION.get()))
+                && (player.hasEffect(ModEffects.PAIN_RELIEF) || player.hasEffect(ModEffects.SEDATION))
                 && effect != null
                 && effect.getCategory() == MobEffectCategory.HARMFUL;
     }
@@ -87,7 +92,7 @@ public final class ModItemEffectHelper {
 
     public static void tickPainRelief(ServerPlayer player) {
         restoreSuppressedEffects(player);
-        if (player.hasEffect(ModEffects.PAIN_RELIEF.get()) || player.hasEffect(ModEffects.SEDATION.get())) {
+        if (player.hasEffect(ModEffects.PAIN_RELIEF) || player.hasEffect(ModEffects.SEDATION)) {
             suppressActiveHarmfulAttributes(player);
         } else {
             restoreSuppressedHarmfulAttributes(player);
@@ -96,7 +101,7 @@ public final class ModItemEffectHelper {
 
     public static void tickItemEffects(ServerPlayer player) {
         tickPainRelief(player);
-        if (player.hasEffect(ModEffects.SEDATION.get())) {
+        if (player.hasEffect(ModEffects.SEDATION)) {
             removeActiveNonInjuryHarmfulEffects(player);
         }
     }
@@ -113,7 +118,7 @@ public final class ModItemEffectHelper {
         ListTag list = suppressedList(player);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag tag = list.getCompound(i);
-            MobEffect effect = effectFromTag(tag);
+            Holder<MobEffect> effect = effectFromTag(tag);
             int duration = tag.getInt(DURATION);
             if (effect != null && duration > 0) {
                 player.addEffect(new MobEffectInstance(effect, duration, tag.getInt(AMPLIFIER),
@@ -144,7 +149,7 @@ public final class ModItemEffectHelper {
         }
         List<HarmfulRef> preferred = new ArrayList<>();
         for (HarmfulRef candidate : candidates) {
-            if (!InjuryManager.isWound(candidate.effect())) {
+            if (!InjuryManager.isWound(candidate.effect().value())) {
                 preferred.add(candidate);
             }
         }
@@ -167,12 +172,12 @@ public final class ModItemEffectHelper {
         removeSuppressed(player, selected.effect());
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                 "message.dealt_force_skills.item.cleaned_effect",
-                selected.effect().getDisplayName()), true);
+                selected.effect().value().getDisplayName()), true);
     }
 
     public static void removeActiveHarmfulEffects(LivingEntity entity) {
         for (MobEffectInstance active : new ArrayList<>(entity.getActiveEffects())) {
-            if (active.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
+            if (active.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
                 entity.removeEffect(active.getEffect());
                 if (entity instanceof Player player) {
                     removeSuppressed(player, active.getEffect());
@@ -183,7 +188,7 @@ public final class ModItemEffectHelper {
 
     public static void removeActiveNonInjuryHarmfulEffects(LivingEntity entity) {
         for (MobEffectInstance active : new ArrayList<>(entity.getActiveEffects())) {
-            if (active.getEffect().getCategory() == MobEffectCategory.HARMFUL
+            if (active.getEffect().value().getCategory() == MobEffectCategory.HARMFUL
                     && !InjuryManager.isInjury(active.getEffect())) {
                 entity.removeEffect(active.getEffect());
                 if (entity instanceof Player player) {
@@ -194,7 +199,7 @@ public final class ModItemEffectHelper {
     }
 
     public static List<HarmfulEffectChoice> harmfulEffectChoices(Player player, int maxAmplifierInclusive) {
-        Map<MobEffect, HarmfulEffectChoice> choices = new LinkedHashMap<>();
+        Map<Holder<MobEffect>, HarmfulEffectChoice> choices = new LinkedHashMap<>();
         for (HarmfulRef ref : harmfulRefs(player, maxAmplifierInclusive)) {
             HarmfulEffectChoice existing = choices.get(ref.effect());
             if (existing == null
@@ -206,7 +211,7 @@ public final class ModItemEffectHelper {
         return new ArrayList<>(choices.values());
     }
 
-    public static boolean removeHarmfulEffect(Player player, MobEffect selectedEffect, int maxAmplifierInclusive) {
+    public static boolean removeHarmfulEffect(Player player, Holder<MobEffect> selectedEffect, int maxAmplifierInclusive) {
         if (selectedEffect == null) {
             player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                     "message.dealt_force_skills.item.no_harmful_effect"), true);
@@ -214,8 +219,8 @@ public final class ModItemEffectHelper {
         }
         boolean canRemoveActive = false;
         for (MobEffectInstance active : player.getActiveEffects()) {
-            if (active.getEffect() == selectedEffect
-                    && active.getEffect().getCategory() == MobEffectCategory.HARMFUL
+            if (active.getEffect().equals(selectedEffect)
+                    && active.getEffect().value().getCategory() == MobEffectCategory.HARMFUL
                     && active.getAmplifier() <= maxAmplifierInclusive) {
                 canRemoveActive = true;
                 break;
@@ -230,7 +235,7 @@ public final class ModItemEffectHelper {
         }
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                 "message.dealt_force_skills.item.cleaned_effect",
-                selectedEffect.getDisplayName()), true);
+                selectedEffect.value().getDisplayName()), true);
         return true;
     }
 
@@ -241,15 +246,15 @@ public final class ModItemEffectHelper {
     public static double medicineUseSpeedMultiplier(LivingEntity entity) {
         double multiplier = 1.0D;
         multiplier *= InjuryManager.armActionMultiplier(entity);
-        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I.get(), 0.25D);
-        multiplier *= effectMultiplier(entity, ModEffects.STAMINA_BOOST.get(), 0.30D);
-        multiplier *= effectMultiplier(entity, ModEffects.CARRY_BOOST.get(), 0.25D);
-        multiplier *= effectMultiplier(entity, ModEffects.FATIGUE_REMOVAL.get(), 0.10D);
-        multiplier *= effectMultiplier(entity, ModEffects.SMALL_INTERACTION_SPEED.get(), 0.50D);
-        multiplier *= effectMultiplier(entity, ModEffects.LARGE_INTERACTION_SPEED.get(), 2.00D);
-        multiplier *= effectMultiplier(entity, ModEffects.SMALL_ITEM_USE_SPEED.get(), 0.50D);
-        multiplier *= effectMultiplier(entity, ModEffects.LARGE_ITEM_USE_SPEED.get(), 1.00D);
-        if (entity.hasEffect(ModEffects.ROUND_START_FREEZE.get())) {
+        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I, 0.25D);
+        multiplier *= effectMultiplier(entity, ModEffects.STAMINA_BOOST, 0.30D);
+        multiplier *= effectMultiplier(entity, ModEffects.CARRY_BOOST, 0.25D);
+        multiplier *= effectMultiplier(entity, ModEffects.FATIGUE_REMOVAL, 0.10D);
+        multiplier *= effectMultiplier(entity, ModEffects.SMALL_INTERACTION_SPEED, 0.50D);
+        multiplier *= effectMultiplier(entity, ModEffects.LARGE_INTERACTION_SPEED, 2.00D);
+        multiplier *= effectMultiplier(entity, ModEffects.SMALL_ITEM_USE_SPEED, 0.50D);
+        multiplier *= effectMultiplier(entity, ModEffects.LARGE_ITEM_USE_SPEED, 1.00D);
+        if (entity.hasEffect(ModEffects.ROUND_START_FREEZE)) {
             multiplier *= 2.00D;
         }
         return multiplier;
@@ -258,12 +263,12 @@ public final class ModItemEffectHelper {
     public static double medicineBreakSpeedMultiplier(LivingEntity entity) {
         double multiplier = 1.0D;
         multiplier *= InjuryManager.armActionMultiplier(entity);
-        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I.get(), 0.25D);
-        multiplier *= effectMultiplier(entity, ModEffects.STAMINA_BOOST.get(), 0.30D);
-        multiplier *= effectMultiplier(entity, ModEffects.CARRY_BOOST.get(), 0.10D);
-        multiplier *= effectMultiplier(entity, ModEffects.FATIGUE_REMOVAL.get(), 0.10D);
-        multiplier *= effectMultiplier(entity, ModEffects.SMALL_INTERACTION_SPEED.get(), 0.50D);
-        multiplier *= effectMultiplier(entity, ModEffects.LARGE_INTERACTION_SPEED.get(), 2.00D);
+        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I, 0.25D);
+        multiplier *= effectMultiplier(entity, ModEffects.STAMINA_BOOST, 0.30D);
+        multiplier *= effectMultiplier(entity, ModEffects.CARRY_BOOST, 0.10D);
+        multiplier *= effectMultiplier(entity, ModEffects.FATIGUE_REMOVAL, 0.10D);
+        multiplier *= effectMultiplier(entity, ModEffects.SMALL_INTERACTION_SPEED, 0.50D);
+        multiplier *= effectMultiplier(entity, ModEffects.LARGE_INTERACTION_SPEED, 2.00D);
         return multiplier;
     }
 
@@ -275,33 +280,33 @@ public final class ModItemEffectHelper {
 
     public static double medicineTaczFireRateMultiplier(LivingEntity entity) {
         double multiplier = 1.0D;
-        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I.get(), 0.25D);
-        multiplier *= effectMultiplier(entity, ModEffects.LARGE_FIRE_RATE.get(), 2.00D);
+        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I, 0.25D);
+        multiplier *= effectMultiplier(entity, ModEffects.LARGE_FIRE_RATE, 2.00D);
         return multiplier;
     }
 
     public static double medicineTaczReloadMultiplier(LivingEntity entity) {
         double multiplier = 1.0D;
-        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I.get(), 0.25D);
-        multiplier *= effectMultiplier(entity, ModEffects.MEDIUM_RELOAD_SPEED.get(), 0.75D);
-        multiplier *= effectMultiplier(entity, ModEffects.LARGE_RELOAD_SPEED.get(), 1.00D);
+        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I, 0.25D);
+        multiplier *= effectMultiplier(entity, ModEffects.MEDIUM_RELOAD_SPEED, 0.75D);
+        multiplier *= effectMultiplier(entity, ModEffects.LARGE_RELOAD_SPEED, 1.00D);
         return multiplier;
     }
 
     public static double medicineTaczAimSpeedMultiplier(LivingEntity entity) {
         double multiplier = 1.0D;
         multiplier *= InjuryManager.armActionMultiplier(entity);
-        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I.get(), 0.25D);
-        multiplier *= effectMultiplier(entity, ModEffects.SMALL_AIM_SPEED.get(), 0.50D);
-        multiplier *= effectMultiplier(entity, ModEffects.LARGE_AIM_SPEED.get(), 19.00D);
+        multiplier *= effectMultiplier(entity, ModEffects.LAUGHING_MANIA_I, 0.25D);
+        multiplier *= effectMultiplier(entity, ModEffects.SMALL_AIM_SPEED, 0.50D);
+        multiplier *= effectMultiplier(entity, ModEffects.LARGE_AIM_SPEED, 19.00D);
         return multiplier;
     }
 
     public static double medicineTaczAimPenaltyMultiplier(LivingEntity entity) {
-        return effectMultiplier(entity, ModEffects.LARGE_AIM_PENALTY.get(), 19.00D);
+        return effectMultiplier(entity, ModEffects.LARGE_AIM_PENALTY, 19.00D);
     }
 
-    private static double effectMultiplier(LivingEntity entity, MobEffect effect, double perLevelBonus) {
+    private static double effectMultiplier(LivingEntity entity, Holder<MobEffect> effect, double perLevelBonus) {
         MobEffectInstance instance = entity.getEffect(effect);
         if (instance == null || shouldSuppressHarmfulImpact(entity, effect)) {
             return 1.0D;
@@ -311,7 +316,7 @@ public final class ModItemEffectHelper {
     }
 
     public static void handleLivingDeath(LivingEntity entity, net.minecraft.world.damagesource.DamageSource source) {
-        if (source.getEntity() instanceof ServerPlayer player && player.hasEffect(ModEffects.HELA.get())) {
+        if (source.getEntity() instanceof ServerPlayer player && player.hasEffect(ModEffects.HELA)) {
             player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("effects.mod_item_effect_helper.effect.regeneration.1.duration_ticks", 5 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("effects.mod_item_effect_helper.effect.regeneration.1.amplifier", 2), false, true, true), player);
         }
     }
@@ -333,7 +338,7 @@ public final class ModItemEffectHelper {
     }
 
     public static boolean hasLaughingManiaThree(LivingEntity entity) {
-        return entity.hasEffect(ModEffects.LAUGHING_MANIA_III.get());
+        return entity.hasEffect(ModEffects.LAUGHING_MANIA_III);
     }
 
     private static void refreshCooldownFields(CompoundTag tag, ServerPlayer player) {
@@ -386,15 +391,15 @@ public final class ModItemEffectHelper {
         ListTag list = attributeSuppressedList(player);
         Set<String> activeKeys = new HashSet<>();
         for (MobEffectInstance active : new ArrayList<>(player.getActiveEffects())) {
-            MobEffect effect = active.getEffect();
-            if (effect.getCategory() != MobEffectCategory.HARMFUL) {
+            Holder<MobEffect> effect = active.getEffect();
+            if (effect.value().getCategory() != MobEffectCategory.HARMFUL) {
                 continue;
             }
-            ResourceLocation id = ForgeRegistries.MOB_EFFECTS.getKey(effect);
+            ResourceLocation id = BuiltInRegistries.MOB_EFFECT.getKey(effect.value());
             if (id == null) {
                 continue;
             }
-            effect.removeAttributeModifiers(player, attributes, active.getAmplifier());
+            effect.value().removeAttributeModifiers(attributes);
             activeKeys.add(id.toString());
             upsertAttributeSuppressed(list, id, active.getAmplifier());
         }
@@ -413,10 +418,10 @@ public final class ModItemEffectHelper {
         AttributeMap attributes = player.getAttributes();
         for (int i = 0; i < list.size(); i++) {
             CompoundTag tag = list.getCompound(i);
-            MobEffect effect = effectFromTag(tag);
+            Holder<MobEffect> effect = effectFromTag(tag);
             MobEffectInstance active = effect == null ? null : player.getEffect(effect);
-            if (effect != null && active != null && effect.getCategory() == MobEffectCategory.HARMFUL) {
-                effect.addAttributeModifiers(player, attributes, active.getAmplifier());
+            if (effect != null && active != null && effect.value().getCategory() == MobEffectCategory.HARMFUL) {
+                effect.value().addAttributeModifiers(attributes, active.getAmplifier());
             }
         }
         list.clear();
@@ -438,7 +443,7 @@ public final class ModItemEffectHelper {
     }
 
     private static void storeSuppressedEffect(Player player, MobEffectInstance effect) {
-        ResourceLocation id = ForgeRegistries.MOB_EFFECTS.getKey(effect.getEffect());
+        ResourceLocation id = BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect().value());
         if (id == null || effect.isInfiniteDuration()) {
             return;
         }
@@ -470,7 +475,7 @@ public final class ModItemEffectHelper {
     private static List<HarmfulRef> harmfulRefs(Player player, int maxAmplifierInclusive) {
         List<HarmfulRef> candidates = new ArrayList<>();
         for (MobEffectInstance active : player.getActiveEffects()) {
-            if (active.getEffect().getCategory() == MobEffectCategory.HARMFUL
+            if (active.getEffect().value().getCategory() == MobEffectCategory.HARMFUL
                     && active.getAmplifier() <= maxAmplifierInclusive) {
                 candidates.add(HarmfulRef.active(active));
             }
@@ -478,9 +483,9 @@ public final class ModItemEffectHelper {
         ListTag suppressed = suppressedList(player);
         for (int i = 0; i < suppressed.size(); i++) {
             CompoundTag tag = suppressed.getCompound(i);
-            MobEffect effect = effectFromTag(tag);
+            Holder<MobEffect> effect = effectFromTag(tag);
             if (effect != null
-                    && effect.getCategory() == MobEffectCategory.HARMFUL
+                    && effect.value().getCategory() == MobEffectCategory.HARMFUL
                     && tag.getInt(AMPLIFIER) <= maxAmplifierInclusive
                     && tag.getInt(DURATION) > 0) {
                 candidates.add(HarmfulRef.suppressed(effect, tag.getInt(AMPLIFIER), tag.getInt(DURATION)));
@@ -489,8 +494,8 @@ public final class ModItemEffectHelper {
         return candidates;
     }
 
-    private static boolean removeSuppressed(Player player, MobEffect effect) {
-        ResourceLocation id = ForgeRegistries.MOB_EFFECTS.getKey(effect);
+    private static boolean removeSuppressed(Player player, Holder<MobEffect> effect) {
+        ResourceLocation id = BuiltInRegistries.MOB_EFFECT.getKey(effect.value());
         if (id == null) {
             return false;
         }
@@ -505,9 +510,9 @@ public final class ModItemEffectHelper {
         return removed;
     }
 
-    private static MobEffect effectFromTag(CompoundTag tag) {
+    private static Holder<MobEffect> effectFromTag(CompoundTag tag) {
         ResourceLocation id = ResourceLocation.tryParse(tag.getString(EFFECT_ID));
-        return id == null ? null : ForgeRegistries.MOB_EFFECTS.getValue(id);
+        return id == null ? null : BuiltInRegistries.MOB_EFFECT.getHolder(id).orElse(null);
     }
 
     private static ListTag suppressedList(Player player) {
@@ -534,16 +539,16 @@ public final class ModItemEffectHelper {
         return persistent.getCompound(ROOT_TAG);
     }
 
-    private record HarmfulRef(MobEffect effect, int amplifier, int duration) {
+    private record HarmfulRef(Holder<MobEffect> effect, int amplifier, int duration) {
         static HarmfulRef active(MobEffectInstance instance) {
             return new HarmfulRef(instance.getEffect(), instance.getAmplifier(), instance.getDuration());
         }
 
-        static HarmfulRef suppressed(MobEffect effect, int amplifier, int duration) {
+        static HarmfulRef suppressed(Holder<MobEffect> effect, int amplifier, int duration) {
             return new HarmfulRef(effect, amplifier, duration);
         }
     }
 
-    public record HarmfulEffectChoice(MobEffect effect, int amplifier, int duration) {
+    public record HarmfulEffectChoice(Holder<MobEffect> effect, int amplifier, int duration) {
     }
 }

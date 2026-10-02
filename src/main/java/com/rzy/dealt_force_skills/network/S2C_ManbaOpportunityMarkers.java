@@ -4,15 +4,30 @@ import com.rzy.dealt_force_skills.character.manba.ManbaOpportunityMarker;
 import com.rzy.dealt_force_skills.character.manba.ManbaOpportunityMarkerType;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_ManbaOpportunityMarkers {
+public class S2C_ManbaOpportunityMarkers implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_ManbaOpportunityMarkers> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_manba_opportunity_markers"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_ManbaOpportunityMarkers> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_ManbaOpportunityMarkers::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final List<ManbaOpportunityMarker> markers;
 
     public S2C_ManbaOpportunityMarkers(List<ManbaOpportunityMarker> markers) {
@@ -46,11 +61,7 @@ public class S2C_ManbaOpportunityMarkers {
         return new S2C_ManbaOpportunityMarkers(markers);
     }
 
-    public static void handle(S2C_ManbaOpportunityMarkers msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientManbaHudState.syncOpportunityMarkers(msg.markers)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_ManbaOpportunityMarkers msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientManbaHudState.syncOpportunityMarkers(msg.markers));
     }
 }

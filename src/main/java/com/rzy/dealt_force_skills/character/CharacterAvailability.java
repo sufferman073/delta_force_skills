@@ -5,7 +5,7 @@ import com.rzy.dealt_force_skills.network.S2C_SyncCharacterAvailability;
 import com.rzy.dealt_force_skills.registry.ModGameRules;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

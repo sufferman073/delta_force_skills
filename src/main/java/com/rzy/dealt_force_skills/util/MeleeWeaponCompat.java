@@ -13,11 +13,11 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
 import net.minecraft.world.item.TridentItem;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 public final class MeleeWeaponCompat {
     public static final TagKey<Item> MELEE_WEAPONS = TagKey.create(
-            Registries.ITEM, new ResourceLocation(DealtForceSkillsMod.MODID, "melee_weapons"));
+            Registries.ITEM, ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "melee_weapons"));
     private static final String[] LES_RAISINS_NAMESPACE_PARTS = {
             "lrtactical", "lesraisins", "raisins", "tactical_equipement", "tactical_equipment", "lrte"
     };
@@ -49,7 +49,7 @@ public final class MeleeWeaponCompat {
     }
 
     private static boolean isKnownLesRaisinsMelee(Item item) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         if (key == null || !containsAny(key.getNamespace().toLowerCase(Locale.ROOT), LES_RAISINS_NAMESPACE_PARTS)) {
             return false;
         }

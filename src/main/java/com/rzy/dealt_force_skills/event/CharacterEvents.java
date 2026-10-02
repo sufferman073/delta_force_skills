@@ -54,12 +54,13 @@ import com.rzy.dealt_force_skills.skill.HeldToolVisualSync;
 import com.rzy.dealt_force_skills.skill.SkillDispatcher;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public class CharacterEvents {
     @SubscribeEvent
     public static void onPlayerClone(PlayerEvent.Clone event) {
@@ -161,13 +162,9 @@ public class CharacterEvents {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (!(event.player instanceof ServerPlayer player)) return;
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
 
-        // Attribute modifiers are player-owned, not character-owned. Reconcile
-        // Commander modifiers before dispatching the currently selected role so
-        // a switch/clone cannot leak max-health or step height into that role.
         CommanderStateManager.cleanupIfNotCommander(player);
         SinevaStateManager.reconcileStepHeight(player);
         RaptorStateManager.recordFootprint(player);

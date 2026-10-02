@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_SyncUluruState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncUluruState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_uluru_state"));
 
-public class S2C_SyncUluruState {
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncUluruState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncUluruState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int incendiaryCharges;
     private final int incendiaryMaxCharges;
     private final int incendiaryRechargeTicks;
@@ -66,10 +80,8 @@ public class S2C_SyncUluruState {
         );
     }
 
-    public static void handle(S2C_SyncUluruState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientUluruHudState.sync(
+    public static void handle(S2C_SyncUluruState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientUluruHudState.sync(
                         msg.incendiaryCharges,
                         msg.incendiaryMaxCharges,
                         msg.incendiaryRechargeTicks,
@@ -79,8 +91,6 @@ public class S2C_SyncUluruState {
                         msg.missileCooldownTicks,
                         msg.equippedToolOrdinal,
                         msg.coverPerpendicular
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

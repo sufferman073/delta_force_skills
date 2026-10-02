@@ -19,11 +19,12 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import org.joml.Matrix4f;
 import org.slf4j.Logger;
 
@@ -45,7 +46,7 @@ public final class DfsEquipmentModelVisuals {
     }
 
     public static void registerLayers(EntityRenderersEvent.AddLayers event) {
-        for (String skin : event.getSkins()) {
+        for (PlayerSkin.Model skin : event.getSkins()) {
             PlayerRenderer renderer = event.getSkin(skin);
             if (renderer != null) {
                 renderer.addLayer(new EquipmentGeometryLayer(renderer));
@@ -72,7 +73,7 @@ public final class DfsEquipmentModelVisuals {
                 float headPitch
         ) {
             if (player == null || player.isInvisible()
-                    || player.hasEffect(ModEffects.UNDEAD_TRUE_INVISIBILITY.get())) {
+                    || player.hasEffect(ModEffects.UNDEAD_TRUE_INVISIBILITY)) {
                 return;
             }
 
@@ -239,10 +240,10 @@ public final class DfsEquipmentModelVisuals {
         int r = shade(color.r(), shade);
         int g = shade(color.g(), shade);
         int b = shade(color.b(), shade);
-        consumer.vertex(matrix, x1, y1, z1).color(r, g, b, color.a()).endVertex();
-        consumer.vertex(matrix, x2, y2, z2).color(r, g, b, color.a()).endVertex();
-        consumer.vertex(matrix, x3, y3, z3).color(r, g, b, color.a()).endVertex();
-        consumer.vertex(matrix, x4, y4, z4).color(r, g, b, color.a()).endVertex();
+        consumer.addVertex(matrix, x1, y1, z1).setColor(r, g, b, color.a());
+        consumer.addVertex(matrix, x2, y2, z2).setColor(r, g, b, color.a());
+        consumer.addVertex(matrix, x3, y3, z3).setColor(r, g, b, color.a());
+        consumer.addVertex(matrix, x4, y4, z4).setColor(r, g, b, color.a());
     }
 
     private static int shade(int value, float factor) {

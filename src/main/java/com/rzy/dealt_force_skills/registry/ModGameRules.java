@@ -45,7 +45,7 @@ public final class ModGameRules {
                     GameRules.BooleanValue.create(true, (server, value) ->
                             NetworkHandler.sendToAll(syncPacket(server))));
     public static final GameRules.Key<GameRules.BooleanValue> DEALT_HAVOC_VISIBLE =
-            GameRules.register("dealtdollvisible", GameRules.Category.PLAYER,
+            GameRules.register("dealthavocvisible", GameRules.Category.PLAYER,
                     GameRules.BooleanValue.create(true, (server, value) ->
                             NetworkHandler.sendToAll(syncPacket(server))));
     public static final GameRules.Key<GameRules.BooleanValue> DEALT_CHEST_DROPABLE =
@@ -81,6 +81,10 @@ public final class ModGameRules {
 
     public static boolean areCharacterSkinsEnabled(Player player) {
         return player == null || player.level().getGameRules().getBoolean(DELTA_SKINS);
+    }
+
+    public static boolean isNoxInvisibilityEnabled(Player player) {
+        return true;
     }
 
     public static boolean areArmorSpecialsEnabled(Player player) {

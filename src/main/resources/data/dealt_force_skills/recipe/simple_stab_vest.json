@@ -1,0 +1,32 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "minecraft:string"
+                        },
+                        {
+                            "item":  "minecraft:string"
+                        },
+                        {
+                            "item":  "minecraft:string"
+                        },
+                        {
+                            "tag":  "minecraft:wool"
+                        },
+                        {
+                            "tag":  "minecraft:wool"
+                        },
+                        {
+                            "tag":  "minecraft:wool"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:simple_stab_vest"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

@@ -31,7 +31,7 @@ public final class RoverProjectileEntity extends ThrowableItemProjectile {
     }
 
     @Override protected Item getDefaultItem() { return Items.LIME_DYE; }
-    @Override protected float getGravity() { return smoke ? 0.04F : 0.015F; }
+    @Override protected double getDefaultGravity() { return smoke ? 0.04D : 0.015D; }
 
     @Override public void tick() {
         super.tick();

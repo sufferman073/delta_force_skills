@@ -1,16 +1,19 @@
 package com.rzy.dealt_force_skills.effect;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.resources.ResourceLocation;
 
 public class NikaidouRiftStacksEffect extends MobEffect {
     public NikaidouRiftStacksEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0xE04535);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
         addAttributeModifier(Attributes.ATTACK_DAMAGE,
-                "ef32e2f0-68e8-4bf1-a2f7-a3b4b582043c",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.nikaidou_rift_stacks.attack_damage"),
                 0.04D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 }

@@ -12,15 +12,15 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.item.ItemTossEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.item.ItemTossEvent;
 
 /**
  * 地面物品事件处理器 - 处理DF物品的地面显示
  */
-@Mod.EventBusSubscriber(modid = DeltaForce.MODID)
+@EventBusSubscriber(modid = DeltaForce.MODID)
 public class GroundItemEvents {
 
     /**
@@ -28,7 +28,7 @@ public class GroundItemEvents {
      */
     public static final TagKey<Item> GROUND_ITEM_TAG = TagKey.create(
         Registries.ITEM,
-        new ResourceLocation(DeltaForce.MODID, "df_item_e")
+        ResourceLocation.fromNamespaceAndPath(DeltaForce.MODID, "df_item_e")
     );
 
     /**
@@ -36,32 +36,38 @@ public class GroundItemEvents {
      */
     public static final TagKey<Item> DF_ITEM_TAG = TagKey.create(
         Registries.ITEM,
-        new ResourceLocation(DeltaForce.MODID, "df_item")
+        ResourceLocation.fromNamespaceAndPath(DeltaForce.MODID, "df_item")
     );
 
     /**
-     * 检查物品是否应该转换为地面物品实体
+     * 检查物品是否应该转换为地面物品实体。
+     * 说明：需求为"模组全部物品都视为带 #deltaforce:df_item 标签"，使模组物品掉落时生成自定义地面物品实体。
+     * 仅转换本模组（deltaforce / dealt_force_skills）注册的物品；原版与其他模组物品保持原样掉落。
      */
     private static boolean shouldConvertToGroundItem(ItemStack itemStack) {
         if (itemStack.isEmpty()) {
             return false;
         }
+        // 本模组（deltaforce / dealt_force_skills）注册的物品全部转换
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(itemStack.getItem());
-        if (id != null && (DeltaForce.MODID.equals(id.getNamespace())
-                || DealtForceSkillsMod.MODID.equals(id.getNamespace()))) {
-            return true;
+        if (id != null) {
+            String namespace = id.getNamespace();
+            if (namespace.equals(DeltaForce.MODID) || namespace.equals(DealtForceSkillsMod.MODID)) {
+                return true;
+            }
         }
+        // 带 df_item / df_item_e 标签的物品也转换
         return itemStack.is(GROUND_ITEM_TAG) || itemStack.is(DF_ITEM_TAG);
     }
 
     @SubscribeEvent
     public static void onItemToss(ItemTossEvent event) {
         ItemStack itemStack = event.getEntity().getItem();
+
         if (shouldConvertToGroundItem(itemStack)) {
             event.setCanceled(true);
 
             var level = event.getEntity().level();
-            var entity = event.getEntity();
             var player = event.getPlayer();
 
             if (!level.isClientSide()) {
@@ -76,7 +82,7 @@ public class GroundItemEvents {
                     z,
                     itemStack
                 );
-                groundItem.setDeltaMovement(entity.getDeltaMovement());
+                groundItem.setDeltaMovement(event.getEntity().getDeltaMovement());
                 level.addFreshEntity(groundItem);
             }
         }

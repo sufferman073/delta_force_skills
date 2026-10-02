@@ -315,8 +315,7 @@ public final class SkillDispatcher {
                         for (String sourceId : CommanderStateManager.inheritedRuntimeSources(player)) {
                             tickInheritedState(player, sourceId);
                         }
-                        if (!CommanderStateManager.inheritedRuntimeSources(player)
-                                .contains(ModCharacters.D_WOLF_ID)
+                        if (!CommanderStateManager.inheritedRuntimeSources(player).contains(ModCharacters.D_WOLF_ID)
                                 && DWolfStateManager.hasOngoingRuntimeState(player)) {
                             DWolfStateManager.tick(player);
                         }
@@ -385,79 +384,6 @@ public final class SkillDispatcher {
             return finishSkillUse(player, character.id(), slot, alternate, handled);
         }
 
-        return dispatchCharacterSkill(player, character, slot, alternate);
-    }
-
-    public static boolean useCommanderSelectedSkill(ServerPlayer player, CommanderSkillChoice choice,
-                                                     boolean inheritedAlternate) {
-        if (choice == null || !passesInputGuards(player, choice.skillSlot())) {
-            return false;
-        }
-        Optional<CharacterDefinition> selected = CharacterSelectionManager.getSelectedCharacter(player);
-        if (selected.isEmpty() || !ModCharacters.COMMANDER_ID.equals(selected.get().id())) {
-            return false;
-        }
-        if (ElectronicInterferenceManager.tryBlockSkillUse(player, selected.get(), choice.skillSlot())) {
-            return true;
-        }
-        SkillSoundFeedback.beginAttempt(player);
-        MorseStateManager.recordPlayerAction(player);
-        boolean handled = CommanderSkills.useSelectedSkill(player, choice, inheritedAlternate);
-        return finishSkillUse(player, selected.get().id(), choice.skillSlot(), inheritedAlternate, handled);
-    }
-
-    public static boolean passesInputGuards(ServerPlayer player, SkillSlot slot) {
-        if (player == null || player.isSpectator() || slot == null) {
-            return false;
-        }
-        if (UluruLoiteringMissileEntity.isPlayerControlling(player)
-                || RaptorFalconDroneEntity.isPlayerControlling(player)) {
-            return false;
-        }
-        if (com.rzy.dealt_force_skills.character.rover.RoverStateManager.isDowned(player)
-                || player.hasEffect(ModEffects.STUN.get())
-                || player.hasEffect(ModEffects.WEBBED.get())
-                || player.hasEffect(ModEffects.N_TWO_FROZEN.get())
-                || player.hasEffect(ModEffects.TEMPEST_DISARMED.get())
-                || StingerStateManager.isDowned(player)
-                || VlinderStateManager.isDowned(player)
-                || CatDadStateManager.isDowned(player)
-                || TempestStateManager.isActionLocked(player)
-                || NikaidouHiroWitchificationStateManager.isActionLocked(player)
-                || UndeadStateManager.isRitualDancing(player)
-                || RoundStartFreezeManager.isFrozen(player)) {
-            player.displayClientMessage(Component.translatable("message.dealt_force_skills.stunned"), true);
-            return false;
-        }
-        if (!slot.canBeTriggeredByKey()) {
-            return false;
-        }
-        if (GamblerArenaManager.blocksSkillUse(player)) {
-            player.displayClientMessage(Component.translatable(
-                    "message.dealt_force_skills.gambler.arena.skill_blocked"), true);
-            return false;
-        }
-        return true;
-    }
-
-    public static boolean useInheritedSkill(ServerPlayer player, String characterId, SkillSlot slot, boolean alternate) {
-        Optional<CharacterDefinition> source = ModCharacters.get(characterId);
-        if (source.isEmpty() || source.get().role() == com.rzy.dealt_force_skills.character.CharacterRole.BOSS
-                || source.get().role() == com.rzy.dealt_force_skills.character.CharacterRole.SPECIAL
-                || source.get().skill(slot).filter(SkillDefinition::implemented).isEmpty()) {
-            return false;
-        }
-        if (ElectronicInterferenceManager.tryBlockSkillUse(player, source.get(), slot)) {
-            return true;
-        }
-        SkillSoundFeedback.beginAttempt(player);
-        MorseStateManager.recordPlayerAction(player);
-        return CommanderSkillContext.run(player, characterId,
-                () -> dispatchCharacterSkill(player, source.get(), slot, alternate));
-    }
-
-    private static boolean dispatchCharacterSkill(ServerPlayer player, CharacterDefinition character,
-                                                  SkillSlot slot, boolean alternate) {
         if (ModCharacters.ROVER_ID.equals(character.id())) {
             return finishSkillUse(player, character.id(), slot, alternate,
                     com.rzy.dealt_force_skills.character.rover.RoverStateManager.useSkill(player, slot, alternate));
@@ -632,11 +558,259 @@ public final class SkillDispatcher {
 
         player.displayClientMessage(
                 Component.translatable("message.dealt_force_skills.skill_placeholder",
-                        character.skill(slot).map(SkillDefinition::displayName)
-                                .orElse(Component.literal("-")),
+                        skill.get().displayName(),
                         character.displayName()),
                 true
         );
+        return true;
+    }
+
+    public static boolean useInheritedSkill(ServerPlayer player, String characterId, SkillSlot slot, boolean alternate) {
+        Optional<CharacterDefinition> source = ModCharacters.get(characterId);
+        if (source.isEmpty()
+                || source.get().role() == com.rzy.dealt_force_skills.character.CharacterRole.BOSS
+                || source.get().role() == com.rzy.dealt_force_skills.character.CharacterRole.SPECIAL
+                || source.get().skill(slot).filter(SkillDefinition::implemented).isEmpty()) {
+            return false;
+        }
+        if (ElectronicInterferenceManager.tryBlockSkillUse(player, source.get(), slot)) {
+            return true;
+        }
+        return CommanderSkillContext.run(player, characterId,
+                () -> useInheritedSkillInContext(player, characterId, slot, alternate));
+    }
+
+    private static boolean useInheritedSkillInContext(ServerPlayer player, String characterId,
+                                                       SkillSlot slot, boolean alternate) {
+        if (!passesInputGuards(player, slot)) {
+            return false;
+        }
+
+        SkillSoundFeedback.beginAttempt(player);
+        MorseStateManager.recordPlayerAction(player);
+
+        if (ModCharacters.ROVER_ID.equals(characterId)) {
+            return finishSkillUse(player, characterId, slot, alternate,
+                    com.rzy.dealt_force_skills.character.rover.RoverStateManager.useSkill(player, slot, alternate));
+        }
+
+        if (ModCharacters.SINEVA_ID.equals(characterId)) {
+            boolean handled = SinevaSkills.useSkill(player, slot, alternate);
+            SinevaStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.ULURU_ID.equals(characterId)) {
+            boolean handled = UluruSkills.useSkill(player, slot, alternate);
+            UluruStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.D_WOLF_ID.equals(characterId)) {
+            boolean handled = DWolfSkills.useSkill(player, slot, alternate);
+            DWolfStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.CORPS_ID.equals(characterId)) {
+            boolean handled = CorpsSkills.useSkill(player, slot, alternate);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.GIZMO_ID.equals(characterId)) {
+            boolean handled = GizmoSkills.useSkill(player, slot, alternate);
+            GizmoStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.SHEPHERD_ID.equals(characterId)) {
+            boolean handled = ShepherdSkills.useSkill(player, slot, alternate);
+            ShepherdStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.N_TWO_ID.equals(characterId)) {
+            boolean handled = NTwoSkills.useSkill(player, slot, alternate);
+            NTwoStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.LUNA_ID.equals(characterId)) {
+            boolean handled = LunaSkills.useSkill(player, slot, alternate);
+            LunaStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.HACKCLAW_ID.equals(characterId)) {
+            boolean handled = HackclawSkills.useSkill(player, slot, alternate);
+            HackclawStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.VYRON_ID.equals(characterId)) {
+            boolean handled = VyronSkills.useSkill(player, slot, alternate);
+            VyronStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.NOX_ID.equals(characterId)) {
+            boolean handled = NoxSkills.useSkill(player, slot, alternate);
+            NoxStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.STINGER_ID.equals(characterId)) {
+            boolean handled = StingerSkills.useSkill(player, slot, alternate);
+            StingerStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.MANBA_ID.equals(characterId)) {
+            boolean handled = ManbaSkills.useSkill(player, slot, alternate);
+            ManbaStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.NIKAIDOU_HIRO_ID.equals(characterId)) {
+            boolean handled = NikaidouHiroSkills.useSkill(player, slot, alternate);
+            NikaidouHiroStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.NIKAIDOU_HIRO_WITCHIFICATION_ID.equals(characterId)) {
+            boolean handled = NikaidouHiroWitchificationSkills.useSkill(player, slot, alternate);
+            NikaidouHiroWitchificationStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.CATDAD_ID.equals(characterId)) {
+            boolean handled = CatDadSkills.useSkill(player, slot, alternate);
+            CatDadStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.DEPARTMENT_OF_TRANSPORTATION_ID.equals(characterId)) {
+            boolean handled = DepartmentOfTransportationSkills.useSkill(player, slot, alternate);
+            DepartmentOfTransportationStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.UNDEAD_ID.equals(characterId)) {
+            boolean handled = UndeadSkills.useSkill(player, slot, alternate);
+            UndeadStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.LEX_NINJIA_ID.equals(characterId)) {
+            boolean handled = LexNinjiaSkills.useSkill(player, slot, alternate);
+            LexNinjiaStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.GAMBLER_ID.equals(characterId)) {
+            boolean handled = GamblerSkills.useSkill(player, slot, alternate);
+            GamblerStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.MORSE_ID.equals(characterId)) {
+            boolean handled = MorseSkills.useSkill(player, slot, alternate);
+            MorseStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.TOXIK_ID.equals(characterId)) {
+            boolean handled = ToxikSkills.useSkill(player, slot, alternate);
+            ToxikStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.RAPTOR_ID.equals(characterId)) {
+            boolean handled = RaptorSkills.useSkill(player, slot, alternate);
+            RaptorStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.VLINDER_ID.equals(characterId)) {
+            boolean handled = VlinderSkills.useSkill(player, slot, alternate);
+            VlinderStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.TEMPEST_ID.equals(characterId)) {
+            boolean handled = TempestSkills.useSkill(player, slot, alternate);
+            TempestStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.SAEED_ID.equals(characterId)) {
+            boolean handled = SaeedSkills.useSkill(player, slot, alternate);
+            SaeedStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.GHROTH_ID.equals(characterId)) {
+            boolean handled = GhrothSkills.useSkill(player, slot, alternate);
+            GhrothStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        if (ModCharacters.CHAMBER_ID.equals(characterId)) {
+            boolean handled = ChamberSkills.useSkill(player, slot, alternate);
+            ChamberStateManager.syncToClient(player);
+            return finishSkillUse(player, characterId, slot, alternate, handled);
+        }
+
+        return false;
+    }
+
+    public static boolean useCommanderSelectedSkill(ServerPlayer player, CommanderSkillChoice choice, boolean inheritedAlternate) {
+        if (choice == null || !passesInputGuards(player, choice.skillSlot())) {
+            return false;
+        }
+        Optional<CharacterDefinition> selected = CharacterSelectionManager.getSelectedCharacter(player);
+        if (selected.isEmpty() || !ModCharacters.COMMANDER_ID.equals(selected.get().id())) {
+            return false;
+        }
+        if (ElectronicInterferenceManager.tryBlockSkillUse(player, selected.get(), choice.skillSlot())) {
+            return true;
+        }
+        SkillSoundFeedback.beginAttempt(player);
+        MorseStateManager.recordPlayerAction(player);
+        boolean handled = CommanderSkills.useSelectedSkill(player, choice, inheritedAlternate);
+        return finishSkillUse(player, selected.get().id(), choice.skillSlot(), inheritedAlternate, handled);
+    }
+
+    public static boolean passesInputGuards(ServerPlayer player, SkillSlot slot) {
+        if (player == null || player.isSpectator() || slot == null) {
+            return false;
+        }
+        if (UluruLoiteringMissileEntity.isPlayerControlling(player)
+                || RaptorFalconDroneEntity.isPlayerControlling(player)) {
+            return false;
+        }
+        if (com.rzy.dealt_force_skills.character.rover.RoverStateManager.isDowned(player) || player.hasEffect(ModEffects.STUN)
+                || player.hasEffect(ModEffects.WEBBED)
+                || player.hasEffect(ModEffects.N_TWO_FROZEN)
+                || player.hasEffect(ModEffects.TEMPEST_DISARMED)
+                || StingerStateManager.isDowned(player)
+                || VlinderStateManager.isDowned(player)
+                || CatDadStateManager.isDowned(player)
+                || TempestStateManager.isActionLocked(player)
+                || NikaidouHiroWitchificationStateManager.isActionLocked(player)
+                || UndeadStateManager.isRitualDancing(player)
+                || RoundStartFreezeManager.isFrozen(player)) {
+            player.displayClientMessage(Component.translatable("message.dealt_force_skills.stunned"), true);
+            return false;
+        }
+        if (!slot.canBeTriggeredByKey()) {
+            return false;
+        }
+        if (GamblerArenaManager.blocksSkillUse(player)) {
+            player.displayClientMessage(Component.translatable(
+                    "message.dealt_force_skills.gambler.arena.skill_blocked"), true);
+            return false;
+        }
         return true;
     }
 }

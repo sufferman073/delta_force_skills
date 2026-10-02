@@ -25,7 +25,7 @@ public final class GtiSpecialOperationsScreen extends Screen {
         NetworkHandler.sendToServer(new C2S_GtiSpecialOperationsAction(action, 0, 0));
     }
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         graphics.drawCenteredString(font, title, width / 2, height / 2 - 55, 0xFFFFFF);
         super.render(graphics, mouseX, mouseY, partialTick);
     }

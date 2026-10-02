@@ -1,18 +1,24 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.block.HvkAsaraArenaBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 public record S2C_OpenHvkAsaraArena(BlockPos pos, String selectedStructure, long modifierMask,
-                                     List<String> structures) {
+                                     List<String> structures) implements CustomPacketPayload {
+    public static final Type<S2C_OpenHvkAsaraArena> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "s2c_open_hvk_asara_arena"));
+    public static final StreamCodec<FriendlyByteBuf, S2C_OpenHvkAsaraArena> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), S2C_OpenHvkAsaraArena::decode);
+    @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     public static void encode(S2C_OpenHvkAsaraArena msg, FriendlyByteBuf buf) {
         buf.writeBlockPos(msg.pos);
         buf.writeUtf(msg.selectedStructure, HvkAsaraArenaBlockEntity.MAX_STRUCTURE_ID_LENGTH);
@@ -34,9 +40,7 @@ public record S2C_OpenHvkAsaraArena(BlockPos pos, String selectedStructure, long
         return new S2C_OpenHvkAsaraArena(pos, selected, mask, List.copyOf(structures));
     }
 
-    public static void handle(S2C_OpenHvkAsaraArena msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> HvkAsaraArenaScreen.open(msg)));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_OpenHvkAsaraArena msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> HvkAsaraArenaScreen.open(msg));
     }
 }

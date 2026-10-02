@@ -9,22 +9,23 @@ import com.rzy.dealt_force_skills.character.manba.ManbaStateManager;
 import com.rzy.dealt_force_skills.character.manba.ManbaTalent;
 import com.rzy.dealt_force_skills.client.character.ClientManbaHudState;
 import com.rzy.dealt_force_skills.client.character.ClientUndeadHudState;
+import com.rzy.dealt_force_skills.client.renderer.DfsRenderTypes;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import com.rzy.dealt_force_skills.client.renderer.DfsRenderTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ManbaOpportunityWindowRenderer {
     private static final double UNDEAD_EXPLORER_RANGE = ManbaStateManager.OPPORTUNITY_WINDOW_RANGE * 2.0D;
     private static final int PLAYER_COLOR = 0xFF6CE8FF;
@@ -40,7 +41,7 @@ public final class ManbaOpportunityWindowRenderer {
         boolean undeadExplorerOpportunity = ClientUndeadHudState.shouldRender()
                 && ClientUndeadHudState.explorerSpaceTicks() > 0
                 && ClientUndeadHudState.explorerCanSeeEntities();
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL
                 || (!manbaOpportunity && !undeadExplorerOpportunity)
                 || ClientManbaHudState.opportunityMarkers().isEmpty()) {
             return;

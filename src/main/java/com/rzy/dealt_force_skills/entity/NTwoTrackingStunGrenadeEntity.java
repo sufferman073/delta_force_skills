@@ -9,8 +9,6 @@ import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -29,12 +27,12 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSupplier {
     private static final double HOME_RADIUS = 13.0D;
@@ -65,7 +63,7 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -119,11 +117,6 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
         tag.putDouble("StartY", startPos.y);
         tag.putDouble("StartZ", startPos.z);
         tag.putBoolean("LockSoundPlayed", lockSoundPlayed);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private void homeTowardTarget() {
@@ -191,7 +184,7 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
             if (target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D).distanceTo(center) > BURST_RADIUS) {
                 continue;
             }
-            target.addEffect(new MobEffectInstance(ModEffects.N_TWO_DISRUPTED.get(), STUN_DURATION_TICKS,
+            target.addEffect(new MobEffectInstance(ModEffects.N_TWO_DISRUPTED, STUN_DURATION_TICKS,
                     0, false, true, true), owner);
             revealed.add(target.getId());
         }

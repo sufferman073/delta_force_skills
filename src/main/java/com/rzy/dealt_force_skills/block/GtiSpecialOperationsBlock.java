@@ -6,10 +6,9 @@ import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.shop.GtiTradingHallManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -23,10 +22,13 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 public final class GtiSpecialOperationsBlock extends BaseEntityBlock {
+    public static final MapCodec<GtiSpecialOperationsBlock> CODEC = simpleCodec(properties -> new GtiSpecialOperationsBlock());
     public GtiSpecialOperationsBlock() {
         super(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).requiresCorrectToolForDrops()
                 .strength(5.0F, 1200.0F).sound(SoundType.METAL));
     }
+
+    @Override protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
     @Override public RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
 
@@ -42,8 +44,8 @@ public final class GtiSpecialOperationsBlock extends BaseEntityBlock {
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+                                               BlockHitResult hit) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (!(player instanceof ServerPlayer serverPlayer)) return InteractionResult.PASS;
         GtiTradingHallManager.grantBaseAccess(serverPlayer);
@@ -59,10 +61,4 @@ public final class GtiSpecialOperationsBlock extends BaseEntityBlock {
         super.attack(state, level, pos, player);
     }
 
-    @Override
-    public void playerDestroy(Level level, Player player, BlockPos pos, BlockState state,
-                              @Nullable BlockEntity blockEntity, ItemStack tool) {
-        super.playerDestroy(level, player, pos, state, blockEntity, tool);
-        if (!level.isClientSide && !player.isCreative()) popResource(level, pos, new ItemStack(this));
-    }
 }

@@ -128,9 +128,13 @@ public final class SaeedRecruitScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         drawPanel(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     private void drawPanel(GuiGraphics graphics) {
@@ -237,12 +241,12 @@ public final class SaeedRecruitScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int left = panelLeft();
         int top = panelTop();
         if (mouseX >= left + 8 && mouseX <= left + 8 + LIST_WIDTH
                 && mouseY >= listTop(top) && mouseY <= listTop(top) + listHeight()) {
-            scrollY = clamp(scrollY - (int) Math.round(delta * LIST_SCROLL_STEP), 0, maxListScroll());
+            this.scrollY = clamp(this.scrollY - (int) Math.round(scrollY * LIST_SCROLL_STEP), 0, maxListScroll());
             return true;
         }
         SaeedGuardType selected = selectedType();
@@ -251,11 +255,11 @@ public final class SaeedRecruitScreen extends Screen {
             int detailTop = listTop(top);
             if (mouseX >= detailLeft && mouseX <= left + PANEL_WIDTH - 8
                     && mouseY >= detailTop && mouseY <= top + panelHeight() - 54) {
-                descriptionScroll = Math.max(0, descriptionScroll - (int) Math.round(delta * DESCRIPTION_SCROLL_STEP));
+                descriptionScroll = Math.max(0, descriptionScroll - (int) Math.round(scrollY * DESCRIPTION_SCROLL_STEP));
                 return true;
             }
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

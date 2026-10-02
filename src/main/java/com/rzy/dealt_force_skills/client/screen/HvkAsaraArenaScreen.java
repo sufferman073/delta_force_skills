@@ -54,7 +54,7 @@ public final class HvkAsaraArenaScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xEE16191C);
         graphics.fill(left + 1, top + 1, left + PANEL_WIDTH - 1, top + 24, 0xFF343A40);
         graphics.drawString(font, title, left + 9, top + 8, 0xFFF1F3F5, false);
@@ -123,11 +123,11 @@ public final class HvkAsaraArenaScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    @Override public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    @Override public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (mouseX < left + 188) {
-            structureScroll = clampScroll(structureScroll, structures.size(), 9, delta);
+            structureScroll = clampScroll(structureScroll, structures.size(), 9, scrollY);
         } else {
-            modifierScroll = clampScroll(modifierScroll, HvkAsaraArenaModifier.values().length, 10, delta);
+            modifierScroll = clampScroll(modifierScroll, HvkAsaraArenaModifier.values().length, 10, scrollY);
         }
         return true;
     }

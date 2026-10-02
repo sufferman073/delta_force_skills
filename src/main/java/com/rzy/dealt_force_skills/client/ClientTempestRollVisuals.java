@@ -4,14 +4,15 @@ import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ClientTempestRollVisuals {
     private static final int CAMERA_DIP_TICKS = 9;
     private static int cameraDipTicks;
@@ -39,7 +40,7 @@ public final class ClientTempestRollVisuals {
             return;
         }
 
-        float partialTick = (float) event.getPartialTick();
+        float partialTick = (float) com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick());
         float elapsed = Mth.clamp(CAMERA_DIP_TICKS - cameraDipTicks + partialTick, 0.0F, (float) CAMERA_DIP_TICKS);
         float progress = elapsed / (float) CAMERA_DIP_TICKS;
         float dip = Mth.sin(progress * (float) Math.PI) * 10.0F;
@@ -49,8 +50,8 @@ public final class ClientTempestRollVisuals {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || cameraDipTicks <= 0) {
+    public static void onClientTick(ClientTickEvent.Post event) {
+        if (cameraDipTicks <= 0) {
             return;
         }
         if (Minecraft.getInstance().player == null) {

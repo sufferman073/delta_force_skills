@@ -16,6 +16,7 @@ import com.rzy.dealt_force_skills.team.DealtTeamManager;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -337,15 +338,10 @@ public final class CommanderSupportManager {
         return false;
     }
 
-    /** Returns whether a Commander ADS field suppresses incoming mob effects. */
     public static boolean isAdsEffectProtected(ServerPlayer target) {
         return isAdsProtectedFor(target, null, null);
     }
 
-    /**
-     * Consumes a quick-revive charge or a tactical beacon when a team member would die.
-     * Returning true lets the hurt event replace the lethal hit with a full recovery.
-     */
     public static boolean tryPreventFatal(ServerPlayer target,
                                           net.minecraft.world.damagesource.DamageSource source,
                                           float amount) {
@@ -487,8 +483,6 @@ public final class CommanderSupportManager {
                 new AABB(center, center).inflate(6.0D), entity -> TargetingUtil.isHostileLivingFor(owner, entity))) {
             float damage = Math.max(0.0F, 100.0F - (float) target.position().distanceTo(center) * 10.0F);
             if (damage > 0.0F) {
-                // The design specifies a 100-point explosion with linear falloff. Avoid
-                // applying the Commander's inherited-skill multiplier a second time.
                 target.hurt(level.damageSources().explosion(owner, owner), damage);
             }
         }
@@ -504,9 +498,9 @@ public final class CommanderSupportManager {
             bolt.setVisualOnly(true);
             level.addFreshEntity(bolt);
             addSupportEffect(owner, target,
-                    new MobEffectInstance(ModEffects.NOX_DELAYED_WOUND.get(), 10 * 20, 0));
+                    new MobEffectInstance(ModEffects.NOX_DELAYED_WOUND, 10 * 20, 0));
             addSupportEffect(owner, target,
-                    new MobEffectInstance(ModEffects.CORROSION.get(), 10 * 20, 0));
+                    new MobEffectInstance(ModEffects.CORROSION, 10 * 20, 0));
             addSupportEffect(owner, target,
                     new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 10 * 20, 1));
             addSupportEffect(owner, target,
@@ -569,7 +563,6 @@ public final class CommanderSupportManager {
     }
 
     private static void deployBeacon(ServerPlayer owner, Vec3 target) {
-        // The team may have only one active tactical beacon.
         for (ServerPlayer member : team(owner)) {
             clearBeaconData(member);
         }
@@ -626,11 +619,9 @@ public final class CommanderSupportManager {
         int count = 0;
         List<ItemStack> drops = new ArrayList<>();
 
-        // Medical supplies are the core of this drop: always include at least one
-        // complete stack, then strictly cap all helmets/body armor at two slots.
         Item guaranteedMedicine = medicines.get(random.nextInt(medicines.size()));
         ItemStack medicineStack = new ItemStack(guaranteedMedicine,
-                Math.max(1, guaranteedMedicine.getMaxStackSize()));
+                Math.max(1, guaranteedMedicine.getDefaultInstance().getMaxStackSize()));
         drops.add(medicineStack);
         count += medicineStack.getCount();
         value += Math.max(0L, DealtItemsHavocConfig.price(guaranteedMedicine)) * medicineStack.getCount();
@@ -648,17 +639,13 @@ public final class CommanderSupportManager {
                 .flatMap(List::stream)
                 .max(java.util.Comparator.comparingLong(DealtItemsHavocConfig::price))
                 .orElse(guaranteedMedicine);
-        // Fill every remaining chest slot exclusively with medicines, other
-        // consumables, or materials. Bias the final slots toward the best
-        // non-equipment value when randomized stacks have not met the design
-        // quantity/value targets.
         while (drops.size() < 27) {
             boolean needsFallback = drops.size() >= 20 && (count < 128 || value < 3_000_000L);
             List<Item> category = fillerCategories.get(random.nextInt(fillerCategories.size()));
             Item item = needsFallback ? fallback : category.get(random.nextInt(category.size()));
-            int amount = 1 + random.nextInt(Math.max(1, item.getMaxStackSize()));
+            int amount = 1 + random.nextInt(Math.max(1, item.getDefaultInstance().getMaxStackSize()));
             if (needsFallback) {
-                amount = Math.max(1, item.getMaxStackSize());
+                amount = Math.max(1, item.getDefaultInstance().getMaxStackSize());
             }
             ItemStack stack = new ItemStack(item, amount);
             drops.add(stack);
@@ -772,7 +759,7 @@ public final class CommanderSupportManager {
 
     private static void cleanse(ServerPlayer player) {
         for (MobEffectInstance effect : List.copyOf(player.getActiveEffects())) {
-            if (effect.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
+            if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
                 player.removeEffect(effect.getEffect());
             }
         }
@@ -803,7 +790,7 @@ public final class CommanderSupportManager {
         data.putLong(FULL_INVISIBILITY_UNTIL,
                 Math.max(data.getLong(FULL_INVISIBILITY_UNTIL), now(player) + duration));
         data.putBoolean(FULL_INVISIBILITY_RUNTIME, true);
-        MobEffectInstance effect = new MobEffectInstance(ModEffects.UNDEAD_TRUE_INVISIBILITY.get(),
+        MobEffectInstance effect = new MobEffectInstance(ModEffects.UNDEAD_TRUE_INVISIBILITY,
                 duration, 0, false, false, false);
         if (source == null) {
             player.addEffect(effect);
@@ -827,10 +814,10 @@ public final class CommanderSupportManager {
             return;
         }
         data.remove(FULL_INVISIBILITY_RUNTIME);
-        if (!player.hasEffect(ModEffects.UNDEAD_TRUE_INVISIBILITY.get())
+        if (!player.hasEffect(ModEffects.UNDEAD_TRUE_INVISIBILITY)
                 && !player.hasEffect(MobEffects.INVISIBILITY)
-                && !player.hasEffect(ModEffects.DEPARTMENT_CONCEALMENT.get())
-                && !player.hasEffect(ModEffects.NOX_STEALTH.get())) {
+                && !player.hasEffect(ModEffects.DEPARTMENT_CONCEALMENT)
+                && !player.hasEffect(ModEffects.NOX_STEALTH)) {
             player.setInvisible(false);
         }
     }
@@ -1127,7 +1114,7 @@ public final class CommanderSupportManager {
         RADIATION.clear();
         loadedServer = server;
         savedData = server.overworld().getDataStorage()
-                .computeIfAbsent(CommanderSupportSavedData::load, CommanderSupportSavedData::new,
+                .computeIfAbsent(new SavedData.Factory<>(CommanderSupportSavedData::new, CommanderSupportSavedData::load),
                         DealtForceSkillsMod.MODID + "_commander_support");
         savedData.restoreRuntimeState(server.overworld().getGameTime());
     }
@@ -1241,14 +1228,14 @@ public final class CommanderSupportManager {
     private static final class CommanderSupportSavedData extends SavedData {
         private CompoundTag state = new CompoundTag();
 
-        private static CommanderSupportSavedData load(CompoundTag tag) {
+        private static CommanderSupportSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
             CommanderSupportSavedData data = new CommanderSupportSavedData();
             data.state = tag.copy();
             return data;
         }
 
         @Override
-        public CompoundTag save(CompoundTag tag) {
+        public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
             tag.merge(state);
             return tag;
         }

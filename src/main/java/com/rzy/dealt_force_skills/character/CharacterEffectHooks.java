@@ -29,7 +29,7 @@ public final class CharacterEffectHooks {
     }
 
     public static void onCharacterSelected(ServerPlayer player, CharacterDefinition character) {
-        player.addEffect(new MobEffectInstance(ModEffects.CHARACTER_FRAMEWORK.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.character_effect_hooks.effect.character_framework.0.duration_ticks", 40), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.character_effect_hooks.effect.character_framework.0.amplifier", 0), false, false, false));
+        player.addEffect(new MobEffectInstance(ModEffects.CHARACTER_FRAMEWORK, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.character_effect_hooks.effect.character_framework.0.duration_ticks", 40), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.character_effect_hooks.effect.character_framework.0.amplifier", 0), false, false, false));
     }
 
     public static void onCharacterDeselected(ServerPlayer player, CharacterDefinition character) {
@@ -90,10 +90,9 @@ public final class CharacterEffectHooks {
         }
         if (ModCharacters.COMMANDER_ID.equals(character.id())) {
             CommanderStateManager.onDeselected(player);
-            DWolfStateManager.removeTransientModifiers(player);
             SinevaStateManager.removeTransientModifiers(player);
         }
-        player.removeEffect(ModEffects.CHARACTER_FRAMEWORK.get());
+        player.removeEffect(ModEffects.CHARACTER_FRAMEWORK);
     }
 
     public static void tick(ServerPlayer player, CharacterDefinition character) {

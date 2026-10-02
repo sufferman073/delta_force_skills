@@ -23,6 +23,7 @@ import com.rzy.dealt_force_skills.skill.SkillModelVisual;
 import com.rzy.dealt_force_skills.skill.SkillModelVisualSync;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
+import net.minecraft.core.Holder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
@@ -61,11 +62,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -91,10 +91,10 @@ public final class ManbaStateManager {
     private static volatile int DUEL_CONTROL_AFFECTION_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DUEL_CONTROL_AFFECTION_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue(
       "characters.manba.manba_state_manager.duel_control_affection_cooldown_ticks", 20
    ));
-    public static final UUID BASE_SLOW_UUID = UUID.fromString("9176e91f-98c8-4b40-a38c-35e71cb1a210");
-    public static final UUID LIGHT_WARRIOR_SPEED_UUID = UUID.fromString("a6c6dd8e-7c8b-4f2d-97e1-067f4af0d73d");
-    public static final UUID UNYIELDING_SPEED_UUID = UUID.fromString("597bbf92-2763-4d0a-b02b-9d4d7d60dd64");
-    public static final UUID DAMAGE_SPEED_UUID = UUID.fromString("f679d68f-50a5-4a3e-a87e-42bd501cc23c");
+    public static final ResourceLocation BASE_SLOW_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "manba_state_manager.base_slow");
+    public static final ResourceLocation LIGHT_WARRIOR_SPEED_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "manba_state_manager.light_warrior_speed");
+    public static final ResourceLocation UNYIELDING_SPEED_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "manba_state_manager.unyielding_speed");
+    public static final ResourceLocation DAMAGE_SPEED_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "manba_state_manager.damage_speed");
 
     private static final String ROOT_TAG = DealtForceSkillsMod.MODID + ".manba";
     private static final String INITIALIZED = "Initialized";
@@ -173,10 +173,8 @@ public final class ManbaStateManager {
     private static final Map<UUID, Set<UUID>> DUEL_BGM_LISTENERS = new HashMap<>();
     private static final Map<ControlAffectionKey, Long> DUEL_CONTROL_AFFECTION_READY_AT = new HashMap<>();
     private static final Set<UUID> EXECUTING_DUEL_TARGETS = new HashSet<>();
-    private static boolean opportunityLootTableFieldChecked;
-    private static Field opportunityLootTableField;
     private static final ResourceLocation DUEL_BGM_SOUND_FILE =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "manba/duel_bgm");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "manba/duel_bgm");
 
     private ManbaStateManager() {
     }
@@ -451,7 +449,7 @@ public final class ManbaStateManager {
                     player,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.manba.manba_state_manager.skill_hurt.0.damage", 2.4f));
             StunEffect.allowHorizontalMovement(target, ELBOW_KNOCKBACK_STUN_GRACE_TICKS);
-            target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.0.duration_ticks", 48), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.0.amplifier", 0), false, true, true), player);
+            target.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.0.duration_ticks", 48), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.0.amplifier", 0), false, true, true), player);
             SinevaKnockdownState.apply(player, target, 48);
             applyElbowKnockback(player, target, forward);
             player.level().playSound(null, target.blockPosition(), ModSounds.MANBA_ELBOW_HIT.get(),
@@ -797,7 +795,7 @@ public final class ManbaStateManager {
         if (entity.level().isClientSide || !(entity instanceof Mob mob) || !(mob instanceof Enemy)) {
             return;
         }
-        if (!ignoreBlind && entity.hasEffect(ModEffects.MANBA_BLINDED.get())) {
+        if (!ignoreBlind && entity.hasEffect(ModEffects.MANBA_BLINDED)) {
             return;
         }
         UUID ownerId = DUEL_TARGET_TO_OWNER.get(entity.getUUID());
@@ -1098,7 +1096,7 @@ public final class ManbaStateManager {
 
     private static void applyFlashlightBlind(ServerPlayer player, LivingEntity target, ManbaFlashlightStats stats) {
         int amplifier = hasTalent(player, ManbaTalent.LIGHT_WARRIOR) ? 1 : 0;
-        target.addEffect(new MobEffectInstance(ModEffects.MANBA_BLINDED.get(),
+        target.addEffect(new MobEffectInstance(ModEffects.MANBA_BLINDED,
                 stats.blindTicks(), amplifier, false, true, true), player);
         if (!stats.noBlindCost()) {
             CompoundTag tag = data(player);
@@ -1161,7 +1159,7 @@ public final class ManbaStateManager {
             addDuelAffection(player, -1);
             tag.putLong(DUEL_NEXT_DECAY, now + DUEL_AFFECTION_DECAY_INTERVAL_TICKS);
         }
-        if (target.hasEffect(ModEffects.MANBA_BLINDED.get())) {
+        if (target.hasEffect(ModEffects.MANBA_BLINDED)) {
             ManbaBlindedEffect.suppressHostileTargeting(target);
             return;
         }
@@ -1424,7 +1422,7 @@ public final class ManbaStateManager {
             if (horizontal.lengthSqr() > 0.001D && direction.dot(horizontal.normalize()) < 0.15D) {
                 continue;
             }
-            target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.3.duration_ticks", 30), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.3.amplifier", 0), false, true, true), player);
+            target.addEffect(new MobEffectInstance(ModEffects.STUN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.3.duration_ticks", 30), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.3.amplifier", 0), false, true, true), player);
             SinevaKnockdownState.apply(player, target, 30);
         }
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.VYRON_DASH.get(),
@@ -1534,40 +1532,16 @@ public final class ManbaStateManager {
                     ? ManbaOpportunityMarkerType.UNOPENED_LOOT
                     : ManbaOpportunityMarkerType.OPENED_OR_NORMAL;
         }
-        if (blockEntity instanceof Container || blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER).isPresent()) {
+        if (blockEntity instanceof Container
+                || (blockEntity.getLevel() != null
+                    && blockEntity.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, blockEntity.getBlockPos(), null) != null)) {
             return ManbaOpportunityMarkerType.OPENED_OR_NORMAL;
         }
         return null;
     }
 
     private static boolean hasUnopenedLoot(RandomizableContainerBlockEntity blockEntity) {
-        Field field = opportunityLootTableField();
-        if (field == null) {
-            return false;
-        }
-        try {
-            return field.get(blockEntity) instanceof ResourceLocation;
-        } catch (IllegalAccessException ignored) {
-            return false;
-        }
-    }
-
-    private static Field opportunityLootTableField() {
-        if (opportunityLootTableFieldChecked) {
-            return opportunityLootTableField;
-        }
-        opportunityLootTableFieldChecked = true;
-        for (String name : new String[]{"lootTable", "f_59605_"}) {
-            try {
-                Field field = RandomizableContainerBlockEntity.class.getDeclaredField(name);
-                field.setAccessible(true);
-                opportunityLootTableField = field;
-                return opportunityLootTableField;
-            } catch (NoSuchFieldException ignored) {
-                // Try the next mapping name.
-            }
-        }
-        return null;
+        return blockEntity.getLootTable() != null;
     }
 
     private static void applyMovementModifiers(ServerPlayer player) {
@@ -1576,27 +1550,23 @@ public final class ManbaStateManager {
             return;
         }
         if (attr.getModifier(BASE_SLOW_UUID) == null) {
-            attr.addTransientModifier(new AttributeModifier(BASE_SLOW_UUID, "manba_base_slow",
-                    -0.05D, AttributeModifier.Operation.MULTIPLY_TOTAL));
+            attr.addTransientModifier(new AttributeModifier(BASE_SLOW_UUID, -0.05D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
         boolean lightSpeed = hasTalent(player, ManbaTalent.LIGHT_WARRIOR) && isFlashlightActive(player);
         if (lightSpeed && attr.getModifier(LIGHT_WARRIOR_SPEED_UUID) == null) {
-            attr.addTransientModifier(new AttributeModifier(LIGHT_WARRIOR_SPEED_UUID, "manba_light_warrior_speed",
-                    0.20D, AttributeModifier.Operation.MULTIPLY_TOTAL));
+            attr.addTransientModifier(new AttributeModifier(LIGHT_WARRIOR_SPEED_UUID, 0.20D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         } else if (!lightSpeed && attr.getModifier(LIGHT_WARRIOR_SPEED_UUID) != null) {
             attr.removeModifier(LIGHT_WARRIOR_SPEED_UUID);
         }
         boolean unyielding = hasTalent(player, ManbaTalent.UNYIELDING) && player.getHealth() < player.getMaxHealth();
         if (unyielding && attr.getModifier(UNYIELDING_SPEED_UUID) == null) {
-            attr.addTransientModifier(new AttributeModifier(UNYIELDING_SPEED_UUID, "manba_unyielding_speed",
-                    0.40D, AttributeModifier.Operation.MULTIPLY_TOTAL));
+            attr.addTransientModifier(new AttributeModifier(UNYIELDING_SPEED_UUID, 0.40D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         } else if (!unyielding && attr.getModifier(UNYIELDING_SPEED_UUID) != null) {
             attr.removeModifier(UNYIELDING_SPEED_UUID);
         }
         boolean damageSpeed = data(player).getLong(DAMAGE_SPEED_UNTIL) > SkillCooldownHelper.now(player);
         if (damageSpeed && attr.getModifier(DAMAGE_SPEED_UUID) == null) {
-            attr.addTransientModifier(new AttributeModifier(DAMAGE_SPEED_UUID, "manba_damage_speed",
-                    0.50D, AttributeModifier.Operation.MULTIPLY_TOTAL));
+            attr.addTransientModifier(new AttributeModifier(DAMAGE_SPEED_UUID, 0.50D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         } else if (!damageSpeed && attr.getModifier(DAMAGE_SPEED_UUID) != null) {
             attr.removeModifier(DAMAGE_SPEED_UUID);
         }
@@ -1748,25 +1718,25 @@ public final class ManbaStateManager {
         return false;
     }
 
-    private static boolean isControlOrNegativeEffect(MobEffect effect) {
-        return effect.getCategory() == MobEffectCategory.HARMFUL
-                || effect == ModEffects.STUN.get()
-                || effect == ModEffects.WEBBED.get()
-                || effect == ModEffects.SONIC_SHOCK.get()
-                || effect == ModEffects.NOX_FLASHED.get()
-                || effect == ModEffects.HACKCLAW_FLASH_BLIND.get()
-                || effect == ModEffects.NOX_DELAYED_WOUND.get()
-                || effect == ModEffects.NOX_CRIPPLED.get()
-                || effect == ModEffects.MANBA_BLINDED.get()
-                || effect == ModEffects.STINGER_STIM_SUPPRESSION.get()
-                || effect == ModEffects.CORROSION.get();
+    private static boolean isControlOrNegativeEffect(Holder<MobEffect> effect) {
+        return effect.value().getCategory() == MobEffectCategory.HARMFUL
+                || effect == ModEffects.STUN
+                || effect == ModEffects.WEBBED
+                || effect == ModEffects.SONIC_SHOCK
+                || effect == ModEffects.NOX_FLASHED
+                || effect == ModEffects.HACKCLAW_FLASH_BLIND
+                || effect == ModEffects.NOX_DELAYED_WOUND
+                || effect == ModEffects.NOX_CRIPPLED
+                || effect == ModEffects.MANBA_BLINDED
+                || effect == ModEffects.STINGER_STIM_SUPPRESSION
+                || effect == ModEffects.CORROSION;
     }
 
-    private static boolean isDuelDownedEffect(MobEffect effect) {
-        return effect == ModEffects.STINGER_DOWNED.get()
-                || effect == ModEffects.VLINDER_VITAL_DOWNED.get()
-                || effect == ModEffects.TEMPEST_EMERGENCY_DOWNED.get()
-                || effect == ModEffects.CATDAD_DOWNED.get();
+    private static boolean isDuelDownedEffect(Holder<MobEffect> effect) {
+        return effect == ModEffects.STINGER_DOWNED
+                || effect == ModEffects.VLINDER_VITAL_DOWNED
+                || effect == ModEffects.TEMPEST_EMERGENCY_DOWNED
+                || effect == ModEffects.CATDAD_DOWNED;
     }
 
     private static boolean consumeControlAffectionCooldown(ServerPlayer owner, LivingEntity target) {
@@ -1794,7 +1764,7 @@ public final class ManbaStateManager {
 
     private static SoundEvent randomControlSound(ServerPlayer player) {
         @SuppressWarnings("unchecked")
-        RegistryObject<SoundEvent>[] sounds = new RegistryObject[]{
+        DeferredHolder<SoundEvent, SoundEvent>[] sounds = new DeferredHolder[]{
                 ModSounds.MANBA_DUEL_CONTROL_1,
                 ModSounds.MANBA_DUEL_CONTROL_2,
                 ModSounds.MANBA_DUEL_CONTROL_3,

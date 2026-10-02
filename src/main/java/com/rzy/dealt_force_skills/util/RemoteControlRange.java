@@ -17,7 +17,8 @@ public final class RemoteControlRange {
 
     public static boolean isLoaded(ServerLevel level, ServerPlayer owner, Vec3 position) {
         return owner.level() == level && owner.isAlive()
-                && contains(owner.chunkPosition(), position, owner.server.getPlayerList().getViewDistance())
+                && contains(owner.chunkPosition(), position,
+                        Math.min(owner.server.getPlayerList().getViewDistance(), owner.requestedViewDistance()))
                 && level.getChunkSource().hasChunk(Mth.floor(position.x) >> 4, Mth.floor(position.z) >> 4);
     }
 }

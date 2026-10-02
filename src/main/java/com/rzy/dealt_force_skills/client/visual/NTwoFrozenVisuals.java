@@ -7,16 +7,16 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLivingEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class NTwoFrozenVisuals {
     private static final float MIN_SHELL_WIDTH = 1.02F;
     private static final float SHELL_PADDING = 0.28F;
@@ -68,7 +68,7 @@ public final class NTwoFrozenVisuals {
     }
 
     private static boolean shouldRenderFrozen(LivingEntity entity) {
-        if (entity.hasEffect(ModEffects.N_TWO_FROZEN.get())) {
+        if (entity.hasEffect(ModEffects.N_TWO_FROZEN)) {
             return true;
         }
         Long syncedUntil = SYNCED_FROZEN_UNTIL.get(entity.getId());

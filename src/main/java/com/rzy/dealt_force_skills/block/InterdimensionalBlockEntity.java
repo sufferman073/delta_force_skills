@@ -8,6 +8,9 @@ import com.rzy.dealt_force_skills.network.S2C_UpdateAdvancedWorkBlock;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -30,7 +33,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -81,8 +83,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
         NetworkHandler.sendToPlayer(new S2C_UpdateAdvancedWorkBlock(data(player, mode, query, page)), player);
     }
 
-    public void performAction(ServerPlayer player, int mode, ResourceLocation itemId, int action, int requestedCount,
-                              String query, int page) {
+    public void performAction(ServerPlayer player, int mode, ResourceLocation itemId, int action, int requestedCount) {
         if (itemId == null || !canUse(player)) {
             return;
         }
@@ -97,11 +98,11 @@ public class InterdimensionalBlockEntity extends BlockEntity {
         } else {
             growCrop(player, itemId, count);
         }
-        sendData(player, mode, query, page);
+        sendData(player, mode, "", 0);
     }
 
     private void growCrop(ServerPlayer player, ResourceLocation itemId, int count) {
-        Item item = ForgeRegistries.ITEMS.getValue(itemId);
+        Item item = BuiltInRegistries.ITEM.get(itemId);
         PlantCandidate plant = plantCandidateFor(item);
         if (item == null || plant == null) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.interdimensional.crop_missing"), true);
@@ -145,7 +146,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
     }
 
     private void storeFoodEnergy(ServerPlayer player, ResourceLocation itemId, int count) {
-        Item item = ForgeRegistries.ITEMS.getValue(itemId);
+        Item item = BuiltInRegistries.ITEM.get(itemId);
         double energy = foodEnergy(item);
         if (item == null || energy <= 0.0D) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.interdimensional.food_item_missing"), true);
@@ -169,7 +170,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
     }
 
     private void craftFood(ServerPlayer player, ResourceLocation itemId, int count) {
-        Item item = ForgeRegistries.ITEMS.getValue(itemId);
+        Item item = BuiltInRegistries.ITEM.get(itemId);
         double energy = foodEnergy(item);
         if (item == null || energy <= 0.0D) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.interdimensional.food_item_missing"), true);
@@ -192,8 +193,8 @@ public class InterdimensionalBlockEntity extends BlockEntity {
     public static void warmQueryCatalog(ServerLevel level) {
         List<EntryView> crops = new ArrayList<>();
         List<EntryView> foods = new ArrayList<>();
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        for (Item item : BuiltInRegistries.ITEM) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
             if (id == null) continue;
             try {
                 ItemStack icon = new ItemStack(item);
@@ -298,8 +299,8 @@ public class InterdimensionalBlockEntity extends BlockEntity {
         if (block instanceof CropBlock || block instanceof BushBlock) {
             return true;
         }
-        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(block);
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(item);
         String blockPath = blockId == null ? "" : blockId.getPath();
         String itemPath = itemId == null ? "" : itemId.getPath();
         if (block instanceof BonemealableBlock && (isKnownPlantPath(blockPath) || isKnownPlantPath(itemPath))) {
@@ -349,7 +350,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
     }
 
     private static List<ItemStack> extraPlantOutputs(Item item) {
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
         if (id == null) {
             return List.of();
         }
@@ -394,21 +395,21 @@ public class InterdimensionalBlockEntity extends BlockEntity {
     }
 
     private static void addNamedPlantOutput(List<ItemStack> outputs, String namespace, String path) {
-        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(namespace, path));
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
         if (item != null && item != Items.AIR) {
             outputs.add(new ItemStack(item));
         }
     }
 
     private static double foodEnergy(Item item) {
-        if (item == null || !item.isEdible()) {
+        if (item == null) {
             return 0.0D;
         }
-        FoodProperties food = item.getFoodProperties();
+        FoodProperties food = new ItemStack(item).get(DataComponents.FOOD);
         if (food == null) {
             return 0.0D;
         }
-        return Math.max(0.0D, food.getNutrition() + food.getNutrition() * food.getSaturationModifier() * 2.0D);
+        return Math.max(0.0D, food.nutrition() + food.nutrition() * food.saturation() * 2.0D);
     }
 
     private static boolean matches(Item item, ResourceLocation id, String query) {
@@ -457,14 +458,14 @@ public class InterdimensionalBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         tag.putDouble(FOOD_ENERGY, foodEnergy);
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         foodEnergy = Math.max(0.0D, tag.getDouble(FOOD_ENERGY));
     }
 
@@ -477,7 +478,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
     }
 
     private static String itemKey(Item item) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         return key == null ? item.toString() : key.toString();
     }
 

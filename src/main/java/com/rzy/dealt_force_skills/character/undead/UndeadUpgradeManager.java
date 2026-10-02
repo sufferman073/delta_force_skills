@@ -16,7 +16,8 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.common.ForgeMod;
+import net.minecraft.resources.ResourceLocation;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 
 import java.util.UUID;
 import java.util.HashSet;
@@ -31,11 +32,11 @@ public final class UndeadUpgradeManager {
     private static final String PINK_INVULNERABLE_UNTIL = "PinkBraceletInvulnerableUntil";
     private static final Set<UUID> EFFECT_RESCALE_GUARD = new HashSet<>();
 
-    private static final UUID MAX_HEALTH_UUID = UUID.fromString("79e2d1e2-114c-4ce0-8790-c43c6a63c4b5");
-    private static final UUID MOVEMENT_UUID = UUID.fromString("00b0d606-f67d-405f-95c2-bb5cf402c0d1");
-    private static final UUID ARMOR_UUID = UUID.fromString("9a4a74cf-4aa1-45c5-bca6-7fc58eae3e11");
-    private static final UUID TOUGHNESS_UUID = UUID.fromString("612378a8-d7ee-46a4-a568-33280c646fd7");
-    private static final UUID EXPLORER_REACH_UUID = UUID.fromString("08ef440e-36ad-4f4a-bc13-684369f5bdea");
+    private static final ResourceLocation MAX_HEALTH_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "undead_upgrade_max_health");
+    private static final ResourceLocation MOVEMENT_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "undead_upgrade_movement");
+    private static final ResourceLocation ARMOR_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "undead_upgrade_armor");
+    private static final ResourceLocation TOUGHNESS_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "undead_upgrade_toughness");
+    private static final ResourceLocation EXPLORER_REACH_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "undead_upgrade_explorer_reach");
 
     private UndeadUpgradeManager() {
     }
@@ -101,10 +102,6 @@ public final class UndeadUpgradeManager {
         return upgradeData(player).copy();
     }
 
-    /**
-     * Clears all undead shop talent / equipment purchase progress (levels + equipped bracelets)
-     * and reapplies attributes so max-health bonuses do not linger.
-     */
     public static void clearPurchaseProgress(Player player) {
         CompoundTag root = UndeadStateManager.rootData(player);
         root.remove(UPGRADES);
@@ -245,7 +242,7 @@ public final class UndeadUpgradeManager {
         double multiplier = 1.0D;
         if (target instanceof ServerPlayer player
                 && UndeadStateManager.isUndead(player)
-                && added.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
+                && added.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
             multiplier *= negativeDurationMultiplier(player);
         }
         if (effectSource instanceof ServerPlayer source && UndeadStateManager.isUndead(source)) {
@@ -255,7 +252,7 @@ public final class UndeadUpgradeManager {
             }
             if (UndeadStateManager.profession(source) == UndeadProfession.ROGUE
                     && has(source, UndeadShopEntry.ROGUE_HEAVY_BLOW)
-                    && added.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
+                    && added.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
                 multiplier *= 2.0D;
             }
         }
@@ -298,16 +295,11 @@ public final class UndeadUpgradeManager {
         if (isEquipped(player, UndeadShopEntry.BLUE_ZIRCON_BRACELET)) {
             armor += 0.15D;
         }
-        applyModifier(player.getAttribute(Attributes.MAX_HEALTH), MAX_HEALTH_UUID,
-                "Undead upgrade max health", health);
-        applyModifier(player.getAttribute(Attributes.MOVEMENT_SPEED), MOVEMENT_UUID,
-                "Undead upgrade movement", movement);
-        applyModifier(player.getAttribute(Attributes.ARMOR), ARMOR_UUID,
-                "Undead upgrade armor efficiency", armor);
-        applyModifier(player.getAttribute(Attributes.ARMOR_TOUGHNESS), TOUGHNESS_UUID,
-                "Undead upgrade armor toughness", armor);
-        applyModifier(player.getAttribute(ForgeMod.ENTITY_REACH.get()), EXPLORER_REACH_UUID,
-                "Undead explorer attack reach",
+        applyModifier(player.getAttribute(Attributes.MAX_HEALTH), MAX_HEALTH_UUID, health);
+        applyModifier(player.getAttribute(Attributes.MOVEMENT_SPEED), MOVEMENT_UUID, movement);
+        applyModifier(player.getAttribute(Attributes.ARMOR), ARMOR_UUID, armor);
+        applyModifier(player.getAttribute(Attributes.ARMOR_TOUGHNESS), TOUGHNESS_UUID, armor);
+        applyModifier(player.getAttribute(Attributes.ENTITY_INTERACTION_RANGE), EXPLORER_REACH_UUID,
                 UndeadStateManager.profession(player) == UndeadProfession.EXPLORER ? 0.50D : 0.0D);
         if (player.getHealth() > player.getMaxHealth()) {
             player.setHealth(player.getMaxHealth());
@@ -319,34 +311,33 @@ public final class UndeadUpgradeManager {
         removeModifier(player.getAttribute(Attributes.MOVEMENT_SPEED), MOVEMENT_UUID);
         removeModifier(player.getAttribute(Attributes.ARMOR), ARMOR_UUID);
         removeModifier(player.getAttribute(Attributes.ARMOR_TOUGHNESS), TOUGHNESS_UUID);
-        removeModifier(player.getAttribute(ForgeMod.ENTITY_REACH.get()), EXPLORER_REACH_UUID);
+        removeModifier(player.getAttribute(Attributes.ENTITY_INTERACTION_RANGE), EXPLORER_REACH_UUID);
     }
 
     private static void applyModifier(
             AttributeInstance attribute,
-            UUID uuid,
-            String name,
+            ResourceLocation id,
             double amount
     ) {
         if (attribute == null) {
             return;
         }
-        AttributeModifier existing = attribute.getModifier(uuid);
-        if (existing != null && Math.abs(existing.getAmount() - amount) < 1.0E-6D) {
+        AttributeModifier existing = attribute.getModifier(id);
+        if (existing != null && Math.abs(existing.amount() - amount) < 1.0E-6D) {
             return;
         }
         if (existing != null) {
-            attribute.removeModifier(uuid);
+            attribute.removeModifier(id);
         }
         if (amount > 0.0D) {
             attribute.addTransientModifier(new AttributeModifier(
-                    uuid, name, amount, AttributeModifier.Operation.MULTIPLY_TOTAL));
+                    id, amount, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
     }
 
-    private static void removeModifier(AttributeInstance attribute, UUID uuid) {
+    private static void removeModifier(AttributeInstance attribute, ResourceLocation id) {
         if (attribute != null) {
-            attribute.removeModifier(uuid);
+            attribute.removeModifier(id);
         }
     }
 

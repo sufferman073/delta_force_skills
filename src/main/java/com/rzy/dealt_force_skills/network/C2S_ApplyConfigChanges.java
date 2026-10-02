@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.config.ConfigAccess;
 import com.rzy.dealt_force_skills.config.ConfigEntryData;
 import com.rzy.dealt_force_skills.config.ConfigFileId;
@@ -7,22 +8,34 @@ import com.rzy.dealt_force_skills.config.ConfigHotReload;
 import com.rzy.dealt_force_skills.config.ConfigValueKind;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Supplier;
 
-public final class C2S_ApplyConfigChanges {
+public final class C2S_ApplyConfigChanges implements CustomPacketPayload {
+    public static final Type<C2S_ApplyConfigChanges> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_apply_config_changes"));
+
+    public static final StreamCodec<FriendlyByteBuf, C2S_ApplyConfigChanges> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), C2S_ApplyConfigChanges::decode);
+
     private static final int MAX_CHANGES = 512;
-
     private final List<Change> changes;
 
     public C2S_ApplyConfigChanges(List<Change> changes) {
         this.changes = changes == null ? List.of() : List.copyOf(changes);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
     public static void encode(C2S_ApplyConfigChanges msg, FriendlyByteBuf buf) {
@@ -48,10 +61,9 @@ public final class C2S_ApplyConfigChanges {
         return new C2S_ApplyConfigChanges(changes);
     }
 
-    public static void handle(C2S_ApplyConfigChanges msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) {
+    public static void handle(C2S_ApplyConfigChanges msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer player)) {
                 return;
             }
             if (!player.hasPermissions(2)) {
@@ -81,14 +93,11 @@ public final class C2S_ApplyConfigChanges {
             boolean ok = applied > 0 && reload.success();
             NetworkHandler.sendToPlayer(new S2C_ConfigApplyResult(ok, applied, ok ? "ok" : "partial"), player);
             if (ok) {
-                player.sendSystemMessage(Component.translatable(
-                        "config.dealt_force_skills.apply.success", applied));
+                player.sendSystemMessage(Component.translatable("config.dealt_force_skills.apply.success", applied));
             } else {
-                player.sendSystemMessage(Component.translatable(
-                        "config.dealt_force_skills.apply.partial", applied));
+                player.sendSystemMessage(Component.translatable("config.dealt_force_skills.apply.partial", applied));
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public record Change(ConfigFileId file, String path, ConfigValueKind kind, String valueText) {

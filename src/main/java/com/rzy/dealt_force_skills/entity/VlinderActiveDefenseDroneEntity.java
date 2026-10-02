@@ -10,8 +10,6 @@ import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -27,11 +25,11 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 import org.joml.Vector3f;
 
 import java.util.Comparator;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class VlinderActiveDefenseDroneEntity extends Entity implements ItemSupplier {
     public static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.vlinderactivedefensedroneentity.life_ticks", 700));
@@ -66,7 +64,7 @@ public class VlinderActiveDefenseDroneEntity extends Entity implements ItemSuppl
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -117,11 +115,6 @@ public class VlinderActiveDefenseDroneEntity extends Entity implements ItemSuppl
         tag.putDouble("InjectionX", injectionX);
         tag.putDouble("InjectionY", injectionY);
         tag.putDouble("InjectionZ", injectionZ);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     @Override
@@ -251,7 +244,7 @@ public class VlinderActiveDefenseDroneEntity extends Entity implements ItemSuppl
                     && DealtTeamManager.areTeammates(owner, target)
                     && TargetingUtil.isTargetablePlayer(target)
                     && isInjectableDowned(target)
-                    && !target.hasEffect(com.rzy.dealt_force_skills.registry.ModEffects.VLINDER_PLASMA_INJECTED.get())
+                    && !target.hasEffect(com.rzy.dealt_force_skills.registry.ModEffects.VLINDER_PLASMA_INJECTED)
                     && target.distanceToSqr(owner) <= INJECTION_RANGE * INJECTION_RANGE) {
                 return target;
             }
@@ -265,7 +258,7 @@ public class VlinderActiveDefenseDroneEntity extends Entity implements ItemSuppl
                                 && DealtTeamManager.areTeammates(owner, target)
                                 && TargetingUtil.isTargetablePlayer(target)
                                 && isInjectableDowned(target)
-                                && !target.hasEffect(com.rzy.dealt_force_skills.registry.ModEffects.VLINDER_PLASMA_INJECTED.get())
+                                && !target.hasEffect(com.rzy.dealt_force_skills.registry.ModEffects.VLINDER_PLASMA_INJECTED)
                                 && target.distanceToSqr(owner) <= INJECTION_RANGE * INJECTION_RANGE)
                 .stream()
                 .min(Comparator.comparingDouble(owner::distanceToSqr))

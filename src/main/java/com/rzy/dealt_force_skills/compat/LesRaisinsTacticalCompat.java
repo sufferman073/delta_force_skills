@@ -5,9 +5,7 @@ import com.rzy.dealt_force_skills.util.MeleeWeaponCompat;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -29,7 +27,7 @@ public final class LesRaisinsTacticalCompat {
     private static final double DEFAULT_HEIGHT = 1.75D;
 
     private static boolean resolved;
-    private static Capability<?> combatCapability;
+    private static Method getCombatPropertiesMethod;
     private static Field actionCountsField;
     private static Field preparingAttackField;
     private static Field preparingAttackCntField;
@@ -330,40 +328,64 @@ public final class LesRaisinsTacticalCompat {
     }
 
     private static Optional<?> combatProperties(ServerPlayer player) {
-        Capability<?> capability = combatCapability();
-        if (capability == null) {
+        resolveCombatAccess();
+        if (getCombatPropertiesMethod == null) {
             return Optional.empty();
         }
-        LazyOptional<?> optional = player.getCapability(capability);
-        return optional.resolve();
+        try {
+            Object result = getCombatPropertiesMethod.invoke(null, player);
+            if (result instanceof Optional<?> optional) {
+                return optional;
+            }
+            return result != null ? Optional.of(result) : Optional.empty();
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            return Optional.empty();
+        }
     }
 
-    private static Capability<?> combatCapability() {
+    private static void resolveCombatAccess() {
         if (resolved) {
-            return combatCapability;
+            return;
         }
         resolved = true;
         try {
             Class<?> providerClass = Class.forName(COMBAT_PROPERTIES_PROVIDER);
-            Field field = providerClass.getField("CAPABILITY");
-            Object value = field.get(null);
-            if (value instanceof Capability<?> capability) {
-                combatCapability = capability;
-                Class<?> combatClass = Class.forName(COMBAT_PROPERTIES);
-                actionCountsField = combatClass.getDeclaredField("actionCounts");
-                actionCountsField.setAccessible(true);
-                preparingAttackField = combatClass.getDeclaredField("preparingAttack");
-                preparingAttackField.setAccessible(true);
-                preparingAttackCntField = combatClass.getDeclaredField("preparingAttackCnt");
-                preparingAttackCntField.setAccessible(true);
+            for (Method method : providerClass.getMethods()) {
+                if (method.getName().equals("getCombatProperties")
+                        || method.getName().equals("get")
+                        || method.getName().equals("getData")) {
+                    Class<?>[] params = method.getParameterTypes();
+                    if (params.length == 1 && params[0].isAssignableFrom(ServerPlayer.class)) {
+                        method.setAccessible(true);
+                        getCombatPropertiesMethod = method;
+                        break;
+                    }
+                }
             }
+            if (getCombatPropertiesMethod == null) {
+                for (Method method : providerClass.getMethods()) {
+                    Class<?>[] params = method.getParameterTypes();
+                    if (params.length == 1 && params[0].isAssignableFrom(ServerPlayer.class)
+                            && !method.getReturnType().equals(void.class)) {
+                        method.setAccessible(true);
+                        getCombatPropertiesMethod = method;
+                        break;
+                    }
+                }
+            }
+            Class<?> combatClass = Class.forName(COMBAT_PROPERTIES);
+            actionCountsField = combatClass.getDeclaredField("actionCounts");
+            actionCountsField.setAccessible(true);
+            preparingAttackField = combatClass.getDeclaredField("preparingAttack");
+            preparingAttackField.setAccessible(true);
+            preparingAttackCntField = combatClass.getDeclaredField("preparingAttackCnt");
+            preparingAttackCntField.setAccessible(true);
         } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
-            combatCapability = null;
+            getCombatPropertiesMethod = null;
             actionCountsField = null;
             preparingAttackField = null;
             preparingAttackCntField = null;
         }
-        return combatCapability;
     }
 
     public record MeleeCutShape(double range, double halfWidth, double height) {

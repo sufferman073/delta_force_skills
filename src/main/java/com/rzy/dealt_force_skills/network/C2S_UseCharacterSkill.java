@@ -4,11 +4,27 @@ import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.skill.SkillDispatcher;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_UseCharacterSkill implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_UseCharacterSkill> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_use_character_skill"));
 
-public class C2S_UseCharacterSkill {
+    public static final StreamCodec<FriendlyByteBuf, C2S_UseCharacterSkill> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_UseCharacterSkill::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final SkillSlot slot;
     private final boolean alternate;
 
@@ -34,13 +50,12 @@ public class C2S_UseCharacterSkill {
         return new C2S_UseCharacterSkill(slot, alternate);
     }
 
-    public static void handle(C2S_UseCharacterSkill msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null || player.isSpectator()) return;
+    public static void handle(C2S_UseCharacterSkill msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
+            if (player.isSpectator()) return;
 
             SkillDispatcher.useSkill(player, msg.slot, msg.alternate);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

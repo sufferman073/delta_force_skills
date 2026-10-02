@@ -3,7 +3,6 @@ package com.rzy.dealt_force_skills.block;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -11,6 +10,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -29,6 +30,8 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Method;
 
 public class QuickCoverBlock extends HorizontalDirectionalBlock implements EntityBlock {
+    public static final MapCodec<QuickCoverBlock> CODEC =
+            simpleCodec(p -> new QuickCoverBlock());
     public static final BooleanProperty HALF = BooleanProperty.create("half");
 
     private static final VoxelShape NORTH_SOUTH_SHAPE = box(0.0, 0.0, 6.0, 16.0, 16.0, 10.0);
@@ -41,6 +44,11 @@ public class QuickCoverBlock extends HorizontalDirectionalBlock implements Entit
                 .strength(500.0f, 1200.0f)
                 .noOcclusion());
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(HALF, false));
+    }
+
+    @Override
+    protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
+        return CODEC;
     }
 
     @Override
@@ -59,7 +67,7 @@ public class QuickCoverBlock extends HorizontalDirectionalBlock implements Entit
             QuickCoverBlockEntity.destroyCoverAt(level, pos);
             ItemStack weapon = player.getMainHandItem();
             if (!weapon.isEmpty() && !player.getAbilities().instabuild) {
-                weapon.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(InteractionHand.MAIN_HAND));
+                weapon.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
             }
             return;
         }
@@ -96,7 +104,7 @@ public class QuickCoverBlock extends HorizontalDirectionalBlock implements Entit
     }
 
     @Override
-    public boolean isPathfindable(BlockState state, BlockGetter level, BlockPos pos, PathComputationType type) {
+    protected boolean isPathfindable(BlockState state, PathComputationType type) {
         return false;
     }
 

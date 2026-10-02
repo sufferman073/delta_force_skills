@@ -27,13 +27,13 @@ public final class RoundStartFreezeManager {
         if (FREEZE_DURATION_TICKS <= 0) {
             return;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.ROUND_START_FREEZE.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.ROUND_START_FREEZE,
                 FREEZE_DURATION_TICKS, 0, false, false, true));
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.match.round_start_freeze",
                 FREEZE_DURATION_TICKS / 20), true);
     }
 
     public static boolean isFrozen(Player player) {
-        return player.hasEffect(ModEffects.ROUND_START_FREEZE.get());
+        return player.hasEffect(ModEffects.ROUND_START_FREEZE);
     }
 }

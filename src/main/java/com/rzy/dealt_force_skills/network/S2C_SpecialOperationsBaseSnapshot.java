@@ -1,37 +1,35 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.config.DealtItemsHavocConfig;
 import com.rzy.dealt_force_skills.shop.SpecialOperationsBaseManager;
-import io.netty.handler.codec.DecoderException;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import io.netty.handler.codec.DecoderException;
 
 public record S2C_SpecialOperationsBaseSnapshot(
-        long havocCoins,
-        int warehousePage,
-        int warehousePages,
-        int warehouseSlotsPerPage,
-        List<FacilityView> facilities,
-        List<ItemStack> warehouse,
-        List<ItemStack> inventory,
-        List<ItemStack> container,
-        List<BuybackView> buyback
-) {
+        long havocCoins, int warehousePage, int warehousePages, int warehouseSlotsPerPage,
+        List<FacilityView> facilities, List<ItemStack> warehouse, List<ItemStack> inventory,
+        List<ItemStack> container, List<BuybackView> buyback) implements CustomPacketPayload {
     private static final int MAX_FACILITIES = 64;
     private static final int MAX_MATERIALS_PER_FACILITY = 64;
     private static final int MAX_STACKS = 4096;
     private static final int MAX_BUYBACK = 4096;
+    public static final Type<S2C_SpecialOperationsBaseSnapshot> TYPE = new Type<>(
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_special_operations_base_snapshot"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2C_SpecialOperationsBaseSnapshot> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), S2C_SpecialOperationsBaseSnapshot::decode);
+
     public record MaterialView(String itemId, int count, int missingCount) {
     }
 
@@ -42,6 +40,11 @@ public record S2C_SpecialOperationsBaseSnapshot(
     public record BuybackView(int soldIndex, ItemStack stack, long price) {
     }
 
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public static S2C_SpecialOperationsBaseSnapshot capture(ServerPlayer player, int requestedPage) {
         SpecialOperationsBaseManager.synchronizeTeamSoldStacks(player);
         int pages = SpecialOperationsBaseManager.warehousePages(player);
@@ -50,10 +53,9 @@ public record S2C_SpecialOperationsBaseSnapshot(
         for (SpecialOperationsBaseManager.Facility facility : SpecialOperationsBaseManager.Facility.values()) {
             SpecialOperationsBaseManager.UpgradeQuote quote = SpecialOperationsBaseManager.quote(player, facility);
             List<MaterialView> materials = quote.materials().stream().map(cost -> {
-                ResourceLocation id = ForgeRegistries.ITEMS.getKey(cost.item());
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(cost.item());
                 int available = SpecialOperationsBaseManager.availableMaterialCount(player, cost.item());
-                return new MaterialView(id == null ? "minecraft:air" : id.toString(), cost.count(),
-                        Math.max(0, cost.count() - available));
+                return new MaterialView(id.toString(), cost.count(), Math.max(0, cost.count() - available));
             }).toList();
             facilities.add(new FacilityView(facility.id(), quote.currentLevel(), facility.maxLevel(),
                     quote.nextLevel(), quote.havocCoins(), quote.requiredWarehouseLevel(), quote.levelAllowed(), materials));
@@ -71,15 +73,15 @@ public record S2C_SpecialOperationsBaseSnapshot(
                         Math.max(1L, (long) Math.ceil(DealtItemsHavocConfig.price(player, stack) * multiplier))));
             }
         }
-        return new S2C_SpecialOperationsBaseSnapshot(
-                SpecialOperationsBaseManager.havocCoins(player), page, pages,
+        // 特勤处内部仓库已删除，传空列表（但保留页码信息用于设施联动）
+        return new S2C_SpecialOperationsBaseSnapshot(SpecialOperationsBaseManager.havocCoins(player), page, pages,
                 SpecialOperationsBaseManager.warehouseSlotsPerPage(player), facilities,
                 List.of(),
                 SpecialOperationsBaseManager.sellableInventory(player),
                 SpecialOperationsBaseManager.sellableContainer(player), buyback);
     }
 
-    public static void encode(S2C_SpecialOperationsBaseSnapshot msg, FriendlyByteBuf buf) {
+    private static void encode(S2C_SpecialOperationsBaseSnapshot msg, RegistryFriendlyByteBuf buf) {
         buf.writeLong(msg.havocCoins);
         buf.writeVarInt(msg.warehousePage);
         buf.writeVarInt(msg.warehousePages);
@@ -106,12 +108,12 @@ public record S2C_SpecialOperationsBaseSnapshot(
         buf.writeVarInt(msg.buyback.size());
         for (BuybackView view : msg.buyback) {
             buf.writeVarInt(view.soldIndex);
-            buf.writeItem(view.stack);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, view.stack);
             buf.writeLong(view.price);
         }
     }
 
-    public static S2C_SpecialOperationsBaseSnapshot decode(FriendlyByteBuf buf) {
+    private static S2C_SpecialOperationsBaseSnapshot decode(RegistryFriendlyByteBuf buf) {
         long havocCoins = buf.readLong();
         int page = buf.readVarInt();
         int pages = buf.readVarInt();
@@ -150,33 +152,31 @@ public record S2C_SpecialOperationsBaseSnapshot(
         }
         List<BuybackView> buyback = new ArrayList<>(buybackCount);
         for (int i = 0; i < buybackCount; i++) {
-            buyback.add(new BuybackView(buf.readVarInt(), buf.readItem(), buf.readLong()));
+            buyback.add(new BuybackView(buf.readVarInt(), ItemStack.OPTIONAL_STREAM_CODEC.decode(buf), buf.readLong()));
         }
         return new S2C_SpecialOperationsBaseSnapshot(havocCoins, page, pages, pageSize,
                 List.copyOf(facilities), warehouse, inventory, container, List.copyOf(buyback));
     }
 
-    public static void handle(S2C_SpecialOperationsBaseSnapshot msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientPacketHandlers.openSpecialOperationsBase(msg)));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_SpecialOperationsBaseSnapshot msg, IPayloadContext context) {
+        context.enqueueWork(() -> ClientPacketHandlers.openSpecialOperationsBase(msg));
     }
 
-    private static void writeStacks(FriendlyByteBuf buf, List<ItemStack> stacks) {
+    private static void writeStacks(RegistryFriendlyByteBuf buf, List<ItemStack> stacks) {
         buf.writeVarInt(stacks.size());
         for (ItemStack stack : stacks) {
-            buf.writeItem(stack);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
         }
     }
 
-    private static List<ItemStack> readStacks(FriendlyByteBuf buf) {
+    private static List<ItemStack> readStacks(RegistryFriendlyByteBuf buf) {
         int size = buf.readVarInt();
         if (size < 0 || size > MAX_STACKS) {
             throw new DecoderException("Invalid stack count: " + size);
         }
         List<ItemStack> stacks = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            stacks.add(buf.readItem());
+            stacks.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
         }
         return List.copyOf(stacks);
     }

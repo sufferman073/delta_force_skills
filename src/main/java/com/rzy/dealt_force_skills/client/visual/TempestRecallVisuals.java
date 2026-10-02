@@ -8,16 +8,17 @@ import com.rzy.dealt_force_skills.entity.TempestRecallAnchorEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class TempestRecallVisuals {
     private static final ResourceLocation DEVICE =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "tempest_emergency_recall_device");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "tempest_emergency_recall_device");
 
     private TempestRecallVisuals() {
     }
@@ -43,7 +44,7 @@ public final class TempestRecallVisuals {
         }
 
         String animation = anchor.isRecalling() ? "recall_winch" : "idle";
-        float seconds = (anchor.tickCount + event.getPartialTick()) / 20.0F;
+        float seconds = (anchor.tickCount + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F;
         renderDevice(event, -0.24D, false, animation, seconds);
         renderDevice(event, 0.24D, true, animation, seconds);
     }

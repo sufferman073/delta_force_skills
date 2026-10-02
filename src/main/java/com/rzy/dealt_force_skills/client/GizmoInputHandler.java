@@ -1,13 +1,13 @@
 package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoPlacementHelper;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoTool;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoToolAction;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoTrapMarker;
 import com.rzy.dealt_force_skills.client.character.ClientGizmoHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
-import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.network.C2S_GizmoToolAction;
 import com.rzy.dealt_force_skills.network.C2S_GizmoWebEscape;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
@@ -20,20 +20,20 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Comparator;
 import java.util.Optional;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class GizmoInputHandler {
     private static final DustParticleOptions SMOKE_PREVIEW = new DustParticleOptions(new Vector3f(0.95f, 0.82f, 0.28f), 1.0f);
     private static final DustParticleOptions SPIDER_PREVIEW = new DustParticleOptions(new Vector3f(0.85f, 0.10f, 0.06f), 1.0f);
@@ -47,6 +47,13 @@ public final class GizmoInputHandler {
     }
 
     public static void tick(Minecraft minecraft) {
+        if (minecraft.screen != null) {
+            if (localWebEscapeTicks != 0) {
+                NetworkHandler.sendToServer(new C2S_GizmoWebEscape(false));
+            }
+            localWebEscapeTicks = 0;
+            return;
+        }
         handleWebbedInput(minecraft);
         if (minecraft.player == null || (!ClientGizmoHudState.shouldRender()
                 && !(ClientCommanderState.inherits(ModCharacters.GIZMO_ID)
@@ -82,6 +89,9 @@ public final class GizmoInputHandler {
         }
 
         Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null) {
+            return;
+        }
         if (isWebbed(minecraft)) {
             if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                 event.setCanceled(true);
@@ -115,6 +125,9 @@ public final class GizmoInputHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null) {
+            return;
+        }
         if (isWebbed(minecraft)) {
             if (event.isAttack()) {
                 return;
@@ -141,15 +154,10 @@ public final class GizmoInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        if (ClientGizmoHudState.hasEquippedTool() || isWebbed(Minecraft.getInstance())) {
-            event.setCanceled(true);
+        if (Minecraft.getInstance().screen != null) {
+            return;
         }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onScreenOpening(ScreenEvent.Opening event) {
-        if (isWebbed(Minecraft.getInstance()) && event.getNewScreen() != null
-                && !(event.getNewScreen() instanceof net.minecraft.client.gui.screens.DeathScreen)) {
+        if (ClientGizmoHudState.hasEquippedTool() || isWebbed(Minecraft.getInstance())) {
             event.setCanceled(true);
         }
     }
@@ -259,9 +267,6 @@ public final class GizmoInputHandler {
         drainKey(minecraft.options.keyLeft);
         drainKey(minecraft.options.keyRight);
         drainKey(minecraft.options.keyShift);
-        if (minecraft.screen != null && !(minecraft.screen instanceof net.minecraft.client.gui.screens.DeathScreen)) {
-            minecraft.setScreen(null);
-        }
     }
 
     private static void lockLookDirection(Minecraft minecraft) {
@@ -311,11 +316,7 @@ public final class GizmoInputHandler {
     }
 
     private static boolean isWebbed(Minecraft minecraft) {
-        return minecraft.player != null
-                && minecraft.player.isAlive()
-                && !minecraft.player.isSpectator()
-                && !com.rzy.dealt_force_skills.compat.PlayerReviveCompat.isBleeding(minecraft.player)
-                && minecraft.player.hasEffect(ModEffects.WEBBED.get());
+        return minecraft.player != null && minecraft.player.hasEffect(ModEffects.WEBBED);
     }
 
     private static boolean handsEmpty(Player player) {

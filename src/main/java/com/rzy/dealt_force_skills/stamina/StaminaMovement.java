@@ -14,12 +14,12 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.ForgeMod;
-import java.util.UUID;
+import net.neoforged.neoforge.common.NeoForgeMod;
+import net.minecraft.resources.ResourceLocation;
 
 public final class StaminaMovement {
-    private static final UUID SPRINT_ID = UUID.fromString("a1e2f759-2cdb-4d8b-8849-47c83c057821");
-    private static final UUID SWIM_ID = UUID.fromString("56c95da5-a929-4c35-bc58-a6ef39da4189");
+    private static final ResourceLocation SPRINT_ID = ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "stamina_sprint");
+    private static final ResourceLocation SWIM_ID = ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "stamina_swim");
 
     private StaminaMovement() { }
 
@@ -33,13 +33,13 @@ public final class StaminaMovement {
         state.remove("LastZ");
         player.setForcedPose(null);
         modifier(player.getAttribute(Attributes.MOVEMENT_SPEED), SPRINT_ID, 0.0D);
-        modifier(player.getAttribute(ForgeMod.SWIM_SPEED.get()), SWIM_ID, 0.0D);
+        modifier(player.getAttribute(NeoForgeMod.SWIM_SPEED), SWIM_ID, 0.0D);
     }
 
     public static boolean canMove(ServerPlayer player) {
         return player != null && player.isAlive() && !player.isSpectator() && !player.isPassenger()
                 && !player.getAbilities().flying && !player.isFallFlying() && !player.isSleeping()
-                && !player.hasEffect(ModEffects.STUN.get()) && !player.hasEffect(ModEffects.WEBBED.get())
+                && !player.hasEffect(ModEffects.STUN) && !player.hasEffect(ModEffects.WEBBED)
                 && !StingerStateManager.isDowned(player) && !RoundStartFreezeManager.isFrozen(player)
                 && !UluruLoiteringMissileEntity.isPlayerControlling(player);
     }
@@ -67,7 +67,7 @@ public final class StaminaMovement {
                 moving && player.isSprinting() && !exhausted, StaminaRules.SPRINT_COST_PER_TICK);
         double multiplier = StaminaManager.actionMultiplier(player);
         modifier(player.getAttribute(Attributes.MOVEMENT_SPEED), SPRINT_ID, sprint ? 0.50D * multiplier : 0.0D);
-        modifier(player.getAttribute(ForgeMod.SWIM_SPEED.get()), SWIM_ID, swim ? 1.0D * multiplier : 0.0D);
+        modifier(player.getAttribute(NeoForgeMod.SWIM_SPEED), SWIM_ID, swim ? 1.0D * multiplier : 0.0D);
     }
 
     private static boolean boost(ServerPlayer player, CompoundTag state, String key,
@@ -81,13 +81,13 @@ public final class StaminaMovement {
         return ticks > 0;
     }
 
-    private static void modifier(AttributeInstance attribute, UUID id, double amount) {
+    private static void modifier(AttributeInstance attribute, ResourceLocation id, double amount) {
         if (attribute == null) return;
         AttributeModifier old = attribute.getModifier(id);
-        if (old != null && Math.abs(old.getAmount() - amount) < 1.0E-9D) return;
+        if (old != null && Math.abs(old.amount() - amount) < 1.0E-9D) return;
         attribute.removeModifier(id);
         if (amount > 0.0D) attribute.addTransientModifier(new AttributeModifier(id,
-                "Native stamina movement", amount, AttributeModifier.Operation.MULTIPLY_TOTAL));
+                amount, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 
     public static void tryVault(ServerPlayer player) {
@@ -129,9 +129,9 @@ public final class StaminaMovement {
                 factor = player.level().getBlockState(BlockPos.containing(player.getX(),
                         player.getY() - 0.500001D, player.getZ())).getBlock().getJumpFactor();
             }
-            velocity = 0.42D * factor + player.getJumpBoostPower();
+            velocity = player.getAttributeValue(Attributes.JUMP_STRENGTH) * factor + player.getJumpBoostPower();
         }
-        double gravity = player.getAttributeValue(ForgeMod.ENTITY_GRAVITY.get());
+        double gravity = player.getAttributeValue(Attributes.GRAVITY);
         if (target.y - player.getY() > StaminaRules.jumpRise(velocity, gravity) + 0.001D) return false;
         Vec3 raised = new Vec3(player.getX(), target.y, player.getZ());
         return clearPath(player, player.position(), raised) && clearPath(player, raised, target);
@@ -158,9 +158,9 @@ public final class StaminaMovement {
     }
 
     private static AABB standingBox(ServerPlayer player, Vec3 at) {
-        double half = player.getDimensions(Pose.STANDING).width / 2.0D;
+        double half = player.getDimensions(Pose.STANDING).width() / 2.0D;
         return new AABB(at.x - half, at.y, at.z - half,
-                at.x + half, at.y + player.getDimensions(Pose.STANDING).height, at.z + half).deflate(1.0E-5D);
+                at.x + half, at.y + player.getDimensions(Pose.STANDING).height(), at.z + half).deflate(1.0E-5D);
     }
 
     private static boolean clearPath(ServerPlayer player, Vec3 from, Vec3 to) {

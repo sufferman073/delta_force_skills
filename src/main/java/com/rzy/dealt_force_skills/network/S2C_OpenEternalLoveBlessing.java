@@ -1,15 +1,23 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-public class S2C_OpenEternalLoveBlessing {
+public class S2C_OpenEternalLoveBlessing implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_OpenEternalLoveBlessing> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(
+                    DealtForceSkillsMod.MODID, "s2c_open_eternal_love_blessing"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_OpenEternalLoveBlessing> STREAM_CODEC =
+            StreamCodec.of(S2C_OpenEternalLoveBlessing::encode, S2C_OpenEternalLoveBlessing::decode);
+
     private static final int MAX_ENTRIES = 256;
 
     private final List<Entry> entries;
@@ -18,7 +26,12 @@ public class S2C_OpenEternalLoveBlessing {
         this.entries = entries == null ? List.of() : List.copyOf(entries);
     }
 
-    public static void encode(S2C_OpenEternalLoveBlessing msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private static void encode(FriendlyByteBuf buf, S2C_OpenEternalLoveBlessing msg) {
         buf.writeVarInt(Math.min(MAX_ENTRIES, msg.entries.size()));
         for (int i = 0; i < msg.entries.size() && i < MAX_ENTRIES; i++) {
             Entry entry = msg.entries.get(i);
@@ -28,7 +41,7 @@ public class S2C_OpenEternalLoveBlessing {
         }
     }
 
-    public static S2C_OpenEternalLoveBlessing decode(FriendlyByteBuf buf) {
+    private static S2C_OpenEternalLoveBlessing decode(FriendlyByteBuf buf) {
         int count = Math.max(0, Math.min(MAX_ENTRIES, buf.readVarInt()));
         List<Entry> entries = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -37,12 +50,8 @@ public class S2C_OpenEternalLoveBlessing {
         return new S2C_OpenEternalLoveBlessing(entries);
     }
 
-    public static void handle(S2C_OpenEternalLoveBlessing msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> EternalLoveBlessingScreen.open(msg.entries)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_OpenEternalLoveBlessing msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> EternalLoveBlessingScreen.open(msg.entries));
     }
 
     public record Entry(String effectId, String name, int level) {

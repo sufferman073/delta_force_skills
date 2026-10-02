@@ -2,13 +2,13 @@ package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.toxik.ToxikTool;
 import com.rzy.dealt_force_skills.character.toxik.ToxikToolAction;
 import com.rzy.dealt_force_skills.client.character.ClientCharacterSelectionState;
-import com.rzy.dealt_force_skills.client.character.ClientToxikHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
+import com.rzy.dealt_force_skills.client.character.ClientToxikHudState;
 import com.rzy.dealt_force_skills.client.visual.ClientToolReleaseAction;
 import com.rzy.dealt_force_skills.network.C2S_ToxikPullout;
 import com.rzy.dealt_force_skills.network.C2S_ToxikToolAction;
@@ -17,14 +17,15 @@ import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ToxikInputHandler {
     private static volatile int TEAR_GAS_EQUIP_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("TEAR_GAS_EQUIP_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.toxik_input_handler.tear_gas_equip_hold_ticks", 8));
     private static volatile int TEAR_GAS_RELEASE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("TEAR_GAS_RELEASE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.toxik_input_handler.tear_gas_release_ticks", 4));
@@ -124,6 +125,9 @@ public final class ToxikInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!ClientToxikHudState.hasEquippedTool()) {
             return;
         }
@@ -242,7 +246,7 @@ public final class ToxikInputHandler {
             sendPulloutIfChanged(false);
             return;
         }
-        boolean hasFirefly = minecraft.player.hasEffect(ModEffects.TOXIK_FIREFLY_INTERFERENCE.get());
+        boolean hasFirefly = minecraft.player.hasEffect(ModEffects.TOXIK_FIREFLY_INTERFERENCE);
         boolean holdingAttack = hasFirefly && minecraft.options.keyAttack.isDown();
         sendPulloutIfChanged(holdingAttack);
     }

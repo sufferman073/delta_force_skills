@@ -14,7 +14,7 @@ import net.minecraft.world.phys.Vec3;
 
 public final class VyronMagneticBombRenderer extends EntityRenderer<VyronMagneticBombEntity> {
     public static final ResourceLocation MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "vyron_magnetic_bomb");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "vyron_magnetic_bomb");
 
     private final ThrownItemRenderer<VyronMagneticBombEntity> fallback;
 

@@ -7,9 +7,9 @@ import net.minecraft.resources.ResourceLocation;
 
 public final class ClientVyronToolAnimationState {
     public static final ResourceLocation MAGNETIC_BOMB_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "vyron_magnetic_bomb");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "vyron_magnetic_bomb");
     public static final ResourceLocation TIGER_CANNON_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "vyron_tiger_cannon_launcher");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "vyron_tiger_cannon_launcher");
 
     private static VyronTool fireTool = VyronTool.NONE;
     private static long fireStartedNanos;

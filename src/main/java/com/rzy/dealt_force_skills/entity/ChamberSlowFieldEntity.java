@@ -3,8 +3,6 @@ package com.rzy.dealt_force_skills.entity;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -17,9 +15,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class ChamberSlowFieldEntity extends Entity implements ItemSupplier {
     private static final int LIFE_TICKS = 5 * 20;
@@ -43,7 +41,7 @@ public class ChamberSlowFieldEntity extends Entity implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -87,11 +85,6 @@ public class ChamberSlowFieldEntity extends Entity implements ItemSupplier {
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private ServerPlayer owner(ServerLevel level) {

@@ -20,16 +20,17 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class DWolfInputHandler {
     private static volatile int SMOKE_HIGH_THROW_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SMOKE_HIGH_THROW_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.d_wolf_input_handler.smoke_high_throw_hold_ticks", 8));
     private static volatile int SMOKE_TRIGGER_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SMOKE_TRIGGER_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.d_wolf_input_handler.smoke_trigger_ticks", 5));
@@ -343,7 +344,9 @@ public final class DWolfInputHandler {
 
     private static boolean hasSlideStamina(Player player) {
         if (ClientCommanderState.isPassiveEnabled(ModCharacters.D_WOLF_ID)
-                && ClientCommanderState.ownsBranchUpgrade(CommanderBranchUpgrade.DWOLF_EFFICIENT_STAMINA)) return true;
+                && ClientCommanderState.ownsBranchUpgrade(CommanderBranchUpgrade.DWOLF_EFFICIENT_STAMINA)) {
+            return true;
+        }
         StaminaManager.ConsumeResult result = StaminaManager.canConsume(player, com.rzy.dealt_force_skills.stamina.StaminaRules.DWOLF_SLIDE_COST * (ClientCommanderState.shouldRender() ? 0.5D : 1.0D));
         if (result == StaminaManager.ConsumeResult.SUCCESS) {
             return true;

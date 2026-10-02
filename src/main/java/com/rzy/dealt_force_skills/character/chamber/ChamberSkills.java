@@ -26,7 +26,7 @@ public final class ChamberSkills {
         return switch (slot) {
             case ACTIVE_1 -> useTeleportCard(player);
             case ACTIVE_2 -> useTrapCard(player);
-            case CORE -> useCoreGun(player, player.isShiftKeyDown());
+            case CORE -> useCoreGun(player, alternate);
             case PASSIVE -> false;
         };
     }
@@ -104,6 +104,14 @@ public final class ChamberSkills {
             ChamberStateManager.setGunCooldown(player, requested);
             return true;
         }
+        if (equipped == requested) {
+            ChamberStateManager.lockEquippedGunSlot(player);
+            if (ChamberTaczEnhancement.kind(player.getMainHandItem()) == requested) {
+                ChamberStateManager.syncToClient(player);
+                return true;
+            }
+            equipped = ChamberStateManager.equippedGun(player);
+        }
         if (equipped != ChamberGunKind.NONE && equipped != requested) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.chamber.core_conflict"), true);
             return true;
@@ -128,7 +136,7 @@ public final class ChamberSkills {
         player.setItemInHand(InteractionHand.MAIN_HAND, gun);
         ChamberStateManager.equipGun(player, requested);
         player.level().playSound(null, player.blockPosition(),
-                sniper ? ModSounds.CHAMBER_TOUR_DE_FORCE.get() : SoundEvents.ARMOR_EQUIP_IRON,
+                sniper ? ModSounds.CHAMBER_TOUR_DE_FORCE.get() : SoundEvents.ARMOR_EQUIP_IRON.value(),
                 SoundSource.PLAYERS, 0.8f, sniper ? 1.0f : 1.1f);
         ChamberStateManager.syncToClient(player);
         return true;

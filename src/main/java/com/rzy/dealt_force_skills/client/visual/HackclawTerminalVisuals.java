@@ -10,18 +10,19 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class HackclawTerminalVisuals {
     private static final ResourceLocation TERMINAL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "hackclaw_hacking_terminal");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "hackclaw_hacking_terminal");
 
     private HackclawTerminalVisuals() {
     }
@@ -41,7 +42,7 @@ public final class HackclawTerminalVisuals {
         poseStack.translate(0.0D, -0.30D, -0.78D);
         poseStack.mulPose(Axis.XP.rotationDegrees(-12.0F));
         poseStack.scale(0.92F, 0.92F, 0.92F);
-        renderTerminal(minecraft.player, event.getPartialTick(), poseStack,
+        renderTerminal(minecraft.player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()), poseStack,
                 event.getMultiBufferSource(), event.getPackedLight());
         poseStack.popPose();
     }
@@ -69,7 +70,7 @@ public final class HackclawTerminalVisuals {
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
         poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
         poseStack.scale(0.42F, 0.42F, 0.42F);
-        renderTerminal(player, event.getPartialTick(), poseStack,
+        renderTerminal(player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()), poseStack,
                 event.getMultiBufferSource(), event.getPackedLight());
         poseStack.popPose();
     }

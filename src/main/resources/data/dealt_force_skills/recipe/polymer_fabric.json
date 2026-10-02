@@ -1,0 +1,15 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:polymer_fabric",
+                   "count":  3
+               }
+}

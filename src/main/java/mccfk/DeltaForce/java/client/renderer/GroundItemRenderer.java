@@ -10,15 +10,17 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.ItemEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraft.world.item.component.CustomModelData;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public class GroundItemRenderer extends EntityRenderer<GroundItemEntity> {
-    private static final ResourceLocation TEXTURE = new ResourceLocation("textures/item/placeholder.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.withDefaultNamespace("textures/item/placeholder.png");
     private final ItemEntityRenderer itemEntityRenderer;
 
     public GroundItemRenderer(EntityRendererProvider.Context context) {
@@ -48,7 +50,6 @@ public class GroundItemRenderer extends EntityRenderer<GroundItemEntity> {
 
     private void renderItemModel(ItemStack itemStack, GroundItemEntity entity, PoseStack poseStack,
                                   MultiBufferSource bufferSource, int packedLight) {
-        // 贴地显示：translate 调整位置，mulPose 绕 X 轴旋转 90 度使物品平躺贴地
         poseStack.translate(0.0D, 0.05D, -0.125D);
         poseStack.mulPose(Axis.XP.rotationDegrees(90.0F));
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
@@ -63,7 +64,7 @@ public class GroundItemRenderer extends EntityRenderer<GroundItemEntity> {
             renderStack = new ItemStack(DeltaForceItems.TEMP_DF.get());
         } else if (itemStack.is(DeltaForceItems.HIGH_SPEED_DISK_ARRAY.get())) {
             renderStack = itemStack.copy();
-            renderStack.getOrCreateTag().putInt("CustomModelData", 1);
+            renderStack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(1));
         }
         itemRenderer.renderStatic(renderStack, ItemDisplayContext.GROUND, packedLight, OverlayTexture.NO_OVERLAY,
             poseStack, bufferSource, entity.level(), 0);

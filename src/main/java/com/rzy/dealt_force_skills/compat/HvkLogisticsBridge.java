@@ -7,10 +7,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,22 +77,26 @@ public final class HvkLogisticsBridge {
     }
 
     private static boolean isSupportedLogisticsBlockEntity(BlockEntity blockEntity) {
-        ResourceLocation id = ForgeRegistries.BLOCK_ENTITY_TYPES.getKey(blockEntity.getType());
+        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(blockEntity.getType());
         return id != null && SUPPORTED_LOGISTICS.contains(id.getNamespace());
     }
 
     private static void collectCapability(BlockEntity blockEntity, Direction side, Consumer<IItemHandler> sink,
                                           Set<IItemHandler> seen) {
-        blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, side).ifPresent(handler -> {
-            if (seen.add(handler)) {
-                sink.accept(handler);
-            }
-        });
+        Level level = blockEntity.getLevel();
+        if (level == null) {
+            return;
+        }
+        IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK,
+                blockEntity.getBlockPos(), side);
+        if (handler != null && seen.add(handler)) {
+            sink.accept(handler);
+        }
     }
 
     private static void collectRefinedStorageNetwork(BlockEntity blockEntity, Consumer<IItemHandler> sink,
                                                      Set<IItemHandler> seenHandlers, Set<Object> seenNetworks) {
-        ResourceLocation id = ForgeRegistries.BLOCK_ENTITY_TYPES.getKey(blockEntity.getType());
+        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(blockEntity.getType());
         if (id == null || !"refinedstorage".equals(id.getNamespace())) {
             return;
         }

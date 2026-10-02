@@ -95,14 +95,6 @@
       }
     ]
   },
-  "hvk_disassembler_repel": {
-    "sounds": [
-      {
-        "name": "dealt_force_skills:hvk_disassembler/repel_constructor",
-        "stream": false
-      }
-    ]
-  },
   "bomb_suit_equip": {
     "sounds": [
       {
@@ -4582,6 +4574,22 @@
       }
     ]
   },
+  "skills_cd": {
+    "sounds": [
+      {
+        "name": "dealt_force_skills:skills_cd",
+        "stream": false
+      }
+    ]
+  },
+  "skills_ready": {
+    "sounds": [
+      {
+        "name": "dealt_force_skills:skills_ready",
+        "stream": false
+      }
+    ]
+  },
   "gambler.draw": {
     "sounds": [
       {
@@ -4798,18 +4806,10 @@
       }
     ]
   },
-  "skills_cd": {
+  "hvk_disassembler_repel": {
     "sounds": [
       {
-        "name": "dealt_force_skills:skills_cd",
-        "stream": false
-      }
-    ]
-  },
-  "skills_ready": {
-    "sounds": [
-      {
-        "name": "dealt_force_skills:skills_ready",
+        "name": "dealt_force_skills:hvk_disassembler/repel_constructor",
         "stream": false
       }
     ]

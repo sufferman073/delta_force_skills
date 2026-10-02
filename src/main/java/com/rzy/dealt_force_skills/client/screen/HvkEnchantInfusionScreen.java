@@ -40,6 +40,7 @@ public final class HvkEnchantInfusionScreen extends Screen {
     private Button applyButton;
     private Button enchantmentModeButton;
     private Button affixModeButton;
+    private boolean clampingInput;
 
     private HvkEnchantInfusionScreen(S2C_OpenHvkEnchantInfusion msg, boolean affixMode,
                                      String initialSelectionId, int initialScroll) {
@@ -84,6 +85,7 @@ public final class HvkEnchantInfusionScreen extends Screen {
                 Component.translatable("screen.dealt_force_skills.hvk_enchant_infusion.level"));
         levelBox.setMaxLength(10);
         levelBox.setFilter(this::validLevelInput);
+        levelBox.setResponder(this::clampInputToActiveMax);
         addRenderableWidget(levelBox);
         addRenderableWidget(Button.builder(Component.literal("-"), button -> adjust(-1))
                 .bounds(left + 176, top + 208, 18, 18).build());
@@ -97,7 +99,7 @@ public final class HvkEnchantInfusionScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xEE171A1D);
         graphics.fill(left + 1, top + 1, left + PANEL_WIDTH - 1, top + 24, 0xFF343A40);
         graphics.drawString(font, title, left + 8, top + 8, 0xFFF1F3F5, false);
@@ -157,9 +159,9 @@ public final class HvkEnchantInfusionScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    @Override public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    @Override public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int max = Math.max(0, activeEntryCount() - VISIBLE_ROWS);
-        scroll = Math.max(0, Math.min(max, scroll + (delta < 0 ? 1 : -1)));
+        scroll = Math.max(0, Math.min(max, scroll + (scrollY < 0 ? 1 : -1)));
         return true;
     }
 
@@ -172,7 +174,8 @@ public final class HvkEnchantInfusionScreen extends Screen {
 
     private void apply() {
         if (selected < 0) return;
-        int value = parseInputValue();
+        int value = Math.max(0, Math.min(activeMaxValue(selected), parseInputValue()));
+        levelBox.setValue(formatInputValue(value));
         NetworkHandler.sendToServer(new C2S_HvkEnchantInfusionAction(pos,
                 affixMode ? C2S_HvkEnchantInfusionAction.Action.APPLY_AFFIX
                         : C2S_HvkEnchantInfusionAction.Action.APPLY,
@@ -266,14 +269,29 @@ public final class HvkEnchantInfusionScreen extends Screen {
     }
 
     private int parseInputValue() {
-        String value = levelBox.getValue();
+        return parseInputValue(levelBox.getValue());
+    }
+
+    private int parseInputValue(String value) {
         try {
-            if (!affixMode) return Integer.parseInt(value);
             if (value.isEmpty() || value.equals(".")) return 0;
-            return new BigDecimal(value).movePointRight(2).intValueExact();
-        } catch (ArithmeticException | NumberFormatException ignored) {
+            BigDecimal parsed = new BigDecimal(value);
+            if (affixMode) parsed = parsed.movePointRight(2);
+            if (parsed.signum() <= 0) return 0;
+            BigDecimal integerMax = BigDecimal.valueOf(Integer.MAX_VALUE);
+            return parsed.compareTo(integerMax) >= 0 ? Integer.MAX_VALUE : parsed.intValue();
+        } catch (NumberFormatException ignored) {
             return 0;
         }
+    }
+
+    private void clampInputToActiveMax(String value) {
+        if (clampingInput || selected < 0 || selected >= activeEntryCount() || value.isEmpty()) return;
+        int max = activeMaxValue(selected);
+        if (parseInputValue(value) <= max) return;
+        clampingInput = true;
+        levelBox.setValue(formatInputValue(max));
+        clampingInput = false;
     }
 
     private String formatInputValue(int value) {
@@ -320,9 +338,12 @@ public final class HvkEnchantInfusionScreen extends Screen {
         return Component.literal(font.plainSubstrByWidth(text, Math.max(0, maxWidth - font.width(suffix))) + suffix);
     }
 
-    private static Component enchantmentName(String id) {
+    private Component enchantmentName(String id) {
         ResourceLocation key = ResourceLocation.tryParse(id);
-        Enchantment enchantment = key == null ? null : BuiltInRegistries.ENCHANTMENT.get(key);
-        return enchantment == null ? Component.literal(id) : enchantment.getFullname(1);
+        if (key == null || minecraft.level == null) return Component.literal(id);
+        var holder = minecraft.level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                .getHolder(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ENCHANTMENT, key))
+                .orElse(null);
+        return holder == null ? Component.literal(id) : Enchantment.getFullname(holder, 1);
     }
 }

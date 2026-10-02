@@ -19,7 +19,7 @@ public final class ReconRevealThrottle {
         if (until > now) {
             return false;
         }
-        tag.putLong(REVEAL_UNTIL, now + (long) ticks);
+        tag.putLong(REVEAL_UNTIL, now + ticks);
         return true;
     }
 

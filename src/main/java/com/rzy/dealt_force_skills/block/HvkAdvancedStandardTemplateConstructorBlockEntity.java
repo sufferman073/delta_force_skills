@@ -13,6 +13,7 @@ import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -20,7 +21,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.Containers;
@@ -30,17 +30,19 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
 import com.rzy.dealt_force_skills.shop.SpecialOperationsBaseManager;
-import net.minecraftforge.registries.ForgeRegistries;
+import mccfk.DeltaForce.java.data.DfWarehouseManager;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -796,13 +798,13 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         if (!template.isEmpty()) {
-            tag.put(TEMPLATE, template.save(new CompoundTag()));
+            tag.put(TEMPLATE, template.saveOptional(registries));
         }
         if (!output.isEmpty()) {
-            tag.put(OUTPUT, output.save(new CompoundTag()));
+            tag.put(OUTPUT, output.saveOptional(registries));
         }
         if (ownerId != null) {
             tag.putUUID(OWNER, ownerId);
@@ -818,7 +820,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         if (!queuedRawCost.isEmpty()) {
             CompoundTag costTag = new CompoundTag();
             for (Map.Entry<Item, Integer> entry : queuedRawCost.entrySet()) {
-                ResourceLocation key = ForgeRegistries.ITEMS.getKey(entry.getKey());
+                ResourceLocation key = BuiltInRegistries.ITEM.getKey(entry.getKey());
                 if (key != null && entry.getValue() > 0) {
                     costTag.putInt(key.toString(), entry.getValue());
                 }
@@ -828,10 +830,10 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
-        template = tag.contains(TEMPLATE, Tag.TAG_COMPOUND) ? ItemStack.of(tag.getCompound(TEMPLATE)) : ItemStack.EMPTY;
-        output = tag.contains(OUTPUT, Tag.TAG_COMPOUND) ? ItemStack.of(tag.getCompound(OUTPUT)) : ItemStack.EMPTY;
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        template = tag.contains(TEMPLATE, Tag.TAG_COMPOUND) ? ItemStack.parseOptional(registries, tag.getCompound(TEMPLATE)) : ItemStack.EMPTY;
+        output = tag.contains(OUTPUT, Tag.TAG_COMPOUND) ? ItemStack.parseOptional(registries, tag.getCompound(OUTPUT)) : ItemStack.EMPTY;
         ownerId = tag.hasUUID(OWNER) ? tag.getUUID(OWNER) : null;
         queuedRecipeId = tag.contains(QUEUED_RECIPE, Tag.TAG_STRING)
                 ? parseResourceLocation(tag.getString(QUEUED_RECIPE))
@@ -852,8 +854,12 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         if (owner != null && owner.level() == level
                 && owner.distanceToSqr(worldPosition.getX() + 0.5D, worldPosition.getY() + 0.5D,
                 worldPosition.getZ() + 0.5D) <= OWNER_INVENTORY_RANGE * OWNER_INVENTORY_RANGE) {
-            for (SpecialOperationsBaseManager.WarehouseEntry entry : SpecialOperationsBaseManager.warehouseEntries(owner)) {
-                sources.add(new WarehouseSourceSlot(owner, entry.slot(), entry.stack()));
+            List<ItemStack> warehouse = DfWarehouseManager.loadWarehouse(owner);
+            for (int slot = 0; slot < warehouse.size(); slot++) {
+                ItemStack stack = warehouse.get(slot);
+                if (!stack.isEmpty()) {
+                    sources.add(new WarehouseSourceSlot(owner, slot, stack));
+                }
             }
             Inventory inventory = owner.getInventory();
             for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
@@ -862,12 +868,15 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         }
 
         for (Direction direction : Direction.values()) {
-            BlockEntity neighbor = level.getBlockEntity(worldPosition.relative(direction));
-            if (neighbor == null) {
+            BlockPos neighborPos = worldPosition.relative(direction);
+            if (level.getBlockEntity(neighborPos) == null) {
                 continue;
             }
-            neighbor.getCapability(ForgeCapabilities.ITEM_HANDLER, direction.getOpposite())
-                    .ifPresent(handler -> addHandlerSources(sources, handler, "external"));
+            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK,
+                    neighborPos, direction.getOpposite());
+            if (handler != null) {
+                addHandlerSources(sources, handler, "external");
+            }
         }
         HvkLogisticsBridge.collectNetworkItemHandlers(level, worldPosition,
                 handler -> addHandlerSources(sources, handler, HvkLogisticsBridge.sourceType(handler)));
@@ -1011,7 +1020,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         Map<Item, Integer> rawCost = new HashMap<>();
         for (String key : tag.getAllKeys()) {
             ResourceLocation id = parseResourceLocation(key);
-            Item item = id == null ? null : ForgeRegistries.ITEMS.getValue(id);
+            Item item = id == null ? null : BuiltInRegistries.ITEM.get(id);
             int count = tag.getInt(key);
             if (item != null && item != Items.AIR && count > 0) {
                 rawCost.put(item, count);
@@ -1109,7 +1118,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
 
     private static void addContainerBrewingRecipes(Level level, Ingredient ingredient, Item from, Item to,
                                                    Set<ResourceLocation> seen, List<SyntheticRecipe> recipes) {
-        for (Potion potion : ForgeRegistries.POTIONS.getValues()) {
+        for (Potion potion : BuiltInRegistries.POTION.stream().toList()) {
             ItemStack base = potionStack(from, potion);
             ItemStack result = potionStack(to, potion);
             ResourceLocation id = brewingRecipeId("container", from, potion, ingredient, to);
@@ -1132,14 +1141,12 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
     }
 
     private static ItemStack potionStack(Item item, Potion potion) {
-        ItemStack stack = new ItemStack(item);
-        PotionUtils.setPotion(stack, potion);
-        return stack;
+        return PotionContents.createItemStack(item, BuiltInRegistries.POTION.wrapAsHolder(potion));
     }
 
     private static ResourceLocation brewingRecipeId(String category, Item container, Potion from,
                                                     Ingredient ingredient, Object to) {
-        return new ResourceLocation(SYNTHETIC_RECIPE_NAMESPACE, BREWING_RECIPE_PREFIX
+        return ResourceLocation.fromNamespaceAndPath(SYNTHETIC_RECIPE_NAMESPACE, BREWING_RECIPE_PREFIX
                 + sanitizePath(category) + "/"
                 + sanitizePath(itemKey(container)) + "/"
                 + sanitizePath(potionKey(from)) + "/"
@@ -1167,7 +1174,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
     }
 
     private static String potionKey(Potion potion) {
-        ResourceLocation key = ForgeRegistries.POTIONS.getKey(potion);
+        ResourceLocation key = BuiltInRegistries.POTION.getKey(potion);
         return key == null ? potion.toString() : key.toString();
     }
 
@@ -1266,7 +1273,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         }
     }
 
-    private static ItemStack resultItem(Level level, Recipe<?> recipe) {
+    private static ItemStack resultItem(Level level, ResourceLocation id, Recipe<?> recipe) {
         ItemStack result = recipe.getResultItem(level.registryAccess());
         if (!result.isEmpty()) {
             return result;
@@ -1275,7 +1282,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         if (!result.isEmpty()) {
             return result;
         }
-        return touhouAltarPlaceholder(recipe);
+        return touhouAltarPlaceholder(id, recipe);
     }
 
     private static ItemStack smithingResult(Recipe<?> recipe) {
@@ -1298,8 +1305,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         return ItemStack.EMPTY;
     }
 
-    private static ItemStack touhouAltarPlaceholder(Recipe<?> recipe) {
-        ResourceLocation id = recipe.getId();
+    private static ItemStack touhouAltarPlaceholder(ResourceLocation id, Recipe<?> recipe) {
         if (id == null || !"touhou_little_maid".equals(id.getNamespace())) {
             return ItemStack.EMPTY;
         }
@@ -1307,7 +1313,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         if (Boolean.TRUE.equals(itemCraft)) {
             return ItemStack.EMPTY;
         }
-        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation("touhou_little_maid", "entity_placeholder"));
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("touhou_little_maid", "entity_placeholder"));
         if (item == null) {
             return ItemStack.EMPTY;
         }
@@ -1454,7 +1460,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
     }
 
     private static String itemKey(Item item) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         return key == null ? item.toString() : key.toString();
     }
 
@@ -1521,6 +1527,34 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         }
     }
 
+    private static final class WarehouseSourceSlot implements SourceSlot {
+        private final ServerPlayer owner;
+        private final int slot;
+        private final ItemStack cached;
+
+        private WarehouseSourceSlot(ServerPlayer owner, int slot, ItemStack cached) {
+            this.owner = owner;
+            this.slot = slot;
+            this.cached = cached.copy();
+        }
+
+        @Override
+        public ItemStack stack() {
+            return cached;
+        }
+
+        @Override
+        public ItemStack extract(Item item, int max) {
+            if (cached.isEmpty() || cached.getItem() != item) {
+                return ItemStack.EMPTY;
+            }
+            ItemStack removed = DfWarehouseManager.extractMatching(
+                    owner, slot, max, stack -> stack.getItem() == item);
+            cached.shrink(removed.getCount());
+            return removed;
+        }
+    }
+
     private static final class HandlerSourceSlot implements SourceSlot {
         private final IItemHandler handler;
         private final int slot;
@@ -1549,33 +1583,6 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         @Override
         public boolean refinedStorage() {
             return "refinedstorage_network".equals(sourceType);
-        }
-    }
-
-    private static final class WarehouseSourceSlot implements SourceSlot {
-        private final ServerPlayer owner;
-        private final int slot;
-        private final ItemStack cached;
-
-        private WarehouseSourceSlot(ServerPlayer owner, int slot, ItemStack cached) {
-            this.owner = owner;
-            this.slot = slot;
-            this.cached = cached.copy();
-        }
-
-        @Override
-        public ItemStack stack() {
-            return cached;
-        }
-
-        @Override
-        public ItemStack extract(Item item, int max) {
-            if (cached.isEmpty() || cached.getItem() != item) {
-                return ItemStack.EMPTY;
-            }
-            ItemStack removed = SpecialOperationsBaseManager.extractWarehouse(owner, slot, max);
-            cached.shrink(removed.getCount());
-            return removed;
         }
     }
 
@@ -1667,7 +1674,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
             Map<ResourceLocation, SelectedRecipe> byId = new HashMap<>();
             Map<Item, List<CraftingOption>> mutableOptions = new HashMap<>();
             Set<ResourceLocation> seen = new HashSet<>();
-            for (RecipeType<?> type : ForgeRegistries.RECIPE_TYPES.getValues()) {
+            for (RecipeType<?> type : BuiltInRegistries.RECIPE_TYPE.stream().toList()) {
                 collectIndexedRecipes(level, type, seen, recipes, byId, mutableOptions);
             }
             for (SyntheticRecipe recipe : syntheticRecipes(level)) {
@@ -1758,21 +1765,22 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         collectTypedIndexedRecipes(level, (RecipeType) type, seen, recipes, byId, optionsByItem);
     }
 
-    private static <C extends Container, T extends Recipe<C>> void collectTypedIndexedRecipes(
+    private static <I extends net.minecraft.world.item.crafting.RecipeInput, T extends Recipe<I>> void collectTypedIndexedRecipes(
             Level level, RecipeType<T> type, Set<ResourceLocation> seen, List<IndexedRecipe> recipes,
             Map<ResourceLocation, SelectedRecipe> byId, Map<Item, List<CraftingOption>> optionsByItem) {
-        for (T recipe : level.getRecipeManager().getAllRecipesFor(type)) {
-            RecipeIndex.addIndexedRecipe(recipe.getId(), selectedRecipe(level, recipe),
+        for (RecipeHolder<T> holder : level.getRecipeManager().getAllRecipesFor(type)) {
+            RecipeIndex.addIndexedRecipe(holder.id(), selectedRecipe(level, holder),
                     seen, recipes, byId, optionsByItem);
         }
     }
 
-    private static SelectedRecipe selectedRecipe(Level level, Recipe<?> recipe) {
+    private static SelectedRecipe selectedRecipe(Level level, RecipeHolder<?> holder) {
+        Recipe<?> recipe = holder.value();
         List<RecipeInput> inputs = recipeInputs(recipe);
         if (!hasInputs(inputs)) {
             return null;
         }
-        ItemStack result = resultItem(level, recipe);
+        ItemStack result = resultItem(level, holder.id(), recipe);
         return !result.isEmpty() && result.getCount() > 0 ? new SelectedRecipe(result.copy(), inputs) : null;
     }
 
@@ -2749,7 +2757,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
                                int queuedCrafts, int queuedCompleted, int craftTicks, int craftIntervalTicks,
                                boolean truncated, String truncationReason, CraftabilityStatus status) {
         public RecipeDetail {
-            id = id == null ? new ResourceLocation("minecraft", "air") : id;
+            id = id == null ? ResourceLocation.fromNamespaceAndPath("minecraft", "air") : id;
             tree = tree == null ? List.of() : List.copyOf(tree);
             missing = missing == null ? List.of() : List.copyOf(missing);
             queuedCrafts = Math.max(0, queuedCrafts);

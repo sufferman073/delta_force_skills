@@ -13,16 +13,17 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class HackclawPathLineRenderer {
     private static volatile double MAX_LOCK_RANGE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_LOCK_RANGE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("client.visual.hackclaw_path_line_renderer.max_lock_range", 62.0));
     private static volatile double MIN_LOCK_ALIGNMENT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MIN_LOCK_ALIGNMENT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("client.visual.hackclaw_path_line_renderer.min_lock_alignment", 0.93));
@@ -176,14 +177,14 @@ public final class HackclawPathLineRenderer {
         } else {
             normal = normal.normalize();
         }
-        consumer.vertex(pose.pose(), (float) a.x, (float) a.y, (float) a.z)
-                .color(red, green, blue, alpha)
-                .normal(pose.normal(), (float) normal.x, (float) normal.y, (float) normal.z)
-                .endVertex();
-        consumer.vertex(pose.pose(), (float) b.x, (float) b.y, (float) b.z)
-                .color(red, green, blue, alpha)
-                .normal(pose.normal(), (float) normal.x, (float) normal.y, (float) normal.z)
-                .endVertex();
+        consumer.addVertex(pose.pose(), (float) a.x, (float) a.y, (float) a.z)
+                .setColor(red, green, blue, alpha)
+                .setNormal(pose, (float) normal.x, (float) normal.y, (float) normal.z)
+                ;
+        consumer.addVertex(pose.pose(), (float) b.x, (float) b.y, (float) b.z)
+                .setColor(red, green, blue, alpha)
+                .setNormal(pose, (float) normal.x, (float) normal.y, (float) normal.z)
+                ;
     }
 
     private static boolean isRenderableLine(Vec3 camera, Vec3 from, Vec3 to) {

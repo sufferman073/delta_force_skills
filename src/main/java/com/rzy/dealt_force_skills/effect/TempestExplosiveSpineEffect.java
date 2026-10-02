@@ -1,16 +1,19 @@
 package com.rzy.dealt_force_skills.effect;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.resources.ResourceLocation;
 
 public class TempestExplosiveSpineEffect extends MobEffect {
     public TempestExplosiveSpineEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0x7CFF5B);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
         addAttributeModifier(Attributes.MOVEMENT_SPEED,
-                "4029d79b-4a1a-4f19-9813-77d9e26f0a90",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.tempest_explosive_spine.movement_speed"),
                 0.5D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 }

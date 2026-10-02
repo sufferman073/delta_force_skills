@@ -10,7 +10,7 @@ public final class HearingRangeHelper {
         if (listener == null) {
             return 1.0D;
         }
-        var effect = listener.getEffect(ModEffects.HEARING_AMPLIFICATION.get());
+        var effect = listener.getEffect(ModEffects.HEARING_AMPLIFICATION);
         return effect == null ? 1.0D : 1.0D + 0.1D * (effect.getAmplifier() + 1);
     }
 }

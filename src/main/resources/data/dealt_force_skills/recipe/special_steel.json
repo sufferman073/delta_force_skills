@@ -1,0 +1,36 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:coal"
+                        },
+                        {
+                            "item":  "minecraft:coal"
+                        },
+                        {
+                            "item":  "minecraft:coal"
+                        },
+                        {
+                            "item":  "minecraft:coal"
+                        },
+                        {
+                            "item":  "dealt_force_skills:coarse_salt"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:special_steel",
+                   "count":  6
+               }
+}

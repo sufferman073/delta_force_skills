@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Minecraft.class)
 public abstract class MinecraftSpectatorOutlineMixin {
-    @Inject(method = "shouldEntityAppearGlowing", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "shouldEntityAppearGlowing", at = @At("RETURN"), cancellable = true, remap = false)
     private void dealt_force_skills$disableSpectatorPlayerOutline(Entity entity, CallbackInfoReturnable<Boolean> cir) {
         Minecraft minecraft = (Minecraft) (Object) this;
         if (Boolean.TRUE.equals(cir.getReturnValue())

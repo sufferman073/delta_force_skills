@@ -1,0 +1,59 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:sustained_release_painkiller"
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:water"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:water"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:water"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:water"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "item":  "minecraft:golden_apple"
+                        },
+                        {
+                            "item":  "minecraft:ice"
+                        },
+                        {
+                            "item":  "minecraft:ice"
+                        },
+                        {
+                            "item":  "minecraft:ice"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:bottled_antibiotics"
+               }
+}

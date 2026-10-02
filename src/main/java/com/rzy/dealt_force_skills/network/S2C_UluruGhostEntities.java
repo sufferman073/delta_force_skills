@@ -4,15 +4,29 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_UluruGhostEntities {
+public class S2C_UluruGhostEntities implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_UluruGhostEntities> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_uluru_ghost_entities"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_UluruGhostEntities> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_UluruGhostEntities::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final List<Entry> entries;
 
     public S2C_UluruGhostEntities(List<Entry> entries) {
@@ -72,12 +86,8 @@ public class S2C_UluruGhostEntities {
         return new S2C_UluruGhostEntities(entries);
     }
 
-    public static void handle(S2C_UluruGhostEntities msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> UluruGhostEntityManager.update(msg.entries)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_UluruGhostEntities msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> UluruGhostEntityManager.update(msg.entries));
     }
 
     public record Entry(int sourceId, ResourceLocation typeId, double x, double y, double z,

@@ -1,20 +1,50 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.commander.CommanderSkillChoice;
 import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
 import com.rzy.dealt_force_skills.character.commander.CommanderSupport;
 import com.rzy.dealt_force_skills.character.commander.CommanderUpgrade;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_CommanderSnapshot implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_CommanderSnapshot> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_commander_snapshot"));
 
-public record S2C_CommanderSnapshot(long tacticalPoints, String[] sources, String[] enabledPassives,
-                                   int[] upgrades, int[] cooldowns, boolean[] branchUpgrades) {
+    public static final StreamCodec<FriendlyByteBuf, S2C_CommanderSnapshot> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_CommanderSnapshot::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private final long tacticalPoints;
+    private final String[] sources;
+    private final String[] enabledPassives;
+    private final int[] upgrades;
+    private final int[] cooldowns;
+    private final boolean[] branchUpgrades;
+
+    public S2C_CommanderSnapshot(long tacticalPoints, String[] sources, String[] enabledPassives,
+                                  int[] upgrades, int[] cooldowns, boolean[] branchUpgrades) {
+        this.tacticalPoints = tacticalPoints;
+        this.sources = sources;
+        this.enabledPassives = enabledPassives;
+        this.upgrades = upgrades;
+        this.cooldowns = cooldowns;
+        this.branchUpgrades = branchUpgrades;
+    }
+
     public static S2C_CommanderSnapshot from(ServerPlayer player) {
         CommanderSkillChoice[] choices = CommanderSkillChoice.values();
         String[] sources = new String[choices.length];
@@ -90,10 +120,8 @@ public record S2C_CommanderSnapshot(long tacticalPoints, String[] sources, Strin
         return new S2C_CommanderSnapshot(points, sources, enabledPassives, upgrades, cooldowns, branchUpgrades);
     }
 
-    public static void handle(S2C_CommanderSnapshot msg, Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientCommanderState.sync(msg.tacticalPoints, msg.sources, msg.enabledPassives,
-                        msg.upgrades, msg.cooldowns, msg.branchUpgrades)));
-        context.get().setPacketHandled(true);
+    public static void handle(S2C_CommanderSnapshot msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientCommanderState.sync(msg.tacticalPoints, msg.sources, msg.enabledPassives,
+                msg.upgrades, msg.cooldowns, msg.branchUpgrades));
     }
 }

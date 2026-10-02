@@ -4,15 +4,30 @@ import com.rzy.dealt_force_skills.character.gizmo.GizmoTrapMarker;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoTrapType;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_SyncGizmoState {
+public class S2C_SyncGizmoState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncGizmoState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_gizmo_state"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncGizmoState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncGizmoState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int smokeCharges;
     private final int smokeMaxCharges;
     private final int smokeRechargeTicks;
@@ -97,10 +112,8 @@ public class S2C_SyncGizmoState {
                 equippedToolOrdinal, passiveBoost, webEscapeTicks, markers);
     }
 
-    public static void handle(S2C_SyncGizmoState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientGizmoHudState.sync(
+    public static void handle(S2C_SyncGizmoState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientGizmoHudState.sync(
                         msg.smokeCharges,
                         msg.smokeMaxCharges,
                         msg.smokeRechargeTicks,
@@ -112,8 +125,6 @@ public class S2C_SyncGizmoState {
                         msg.passiveBoost,
                         msg.webEscapeTicks,
                         msg.trapMarkers
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

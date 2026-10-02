@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_DWolfStaminaRestore implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_DWolfStaminaRestore> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_d_wolf_stamina_restore"));
 
-public class S2C_DWolfStaminaRestore {
+    public static final StreamCodec<FriendlyByteBuf, S2C_DWolfStaminaRestore> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_DWolfStaminaRestore::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int percent;
 
     public S2C_DWolfStaminaRestore(int percent) {
@@ -22,11 +36,7 @@ public class S2C_DWolfStaminaRestore {
         return new S2C_DWolfStaminaRestore(buf.readVarInt());
     }
 
-    public static void handle(S2C_DWolfStaminaRestore msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientDWolfHudState.restoreStaminaPercent(msg.percent)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_DWolfStaminaRestore msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientDWolfHudState.restoreStaminaPercent(msg.percent));
     }
 }

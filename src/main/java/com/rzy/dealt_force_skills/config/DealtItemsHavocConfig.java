@@ -5,12 +5,12 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.item.DfsItemQuality;
 import com.rzy.dealt_force_skills.shop.DfsShopCatalog;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
@@ -19,11 +19,12 @@ import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +41,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class DealtItemsHavocConfig {
     public static final String FILE_NAME = "dealtitemshavoc.toml";
     private static final String LEGACY_FILE_NAME = "dealtitemsdoll.toml";
@@ -90,8 +91,8 @@ public final class DealtItemsHavocConfig {
         Map<Item, Long> prices = calculateDefaultPrices(server);
         CommentedFileConfig current = config();
         int added = 0;
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        for (Item item : BuiltInRegistries.ITEM) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
             if (id == null) {
                 continue;
             }
@@ -120,7 +121,7 @@ public final class DealtItemsHavocConfig {
                 "Exact count-one ItemStack SNBT price overrides. Entries are maintained by /dealtvalue sethavoc.");
         current.save();
         LOGGER.info("Validated {} item sale entries in {}; added {} missing entries",
-                ForgeRegistries.ITEMS.getValues().size(), FILE_NAME, added);
+                BuiltInRegistries.ITEM.size(), FILE_NAME, added);
     }
 
     private static boolean isDefaultUnsellable(String path) {
@@ -130,7 +131,7 @@ public final class DealtItemsHavocConfig {
     }
 
     public static synchronized boolean isSellable(Item item) {
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
         if (id == null) {
             return false;
         }
@@ -139,7 +140,7 @@ public final class DealtItemsHavocConfig {
     }
 
     public static synchronized long price(Item item) {
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
         if (id == null) {
             return 1L;
         }
@@ -156,7 +157,7 @@ public final class DealtItemsHavocConfig {
     }
 
     public static synchronized boolean isSellable(ServerPlayer player, ItemStack stack) {
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (id == null || stack.isEmpty()) {
             return false;
         }
@@ -168,7 +169,7 @@ public final class DealtItemsHavocConfig {
         if (stack.isEmpty()) {
             return 1L;
         }
-        String fingerprint = fingerprint(serializeStack(stack));
+        String fingerprint = fingerprint(serializeStack(stack, player.registryAccess()));
         for (String encoded : storedVariantEntries()) {
             CompoundTag entry = parseVariantEntry(encoded);
             if (entry != null && fingerprint.equals(entry.getString("Fingerprint"))) {
@@ -180,7 +181,7 @@ public final class DealtItemsHavocConfig {
 
     public static long tooltipPrice(ItemStack stack) {
         for (VariantPrice variant : clientVariantPrices) {
-            if (ItemStack.isSameItemSameTags(variant.stack(), stack)) {
+            if (ItemStack.isSameItemSameComponents(variant.stack(), stack)) {
                 return variant.price();
             }
         }
@@ -190,13 +191,9 @@ public final class DealtItemsHavocConfig {
     }
 
     public static synchronized long[] priceSnapshot() {
-        int maxId = -1;
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
-            maxId = Math.max(maxId, BuiltInRegistries.ITEM.getId(item));
-        }
-        long[] snapshot = new long[maxId + 1];
+        long[] snapshot = new long[BuiltInRegistries.ITEM.size()];
         Arrays.fill(snapshot, 1L);
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
+        for (Item item : BuiltInRegistries.ITEM) {
             int id = BuiltInRegistries.ITEM.getId(item);
             if (id >= 0) snapshot[id] = price(item);
         }
@@ -213,7 +210,7 @@ public final class DealtItemsHavocConfig {
             if (entry == null || !entry.contains("Stack", Tag.TAG_COMPOUND)) {
                 continue;
             }
-            ItemStack stack = ItemStack.of(entry.getCompound("Stack"));
+            ItemStack stack = ItemStack.parseOptional(server.registryAccess(), entry.getCompound("Stack"));
             if (!stack.isEmpty()) {
                 stack.setCount(1);
                 variants.add(new VariantPrice(stack, normalizePrice(entry.getLong("Price"))));
@@ -235,7 +232,7 @@ public final class DealtItemsHavocConfig {
     }
 
     public static synchronized boolean setPrice(Item item, long price) {
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
         if (id == null || (price != -1L && price < 1L)) {
             return false;
         }
@@ -251,8 +248,9 @@ public final class DealtItemsHavocConfig {
         if (stack.isEmpty() || (price != -1L && price < 1L)) {
             return false;
         }
-        CompoundTag serialized = serializeStack(stack);
-        CompoundTag base = serializeStack(new ItemStack(stack.getItem()));
+        HolderLookup.Provider registries = player.registryAccess();
+        CompoundTag serialized = serializeStack(stack, registries);
+        CompoundTag base = serializeStack(new ItemStack(stack.getItem()), registries);
         if (canonicalTag(serialized).equals(canonicalTag(base))) {
             return setPrice(stack.getItem(), price);
         }
@@ -296,14 +294,14 @@ public final class DealtItemsHavocConfig {
         Map<Item, Long> prices = new IdentityHashMap<>();
 
         Map<ResourceLocation, Long> priceFilePrices = PriceFileLoader.getHavocPriceMap();
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        for (Item item : BuiltInRegistries.ITEM) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
             if (id != null && priceFilePrices.containsKey(id)) {
                 prices.put(item, Math.max(1L, priceFilePrices.get(id)));
             }
         }
 
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
+        for (Item item : BuiltInRegistries.ITEM) {
             if (!prices.containsKey(item)) {
                 prices.put(item, fallbackPrice(new ItemStack(item)));
             }
@@ -316,21 +314,22 @@ public final class DealtItemsHavocConfig {
             }
         }
         for (Map.Entry<Item, Long> shopEntry : shopPrices.entrySet()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(shopEntry.getKey());
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(shopEntry.getKey());
             if (id == null || !priceFilePrices.containsKey(id)) {
                 prices.put(shopEntry.getKey(), shopEntry.getValue());
             }
         }
 
-        List<CraftingRecipe> recipes = server.getRecipeManager().getAllRecipesFor(RecipeType.CRAFTING);
+        List<RecipeHolder<CraftingRecipe>> recipes = server.getRecipeManager().getAllRecipesFor(RecipeType.CRAFTING);
         for (int pass = 0; pass < 12; pass++) {
             Map<Item, Long> next = new IdentityHashMap<>(prices);
-            for (CraftingRecipe recipe : recipes) {
+            for (RecipeHolder<CraftingRecipe> holder : recipes) {
+                CraftingRecipe recipe = holder.value();
                 ItemStack output = recipe.getResultItem(server.registryAccess());
                 if (output.isEmpty()) {
                     continue;
                 }
-                ResourceLocation outputId = ForgeRegistries.ITEMS.getKey(output.getItem());
+                ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(output.getItem());
                 if (outputId != null && priceFilePrices.containsKey(outputId)) {
                     continue;
                 }
@@ -358,7 +357,7 @@ public final class DealtItemsHavocConfig {
             prices = next;
         }
 
-        LOGGER.info("DealtItemsHavocConfig: price file overrides {} items", priceFilePrices.size());
+        LOGGER.info("DealtItemsHavocConfig: price文件覆盖 {} 个物品", priceFilePrices.size());
         return prices;
     }
 
@@ -368,7 +367,7 @@ public final class DealtItemsHavocConfig {
         if (tier == 0) {
             Rarity rarity = stack.getRarity();
             tier = rarity == Rarity.EPIC ? 3 : rarity == Rarity.RARE ? 2 : rarity == Rarity.UNCOMMON ? 1 : 0;
-            String color = rarity.color.getName();
+            String color = rarity.color().getName();
             if ("gold".equals(color) || "yellow".equals(color)) {
                 tier = 4;
             } else if ("red".equals(color) || "dark_red".equals(color)) {
@@ -394,10 +393,11 @@ public final class DealtItemsHavocConfig {
         }
     }
 
-    private static CompoundTag serializeStack(ItemStack stack) {
+    private static CompoundTag serializeStack(ItemStack stack, HolderLookup.Provider registries) {
         ItemStack template = stack.copy();
         template.setCount(1);
-        return template.save(new CompoundTag());
+        Tag serialized = template.saveOptional(registries);
+        return serialized instanceof CompoundTag compound ? compound : new CompoundTag();
     }
 
     private static long normalizePrice(long price) {

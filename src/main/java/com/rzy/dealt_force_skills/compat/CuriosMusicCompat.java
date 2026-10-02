@@ -2,7 +2,7 @@ package com.rzy.dealt_force_skills.compat;
 
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,12 +23,12 @@ public final class CuriosMusicCompat {
         try {
             String version = ModList.get().getModContainerById("curios").orElseThrow().getModInfo().getVersion().toString();
             int major = Integer.parseInt(version.split("\\.")[0]);
-            if (major < 5) return;
+            if (major < 9) return;
             Class<?> api = Class.forName("top.theillusivec4.curios.api.CuriosApi");
             inventory = api.getMethod("getCuriosInventory", LivingEntity.class);
             Class<?> handler = Class.forName("top.theillusivec4.curios.api.type.capability.ICuriosItemHandler");
             equipped = handler.getMethod("getEquippedCurios");
-            Class<?> items = Class.forName("net.minecraftforge.items.IItemHandler");
+            Class<?> items = Class.forName("net.neoforged.neoforge.items.IItemHandler");
             slots = items.getMethod("getSlots"); stackAt = items.getMethod("getStackInSlot", int.class);
             if (!Optional.class.isAssignableFrom(inventory.getReturnType())) unwrap = inventory.getReturnType().getMethod("resolve");
             available = true;

@@ -10,7 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.util.List;
 
@@ -69,7 +69,7 @@ public final class GhrothArmoryManager {
                 SoundSource.PLAYERS, 0.9F, 1.0F);
     }
 
-    private static RegistryObject<SoundEvent> randomPurchaseSound(ServerPlayer player) {
+    private static DeferredHolder<SoundEvent, SoundEvent> randomPurchaseSound(ServerPlayer player) {
         return switch (player.getRandom().nextInt(7)) {
             case 0 -> ModSounds.GHROTH_PURCHASE_SUCCESS_1;
             case 1 -> ModSounds.GHROTH_PURCHASE_SUCCESS_2;

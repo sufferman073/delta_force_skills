@@ -13,7 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -142,7 +142,7 @@ public final class GtiTradingHallManager {
         ItemStack stack = source.copy();
         stack.setCount(1);
         List<Entry> entries = new ArrayList<>(entries());
-        entries.removeIf(entry -> ItemStack.isSameItemSameTags(entry.stack(), stack));
+        entries.removeIf(entry -> ItemStack.isSameItemSameComponents(entry.stack(), stack));
         entries.add(new Entry(stack, price, category));
         save(entries);
         return true;
@@ -153,7 +153,7 @@ public final class GtiTradingHallManager {
         ItemStack stack = source.copy();
         stack.setCount(1);
         List<Entry> entries = new ArrayList<>(entries());
-        boolean removed = entries.removeIf(entry -> ItemStack.isSameItemSameTags(entry.stack(), stack));
+        boolean removed = entries.removeIf(entry -> ItemStack.isSameItemSameComponents(entry.stack(), stack));
         if (removed) save(entries);
         return removed;
     }
@@ -187,7 +187,7 @@ public final class GtiTradingHallManager {
     public static void tryRandomReward(ServerPlayer player) {
         int claimed = Math.max(0, player.getPersistentData().getInt(RANDOM_REWARDS));
         if (claimed >= MAX_RANDOM_REWARDS || player.getRandom().nextFloat() >= 0.01F) return;
-        List<Item> items = ForgeRegistries.ITEMS.getValues().stream()
+        List<Item> items = BuiltInRegistries.ITEM.stream()
                 .filter(item -> item != Items.AIR && item != ModItems.GTI_SPECIAL_OPERATIONS.get()).toList();
         if (items.isEmpty()) return;
         int rewards = 1 + player.getRandom().nextInt(6);
@@ -221,7 +221,7 @@ public final class GtiTradingHallManager {
         CompoundTag tag = new CompoundTag();
         ItemStack stack = entry.stack().copy();
         stack.setCount(1);
-        tag.put("Stack", stack.save(new CompoundTag()));
+        tag.put("Stack", stack.saveOptional(net.minecraft.core.RegistryAccess.EMPTY));
         tag.putLong("Price", Math.max(1L, entry.price()));
         tag.putString("Category", entry.category().id());
         return tag.toString();
@@ -231,7 +231,7 @@ public final class GtiTradingHallManager {
         try {
             CompoundTag tag = TagParser.parseTag(encoded);
             if (!tag.contains("Stack", Tag.TAG_COMPOUND)) return null;
-            ItemStack stack = ItemStack.of(tag.getCompound("Stack"));
+            ItemStack stack = ItemStack.parseOptional(net.minecraft.core.RegistryAccess.EMPTY, tag.getCompound("Stack"));
             if (stack.isEmpty()) return null;
             stack.setCount(1);
             Category category = Category.byId(tag.getString("Category")).orElse(Category.MISC);

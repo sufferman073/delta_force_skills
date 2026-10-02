@@ -18,15 +18,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.level.ChunkEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,7 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class TamarindCompatEvents {
     private static final String MOD_ID = "tamarind";
     private static final String LAST_RESET = DealtForceSkillsMod.MODID + ".tamarind_last_loot_reset";
@@ -84,8 +83,8 @@ public final class TamarindCompatEvents {
     }
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || !isLoaded()) return;
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (!isLoaded()) return;
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null || server.getTickCount() % 20 != 0) return;
         for (ServerLevel level : server.getAllLevels()) {
@@ -245,8 +244,8 @@ public final class TamarindCompatEvents {
     private static List<LootCandidate> unique(List<LootCandidate> result) {
         Map<String, LootCandidate> unique = new LinkedHashMap<>();
         for (LootCandidate candidate : result) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(candidate.stack.getItem());
-            if (id != null) unique.putIfAbsent(id + "|" + String.valueOf(candidate.stack.getTag()), candidate);
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(candidate.stack.getItem());
+            if (id != null) unique.putIfAbsent(id + "|" + String.valueOf(candidate.stack.getComponentsPatch()), candidate);
         }
         return List.copyOf(unique.values());
     }
@@ -254,7 +253,7 @@ public final class TamarindCompatEvents {
     private static void addIds(List<LootCandidate> result, List<ResourceLocation> ids,
                                boolean special, boolean ultraRare) {
         for (ResourceLocation id : ids) {
-            Item item = ForgeRegistries.ITEMS.getValue(id);
+            Item item = BuiltInRegistries.ITEM.get(id);
             if (item != null) {
                 ItemStack stack = new ItemStack(item);
                 result.add(new LootCandidate(stack, DfsItemQuality.of(stack), special, ultraRare));
@@ -273,13 +272,13 @@ public final class TamarindCompatEvents {
             case "@dfs_repairs" -> addDfsRepairs(result, special);
             case "@tamarind_room_cards" -> {
                 CreativeModeTab tab = BuiltInRegistries.CREATIVE_MODE_TAB.get(
-                        new ResourceLocation("tamarind", "fangka"));
+                        ResourceLocation.fromNamespaceAndPath("tamarind", "fangka"));
                 if (tab != null) addStacks(result, tab.getDisplayItems(), null, special);
             }
             default -> {
                 Pattern pattern = glob(selector);
-                for (Item item : ForgeRegistries.ITEMS.getValues()) {
-                    ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+                for (Item item : BuiltInRegistries.ITEM) {
+                    ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
                     if (id != null && pattern.matcher(id.toString()).matches()) {
                         ItemStack stack = new ItemStack(item);
                             result.add(new LootCandidate(stack, DfsItemQuality.of(stack), special, false));
@@ -298,8 +297,8 @@ public final class TamarindCompatEvents {
     }
 
     private static void addDfsRepairs(List<LootCandidate> result, boolean special) {
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        for (Item item : BuiltInRegistries.ITEM) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
             if (id != null && DealtForceSkillsMod.MODID.equals(id.getNamespace())
                     && id.getPath().contains("repair_kit")) {
                 ItemStack stack = new ItemStack(item);
@@ -320,7 +319,7 @@ public final class TamarindCompatEvents {
     }
 
     private static boolean matchesAny(ItemStack stack, List<String> selectors) {
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (id == null) return false;
         for (String selector : selectors) if (glob(selector).matcher(id.toString()).matches()) return true;
         return false;
@@ -338,9 +337,9 @@ public final class TamarindCompatEvents {
 
     private static ResourceLocation id(BlockEntity blockEntity) {
         if (blockEntity == null) return null;
-        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(blockEntity.getBlockState().getBlock());
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(blockEntity.getBlockState().getBlock());
         if (TamarindLootConfig.table(blockId) != null) return blockId;
-        return ForgeRegistries.BLOCK_ENTITY_TYPES.getKey(blockEntity.getType());
+        return BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(blockEntity.getType());
     }
 
     private static boolean isLoaded() {

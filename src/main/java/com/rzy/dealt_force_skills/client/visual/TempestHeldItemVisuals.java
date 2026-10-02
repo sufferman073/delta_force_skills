@@ -8,17 +8,18 @@ import com.rzy.dealt_force_skills.client.renderer.BlockbenchAnimatedModelRendere
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class TempestHeldItemVisuals {
     private static final ResourceLocation WALL_DRILL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "tempest_wall_drill_stinger");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "tempest_wall_drill_stinger");
 
     private TempestHeldItemVisuals() {
     }
@@ -44,7 +45,7 @@ public final class TempestHeldItemVisuals {
         Minecraft minecraft = Minecraft.getInstance();
         BlockbenchAnimatedModelRenderer.render(
                 WALL_DRILL, "idle",
-                (minecraft.player.tickCount + event.getPartialTick()) / 20.0F,
+                (minecraft.player.tickCount + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F,
                 poseStack, event.getMultiBufferSource(), event.getPackedLight());
         poseStack.popPose();
     }

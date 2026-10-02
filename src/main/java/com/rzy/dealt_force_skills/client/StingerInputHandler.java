@@ -2,13 +2,13 @@ package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.stinger.StingerTool;
 import com.rzy.dealt_force_skills.character.stinger.StingerToolAction;
 import com.rzy.dealt_force_skills.client.character.ClientCharacterSelectionState;
-import com.rzy.dealt_force_skills.client.character.ClientStingerHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
+import com.rzy.dealt_force_skills.client.character.ClientStingerHudState;
 import com.rzy.dealt_force_skills.client.visual.ClientToolReleaseAction;
 import com.rzy.dealt_force_skills.network.C2S_StingerToolAction;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
@@ -17,15 +17,16 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class StingerInputHandler {
     private static volatile int SMOKE_EQUIP_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SMOKE_EQUIP_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.stinger_input_handler.smoke_equip_hold_ticks", 8));
     private static volatile int SMOKE_RELEASE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SMOKE_RELEASE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.stinger_input_handler.smoke_release_ticks", 3));
@@ -65,21 +66,9 @@ public final class StingerInputHandler {
             return;
         }
 
-        if (active1Owned) {
-            handleActive1Key();
-        } else {
-            resetActive1();
-        }
-        if (active2Owned) {
-            handleActive2Key();
-        } else {
-            resetActive2();
-        }
-        if (coreOwned) {
-            handleCoreKey();
-        } else {
-            resetCore();
-        }
+        if (active1Owned) handleActive1Key(); else resetActive1();
+        if (active2Owned) handleActive2Key(); else resetActive2();
+        if (coreOwned) handleCoreKey(); else resetCore();
         if (nativeCharacter || ClientCommanderState.inherits(ModCharacters.STINGER_ID)) {
             spawnDownedMarkers(minecraft);
         }
@@ -150,6 +139,9 @@ public final class StingerInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!ClientStingerHudState.hasEquippedTool()) {
             return;
         }

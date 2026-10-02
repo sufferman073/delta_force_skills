@@ -5,6 +5,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 
 public class RaptorElectromagneticInterferenceEffect extends MobEffect {
     public RaptorElectromagneticInterferenceEffect() {
-        super(MobEffectCategory.NEUTRAL, 0x5B7CFA);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
     }
 }

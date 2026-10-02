@@ -41,7 +41,7 @@ public final class GamblerPowerScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         int left = panelLeft();
         int top = panelTop();
         graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xEE101622);
@@ -92,13 +92,13 @@ public final class GamblerPowerScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         List<GamblerSuperpower> powers = visiblePowers();
         int maxScroll = Math.max(0, powers.size() - VISIBLE_ROWS);
         if (maxScroll <= 0) {
-            return super.mouseScrolled(mouseX, mouseY, delta);
+            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         }
-        scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.signum(delta)));
+        scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.signum(scrollY)));
         return true;
     }
 

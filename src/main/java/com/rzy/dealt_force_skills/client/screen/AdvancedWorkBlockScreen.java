@@ -23,20 +23,16 @@ public class AdvancedWorkBlockScreen extends Screen {
     private static final int ROW_GAP = 3;
     private static final int OUTPUT_ROW_HEIGHT = 22;
     private static final int SCROLL_STEP = 24;
-    private static final int SEARCH_DEBOUNCE_TICKS = 8;
 
     private AdvancedWorkBlockData data;
-    private String query;
     private ResourceLocation selectedId;
     private boolean searchFocused;
     private int listScroll;
     private int outputScroll;
-    private int pendingSearchTicks = -1;
 
     public AdvancedWorkBlockScreen(AdvancedWorkBlockData data) {
         super(Component.translatable(titleKey(data)));
         this.data = data;
-        this.query = data.query();
         this.selectedId = data.entries().isEmpty() ? null : data.entries().get(0).id();
     }
 
@@ -53,25 +49,12 @@ public class AdvancedWorkBlockScreen extends Screen {
     }
 
     private void setData(AdvancedWorkBlockData next) {
-        // Drop stale replies from superseded keystrokes so fast IME input doesn't clobber the box.
-        if (!normalizeQuery(next.query()).equals(normalizeQuery(query))) {
-            return;
-        }
-        boolean sameView = data.mode() == next.mode()
-                && normalizeQuery(data.query()).equals(normalizeQuery(next.query()))
-                && data.page() == next.page();
         this.data = next;
         if (selectedId == null || next.entries().stream().noneMatch(entry -> entry.id().equals(selectedId))) {
             selectedId = next.entries().isEmpty() ? null : next.entries().get(0).id();
-            outputScroll = 0;
         }
-        if (sameView) {
-            listScroll = clamp(listScroll, 0, maxListScroll());
-            outputScroll = clamp(outputScroll, 0, maxOutputScroll());
-        } else {
-            listScroll = 0;
-            outputScroll = 0;
-        }
+        listScroll = 0;
+        outputScroll = 0;
     }
 
     @Override
@@ -80,21 +63,8 @@ public class AdvancedWorkBlockScreen extends Screen {
     }
 
     @Override
-    public void tick() {
-        super.tick();
-        if (pendingSearchTicks >= 0 && --pendingSearchTicks <= 0) {
-            pendingSearchTicks = -1;
-            request(data.mode(), query, 0);
-        }
-    }
-
-    private void scheduleSearch() {
-        pendingSearchTicks = SEARCH_DEBOUNCE_TICKS;
-    }
-
-    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int left = panelLeft();
         int top = panelTop();
         graphics.fill(left, top, left + panelWidth(), top + panelHeight(), 0xE012171D);
@@ -114,16 +84,13 @@ public class AdvancedWorkBlockScreen extends Screen {
             int tab = tabAt(mouseX, mouseY);
             if (tab >= 0 && tab != data.mode()) {
                 selectedId = null;
-                query = "";
-                pendingSearchTicks = -1;
                 request(tab, "", 0);
                 return true;
             }
             searchFocused = inside(mouseX, mouseY, searchLeft(), searchTop(), searchWidth(), 18);
             int pageDelta = pageButtonAt(mouseX, mouseY);
             if (pageDelta != 0) {
-                pendingSearchTicks = -1;
-                request(data.mode(), query, data.page() + pageDelta);
+                request(data.mode(), data.query(), data.page() + pageDelta);
                 return true;
             }
             EntryView row = entryAt(mouseX, mouseY);
@@ -136,7 +103,7 @@ public class AdvancedWorkBlockScreen extends Screen {
             EntryView selected = selectedEntry();
             if (action != null && selected != null) {
                 NetworkHandler.sendToServer(new C2S_AdvancedWorkBlockAction(data.pos(), data.blockType(),
-                        data.mode(), selected.id(), action.action(), action.count(), query, data.page()));
+                        data.mode(), selected.id(), action.action(), action.count()));
                 return true;
             }
             if (searchFocused) {
@@ -149,15 +116,13 @@ public class AdvancedWorkBlockScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (searchFocused) {
-            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !query.isEmpty()) {
-                query = query.substring(0, query.length() - 1);
-                scheduleSearch();
+            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !data.query().isEmpty()) {
+                request(data.mode(), data.query().substring(0, data.query().length() - 1), 0);
                 return true;
             }
             if (keyCode == GLFW.GLFW_KEY_ENTER) {
                 searchFocused = false;
-                pendingSearchTicks = -1;
-                request(data.mode(), query, 0);
+                request(data.mode(), data.query(), 0);
                 return true;
             }
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
@@ -170,25 +135,24 @@ public class AdvancedWorkBlockScreen extends Screen {
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
-        if (searchFocused && !Character.isISOControl(codePoint) && query.length() < 80) {
-            query += codePoint;
-            scheduleSearch();
+        if (searchFocused && !Character.isISOControl(codePoint) && data.query().length() < 80) {
+            request(data.mode(), data.query() + codePoint, 0);
             return true;
         }
         return super.charTyped(codePoint, modifiers);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (inside(mouseX, mouseY, listLeft(), listTop(), listWidth(), listHeight())) {
-            listScroll = clamp(listScroll - (int) Math.round(delta * SCROLL_STEP), 0, maxListScroll());
+            listScroll = clamp(listScroll - (int) Math.round(scrollY * SCROLL_STEP), 0, maxListScroll());
             return true;
         }
         if (inside(mouseX, mouseY, outputLeft(), outputTop(), outputWidth(), outputHeight())) {
-            outputScroll = clamp(outputScroll - (int) Math.round(delta * SCROLL_STEP), 0, maxOutputScroll());
+            outputScroll = clamp(outputScroll - (int) Math.round(scrollY * SCROLL_STEP), 0, maxOutputScroll());
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void request(int mode, String query, int page) {
@@ -221,11 +185,11 @@ public class AdvancedWorkBlockScreen extends Screen {
         int y = searchTop();
         graphics.fill(x, y, x + searchWidth(), y + 18, 0xAA111820);
         graphics.fill(x, y, x + searchWidth(), y + 1, searchFocused ? 0xFFFFD34D : 0x66304050);
-        Component text = query.isBlank()
+        Component text = data.query().isBlank()
                 ? Component.translatable("screen.dealt_force_skills.advanced_work.search")
-                : Component.literal(query);
+                : Component.literal(data.query());
         graphics.drawString(font, fit(text, searchWidth() - 10), x + 5, y + 5,
-                query.isBlank() ? 0xFF7D8791 : 0xFFFFFF);
+                data.query().isBlank() ? 0xFF7D8791 : 0xFFFFFF);
         Component resultText = Component.translatable("screen.dealt_force_skills.advanced_work.results",
                 data.entries().size(), data.total(), data.page() + 1, maxPage() + 1);
         graphics.drawString(font, fit(resultText, searchWidth() - 94), x, y + 24, 0xFFBFC7D0);
@@ -652,10 +616,6 @@ public class AdvancedWorkBlockScreen extends Screen {
 
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
-    }
-
-    private static String normalizeQuery(String query) {
-        return query == null ? "" : query.trim();
     }
 
     private record ActionButton(int x, int y, int w, int h, int action, int count, Component label) {

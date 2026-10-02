@@ -1,13 +1,16 @@
 package com.rzy.dealt_force_skills.item;
 
-import com.mojang.datafixers.util.Pair;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_OpenEternalLoveBlessing;
 import com.rzy.dealt_force_skills.registry.ModItems;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -19,12 +22,14 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.registries.ForgeRegistries;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -66,8 +71,8 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    protected void addExtraTooltip(ItemStack stack, Item.TooltipContext context, List<Component> tooltip,
+                                   TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.eternal_love_blessing.1")
                 .withStyle(ChatFormatting.LIGHT_PURPLE));
         for (String control : List.of("capture", "offhand", "upgrade", "manage", "clear")) {
@@ -124,13 +129,15 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
         if (stack.isEmpty()) {
             return;
         }
-        CompoundTag records = stack.getOrCreateTag().getCompound(RECORDS_TAG);
+        CompoundTag tag = customData(stack);
+        CompoundTag records = tag.getCompound(RECORDS_TAG);
         records.remove(effectId.toString());
         if (records.isEmpty()) {
-            stack.getOrCreateTag().remove(RECORDS_TAG);
+            tag.remove(RECORDS_TAG);
         } else {
-            stack.getOrCreateTag().put(RECORDS_TAG, records);
+            tag.put(RECORDS_TAG, records);
         }
+        setCustomData(stack, tag);
         playRecordSound(player);
         openRecordsScreen(player, stack);
     }
@@ -138,10 +145,10 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
     public static void openRecordsScreen(ServerPlayer player, ItemStack stack) {
         List<S2C_OpenEternalLoveBlessing.Entry> entries = records(stack).entrySet().stream()
                 .map(entry -> {
-                    MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(entry.getKey());
+                    Holder<MobEffect> effect = effectHolder(entry.getKey());
                     Component name = effect == null
                             ? Component.literal(entry.getKey().toString())
-                            : effect.getDisplayName();
+                            : effect.value().getDisplayName();
                     return new S2C_OpenEternalLoveBlessing.Entry(entry.getKey().toString(),
                             name.getString(), entry.getValue());
                 })
@@ -153,20 +160,20 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
 
     public static void tickInventoryEffects(ServerPlayer player) {
         tickHeldSound(player);
-        Map<MobEffect, Integer> merged = new LinkedHashMap<>();
+        Map<Holder<MobEffect>, Integer> merged = new LinkedHashMap<>();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
             if (!stack.is(ModItems.ETERNAL_LOVE_BLESSING.get())) {
                 continue;
             }
             for (Map.Entry<ResourceLocation, Integer> entry : records(stack).entrySet()) {
-                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(entry.getKey());
+                Holder<MobEffect> effect = effectHolder(entry.getKey());
                 if (effect != null) {
                     merged.merge(effect, entry.getValue(), Math::max);
                 }
             }
         }
-        for (Map.Entry<MobEffect, Integer> entry : merged.entrySet()) {
+        for (Map.Entry<Holder<MobEffect>, Integer> entry : merged.entrySet()) {
             int amplifier = Math.max(0, Math.min(MAX_RECORD_LEVEL, entry.getValue()) - 1);
             MobEffectInstance current = player.getEffect(entry.getKey());
             if (current == null || current.getAmplifier() < amplifier || current.getDuration() < 220) {
@@ -178,14 +185,18 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
 
     public static Map<ResourceLocation, Integer> records(ItemStack stack) {
         Map<ResourceLocation, Integer> result = new LinkedHashMap<>();
-        if (stack.isEmpty() || !stack.hasTag()) {
+        if (stack.isEmpty()) {
             return result;
         }
-        CompoundTag tag = stack.getTag().getCompound(RECORDS_TAG);
-        for (String key : tag.getAllKeys()) {
+        CompoundTag tag = customData(stack);
+        if (!tag.contains(RECORDS_TAG, Tag.TAG_COMPOUND)) {
+            return result;
+        }
+        CompoundTag records = tag.getCompound(RECORDS_TAG);
+        for (String key : records.getAllKeys()) {
             try {
                 ResourceLocation id = ResourceLocation.parse(key);
-                int level = Math.max(1, Math.min(MAX_RECORD_LEVEL, tag.getInt(key)));
+                int level = Math.max(1, Math.min(MAX_RECORD_LEVEL, records.getInt(key)));
                 result.put(id, level);
             } catch (RuntimeException ignored) {
             }
@@ -193,23 +204,30 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
         return result;
     }
 
-    private static boolean recordEffect(ItemStack stack, MobEffect effect, int level, boolean incrementExisting) {
-        ResourceLocation id = ForgeRegistries.MOB_EFFECTS.getKey(effect);
+    private static boolean recordEffect(ItemStack stack, Holder<MobEffect> effect, int level,
+                                        boolean incrementExisting) {
+        if (effect == null) {
+            return false;
+        }
+        ResourceLocation id = BuiltInRegistries.MOB_EFFECT.getKey(effect.value());
         if (id == null) {
             return false;
         }
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = customData(stack);
         CompoundTag records = tag.getCompound(RECORDS_TAG);
         String key = id.toString();
         int old = Math.max(0, records.getInt(key));
         int next = incrementExisting && old > 0 ? old + 1 : Math.max(old, level);
         records.putInt(key, Math.max(1, Math.min(MAX_RECORD_LEVEL, next)));
         tag.put(RECORDS_TAG, records);
+        setCustomData(stack, tag);
         return true;
     }
 
     private static void clearRecords(ItemStack stack) {
-        stack.getOrCreateTag().remove(RECORDS_TAG);
+        CompoundTag tag = customData(stack);
+        tag.remove(RECORDS_TAG);
+        setCustomData(stack, tag);
     }
 
     private static List<MobEffectInstance> collectItemEffects(ItemStack stack, ServerPlayer player) {
@@ -217,11 +235,16 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
         if (stack.isEmpty()) {
             return result;
         }
-        result.addAll(PotionUtils.getMobEffects(stack));
-        FoodProperties food = stack.getItem().getFoodProperties();
+        PotionContents potion = stack.get(DataComponents.POTION_CONTENTS);
+        if (potion != null) {
+            for (MobEffectInstance instance : potion.getAllEffects()) {
+                result.add(instance);
+            }
+        }
+        FoodProperties food = stack.get(DataComponents.FOOD);
         if (food != null) {
-            for (Pair<?, Float> pair : food.getEffects()) {
-                MobEffectInstance instance = foodEffectInstance(pair.getFirst());
+            for (Object possible : food.effects()) {
+                MobEffectInstance instance = foodEffectInstance(possible);
                 if (instance != null) {
                     result.add(instance);
                 }
@@ -231,7 +254,8 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
             for (EffectConsumableItem.EffectEntry entry : item.blessingPreviewEffects()) {
                 MobEffect effect = entry.effect().get();
                 if (effect != null) {
-                    result.add(new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier()));
+                    result.add(new MobEffectInstance(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect),
+                            entry.durationTicks(), entry.amplifier()));
                 }
             }
         }
@@ -239,7 +263,8 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
             for (EffectConsumableItem.EffectEntry entry : item.blessingPreviewOutcome(player.getRandom())) {
                 MobEffect effect = entry.effect().get();
                 if (effect != null) {
-                    result.add(new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier()));
+                    result.add(new MobEffectInstance(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect),
+                            entry.durationTicks(), entry.amplifier()));
                 }
             }
         }
@@ -258,7 +283,7 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
         }
         for (String methodName : List.of("effect", "getEffect")) {
             try {
-                java.lang.reflect.Method method = value.getClass().getMethod(methodName);
+                Method method = value.getClass().getMethod(methodName);
                 return foodEffectInstance(method.invoke(value));
             } catch (ReflectiveOperationException | ClassCastException | LinkageError ignored) {
             }
@@ -297,6 +322,19 @@ public class EternalLoveBlessingItem extends QualityTooltipItem {
         if (!offhand.isEmpty()) {
             offhand.shrink(1);
         }
+    }
+
+    private static Holder<MobEffect> effectHolder(ResourceLocation id) {
+        MobEffect effect = BuiltInRegistries.MOB_EFFECT.get(id);
+        return effect == null ? null : BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect);
+    }
+
+    private static CompoundTag customData(ItemStack stack) {
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+    }
+
+    private static void setCustomData(ItemStack stack, CompoundTag tag) {
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     public static void playObtainSound(ServerPlayer player) {

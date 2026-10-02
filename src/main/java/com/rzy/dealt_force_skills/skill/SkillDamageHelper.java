@@ -1,7 +1,8 @@
 package com.rzy.dealt_force_skills.skill;
 
-import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.boss.BossCombatRules;
+
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
 import com.rzy.dealt_force_skills.compat.TrainingTargetCompat;
 import com.rzy.dealt_force_skills.registry.ModGameRules;
@@ -63,7 +64,7 @@ public final class SkillDamageHelper {
     }
 
     private static ResourceKey<DamageType> key(String id) {
-        return ResourceKey.create(Registries.DAMAGE_TYPE, new ResourceLocation(DealtForceSkillsMod.MODID, id));
+        return ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, id));
     }
 
     public static float scale(LivingEntity source, float amount) {
@@ -108,8 +109,7 @@ public final class SkillDamageHelper {
     }
 
     public static boolean hurtUnscaled(LivingEntity target, DamageSource source, float amount) {
-        // Reflect damage types must never be blocked by teammate filters — the "attacker" in the
-        // source is the shield holder, not a hostile player dealing skill damage.
+        // Reflect damage must never be blocked by teammate filters (source entity is the shield holder).
         if (!isReflectDamage(source) && shouldSkipTeammateDamage(target, source, null)) {
             return false;
         }
@@ -130,6 +130,9 @@ public final class SkillDamageHelper {
 
     private static boolean shouldSkipTeammateDamage(LivingEntity target, DamageSource source, LivingEntity sourceEntity) {
         Entity attacker = sourceEntity != null ? sourceEntity : source.getEntity();
+        if (target instanceof Player player && !TargetingUtil.isTargetablePlayer(player)) {
+            return true;
+        }
         return sourceEntity instanceof Player player
                 && target == player
                 && CommanderStateManager.isCommander(player)
@@ -140,6 +143,12 @@ public final class SkillDamageHelper {
 
     public static DamageSource trueDamage(ServerLevel level, Entity directEntity, Entity causingEntity) {
         return source(level, TRUE_SKILL_DAMAGE, directEntity, causingEntity);
+    }
+
+    public static List<ResourceKey<DamageType>> allTypes(ServerLevel level) {
+        return level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).entrySet().stream()
+                .map(java.util.Map.Entry::getKey)
+                .toList();
     }
 
     public static DamageSource sinevaBladeWire(ServerLevel level, Entity directEntity, Entity causingEntity) {
@@ -272,11 +281,5 @@ public final class SkillDamageHelper {
                 directEntity,
                 causingEntity
         );
-    }
-
-    public static List<ResourceKey<DamageType>> allTypes(ServerLevel level) {
-        return level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).entrySet().stream()
-                .map(java.util.Map.Entry::getKey)
-                .toList();
     }
 }

@@ -2,13 +2,14 @@ package com.rzy.dealt_force_skills.config;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.fml.loading.FMLPaths;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,8 +99,8 @@ public final class DealtForcePlayerConfig {
 
     private static void populateMissingDefaults(ServerPlayer player) {
         for (AttributeInstance instance : player.getAttributes().getSyncableAttributes()) {
-            Attribute attribute = instance.getAttribute();
-            ResourceLocation id = ForgeRegistries.ATTRIBUTES.getKey(attribute);
+            Holder<Attribute> attribute = instance.getAttribute();
+            ResourceLocation id = BuiltInRegistries.ATTRIBUTE.getKey(attribute.value());
             if (id != null) {
                 ensureDefaultValue(pathFor(id), instance.getBaseValue(), id);
             }
@@ -107,8 +108,8 @@ public final class DealtForcePlayerConfig {
     }
 
     private static void applyConfiguredAttributes(ServerPlayer player) {
-        for (Attribute attribute : ForgeRegistries.ATTRIBUTES.getValues()) {
-            ResourceLocation id = ForgeRegistries.ATTRIBUTES.getKey(attribute);
+        for (Attribute attribute : BuiltInRegistries.ATTRIBUTE) {
+            ResourceLocation id = BuiltInRegistries.ATTRIBUTE.getKey(attribute);
             if (id == null) {
                 continue;
             }
@@ -116,7 +117,7 @@ public final class DealtForcePlayerConfig {
             if (configured == null) {
                 continue;
             }
-            AttributeInstance instance = player.getAttribute(attribute);
+            AttributeInstance instance = player.getAttribute(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute));
             if (instance != null) {
                 applyConfiguredAttribute(player, instance, id, configured);
             }

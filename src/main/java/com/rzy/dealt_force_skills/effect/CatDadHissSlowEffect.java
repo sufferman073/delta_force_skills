@@ -1,16 +1,19 @@
 package com.rzy.dealt_force_skills.effect;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.resources.ResourceLocation;
 
 public class CatDadHissSlowEffect extends MobEffect {
     public CatDadHissSlowEffect() {
-        super(MobEffectCategory.NEUTRAL, 0xD7B48A);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
         addAttributeModifier(Attributes.MOVEMENT_SPEED,
-                "f675fc3d-f07d-4bb0-a83d-c41374aee274",
+                ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.cat_dad_hiss_slow.movement_speed"),
                 -0.20D,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 }

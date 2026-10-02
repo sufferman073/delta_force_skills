@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterAvailability;
 import com.rzy.dealt_force_skills.character.CharacterBranchPackManager;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
@@ -13,34 +14,36 @@ import com.rzy.dealt_force_skills.shop.SaeedRecruitManager;
 import com.rzy.dealt_force_skills.skill.SkillDispatcher;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record C2S_SelectCharacter(String characterId) implements CustomPacketPayload {
 
-public class C2S_SelectCharacter {
-    private final String characterId;
+    public static final CustomPacketPayload.Type<C2S_SelectCharacter> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_select_character"));
 
-    public C2S_SelectCharacter(String characterId) {
-        this.characterId = characterId;
+    public static final StreamCodec<FriendlyByteBuf, C2S_SelectCharacter> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> buf.writeUtf(msg.characterId),
+                    buf -> new C2S_SelectCharacter(buf.readUtf(256))
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    public static void encode(C2S_SelectCharacter msg, FriendlyByteBuf buf) {
-        buf.writeUtf(msg.characterId);
-    }
-
-    public static C2S_SelectCharacter decode(FriendlyByteBuf buf) {
-        return new C2S_SelectCharacter(buf.readUtf(256));
-    }
-
-    public static void handle(C2S_SelectCharacter msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null || player.isSpectator()) return;
+    public static void handle(C2S_SelectCharacter msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
+            if (player.isSpectator()) return;
 
             var currentCharacterId = CharacterSelectionManager.getSelectedCharacterId(player);
-            if (player.hasEffect(ModEffects.STUN.get()) || player.hasEffect(ModEffects.WEBBED.get()) || StingerStateManager.isDowned(player)) {
+            if (player.hasEffect(ModEffects.STUN) || player.hasEffect(ModEffects.WEBBED) || StingerStateManager.isDowned(player)) {
                 NetworkHandler.sendToPlayer(new S2C_SyncSelectedCharacter(currentCharacterId.orElse("")), player);
                 player.displayClientMessage(Component.translatable("message.dealt_force_skills.stunned"), true);
                 return;
@@ -52,6 +55,7 @@ public class C2S_SelectCharacter {
             }
 
             if (currentCharacterId.isPresent()) {
+                // 已合并 DeltaForce 干员选择界面，允许自由替换角色（不再锁定非创造玩家）
                 var requestedCharacter = CharacterBranchPackManager.findCharacter(msg.characterId);
                 if (requestedCharacter.isEmpty()) {
                     NetworkHandler.sendToPlayer(new S2C_SyncSelectedCharacter(currentCharacterId.get()), player);
@@ -74,8 +78,7 @@ public class C2S_SelectCharacter {
                         ? ItemStack.EMPTY : findDriftwood(player);
                 if (!freeReselection && driftwood.isEmpty()) {
                     NetworkHandler.sendToPlayer(new S2C_SyncSelectedCharacter(currentCharacterId.get()), player);
-                    player.displayClientMessage(Component.translatable(
-                            "message.dealt_force_skills.driftwood_missing"), false);
+                    player.displayClientMessage(Component.translatable("message.dealt_force_skills.driftwood_missing"), false);
                     return;
                 }
 
@@ -130,7 +133,6 @@ public class C2S_SelectCharacter {
                     }
             );
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static ItemStack findDriftwood(ServerPlayer player) {

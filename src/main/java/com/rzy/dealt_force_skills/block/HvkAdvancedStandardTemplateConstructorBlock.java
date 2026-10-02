@@ -8,6 +8,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.SoundType;
@@ -21,6 +22,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 public class HvkAdvancedStandardTemplateConstructorBlock extends BaseEntityBlock {
+    public static final MapCodec<HvkAdvancedStandardTemplateConstructorBlock> CODEC =
+            simpleCodec(p -> new HvkAdvancedStandardTemplateConstructorBlock());
+
     public HvkAdvancedStandardTemplateConstructorBlock() {
         super(BlockBehaviour.Properties.of()
                 .mapColor(MapColor.METAL)
@@ -30,8 +34,23 @@ public class HvkAdvancedStandardTemplateConstructorBlock extends BaseEntityBlock
     }
 
     @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
+
+    @Override
     public RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;
+    }
+
+    @Nullable
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        return SpecialWorkBlockConfig.shouldPreventPlacement(context, SpecialWorkBlockConfig.isHvkConstructorEnabled())
+                || HvkWorkBlockSupport.shouldPreventConstructorPlacement(
+                context.getLevel(), context.getClickedPos(), context.getPlayer())
+                ? null
+                : super.getStateForPlacement(context);
     }
 
     @Nullable
@@ -40,20 +59,9 @@ public class HvkAdvancedStandardTemplateConstructorBlock extends BaseEntityBlock
         return ModBlockEntities.HVK_ADVANCED_STANDARD_TEMPLATE_CONSTRUCTOR.get().create(pos, state);
     }
 
-    @Nullable
     @Override
-    public BlockState getStateForPlacement(BlockPlaceContext context) {
-        if (SpecialWorkBlockConfig.shouldPreventPlacement(context, SpecialWorkBlockConfig.isHvkConstructorEnabled())
-                || HvkWorkBlockSupport.shouldPreventConstructorPlacement(context.getLevel(), context.getClickedPos(),
-                context.getPlayer())) {
-            return null;
-        }
-        return super.getStateForPlacement(context);
-    }
-
-    @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+                                 BlockHitResult hit) {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
@@ -61,7 +69,7 @@ public class HvkAdvancedStandardTemplateConstructorBlock extends BaseEntityBlock
             return InteractionResult.CONSUME;
         }
         if (level.getBlockEntity(pos) instanceof HvkAdvancedStandardTemplateConstructorBlockEntity constructor) {
-            return constructor.use(player, hand);
+            return constructor.use(player, InteractionHand.MAIN_HAND);
         }
         return InteractionResult.PASS;
     }

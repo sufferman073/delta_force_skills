@@ -6,6 +6,7 @@ import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.api.item.builder.AmmoItemBuilder;
 import com.tacz.guns.resource.index.CommonGunIndex;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
@@ -19,7 +20,7 @@ public final class AsaraTaczEquipment {
     private AsaraTaczEquipment() {
     }
 
-    public static ItemStack randomGun(AsaraTrooperRole role, RandomSource random) {
+    public static ItemStack randomGun(AsaraTrooperRole role, RandomSource random, HolderLookup.Provider registries) {
         List<TaczShopCatalog.Entry> matches = new ArrayList<>();
         for (TaczShopCatalog.Entry entry : TaczShopCatalog.entries()) {
             if (entry.type() == TaczShopCatalog.Type.GUN && matchesRole(role, entry.id())) {
@@ -31,7 +32,7 @@ public final class AsaraTaczEquipment {
         }
         ItemStack gun = matches.get(random.nextInt(matches.size())).preview().copy();
         gun.setCount(1);
-        installRandomAttachments(gun, random);
+        installRandomAttachments(gun, random, registries);
         SaeedTaczEquipment.primeForShot(role.guardType(), gun);
         return gun;
     }
@@ -57,11 +58,9 @@ public final class AsaraTaczEquipment {
         return List.copyOf(result);
     }
 
-    public static void clearReserveAmmo(ItemStack gun) {
-        SaeedTaczEquipment.clearReserveAmmo(gun);
-    }
+    public static void clearReserveAmmo(ItemStack gun) { SaeedTaczEquipment.clearReserveAmmo(gun); }
 
-    private static void installRandomAttachments(ItemStack gun, RandomSource random) {
+    private static void installRandomAttachments(ItemStack gun, RandomSource random, HolderLookup.Provider registries) {
         IGun gunApi = IGun.getIGunOrNull(gun);
         if (gunApi == null) {
             return;
@@ -76,7 +75,7 @@ public final class AsaraTaczEquipment {
         for (int installed = 0; installed < wanted && !candidates.isEmpty();) {
             ItemStack attachment = candidates.remove(random.nextInt(candidates.size()));
             if (gunApi.allowAttachment(gun, attachment)) {
-                gunApi.installAttachment(gun, attachment);
+                gunApi.installAttachment(registries, gun, attachment);
                 installed++;
             }
         }

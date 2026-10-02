@@ -61,7 +61,7 @@ public final class FoxMusicPlayerScreen extends Screen {
         if (pending && net.minecraft.Util.getMillis() - sentAt >= 2000L) { pending = false; feedback = label("retry"); }
     }
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         graphics.fill(left, top, left + panelWidth, top + 234, 0xF0141E28);
         graphics.drawString(font, title, left + 12, top + 10, 0xFFFFAA);
         graphics.drawString(font, Component.translatable("tooltip.dealt_force_skills.fox_music_player.discs", snapshot.total(), FoxMusicData.CAPACITY), left + 12, top + 25, 0x9ED9FF);

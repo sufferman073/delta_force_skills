@@ -3,15 +3,15 @@ package com.rzy.dealt_force_skills.client.visual;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.client.character.ClientUndeadHudState;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLivingEvent;
-import net.minecraftforge.client.event.RenderNameTagEvent;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
+import net.neoforged.neoforge.client.event.RenderNameTagEvent;
+import net.neoforged.neoforge.common.util.TriState;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class UndeadExplorerSpaceVisuals {
     private UndeadExplorerSpaceVisuals() {
     }
@@ -26,7 +26,7 @@ public final class UndeadExplorerSpaceVisuals {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderNameTag(RenderNameTagEvent event) {
         if (hidesOtherEntities() && event.getEntity() != Minecraft.getInstance().player) {
-            event.setResult(Event.Result.DENY);
+            event.setCanRender(TriState.FALSE);
         }
     }
 

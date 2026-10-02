@@ -15,14 +15,14 @@ import mccfk.DeltaForce.java.network.C2S_CreateMarker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = com.rzy.dealt_force_skills.DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = com.rzy.dealt_force_skills.DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class CommanderInputHandler {
     private static final int LONG_HOLD_TICKS = 8;
     private static boolean selectionWasDown;
@@ -127,7 +127,7 @@ public final class CommanderInputHandler {
                 || !ClientCharacterSelectionState.isSelectedCharacter(ModCharacters.COMMANDER_ID)) {
             return;
         }
-        var view = DeltaForceClient.ForgeEvents.captureMarkerFromView();
+        var view = DeltaForceClient.captureMarkerFromView();
         if (view.isEmpty()) {
             minecraft.player.displayClientMessage(Component.translatable(
                     "message.dealt_force_skills.commander.support_mark_invalid"), true);

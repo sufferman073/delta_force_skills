@@ -40,8 +40,8 @@ import static com.rzy.dealt_force_skills.character.rover.RoverConfig.*;
 
 public final class RoverStateManager {
     public static final String ROOT = "dealt_force_skills.rover";
-    private static final UUID HEALTH_MODIFIER = UUID.fromString("bc0d9b64-8a9c-43f6-a96c-239774cd93de");
-    private static final UUID MOVE_MODIFIER = UUID.fromString("2656cf65-af80-42a5-ad91-a24dd352f937");
+    private static final net.minecraft.resources.ResourceLocation HEALTH_MODIFIER = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "rover_health");
+    private static final net.minecraft.resources.ResourceLocation MOVE_MODIFIER = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "rover_movement");
 
     private RoverStateManager() {}
 
@@ -85,20 +85,20 @@ public final class RoverStateManager {
     }
 
     public static boolean isDowned(LivingEntity entity) {
-        return entity.hasEffect(ModEffects.ROVER_DOWNED.get()) || entity.getPersistentData().getCompound(ROOT).getLong("DownedUntil") > 0;
+        return entity.hasEffect(ModEffects.ROVER_DOWNED) || entity.getPersistentData().getCompound(ROOT).getLong("DownedUntil") > 0;
     }
 
     public static boolean executingDeath(LivingEntity entity) {
         return data(entity).getBoolean("ExecutingDeath");
     }
 
-    public static boolean isProtectedEffect(MobEffect effect) {
-        return effect == ModEffects.ROVER_DOWNED.get() || effect == ModEffects.ROVER_PURIFIED.get()
-                || effect == ModEffects.ROVER_SECOND_CHANCE.get();
+    public static boolean isProtectedEffect(net.minecraft.core.Holder<MobEffect> effect) {
+        return effect == ModEffects.ROVER_DOWNED || effect == ModEffects.ROVER_PURIFIED
+                || effect == ModEffects.ROVER_SECOND_CHANCE;
     }
 
     public static boolean hasProtection(LivingEntity entity) {
-        return entity.hasEffect(ModEffects.ROVER_PURIFIED.get()) || entity.hasEffect(ModEffects.ROVER_SECOND_CHANCE.get());
+        return entity.hasEffect(ModEffects.ROVER_PURIFIED) || entity.hasEffect(ModEffects.ROVER_SECOND_CHANCE);
     }
 
     public static void tick(ServerPlayer player) {
@@ -280,21 +280,21 @@ public final class RoverStateManager {
         if (DealtTeamManager.isSelfOrTeammate(owner, target)) {
             int cleansed = 0;
             for (MobEffectInstance effect : new ArrayList<>(target.getActiveEffects())) {
-                if (effect.getEffect().getCategory() == MobEffectCategory.HARMFUL && target.removeEffect(effect.getEffect())) cleansed++;
+                if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL && target.removeEffect(effect.getEffect())) cleansed++;
             }
             if (cleansed > 0) {
                 if (target instanceof ServerPlayer listener) sound(listener, RoverSounds.CLEANSE);
-                MobEffectInstance old = target.getEffect(ModEffects.ROVER_SECOND_CHANCE.get());
+                MobEffectInstance old = target.getEffect(ModEffects.ROVER_SECOND_CHANCE);
                 int stacks = Math.min(255, cleansed + (old == null ? 0 : old.getAmplifier() + 1));
-                target.addEffect(new MobEffectInstance(ModEffects.ROVER_SECOND_CHANCE.get(), Math.max(1, PROTECTION_DURATION),
+                target.addEffect(new MobEffectInstance(ModEffects.ROVER_SECOND_CHANCE, Math.max(1, PROTECTION_DURATION),
                         stacks - 1, false, true, true), owner);
             }
-            target.addEffect(new MobEffectInstance(ModEffects.ROVER_PURIFIED.get(), 3, 0, false, true, true), owner);
+            target.addEffect(new MobEffectInstance(ModEffects.ROVER_PURIFIED, 3, 0, false, true, true), owner);
         } else if (TargetingUtil.isHostileLivingFor(owner, target)) {
             int duration = Math.max(2, INJECTOR_RESTORE_DELAY + 1);
             target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, duration, Math.max(0, INJECTOR_SLOW_AMPLIFIER)), owner);
             target.addEffect(new MobEffectInstance(MobEffects.WITHER, duration, Math.max(0, WITHER_AMPLIFIER)), owner);
-            target.addEffect(new MobEffectInstance(ModEffects.NOX_DELAYED_WOUND.get(), duration), owner);
+            target.addEffect(new MobEffectInstance(ModEffects.NOX_DELAYED_WOUND, duration), owner);
             NoxDelayedWoundEffect.resetCaps(target, target.getHealth());
             data(target).putLong("RestoreAt", SkillCooldownHelper.now(target) + Math.max(1, INJECTOR_RESTORE_DELAY));
             if (pulse) {
@@ -313,7 +313,7 @@ public final class RoverStateManager {
         tag.putDouble("HealthReduction", reduction);
         tag.putLong("RestoreAt", SkillCooldownHelper.now(target) + Math.max(1, INJECTOR_RESTORE_DELAY));
         attribute.removeModifier(HEALTH_MODIFIER);
-        attribute.addTransientModifier(new AttributeModifier(HEALTH_MODIFIER, "Rover aerosol", -reduction, AttributeModifier.Operation.MULTIPLY_TOTAL));
+        attribute.addTransientModifier(new AttributeModifier(HEALTH_MODIFIER, -reduction, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         target.setHealth(Math.min(target.getHealth(), target.getMaxHealth()));
         tag.putFloat("HealthMinimum", Math.min(tag.getFloat("HealthMinimum"), target.getHealth()));
     }
@@ -326,7 +326,7 @@ public final class RoverStateManager {
         if (health != null && health.getModifier(HEALTH_MODIFIER) == null
                 && SkillCooldownHelper.now(target) < tag.getLong("RestoreAt")) {
             double reduction = Math.max(0, Math.min(0.95, tag.getDouble("HealthReduction")));
-            health.addTransientModifier(new AttributeModifier(HEALTH_MODIFIER, "Rover aerosol", -reduction, AttributeModifier.Operation.MULTIPLY_TOTAL));
+            health.addTransientModifier(new AttributeModifier(HEALTH_MODIFIER, -reduction, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
             target.setHealth(Math.min(target.getHealth(), target.getMaxHealth()));
         }
         float minimum = Math.min(tag.getFloat("HealthMinimum"), target.getHealth());
@@ -341,12 +341,12 @@ public final class RoverStateManager {
 
     public static boolean preventDeath(LivingEntity entity, DamageSource source) {
         if (executingDeath(entity) || source.is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL)) return false;
-        MobEffectInstance protection = entity.getEffect(ModEffects.ROVER_SECOND_CHANCE.get());
+        MobEffectInstance protection = entity.getEffect(ModEffects.ROVER_SECOND_CHANCE);
         if (!isDowned(entity) && protection != null) {
             int remaining = protection.getAmplifier();
             int duration = protection.getDuration();
-            entity.removeEffect(ModEffects.ROVER_SECOND_CHANCE.get());
-            if (remaining > 0) entity.addEffect(new MobEffectInstance(ModEffects.ROVER_SECOND_CHANCE.get(), duration, remaining - 1));
+            entity.removeEffect(ModEffects.ROVER_SECOND_CHANCE);
+            if (remaining > 0) entity.addEffect(new MobEffectInstance(ModEffects.ROVER_SECOND_CHANCE, duration, remaining - 1));
             entity.setHealth((float) Math.min(entity.getMaxHealth(), Math.max(1, TOTEM_HEALTH)));
             entity.addEffect(new MobEffectInstance(MobEffects.REGENERATION, Math.max(1, TOTEM_REGEN_DURATION), 1));
             entity.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, Math.max(1, TOTEM_ABSORPTION_DURATION), 1));
@@ -372,14 +372,14 @@ public final class RoverStateManager {
         if (remaining <= 0) {
             tag.putBoolean("ExecutingDeath", true);
             tag.remove("DownedUntil");
-            player.removeEffect(ModEffects.ROVER_DOWNED.get());
+            player.removeEffect(ModEffects.ROVER_DOWNED);
             player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
             return;
         }
-        if (!player.hasEffect(ModEffects.ROVER_DOWNED.get())) player.addEffect(new MobEffectInstance(ModEffects.ROVER_DOWNED.get(), remaining));
+        if (!player.hasEffect(ModEffects.ROVER_DOWNED)) player.addEffect(new MobEffectInstance(ModEffects.ROVER_DOWNED, remaining));
         var move = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (move != null && move.getModifier(MOVE_MODIFIER) == null) move.addTransientModifier(new AttributeModifier(
-                MOVE_MODIFIER, "Rover downed", -Math.max(0, Math.min(1, DOWNED_MOVE_REDUCTION)), AttributeModifier.Operation.MULTIPLY_TOTAL));
+                MOVE_MODIFIER, -Math.max(0, Math.min(1, DOWNED_MOVE_REDUCTION)), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         player.stopUsingItem(); player.setSprinting(false);
         if (player.containerMenu != player.inventoryMenu) player.closeContainer();
     }
@@ -387,7 +387,7 @@ public final class RoverStateManager {
     public static void clearDowned(ServerPlayer player, boolean heal) {
         data(player).remove("DownedUntil");
         data(player).remove("RescueTicks");
-        player.removeEffect(ModEffects.ROVER_DOWNED.get());
+        player.removeEffect(ModEffects.ROVER_DOWNED);
         var move = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (move != null) move.removeModifier(MOVE_MODIFIER);
         if (heal) { player.clearFire(); player.setHealth(player.getMaxHealth()); }
@@ -421,9 +421,9 @@ public final class RoverStateManager {
         clearDowned(player, false);
         var health = player.getAttribute(Attributes.MAX_HEALTH);
         if (health != null) health.removeModifier(HEALTH_MODIFIER);
-        player.removeEffect(ModEffects.ROVER_PURIFIED.get());
-        player.removeEffect(ModEffects.ROVER_SECOND_CHANCE.get());
-        player.removeEffect(ModEffects.ROVER_VULNERABLE.get());
+        player.removeEffect(ModEffects.ROVER_PURIFIED);
+        player.removeEffect(ModEffects.ROVER_SECOND_CHANCE);
+        player.removeEffect(ModEffects.ROVER_VULNERABLE);
         player.getPersistentData().remove(ROOT);
         sync(player);
     }

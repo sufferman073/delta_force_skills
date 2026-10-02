@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_SyncManbaState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncManbaState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_manba_state"));
 
-public class S2C_SyncManbaState {
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncManbaState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncManbaState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int elbowCharges;
     private final int elbowMaxCharges;
     private final int elbowRechargeTicks;
@@ -92,10 +106,8 @@ public class S2C_SyncManbaState {
         );
     }
 
-    public static void handle(S2C_SyncManbaState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientManbaHudState.sync(
+    public static void handle(S2C_SyncManbaState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientManbaHudState.sync(
                         msg.elbowCharges,
                         msg.elbowMaxCharges,
                         msg.elbowRechargeTicks,
@@ -113,9 +125,7 @@ public class S2C_SyncManbaState {
                         msg.bulbs,
                         msg.lens,
                         msg.batteries
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 
     private static void writeArray(FriendlyByteBuf buf, int[] values) {

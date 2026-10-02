@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(ServerPlayer.class)
+@Mixin(value = ServerPlayer.class, remap = false)
 public abstract class ServerPlayerSelfSkillDamageMixin {
     @Redirect(method = "hurt", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/level/ServerPlayer;canHarmPlayer(Lnet/minecraft/world/entity/player/Player;)Z"))

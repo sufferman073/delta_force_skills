@@ -15,9 +15,9 @@ import net.minecraft.world.phys.Vec3;
 
 public final class TempestRecallAnchorRenderer extends EntityRenderer<TempestRecallAnchorEntity> {
     private static final ResourceLocation ANCHOR =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "tempest_recall_anchor");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "tempest_recall_anchor");
     private static final ResourceLocation ROPE =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "tempest_rope");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "tempest_rope");
 
     public TempestRecallAnchorRenderer(EntityRendererProvider.Context context) {
         super(context);

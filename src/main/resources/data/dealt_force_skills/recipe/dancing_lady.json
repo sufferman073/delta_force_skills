@@ -1,0 +1,21 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:screwdriver"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:copper_ingot"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:dancing_lady",
+                   "count":  3
+               }
+}

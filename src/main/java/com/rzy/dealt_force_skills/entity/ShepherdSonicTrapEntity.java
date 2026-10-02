@@ -15,8 +15,6 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -36,7 +34,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 import org.joml.Vector3f;
 
 import java.util.Comparator;
@@ -80,8 +77,8 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_ATTACHED_FACE, Direction.UP.get3DDataValue());
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_ATTACHED_FACE, Direction.UP.get3DDataValue());
     }
 
     @Override
@@ -172,11 +169,6 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
         tag.putDouble("AttachedOffsetZ", attachedOffsetZ);
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
     public boolean isOwnedBy(UUID owner) {
         return ownerId != null && ownerId.equals(owner);
     }
@@ -255,7 +247,7 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
             SkillDamageHelper.hurt(target, SkillDamageHelper.shepherdSonic(level, this, owner), owner instanceof LivingEntity living ? living : null, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.shepherd_sonic_trap_entity.skill_hurt.0.damage", 10.0f));
             target.setDeltaMovement(before);
             target.hurtMarked = true;
-            target.addEffect(new MobEffectInstance(ModEffects.SONIC_SHOCK.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherd_sonic_trap_entity.effect.sonic_shock.0.duration_ticks", 8 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherd_sonic_trap_entity.effect.sonic_shock.0.amplifier", 1), false, true, true), owner);
+            target.addEffect(new MobEffectInstance(ModEffects.SONIC_SHOCK, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherd_sonic_trap_entity.effect.sonic_shock.0.duration_ticks", 8 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherd_sonic_trap_entity.effect.sonic_shock.0.amplifier", 1), false, true, true), owner);
             if (ownerPlayer != null) {
                 DfsAchievements.recordShepherdSonicTrapHit(ownerPlayer, target, warned);
             }

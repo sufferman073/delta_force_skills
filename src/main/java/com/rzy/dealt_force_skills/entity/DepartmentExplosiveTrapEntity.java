@@ -12,8 +12,6 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -34,7 +32,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 import org.joml.Vector3f;
 
 import java.util.Comparator;
@@ -85,8 +82,8 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_ATTACHED_FACE, Direction.UP.get3DDataValue());
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_ATTACHED_FACE, Direction.UP.get3DDataValue());
     }
 
     @Override
@@ -159,11 +156,6 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
         tag.putInt("ChargeSlot", chargeSlot);
         tag.putLong("ChargeReadyAt", chargeReadyAt);
         tag.putInt("TriggerDelay", triggerDelayTicks);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public boolean isOwnedBy(UUID owner) {

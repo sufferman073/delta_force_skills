@@ -3,7 +3,7 @@ package com.rzy.dealt_force_skills.block;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.util.MeleeWeaponCompat;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
@@ -58,7 +58,7 @@ public class BladeWireBlock extends Block implements EntityBlock {
         if (!level.isClientSide && canCutWire(weapon)) {
             level.destroyBlock(pos, false, player);
             if (!player.getAbilities().instabuild) {
-                weapon.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(InteractionHand.MAIN_HAND));
+                weapon.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
             }
             return;
         }
@@ -85,7 +85,7 @@ public class BladeWireBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public boolean isPathfindable(BlockState state, BlockGetter level, BlockPos pos, PathComputationType type) {
+    protected boolean isPathfindable(BlockState state, PathComputationType type) {
         return true;
     }
 

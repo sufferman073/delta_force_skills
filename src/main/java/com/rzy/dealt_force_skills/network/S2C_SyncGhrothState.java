@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_SyncGhrothState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncGhrothState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_ghroth_state"));
 
-public class S2C_SyncGhrothState {
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncGhrothState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncGhrothState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int starsCooldownTicks;
     private final int justiceCooldownTicks;
     private final int noonCooldownTicks;
@@ -63,10 +77,8 @@ public class S2C_SyncGhrothState {
         );
     }
 
-    public static void handle(S2C_SyncGhrothState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientGhrothState.sync(
+    public static void handle(S2C_SyncGhrothState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientGhrothState.sync(
                         msg.starsCooldownTicks,
                         msg.justiceCooldownTicks,
                         msg.noonCooldownTicks,
@@ -77,8 +89,6 @@ public class S2C_SyncGhrothState {
                         msg.noonGazeTicks,
                         msg.noonDamageCopies,
                         msg.tacticalImmune
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

@@ -29,8 +29,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -49,7 +47,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobType;
 import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -67,7 +64,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -97,13 +93,12 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
     }
 
     /**
-     * Config unit is design blocks/sec (default 6). Converted to vanilla MOVEMENT_SPEED attribute
-     * (~player 0.1 attribute ≈ 4.317 b/s). Legacy attribute-scale values (≤1.0) are kept as-is.
+     * Config unit is design blocks/sec (default 6). Converted to vanilla MOVEMENT_SPEED attribute.
+     * Legacy attribute-scale values (≤1.0) are kept as-is.
      */
     private static double movementSpeed() {
         double configured = DealtBossesConfig.doubleValue("beacon.movement_speed", 6.0D);
         if (configured > 1.0D) {
-            // blocks/sec → attribute (vanilla player: 0.1 attr ≈ 4.317 b/s)
             return configured / 43.17D;
         }
         return configured;
@@ -289,10 +284,10 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        entityData.define(DATA_PHASE2, false);
-        entityData.define(DATA_RELOADING, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_PHASE2, false);
+        builder.define(DATA_RELOADING, false);
     }
 
     @Override
@@ -306,21 +301,15 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
                         && !p.isSpectator()
                         && !p.isCreative()));
     }
-
-    @Override
-    public MobType getMobType() {
-        return MobType.UNDEAD;
-    }
-
+    /**
+     * Player-applied effects (and skill paths with no source / player-owned projectiles)
+     * are forced to 1 tick so control/CC cannot stick on the boss.
+     */
     @Override
     public boolean isAlliedTo(Entity entity) {
         return entity instanceof AsaraTrooperEntity || super.isAlliedTo(entity);
     }
 
-    /**
-     * Player-applied effects (and skill paths with no source / player-owned projectiles)
-     * are forced to 1 tick so control/CC cannot stick on the boss.
-     */
     @Override
     public boolean addEffect(MobEffectInstance effectInstance, @Nullable Entity source) {
         return super.addEffect(shortenIfPlayerEffect(effectInstance, source), source);
@@ -540,7 +529,7 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
                 burstTicks = 0;
                 reloadTicks = reloadTicksCfg();
                 entityData.set(DATA_RELOADING, true);
-                serverLevel.playSound(null, blockPosition(), SoundEvents.CROSSBOW_LOADING_MIDDLE,
+                serverLevel.playSound(null, blockPosition(), SoundEvents.CROSSBOW_LOADING_MIDDLE.value(),
                         SoundSource.HOSTILE, 0.85F, 0.95F);
                 serverLevel.playSound(null, blockPosition(), SoundEvents.IRON_GOLEM_REPAIR,
                         SoundSource.HOSTILE, 0.45F, 1.4F);
@@ -631,7 +620,6 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
         Vec3 dest = position().add(side.scale(lateral)).add(flat.scale(forward));
         BlockPos goal = BlockPos.containing(dest.x, getY(), dest.z);
         boolean pathing = getNavigation().moveTo(goal.getX() + 0.5D, goal.getY(), goal.getZ() + 0.5D, strafeSpeed());
-        // Pathfinding can fail on uneven terrain — still shove sideways so gunfire never freezes motion.
         if (!pathing || getNavigation().isDone()) {
             Vec3 shove = side.scale(0.28D + random.nextDouble() * 0.18D).add(flat.scale(forward * 0.04D));
             setDeltaMovement(getDeltaMovement().x * 0.2D + shove.x, getDeltaMovement().y, getDeltaMovement().z * 0.2D + shove.z);
@@ -936,10 +924,8 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
     public void die(DamageSource source) {
         bossEvent.setVisible(false);
         if (!level().isClientSide && level() instanceof ServerLevel serverLevel) {
+            // 1.21 removed EnchantmentHelper.getMobLooting; looting only pads coffee count.
             int looting = 0;
-            if (source.getEntity() instanceof LivingEntity living) {
-                looting = net.minecraft.world.item.enchantment.EnchantmentHelper.getMobLooting(living);
-            }
             if (serverLevel.getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_DOMOBLOOT)) {
                 BeaconLootHelper.dropAt(serverLevel, position(), looting);
             }
@@ -1014,12 +1000,6 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
         lockedTargetId = tag.hasUUID("LockedTarget") ? tag.getUUID("LockedTarget") : null;
         applyRuntimeAttributes();
     }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
     // --- TACZ IGunOperator (same pattern as SaeedGuardEntity) ---
 
     private void tickTaczOperator() {
@@ -1180,3 +1160,4 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
         return tracerCountInterval >= 0 && taczData.shootCount % (tracerCountInterval + 1) == 0;
     }
 }
+

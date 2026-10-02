@@ -15,10 +15,8 @@ public final class ClientGamblerTargetingState {
     private static final double TARGET_RANGE = 90.0D;
     private static final double MIN_TARGET_DOT = 0.965D;
     private static final int LOCK_MARKER_TICKS = 45;
-    private static final int PENDING_TARGET_TICKS = 10 * 20;
 
     private static GamblerSuperpower pendingPower;
-    private static int pendingTicks;
     private static int lockedTargetId = -1;
     private static int lockedTicks;
 
@@ -27,7 +25,6 @@ public final class ClientGamblerTargetingState {
 
     public static void begin(GamblerSuperpower power) {
         pendingPower = power;
-        pendingTicks = power == null ? 0 : PENDING_TARGET_TICKS;
     }
 
     public static boolean hasPendingTargetPower() {
@@ -40,7 +37,6 @@ public final class ClientGamblerTargetingState {
 
     public static void clearPending() {
         pendingPower = null;
-        pendingTicks = 0;
     }
 
     public static void clearAll() {
@@ -58,10 +54,6 @@ public final class ClientGamblerTargetingState {
         }
         if (minecraft.player == null || !ClientGamblerHudState.shouldRender()) {
             clearAll();
-            return;
-        }
-        if (pendingPower != null && --pendingTicks <= 0) {
-            clearPending();
         }
     }
 

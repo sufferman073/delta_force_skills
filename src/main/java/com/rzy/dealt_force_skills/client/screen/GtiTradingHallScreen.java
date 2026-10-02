@@ -110,7 +110,7 @@ public final class GtiTradingHallScreen extends Screen {
     }
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!embedded) {
-            renderBackground(graphics);
+            renderBackground(graphics, mouseX, mouseY, partialTick);
         }
         graphics.fill(left(), top(), left() + panelWidth(), top() + panelHeight(), 0xEE10171C);
         graphics.drawString(font, title, left() + 12, top() + 12, 0xFFFFFF);
@@ -127,9 +127,9 @@ public final class GtiTradingHallScreen extends Screen {
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
-    @Override public boolean mouseScrolled(double x, double y, double delta) {
+    @Override public boolean mouseScrolled(double x, double y, double deltaX, double deltaY) {
         int max = Math.max(0, visible().size() - visibleRows());
-        scroll = Math.max(0, Math.min(max, scroll + (delta < 0 ? 1 : -1)));
+        scroll = Math.max(0, Math.min(max, scroll + (deltaY < 0 ? 1 : -1)));
         rebuildRows(); return true;
     }
     private List<Indexed> visible() {

@@ -9,7 +9,7 @@ import com.rzy.dealt_force_skills.config.ConfigFileId;
 import com.rzy.dealt_force_skills.config.ConfigValueKind;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +80,7 @@ public final class ClientHudLayout {
     }
 
     /**
-     * 技能按钮X坐标（GUI系，自动随界面尺寸缩放）。
+     * 技能按钮X坐标（GUI坐标系，自动随界面尺寸缩放）。
      * 与体力条一致，使用guiWidth/guiHeight自适应，不额外乘以补偿系数。
      */
     public static int x(int defaultX) {
@@ -296,12 +296,6 @@ public final class ClientHudLayout {
     }
 
     private static void ensureDefaultsPresent() {
-        // 清理旧版本遗留的 global.hud_layout 键（1.21.1已移除该开关）
-        if (config.contains("global.hud_layout")) {
-            config.remove("global.hud_layout");
-            config.save();
-            updateObservedModifiedTime();
-        }
         intValue("global.x_offset", 0);
         intValue("global.y_offset", 0);
         floatValue("global.button_scale", 0.8F);

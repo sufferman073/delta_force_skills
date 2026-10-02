@@ -8,16 +8,15 @@ import com.rzy.dealt_force_skills.config.DealtForceShopConfig;
 import com.rzy.dealt_force_skills.config.DealtShopSetConfig;
 import com.rzy.dealt_force_skills.config.GamblerArenaConfig;
 import com.rzy.dealt_force_skills.config.DealtItemsHavocConfig;
-import com.rzy.dealt_force_skills.compat.RarityCoreCompat;
-import com.rzy.dealt_force_skills.compat.TamarindLootConfig;
 import com.rzy.dealt_force_skills.character.CharacterBranchPackManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.electronics.ElectronicInterferenceManager;
+import com.rzy.dealt_force_skills.entity.NoxDecoyEntity;
 import com.rzy.dealt_force_skills.entity.BeaconBossEntity;
 import com.rzy.dealt_force_skills.entity.AsaraTrooperEntity;
 import com.rzy.dealt_force_skills.entity.AcceleratedTroopsEntity;
-import com.rzy.dealt_force_skills.entity.NoxDecoyEntity;
 import com.rzy.dealt_force_skills.entity.SaeedGuardEntity;
+import com.rzy.dealt_force_skills.event.CommonEvents;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.registry.ModBlocks;
@@ -29,27 +28,24 @@ import com.rzy.dealt_force_skills.registry.ModGameRules;
 import com.rzy.dealt_force_skills.registry.ModItems;
 import com.rzy.dealt_force_skills.registry.ModLootModifiers;
 import com.rzy.dealt_force_skills.registry.ModParticles;
-import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.registry.ModRecipeSerializers;
+import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.shop.DfsShopCatalog;
 import com.rzy.dealt_force_skills.shop.GhrothArmoryCatalog;
 import com.rzy.dealt_force_skills.shop.UndeadShopEntry;
 import com.rzy.dealt_force_skills.shop.SpecialOperationsBaseManager;
-import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(DealtForceSkillsMod.MODID)
 public class DealtForceSkillsMod {
     public static final String MODID = "dealt_force_skills";
 
-    public DealtForceSkillsMod() {
-        this(FMLJavaModLoadingContext.get().getModEventBus());
-    }
-
-    public DealtForceSkillsMod(IEventBus modBus) {
+    public DealtForceSkillsMod(IEventBus modBus, ModContainer modContainer) {
         DealtForceConfig.bootstrap();
         DealtBaseConfig.bootstrap();
         DealtBossesConfig.bootstrap();
@@ -58,7 +54,6 @@ public class DealtForceSkillsMod {
         DealtShopSetConfig.bootstrap();
         GamblerArenaConfig.bootstrap();
         DealtItemsHavocConfig.bootstrap();
-        TamarindLootConfig.bootstrap();
         CharacterBranchPackManager.bootstrapDefaults();
         CharacterBranchPackManager.reload();
 
@@ -71,13 +66,14 @@ public class DealtForceSkillsMod {
         ModEffects.EFFECTS.register(modBus);
         ModEntities.ENTITIES.register(modBus);
         ModParticles.PARTICLES.register(modBus);
-        com.rzy.dealt_force_skills.recipe.PotionIngredient.register();
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modBus);
+        ModRecipeSerializers.INGREDIENT_TYPES.register(modBus);
         ModGameRules.register();
 
-        modBus.addListener(NetworkHandler::onCommonSetup);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::registerEntityAttributes);
+        NeoForge.EVENT_BUS.addListener(ModBrewingRecipes::register);
+        CommonEvents.registerOptionalMaidPickupListener();
         DealtForceConfig.flush();
         DealtBaseConfig.flush();
         DealtBossesConfig.flush();
@@ -89,7 +85,6 @@ public class DealtForceSkillsMod {
 
     private void onCommonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            ModBrewingRecipes.register();
             DealtForceConfig.populateGameplayDefaults();
             DealtBossesConfig.populateDefaults();
             ModCharacters.all();
@@ -100,7 +95,6 @@ public class DealtForceSkillsMod {
             UndeadShopEntry.values();
             SpecialOperationsBaseManager.populateConfigDefaults();
             com.rzy.dealt_force_skills.compat.SophisticatedBackpackCompat.register();
-            RarityCoreCompat.registerRarities();
             DealtForceConfig.finishInitialPopulation();
             DealtBaseConfig.flush();
             DealtBossesConfig.finishInitialPopulation();

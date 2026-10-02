@@ -10,14 +10,15 @@ import com.rzy.dealt_force_skills.client.renderer.BlockbenchAnimatedModelRendere
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class RaptorPlaceholderVisuals {
     private static final ResourceLocation FALCON_DRONE_MODEL = model("raptor_falcon_drone");
     private static final ResourceLocation PULSE_GRENADE_MODEL = model("raptor_pulse_grenade");
@@ -53,7 +54,7 @@ public final class RaptorPlaceholderVisuals {
         }
 
         Minecraft minecraft = Minecraft.getInstance();
-        float seconds = (minecraft.player.tickCount + event.getPartialTick()) / 20.0F;
+        float seconds = (minecraft.player.tickCount + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F;
         ClientToolModelAnimationState.AnimationFrame frame = pulseAction
                 ? ClientToolReleaseAction.frame(
                         ClientToolReleaseAction.Action.RAPTOR_PULSE_GRENADE,
@@ -93,6 +94,6 @@ public final class RaptorPlaceholderVisuals {
     }
 
     private static ResourceLocation model(String path) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, path);
     }
 }

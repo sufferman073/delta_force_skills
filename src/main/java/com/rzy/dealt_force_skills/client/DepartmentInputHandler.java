@@ -19,19 +19,20 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Comparator;
 import java.util.Optional;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class DepartmentInputHandler {
     private static final DustParticleOptions TRAP_PREVIEW = new DustParticleOptions(new Vector3f(1.0F, 0.34F, 0.05F), 1.0F);
     private static final int TOOL_ACTION_DEDUP_TICKS = 3;
@@ -55,7 +56,7 @@ public final class DepartmentInputHandler {
             releaseBlockedKey(minecraft.options.keyDrop);
             releaseBlockedKey(minecraft.options.keySwapOffhand);
         }
-        if (!minecraft.player.hasEffect(ModEffects.DEPARTMENT_CALIBRATION.get())) {
+        if (!minecraft.player.hasEffect(ModEffects.DEPARTMENT_CALIBRATION)) {
             calibrationHeld = false;
         }
     }
@@ -100,6 +101,9 @@ public final class DepartmentInputHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null) {
+            return;
+        }
         if (event.isAttack() && handleCalibrationInteraction(minecraft)) {
             event.setSwingHand(false);
             event.setCanceled(true);
@@ -123,6 +127,9 @@ public final class DepartmentInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (ClientDepartmentHudState.hasEquippedTool()) {
             event.setCanceled(true);
         }
@@ -134,12 +141,12 @@ public final class DepartmentInputHandler {
         if (minecraft.player == null) {
             return;
         }
-        MobEffectInstance effect = minecraft.player.getEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
+        MobEffectInstance effect = minecraft.player.getEffect(ModEffects.DEPARTMENT_CALIBRATION);
         if (effect == null) {
             return;
         }
         int stacks = effect.getAmplifier() + 1;
-        double t = (minecraft.player.tickCount + event.getPartialTick()) * 0.45D;
+        double t = (minecraft.player.tickCount + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) * 0.45D;
         float yaw = (float) (Math.sin(t) * stacks * 0.35D);
         float pitch = (float) (Math.cos(t * 0.8D) * stacks * 0.25D);
         float roll = (float) (Math.sin(t * 1.4D) * stacks * 0.6D);
@@ -150,7 +157,7 @@ public final class DepartmentInputHandler {
 
     private static boolean handleCalibrationMouse(Minecraft minecraft, InputEvent.MouseButton.Pre event) {
         if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT || minecraft.player == null
-                || !minecraft.player.hasEffect(ModEffects.DEPARTMENT_CALIBRATION.get()) || !handsEmpty(minecraft.player)) {
+                || !minecraft.player.hasEffect(ModEffects.DEPARTMENT_CALIBRATION) || !handsEmpty(minecraft.player)) {
             return false;
         }
         event.setCanceled(true);
@@ -164,7 +171,7 @@ public final class DepartmentInputHandler {
     }
 
     private static boolean handleCalibrationInteraction(Minecraft minecraft) {
-        if (minecraft.player == null || !minecraft.player.hasEffect(ModEffects.DEPARTMENT_CALIBRATION.get())
+        if (minecraft.player == null || !minecraft.player.hasEffect(ModEffects.DEPARTMENT_CALIBRATION)
                 || !handsEmpty(minecraft.player)) {
             return false;
         }

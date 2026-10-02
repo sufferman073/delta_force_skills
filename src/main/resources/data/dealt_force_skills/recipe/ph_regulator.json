@@ -1,0 +1,18 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "type":  "dealt_force_skills:potion"
+                        },
+                        {
+                            "item":  "dealt_force_skills:sterile_water"
+                        },
+                        {
+                            "item":  "minecraft:glass_bottle"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:ph_regulator",
+                   "count":  9
+               }
+}

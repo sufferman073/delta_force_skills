@@ -5,6 +5,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 
 public class PainReliefEffect extends MobEffect {
     public PainReliefEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0xE7D67A);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 }

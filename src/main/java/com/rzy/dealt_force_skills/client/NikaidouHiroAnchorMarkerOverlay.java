@@ -2,7 +2,6 @@ package com.rzy.dealt_force_skills.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.client.character.ClientNikaidouHiroHudState;
 import com.rzy.dealt_force_skills.client.renderer.DfsRenderTypes;
 import net.minecraft.client.Camera;
@@ -14,19 +13,13 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 public final class NikaidouHiroAnchorMarkerOverlay {
     private NikaidouHiroAnchorMarkerOverlay() {
     }
 
-    @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES
+    public static void render(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL
                 || !ClientNikaidouHiroHudState.hasAnchorMarker()) {
             return;
         }

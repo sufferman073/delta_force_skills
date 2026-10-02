@@ -3,11 +3,10 @@ package com.rzy.dealt_force_skills.entity;
 import com.rzy.dealt_force_skills.character.nox.NoxStateManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
@@ -19,7 +18,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -82,16 +80,16 @@ public class NoxDecoyEntity extends LivingEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        entityData.define(DATA_OWNER_UUID, Optional.empty());
-        entityData.define(DATA_OWNER_NAME, "");
-        entityData.define(DATA_MAIN_HAND, ItemStack.EMPTY);
-        entityData.define(DATA_OFF_HAND, ItemStack.EMPTY);
-        entityData.define(DATA_FEET, ItemStack.EMPTY);
-        entityData.define(DATA_LEGS, ItemStack.EMPTY);
-        entityData.define(DATA_CHEST, ItemStack.EMPTY);
-        entityData.define(DATA_HEAD, ItemStack.EMPTY);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_OWNER_UUID, Optional.empty());
+        builder.define(DATA_OWNER_NAME, "");
+        builder.define(DATA_MAIN_HAND, ItemStack.EMPTY);
+        builder.define(DATA_OFF_HAND, ItemStack.EMPTY);
+        builder.define(DATA_FEET, ItemStack.EMPTY);
+        builder.define(DATA_LEGS, ItemStack.EMPTY);
+        builder.define(DATA_CHEST, ItemStack.EMPTY);
+        builder.define(DATA_HEAD, ItemStack.EMPTY);
     }
 
     @Override
@@ -142,7 +140,7 @@ public class NoxDecoyEntity extends LivingEntity {
     }
 
     @Override
-    protected void dropAllDeathLoot(DamageSource source) {
+    protected void dropAllDeathLoot(ServerLevel serverLevel, DamageSource source) {
         // Equipment is copied only for rendering; the decoy must never drop it.
     }
 
@@ -165,6 +163,7 @@ public class NoxDecoyEntity extends LivingEntity {
             case LEGS -> entityData.get(DATA_LEGS);
             case CHEST -> entityData.get(DATA_CHEST);
             case HEAD -> entityData.get(DATA_HEAD);
+            default -> ItemStack.EMPTY;
         };
     }
 
@@ -178,6 +177,8 @@ public class NoxDecoyEntity extends LivingEntity {
             case LEGS -> entityData.set(DATA_LEGS, copy);
             case CHEST -> entityData.set(DATA_CHEST, copy);
             case HEAD -> entityData.set(DATA_HEAD, copy);
+            default -> {
+            }
         }
     }
 
@@ -209,11 +210,6 @@ public class NoxDecoyEntity extends LivingEntity {
         tag.put(EQUIPMENT_TAG, equipment);
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
     private Optional<UUID> ownerData() {
         return entityData.get(DATA_OWNER_UUID);
     }
@@ -227,14 +223,14 @@ public class NoxDecoyEntity extends LivingEntity {
     private void saveSlot(CompoundTag equipment, EquipmentSlot slot) {
         ItemStack stack = getItemBySlot(slot);
         if (!stack.isEmpty()) {
-            equipment.put(slot.getName(), stack.save(new CompoundTag()));
+            equipment.put(slot.getName(), stack.saveOptional(level().registryAccess()));
         }
     }
 
     private void loadEquipment(CompoundTag equipment) {
         for (EquipmentSlot slot : EquipmentSlot.values()) {
             if (equipment.contains(slot.getName(), Tag.TAG_COMPOUND)) {
-                setItemSlot(slot, ItemStack.of(equipment.getCompound(slot.getName())));
+                setItemSlot(slot, ItemStack.parseOptional(level().registryAccess(), equipment.getCompound(slot.getName())));
             } else {
                 setItemSlot(slot, ItemStack.EMPTY);
             }

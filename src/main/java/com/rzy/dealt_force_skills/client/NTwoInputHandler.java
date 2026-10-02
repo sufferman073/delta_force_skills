@@ -1,10 +1,10 @@
 package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.ntwo.NTwoToolAction;
 import com.rzy.dealt_force_skills.client.character.ClientNTwoHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
-import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.network.C2S_NTwoFreezeStruggle;
 import com.rzy.dealt_force_skills.network.C2S_NTwoToolAction;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
@@ -12,15 +12,16 @@ import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class NTwoInputHandler {
     private static boolean lastFreezeHolding;
     private static int localStruggleTicks;
@@ -54,6 +55,9 @@ public final class NTwoInputHandler {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null) {
+            return;
+        }
         if (isFrozen(minecraft)) {
             event.setCanceled(true);
             return;
@@ -71,6 +75,9 @@ public final class NTwoInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (isFrozen(Minecraft.getInstance())) {
             event.setSwingHand(false);
             event.setCanceled(true);
@@ -148,7 +155,7 @@ public final class NTwoInputHandler {
                 && minecraft.player.isAlive()
                 && !minecraft.player.isSpectator()
                 && minecraft.screen == null
-                && minecraft.player.hasEffect(ModEffects.N_TWO_FROZEN.get());
+                && minecraft.player.hasEffect(ModEffects.N_TWO_FROZEN);
     }
 
     private static boolean isPrimaryOrSecondary(int button) {

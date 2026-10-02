@@ -3,11 +3,11 @@ package com.rzy.dealt_force_skills.client;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 /**
  * Client-side movement lock for the round-start freeze window. Deliberately narrower than
@@ -17,7 +17,7 @@ import net.minecraftforge.fml.common.Mod;
  * {@code CommonEvents} and the TACZ action guard, and active character skills are blocked in
  * {@code SkillDispatcher} / the individual tool-action network handlers).
  */
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class RoundStartFreezeInputHandler {
     private RoundStartFreezeInputHandler() {
     }
@@ -42,6 +42,6 @@ public final class RoundStartFreezeInputHandler {
         return minecraft.player != null
                 && minecraft.player.isAlive()
                 && !minecraft.player.isSpectator()
-                && minecraft.player.hasEffect(ModEffects.ROUND_START_FREEZE.get());
+                && minecraft.player.hasEffect(ModEffects.ROUND_START_FREEZE);
     }
 }

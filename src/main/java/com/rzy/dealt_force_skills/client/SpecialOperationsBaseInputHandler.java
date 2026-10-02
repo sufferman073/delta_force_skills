@@ -39,6 +39,7 @@ public final class SpecialOperationsBaseInputHandler {
             }
         } else if (wasDown) {
             if (!longTriggered && minecraft.screen == null) {
+                // 短按K键：非创造→通用商店；创造→选人
                 if (minecraft.player.getAbilities().instabuild) {
                     DFGUI_MAIN.openToOperator();
                 } else {

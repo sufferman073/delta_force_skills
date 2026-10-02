@@ -1,0 +1,29 @@
+{
+    "type":  "minecraft:crafting_shaped",
+    "pattern":  [
+                    "ROR",
+                    "ETE",
+                    "RCR"
+                ],
+    "key":  {
+                "R":  {
+                          "item":  "minecraft:rotten_flesh"
+                      },
+                "O":  {
+                          "item":  "dealt_force_skills:outdoor_baseball_cap"
+                      },
+                "E":  {
+                          "item":  "minecraft:ender_eye"
+                      },
+                "T":  {
+                          "item":  "minecraft:totem_of_undying"
+                      },
+                "C":  {
+                          "item":  "dealt_force_skills:hvk_clone_prototype"
+                      }
+            },
+    "result":  {
+                   "id":  "dealt_force_skills:hvk_brain_unit",
+                   "count":  1
+               }
+}

@@ -1,0 +1,19 @@
+{
+    "type":  "minecraft:crafting_shaped",
+    "pattern":  [
+                    " S ",
+                    "SKS",
+                    " S "
+                ],
+    "key":  {
+                "S":  {
+                          "item":  "dealt_force_skills:special_steel"
+                      },
+                "K":  {
+                          "item":  "dealt_force_skills:standard_helmet_repair_kit"
+                      }
+            },
+    "result":  {
+                   "id":  "dealt_force_skills:precision_helmet_repair_kit"
+               }
+}

@@ -1,6 +1,7 @@
 package com.rzy.dealt_force_skills.item;
 
 import com.rzy.dealt_force_skills.effect.ModItemEffectHelper;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,9 +12,11 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
@@ -70,10 +73,11 @@ public class RepairKitItem extends QualityTooltipItem {
         }
         player.startUsingItem(hand);
         if (!level.isClientSide) {
-            CompoundTag tag = stack.getOrCreateTag();
-            tag.putDouble(TAG_USE_PROGRESS, 0.0D);
-            tag.putLong(TAG_LAST_PROGRESS_TICK, level.getGameTime());
-            tag.putInt(TAG_NEXT_REPAIR_PROGRESS, Math.max(0, windupTicks));
+            CompoundTag startTag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            startTag.putDouble(TAG_USE_PROGRESS, 0.0D);
+            startTag.putLong(TAG_LAST_PROGRESS_TICK, level.getGameTime());
+            startTag.putInt(TAG_NEXT_REPAIR_PROGRESS, Math.max(0, windupTicks));
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(startTag));
             level.playSound(null, player.blockPosition(), startSound.get(), SoundSource.PLAYERS, 0.75F, 1.0F);
             player.displayClientMessage(Component.translatable(startMessageKey), true);
         }
@@ -86,7 +90,7 @@ public class RepairKitItem extends QualityTooltipItem {
             return;
         }
         int elapsed = advanceUseProgress(level, entity, stack);
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         int nextRepairProgress = tag.contains(TAG_NEXT_REPAIR_PROGRESS)
                 ? tag.getInt(TAG_NEXT_REPAIR_PROGRESS)
                 : Math.max(0, windupTicks);
@@ -98,6 +102,7 @@ public class RepairKitItem extends QualityTooltipItem {
             return;
         }
         tag.putInt(TAG_NEXT_REPAIR_PROGRESS, nextRepairProgress + Math.max(1, REPAIR_INTERVAL_TICKS));
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     @Override
@@ -109,7 +114,7 @@ public class RepairKitItem extends QualityTooltipItem {
     }
 
     private int advanceUseProgress(Level level, LivingEntity entity, ItemStack stack) {
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         long now = level.getGameTime();
         long last = tag.contains(TAG_LAST_PROGRESS_TICK) ? tag.getLong(TAG_LAST_PROGRESS_TICK) : now;
         long elapsed = Math.max(0L, now - last);
@@ -117,15 +122,18 @@ public class RepairKitItem extends QualityTooltipItem {
         progress += elapsed * ModItemEffectHelper.medicineUseSpeedMultiplier(entity);
         tag.putDouble(TAG_USE_PROGRESS, progress);
         tag.putLong(TAG_LAST_PROGRESS_TICK, now);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         return (int) Math.min(Integer.MAX_VALUE, Math.floor(progress));
     }
 
     private void clearUseStart(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-        if (tag != null) {
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (tag.contains(TAG_USE_PROGRESS) || tag.contains(TAG_LAST_PROGRESS_TICK)
+                || tag.contains(TAG_NEXT_REPAIR_PROGRESS)) {
             tag.remove(TAG_USE_PROGRESS);
             tag.remove(TAG_LAST_PROGRESS_TICK);
             tag.remove(TAG_NEXT_REPAIR_PROGRESS);
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         }
     }
 
@@ -149,7 +157,7 @@ public class RepairKitItem extends QualityTooltipItem {
             }
             int actualCost = Math.min(cost, available);
             repair = Math.max(1, Math.round(repair * (actualCost / (float) cost)));
-            kit.hurtAndBreak(actualCost, player, broken -> broken.broadcastBreakEvent(player.getUsedItemHand()));
+            kit.hurtAndBreak(actualCost, player, player.getUsedItemHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
         }
         target.setDamageValue(Math.max(0, target.getDamageValue() - repair));
         player.level().playSound(null, player.blockPosition(), workSound.get(), SoundSource.PLAYERS, 0.65F, 1.0F);
@@ -174,7 +182,7 @@ public class RepairKitItem extends QualityTooltipItem {
     }
 
     @Override
-    public int getUseDuration(ItemStack stack) {
+    public int getUseDuration(ItemStack stack, LivingEntity entity) {
         return USE_DURATION;
     }
 
@@ -184,7 +192,7 @@ public class RepairKitItem extends QualityTooltipItem {
     }
 
     @Override
-    protected void addExtraTooltip(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    protected void addExtraTooltip(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.repair_windup",
                 String.format(java.util.Locale.ROOT, "%.1f", windupTicks / 20.0D)));
     }

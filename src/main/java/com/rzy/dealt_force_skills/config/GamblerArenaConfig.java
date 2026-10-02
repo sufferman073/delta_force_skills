@@ -2,7 +2,7 @@ package com.rzy.dealt_force_skills.config;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

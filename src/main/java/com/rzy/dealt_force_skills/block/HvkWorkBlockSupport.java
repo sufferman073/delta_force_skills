@@ -3,6 +3,7 @@ package com.rzy.dealt_force_skills.block;
 import com.rzy.dealt_force_skills.registry.ModBlocks;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -58,7 +59,9 @@ final class HvkWorkBlockSupport {
         if (level == null || tool == null || tool.isEmpty()) {
             return false;
         }
-        return EnchantmentHelper.getItemEnchantmentLevel(Enchantments.SILK_TOUCH, tool) > 0;
+        return EnchantmentHelper.getItemEnchantmentLevel(
+                level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SILK_TOUCH),
+                tool) > 0;
     }
 
     private static boolean hasEmitterNearby(Level level, BlockPos center) {

@@ -15,14 +15,15 @@ import mccfk.DeltaForce.java.client.screen.DFGUI_MAIN;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class SaeedInputHandler {
     private static volatile int MONITOR_LONG_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MONITOR_LONG_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.saeed_input_handler.monitor_long_hold_ticks", 10));
     private static boolean selectionWasDown;
@@ -68,8 +69,10 @@ public final class SaeedInputHandler {
                 boolean creative = minecraft.player.getAbilities().instabuild;
                 boolean sneak = minecraft.player.isShiftKeyDown();
                 if ((!creative && !sneak) || (creative && sneak)) {
+                    // 自身长按特殊面板（监视器）
                     NetworkHandler.sendToServer(new C2S_OpenSaeedMonitor());
                 } else {
+                    // 长按特勤处
                     DFGUI_MAIN.openToLogistics();
                 }
             }
@@ -78,10 +81,13 @@ public final class SaeedInputHandler {
                 boolean creative = minecraft.player.getAbilities().instabuild;
                 boolean sneak = minecraft.player.isShiftKeyDown();
                 if (creative && !sneak) {
+                    // 创造短按→选人
                     DFGUI_MAIN.openToOperator();
                 } else if (sneak && !creative) {
+                    // 非创造潜行短按→通用商店
                     NetworkHandler.sendToServer(new C2S_OpenSelectionOrShop());
                 } else {
+                    // 自身短按特殊面板（自身商店）
                     NetworkHandler.sendToServer(C2S_OpenOwnShop.open());
                 }
             }

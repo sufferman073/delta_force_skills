@@ -1,14 +1,26 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.util.EmptyHandExtinguishHandler;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record C2S_EmptyHandExtinguish(boolean holding) implements CustomPacketPayload {
+    public static final Type<C2S_EmptyHandExtinguish> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+            DealtForceSkillsMod.MODID, "c2s_empty_hand_extinguish"));
+    public static final StreamCodec<FriendlyByteBuf, C2S_EmptyHandExtinguish> STREAM_CODEC =
+            StreamCodec.of(C2S_EmptyHandExtinguish::encode, C2S_EmptyHandExtinguish::decode);
 
-public record C2S_EmptyHandExtinguish(boolean holding) {
-    public static void encode(C2S_EmptyHandExtinguish message, FriendlyByteBuf buffer) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(FriendlyByteBuf buffer, C2S_EmptyHandExtinguish message) {
         buffer.writeBoolean(message.holding);
     }
 
@@ -16,14 +28,11 @@ public record C2S_EmptyHandExtinguish(boolean holding) {
         return new C2S_EmptyHandExtinguish(buffer.readBoolean());
     }
 
-    public static void handle(C2S_EmptyHandExtinguish message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+    public static void handle(C2S_EmptyHandExtinguish message, IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer player = context.getSender();
-            if (player != null) {
+            if (context.player() instanceof ServerPlayer player) {
                 EmptyHandExtinguishHandler.signal(player, message.holding);
             }
         });
-        context.setPacketHandled(true);
     }
 }

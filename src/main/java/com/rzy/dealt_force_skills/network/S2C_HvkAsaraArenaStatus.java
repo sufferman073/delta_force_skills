@@ -1,16 +1,22 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-public class S2C_HvkAsaraArenaStatus {
+public class S2C_HvkAsaraArenaStatus implements CustomPacketPayload {
+    public static final Type<S2C_HvkAsaraArenaStatus> TYPE = new Type<>(
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_hvk_asara_arena_status"));
+    public static final StreamCodec<FriendlyByteBuf, S2C_HvkAsaraArenaStatus> STREAM_CODEC = StreamCodec.of(
+            (buf, msg) -> encode(msg, buf), S2C_HvkAsaraArenaStatus::decode);
+
     private final boolean active;
     private final int remaining;
     private final List<BlockPos> positions;
@@ -29,6 +35,11 @@ public class S2C_HvkAsaraArenaStatus {
         return new S2C_HvkAsaraArenaStatus(false, 0, List.of());
     }
 
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public static void encode(S2C_HvkAsaraArenaStatus msg, FriendlyByteBuf buf) {
         buf.writeBoolean(msg.active);
         buf.writeVarInt(msg.remaining);
@@ -41,15 +52,11 @@ public class S2C_HvkAsaraArenaStatus {
         int remaining = buf.readVarInt();
         int size = Math.min(7, buf.readVarInt());
         List<BlockPos> positions = new ArrayList<>(size);
-        for (int index = 0; index < size; index++) {
-            positions.add(buf.readBlockPos());
-        }
+        for (int index = 0; index < size; index++) positions.add(buf.readBlockPos());
         return new S2C_HvkAsaraArenaStatus(active, remaining, positions);
     }
 
-    public static void handle(S2C_HvkAsaraArenaStatus msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientHvkAsaraArenaState.sync(msg.active, msg.remaining, msg.positions)));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_HvkAsaraArenaStatus msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientHvkAsaraArenaState.sync(msg.active, msg.remaining, msg.positions));
     }
 }

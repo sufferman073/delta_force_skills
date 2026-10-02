@@ -1,0 +1,26 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:high_output_crushing_pliers"
+                        },
+                        {
+                            "item":  "dealt_force_skills:raw_wood_plank"
+                        },
+                        {
+                            "item":  "dealt_force_skills:raw_wood_plank"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:mask1_iron_wall_helmet"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

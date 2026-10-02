@@ -40,13 +40,8 @@ public final class SpecialWorkBlockConfig {
         return DealtForceConfig.booleanValue(INTERDIMENSIONAL_BLOCK, true);
     }
 
-    public static boolean isHvkAsaraArenaEnabled() {
-        return DealtForceConfig.booleanValue(HVK_ASARA_ARENA, true);
-    }
-
-    public static boolean isHvkEnchantInfusionEnabled() {
-        return DealtForceConfig.booleanValue(HVK_ENCHANT_INFUSION, true);
-    }
+    public static boolean isHvkAsaraArenaEnabled() { return DealtForceConfig.booleanValue(HVK_ASARA_ARENA, true); }
+    public static boolean isHvkEnchantInfusionEnabled() { return DealtForceConfig.booleanValue(HVK_ENCHANT_INFUSION, true); }
 
     public static boolean isDisabledItem(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
@@ -58,12 +53,8 @@ public final class SpecialWorkBlockConfig {
         if (stack.is(ModItems.HVK_ADVANCED_DISASSEMBLY_BEAM_EMITTER.get())) {
             return !isHvkDisassemblerEnabled();
         }
-        if (stack.is(ModItems.HVK_ASARA_ARENA.get())) {
-            return !isHvkAsaraArenaEnabled();
-        }
-        if (stack.is(ModItems.HVK_ENCHANT_INFUSION.get())) {
-            return !isHvkEnchantInfusionEnabled();
-        }
+        if (stack.is(ModItems.HVK_ASARA_ARENA.get())) return !isHvkAsaraArenaEnabled();
+        if (stack.is(ModItems.HVK_ENCHANT_INFUSION.get())) return !isHvkEnchantInfusionEnabled();
         if (stack.is(ModItems.HVK_CLONE_PROTOTYPE.get())) {
             return !isHvkClonePrototypeEnabled();
         }

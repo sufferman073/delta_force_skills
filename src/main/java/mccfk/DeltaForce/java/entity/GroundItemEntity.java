@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
@@ -42,8 +43,8 @@ public class GroundItemEntity extends Entity {
     private double initialY = 0;
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(ITEM, ItemStack.EMPTY);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(ITEM, ItemStack.EMPTY);
     }
 
     @Override
@@ -119,7 +120,7 @@ public class GroundItemEntity extends Entity {
     protected void addAdditionalSaveData(CompoundTag tag) {
         ItemStack itemStack = this.getItem();
         if (!itemStack.isEmpty()) {
-            tag.put("Item", itemStack.save(new CompoundTag()));
+            tag.put("Item", itemStack.save(this.registryAccess()));
         }
         tag.putDouble("InitialY", this.initialY);
     }
@@ -127,7 +128,9 @@ public class GroundItemEntity extends Entity {
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         if (tag.contains("Item")) {
-            setItem(ItemStack.of(tag.getCompound("Item")));
+            CompoundTag itemTag = tag.getCompound("Item");
+            ItemStack itemStack = ItemStack.parseOptional(this.registryAccess(), itemTag);
+            this.setItem(itemStack);
         }
         if (tag.contains("InitialY")) {
             this.initialY = tag.getDouble("InitialY");

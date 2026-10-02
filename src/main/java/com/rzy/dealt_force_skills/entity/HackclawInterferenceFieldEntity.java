@@ -8,8 +8,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -22,7 +20,6 @@ import net.minecraft.world.entity.projectile.ItemSupplier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
@@ -59,8 +56,8 @@ public class HackclawInterferenceFieldEntity extends Entity implements ItemSuppl
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(ATTACHED_FACE, Direction.UP.get3DDataValue());
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(ATTACHED_FACE, Direction.UP.get3DDataValue());
     }
 
     @Override
@@ -104,11 +101,6 @@ public class HackclawInterferenceFieldEntity extends Entity implements ItemSuppl
         tag.putInt("Age", age);
         tag.putBoolean("FeedbackTriggered", feedbackTriggered);
         tag.putInt("AttachedFace", entityData.get(ATTACHED_FACE));
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     @Override

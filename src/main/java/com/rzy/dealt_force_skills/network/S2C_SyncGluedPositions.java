@@ -1,21 +1,43 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
  * Full-replace sync of every position glued (by HVK Universal Glue) in one dimension. Sent on a
  * successful glue (to everyone currently in that dimension) and on player join / dimension change
  * (to bring the client's {@link HvkGlueClientCache} up to date).
  */
-public record S2C_SyncGluedPositions(ResourceKey<Level> dimension, long[] positions) {
+public class S2C_SyncGluedPositions implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncGluedPositions> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_glued_positions"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncGluedPositions> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncGluedPositions::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private final ResourceKey<Level> dimension;
+    private final long[] positions;
+
+    public S2C_SyncGluedPositions(ResourceKey<Level> dimension, long[] positions) {
+        this.dimension = dimension;
+        this.positions = positions;
+    }
+
     public static void encode(S2C_SyncGluedPositions msg, FriendlyByteBuf buf) {
         buf.writeResourceLocation(msg.dimension.location());
         buf.writeVarInt(msg.positions.length);
@@ -34,11 +56,7 @@ public record S2C_SyncGluedPositions(ResourceKey<Level> dimension, long[] positi
         return new S2C_SyncGluedPositions(dimension, positions);
     }
 
-    public static void handle(S2C_SyncGluedPositions msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> HvkGlueClientCache.replaceAll(msg.dimension, msg.positions)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_SyncGluedPositions msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> HvkGlueClientCache.replaceAll(msg.dimension, msg.positions));
     }
 }

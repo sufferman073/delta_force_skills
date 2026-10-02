@@ -9,11 +9,27 @@ import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.team.RoundStartFreezeManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_CorpsToolAction implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_CorpsToolAction> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_corps_tool_action"));
 
-public class C2S_CorpsToolAction {
+    public static final StreamCodec<FriendlyByteBuf, C2S_CorpsToolAction> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_CorpsToolAction::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final CorpsToolAction action;
     private final int targetEntityId;
 
@@ -38,15 +54,15 @@ public class C2S_CorpsToolAction {
         return new C2S_CorpsToolAction(action, buf.readVarInt());
     }
 
-    public static void handle(C2S_CorpsToolAction msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_CorpsToolAction msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player == null || player.isSpectator() || UluruLoiteringMissileEntity.isPlayerControlling(player)) {
                 return;
             }
-            if (player.hasEffect(ModEffects.STUN.get())
-                    || player.hasEffect(ModEffects.WEBBED.get())
-                    || player.hasEffect(ModEffects.N_TWO_FROZEN.get())
+            if (player.hasEffect(ModEffects.STUN)
+                    || player.hasEffect(ModEffects.WEBBED)
+                    || player.hasEffect(ModEffects.N_TWO_FROZEN)
                     || StingerStateManager.isDowned(player)
                     || RoundStartFreezeManager.isFrozen(player)) {
                 return;
@@ -54,6 +70,5 @@ public class C2S_CorpsToolAction {
             CorpsSkills.handleToolAction(player, msg.action, msg.targetEntityId);
             CorpsStateManager.syncToClient(player);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

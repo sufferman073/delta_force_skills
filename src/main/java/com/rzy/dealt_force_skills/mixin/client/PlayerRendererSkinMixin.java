@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(PlayerRenderer.class)
 public abstract class PlayerRendererSkinMixin {
-    @Inject(method = "getTextureLocation(Lnet/minecraft/client/player/AbstractClientPlayer;)Lnet/minecraft/resources/ResourceLocation;", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "getTextureLocation(Lnet/minecraft/client/player/AbstractClientPlayer;)Lnet/minecraft/resources/ResourceLocation;", at = @At("HEAD"), cancellable = true, remap = false)
     private void dealt_force_skills$useSelectedCharacterSkin(AbstractClientPlayer player, CallbackInfoReturnable<ResourceLocation> cir) {
         ClientCharacterSkinState.skinFor(player).ifPresent(cir::setReturnValue);
     }

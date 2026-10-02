@@ -74,8 +74,7 @@ public final class HackclawStateManager {
     public static boolean isHackclaw(Player player) {
         Optional<String> selected = CharacterSelectionManager.getSelectedCharacterId(player);
         return selected.isPresent() && ModCharacters.HACKCLAW_ID.equals(selected.get())
-                || com.rzy.dealt_force_skills.character.commander.CommanderStateManager
-                .inheritsRuntimeSource(player, ModCharacters.HACKCLAW_ID);
+                || CommanderStateManager.inheritsRuntimeSource(player, ModCharacters.HACKCLAW_ID);
     }
 
     public static void initializeIfNeeded(ServerPlayer player) {
@@ -316,8 +315,8 @@ public final class HackclawStateManager {
         if (!player.isAlive() || player.isRemoved()) {
             return true;
         }
-        if (player.hasEffect(ModEffects.STUN.get())
-                || player.hasEffect(ModEffects.WEBBED.get())
+        if (player.hasEffect(ModEffects.STUN)
+                || player.hasEffect(ModEffects.WEBBED)
                 || UluruLoiteringMissileEntity.isPlayerControlling(player)) {
             return true;
         }

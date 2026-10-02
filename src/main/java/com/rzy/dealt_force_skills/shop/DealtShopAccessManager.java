@@ -2,6 +2,7 @@ package com.rzy.dealt_force_skills.shop;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -108,7 +109,8 @@ public final class DealtShopAccessManager {
     }
 
     private static AccessData data(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(AccessData::load, AccessData::new, DATA_NAME);
+        return server.overworld().getDataStorage().computeIfAbsent(
+                new SavedData.Factory<>(AccessData::new, AccessData::load), DATA_NAME);
     }
 
     private record AreaRule(String dimension, int minX, int minY, int minZ,
@@ -152,7 +154,7 @@ public final class DealtShopAccessManager {
             }
         }
 
-        private static AccessData load(CompoundTag tag) {
+        private static AccessData load(CompoundTag tag, HolderLookup.Provider provider) {
             AccessData data = new AccessData();
             for (Service service : Service.values()) {
                 String prefix = service.id();
@@ -175,7 +177,7 @@ public final class DealtShopAccessManager {
         }
 
         @Override
-        public CompoundTag save(CompoundTag tag) {
+        public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
             for (Service service : Service.values()) {
                 String prefix = service.id();
                 tag.putBoolean(prefix + "Server", serverDefaults.get(service));

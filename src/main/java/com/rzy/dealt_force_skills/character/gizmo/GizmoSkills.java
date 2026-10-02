@@ -59,7 +59,7 @@ public final class GizmoSkills {
             com.rzy.dealt_force_skills.skill.SkillCooldownHelper.notifyCooldown(player, Component.translatable("message.dealt_force_skills.gizmo.smoke_empty"));
             return true;
         }
-        if (GizmoStateManager.countSmokeTraps(player) >= GizmoStateManager.smokeActiveLimit(player)) {
+        if (GizmoStateManager.countSmokeTraps(player) >= GizmoStateManager.SMOKE_ACTIVE_LIMIT) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.gizmo.smoke_limit"), true);
             return true;
         }
@@ -80,7 +80,7 @@ public final class GizmoSkills {
             com.rzy.dealt_force_skills.skill.SkillCooldownHelper.notifyCooldown(player, Component.translatable("message.dealt_force_skills.gizmo.spider_empty"));
             return true;
         }
-        if (GizmoStateManager.countSpiderNests(player) >= GizmoStateManager.spiderActiveLimit(player)) {
+        if (GizmoStateManager.countSpiderNests(player) >= GizmoStateManager.SPIDER_ACTIVE_LIMIT) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.gizmo.spider_limit"), true);
             return true;
         }

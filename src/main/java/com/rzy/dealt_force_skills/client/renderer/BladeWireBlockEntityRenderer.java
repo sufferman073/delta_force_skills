@@ -12,9 +12,9 @@ import net.minecraft.resources.ResourceLocation;
 
 public final class BladeWireBlockEntityRenderer implements BlockEntityRenderer<BladeWireBlockEntity> {
     private static final ResourceLocation CORE =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "sineva_blade_wire_core");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "sineva_blade_wire_core");
     private static final ResourceLocation WIRE =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "sineva_perimeter_barbed_wire");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "sineva_perimeter_barbed_wire");
 
     public BladeWireBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -89,9 +89,9 @@ public final class BladeWireBlockEntityRenderer implements BlockEntityRenderer<B
             float x4, float y4, float z4,
             int r, int g, int b
     ) {
-        consumer.vertex(poseStack.last().pose(), x1, y1, z1).color(r, g, b, 255).endVertex();
-        consumer.vertex(poseStack.last().pose(), x2, y2, z2).color(r, g, b, 255).endVertex();
-        consumer.vertex(poseStack.last().pose(), x3, y3, z3).color(r, g, b, 255).endVertex();
-        consumer.vertex(poseStack.last().pose(), x4, y4, z4).color(r, g, b, 255).endVertex();
+        consumer.addVertex(poseStack.last().pose(), x1, y1, z1).setColor(r, g, b, 255);
+        consumer.addVertex(poseStack.last().pose(), x2, y2, z2).setColor(r, g, b, 255);
+        consumer.addVertex(poseStack.last().pose(), x3, y3, z3).setColor(r, g, b, 255);
+        consumer.addVertex(poseStack.last().pose(), x4, y4, z4).setColor(r, g, b, 255);
     }
 }

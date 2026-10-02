@@ -1,25 +1,29 @@
 package com.rzy.dealt_force_skills.effect;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.resources.ResourceLocation;
 
 public class FatigueRemovalEffect extends AttributeStatusEffect {
     public FatigueRemovalEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0xD6C85E,
-                0.10D, "7670f35c-730d-4628-a026-c2364b4dcdf1",
-                0.10D, "74e8e7bb-7c0f-4496-92bc-444e5eed62a4");
+        super(MobEffectCategory.BENEFICIAL,
+                0.10D, ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.fatigue_removal.movement_speed"),
+                0.10D, ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.fatigue_removal.attack_speed"));
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return duration % 20 == 0;
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         if (!entity.level().isClientSide && entity instanceof Player player) {
             player.getFoodData().setFoodLevel(Math.max(player.getFoodData().getFoodLevel(), 7));
         }
+        return true;
     }
 }

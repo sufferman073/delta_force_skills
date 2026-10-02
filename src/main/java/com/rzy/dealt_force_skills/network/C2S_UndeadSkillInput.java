@@ -6,11 +6,27 @@ import com.rzy.dealt_force_skills.character.undead.UndeadSkills;
 import com.rzy.dealt_force_skills.character.undead.UndeadStateManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record C2S_UndeadSkillInput(SkillSlot slot, UndeadSkillInputAction action, int heldTicks) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_UndeadSkillInput> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_undead_skill_input"));
 
-public record C2S_UndeadSkillInput(SkillSlot slot, UndeadSkillInputAction action, int heldTicks) {
+    public static final StreamCodec<FriendlyByteBuf, C2S_UndeadSkillInput> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_UndeadSkillInput::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public static void encode(C2S_UndeadSkillInput msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.slot.ordinal());
         buf.writeVarInt(msg.action.ordinal());
@@ -32,14 +48,13 @@ public record C2S_UndeadSkillInput(SkillSlot slot, UndeadSkillInputAction action
         return new C2S_UndeadSkillInput(slot, action, heldTicks);
     }
 
-    public static void handle(C2S_UndeadSkillInput msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_UndeadSkillInput msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player != null && !player.isSpectator()) {
                 UndeadSkills.handleInput(player, msg.slot, msg.action, msg.heldTicks);
                 UndeadStateManager.syncToClient(player);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

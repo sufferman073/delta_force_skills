@@ -6,12 +6,13 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class HackclawFlashBlindEffect extends MobEffect {
     public HackclawFlashBlindEffect() {
-        super(MobEffectCategory.NEUTRAL, 0xFFF2A6);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         applySuppression(entity);
+        return true;
     }
 
     public static void applySuppression(LivingEntity entity) {
@@ -19,7 +20,7 @@ public class HackclawFlashBlindEffect extends MobEffect {
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 }

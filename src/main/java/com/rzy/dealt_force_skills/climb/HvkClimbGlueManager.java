@@ -7,8 +7,8 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
@@ -101,7 +101,8 @@ public final class HvkClimbGlueManager {
     }
 
     private static HvkGlueSavedData data(ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(HvkGlueSavedData::load, HvkGlueSavedData::new, DATA_NAME);
+        return level.getDataStorage().computeIfAbsent(
+                new SavedData.Factory<>(HvkGlueSavedData::new, HvkGlueSavedData::load), DATA_NAME);
     }
 
     /**
@@ -118,7 +119,7 @@ public final class HvkClimbGlueManager {
     private static final class HvkGlueSavedData extends SavedData {
         private final LongOpenHashSet gluedPositions = new LongOpenHashSet();
 
-        private static HvkGlueSavedData load(CompoundTag tag) {
+        private static HvkGlueSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
             HvkGlueSavedData data = new HvkGlueSavedData();
             if (tag.contains(POSITIONS_TAG, Tag.TAG_LONG_ARRAY)) {
                 data.gluedPositions.addAll(LongArrayList.wrap(tag.getLongArray(POSITIONS_TAG)));
@@ -127,8 +128,8 @@ public final class HvkClimbGlueManager {
         }
 
         @Override
-        public CompoundTag save(CompoundTag tag) {
-            tag.put(POSITIONS_TAG, new LongArrayTag(gluedPositions.toLongArray()));
+        public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+            tag.putLongArray(POSITIONS_TAG, gluedPositions.toLongArray());
             return tag;
         }
     }

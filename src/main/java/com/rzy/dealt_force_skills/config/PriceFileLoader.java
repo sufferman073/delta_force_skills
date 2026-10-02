@@ -8,9 +8,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.forgespi.language.IModInfo;
-import net.minecraftforge.forgespi.locating.IModFile;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforgespi.locating.IModFile;
+import net.neoforged.neoforgespi.language.IModInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +24,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
- * Loads the highest-priority item values supplied by mod resources.
- * Files live at assets/<namespace>/price/<item_name>.txt.
+ * 价格文件加载器
+ * 从所有非原版模组命名空间的 /price/ 目录读取物品价值，优先级最高
+ * 文件: assets/<namespace>/price/<item_name>.txt
+ * 格式: .price=[{coin:"havoc",price:"价值"},{coin:"delta",price:"0"}]
  */
 public final class PriceFileLoader {
 
@@ -49,20 +51,16 @@ public final class PriceFileLoader {
 
         for (IModInfo modInfo : ModList.get().getMods()) {
             String modId = modInfo.getModId();
-            if (VANILLA_NAMESPACES.contains(modId)) {
-                continue;
-            }
+            if (VANILLA_NAMESPACES.contains(modId)) continue;
 
             IModFile modFile = modInfo.getOwningFile().getFile();
             Path priceDir = modFile.findResource("assets", modId, "price");
-            if (priceDir == null || !Files.isDirectory(priceDir)) {
-                continue;
-            }
+            if (priceDir == null || !Files.isDirectory(priceDir)) continue;
 
             loaded += scanPriceDir(modId, priceDir);
         }
 
-        LOGGER.info("PriceFileLoader: loaded Havoc prices for {} items", loaded);
+        LOGGER.info("PriceFileLoader: 加载了 {} 个物品的哈夫币价格", loaded);
     }
 
     private static int scanPriceDir(String namespace, Path priceDir) {
@@ -70,17 +68,13 @@ public final class PriceFileLoader {
         try (Stream<Path> files = Files.list(priceDir)) {
             for (Path file : files.toList()) {
                 String fileName = file.getFileName().toString();
-                if (!fileName.endsWith(".txt")) {
-                    continue;
-                }
+                if (!fileName.endsWith(".txt")) continue;
 
                 String itemName = fileName.substring(0, fileName.length() - 4);
-                ResourceLocation itemId = new ResourceLocation(namespace, itemName);
+                ResourceLocation itemId = ResourceLocation.fromNamespaceAndPath(namespace, itemName);
 
                 String content = Files.readString(file, StandardCharsets.UTF_8).trim();
-                if (content.isEmpty()) {
-                    continue;
-                }
+                if (content.isEmpty()) continue;
 
                 PriceData priceData = parsePriceFile(content);
                 if (priceData != null) {
@@ -91,26 +85,26 @@ public final class PriceFileLoader {
                     loaded++;
                 }
             }
-        } catch (IOException error) {
-            LOGGER.warn("PriceFileLoader: unable to scan directory {}: {}", priceDir, error.getMessage());
+        } catch (IOException e) {
+            LOGGER.warn("PriceFileLoader: 无法扫描目录 {}: {}", priceDir, e.getMessage());
         }
         return loaded;
     }
 
     public static synchronized Long getHavocPrice(ResourceLocation itemId) {
-        return itemId == null ? null : HAVOC_PRICE_CACHE.get(itemId);
+        if (itemId == null) return null;
+        return HAVOC_PRICE_CACHE.get(itemId);
     }
 
     public static synchronized Long getHavocPrice(Item item) {
-        if (item == null) {
-            return null;
-        }
+        if (item == null) return null;
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
         return id == null ? null : HAVOC_PRICE_CACHE.get(id);
     }
 
     public static synchronized Long getHavocPrice(ItemStack stack) {
-        return stack.isEmpty() ? null : getHavocPrice(stack.getItem());
+        if (stack.isEmpty()) return null;
+        return getHavocPrice(stack.getItem());
     }
 
     public static synchronized Map<ResourceLocation, Long> getHavocPriceMap() {
@@ -124,9 +118,7 @@ public final class PriceFileLoader {
 
     @SuppressWarnings("deprecation")
     public static PriceData parsePriceFile(String content) {
-        if (content == null || content.isEmpty()) {
-            return null;
-        }
+        if (content == null || content.isEmpty()) return null;
         try {
             content = content.trim();
             if (content.startsWith(".price=")) {
@@ -140,9 +132,9 @@ public final class PriceFileLoader {
             boolean foundDelta = false;
 
             for (JsonElement element : array) {
-                JsonObject object = element.getAsJsonObject();
-                String coin = object.get("coin").getAsString();
-                long price = Long.parseLong(object.get("price").getAsString());
+                JsonObject obj = element.getAsJsonObject();
+                String coin = obj.get("coin").getAsString();
+                long price = Long.parseLong(obj.get("price").getAsString());
 
                 if ("havoc".equals(coin)) {
                     havocPrice = price;
@@ -156,8 +148,8 @@ public final class PriceFileLoader {
             if (foundHavoc || foundDelta) {
                 return new PriceData(havocPrice, deltaPrice);
             }
-        } catch (Exception error) {
-            LOGGER.debug("PriceFileLoader: unable to parse {}", content, error);
+        } catch (Exception e) {
+            LOGGER.debug("PriceFileLoader: 解析失败: {}", content, e);
         }
         return null;
     }

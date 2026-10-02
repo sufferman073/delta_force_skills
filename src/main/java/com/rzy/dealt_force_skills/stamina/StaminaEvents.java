@@ -2,18 +2,18 @@ package com.rzy.dealt_force_skills.stamina;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class StaminaEvents {
     private StaminaEvents() { }
 
     @SubscribeEvent
-    public static void tick(TickEvent.PlayerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && event.player instanceof ServerPlayer player) {
+    public static void tick(PlayerTickEvent.Post event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             StaminaMovement.tick(player);
             StaminaManager.tick(player);
         }

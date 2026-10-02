@@ -1,0 +1,27 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:coarse_salt"
+                        },
+                        {
+                            "item":  "dealt_force_skills:coarse_salt"
+                        },
+                        {
+                            "item":  "dealt_force_skills:coarse_salt"
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:slowness"
+                                                                             }
+                                           }
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:slow_release_stabilizer",
+                   "count":  9
+               }
+}

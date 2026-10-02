@@ -1,10 +1,11 @@
 package com.rzy.dealt_force_skills.effect;
 
-import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.mixin.LivingEntityUseItemAccessor;
+import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.registry.ModGameRules;
 import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,8 +20,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,12 +31,11 @@ import java.util.Objects;
 
 public final class InjuryManager {
     private static final int INFINITE_DURATION = -1;
-    private static volatile float WOUND_ROLL_MULTIPLIER = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WOUND_ROLL_MULTIPLIER", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("effects.injury_manager.wound_probability_multiplier", 0.3F));
     private static final String DATA_ROOT = "DealtForceInjuryRuntime";
     private static final String FOOD_LEVEL = "FoodLevel";
     private static final String SATURATION = "Saturation";
     private static final String HEAD_BLINDNESS = "HeadBlindness";
-
+    private static volatile float WOUND_ROLL_MULTIPLIER = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WOUND_ROLL_MULTIPLIER", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("effects.injury_manager.wound_probability_multiplier", 0.3F));
     private InjuryManager() {
     }
 
@@ -131,11 +133,14 @@ public final class InjuryManager {
         return applyForced(player, type);
     }
 
+    /**
+     * Apply injury ignoring the dealtwound gamerule (bosses / scripted sources).
+     */
     public static boolean applyForced(ServerPlayer player, Type type) {
         if (player == null || type == null || !ModGameRules.areWoundsEnabled(player)) {
             return false;
         }
-        MobEffect effect = effect(type).get();
+        Holder<MobEffect> effect = effect(type);
         MobEffectInstance current = player.getEffect(effect);
         if (current != null) {
             if (!current.isVisible() || !current.showIcon()) {
@@ -162,10 +167,10 @@ public final class InjuryManager {
     }
 
     public static boolean removeRandomWound(ServerPlayer player) {
-        List<MobEffect> present = new ArrayList<>();
+        List<Holder<MobEffect>> present = new ArrayList<>();
         for (Type type : Type.values()) {
             if (isWound(type) && has(player, type)) {
-                present.add(effect(type).get());
+                present.add(effect(type));
             }
         }
         if (present.isEmpty()) {
@@ -180,11 +185,15 @@ public final class InjuryManager {
             return;
         }
         for (Type type : Type.values()) {
-            MobEffect effect = effect(type).get();
+            Holder<MobEffect> effect = effect(type);
             if (original.hasEffect(effect)) {
                 replacement.addEffect(new MobEffectInstance(effect, INFINITE_DURATION, 0, false, true, true));
             }
         }
+    }
+
+    public static boolean isInjury(Holder<MobEffect> effect) {
+        return effect != null && isInjury(effect.value());
     }
 
     public static boolean isInjury(MobEffect effect) {
@@ -193,6 +202,10 @@ public final class InjuryManager {
             if (effect(type).get() == effect) return true;
         }
         return false;
+    }
+
+    public static boolean isWound(Holder<MobEffect> effect) {
+        return effect != null && isWound(effect.value());
     }
 
     public static boolean isWound(MobEffect effect) {
@@ -216,8 +229,8 @@ public final class InjuryManager {
     }
 
     public static boolean isSuppressed(LivingEntity entity) {
-        return entity != null && (entity.hasEffect(ModEffects.PAIN_RELIEF.get())
-                || entity.hasEffect(ModEffects.SEDATION.get()));
+        return entity != null && (entity.hasEffect(ModEffects.PAIN_RELIEF)
+                || entity.hasEffect(ModEffects.SEDATION));
     }
 
     private static void tickHeadInjury(ServerPlayer player, boolean suppressed) {
@@ -295,7 +308,9 @@ public final class InjuryManager {
         return !currentStack.isEmpty()
                 && currentStack.getItem() == previousStack.getItem()
                 && currentStack.getDamageValue() == previousStack.getDamageValue()
-                && Objects.equals(currentStack.getTag(), previousStack.getTag());
+                && Objects.equals(
+                    currentStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY),
+                    previousStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY));
     }
 
     private static int woundCount(LivingEntity entity) {
@@ -306,7 +321,7 @@ public final class InjuryManager {
 
     private static void repairDisplayFlags(ServerPlayer player) {
         for (Type type : Type.values()) {
-            MobEffectInstance current = player.getEffect(effect(type).get());
+            MobEffectInstance current = player.getEffect(effect(type));
             if (current != null && (!current.isVisible() || !current.showIcon())) {
                 replaceWithVisible(player, current);
             }
@@ -314,7 +329,7 @@ public final class InjuryManager {
     }
 
     private static void replaceWithVisible(ServerPlayer player, MobEffectInstance current) {
-        MobEffect effect = current.getEffect();
+        Holder<MobEffect> effect = current.getEffect();
         MobEffectInstance visible = new MobEffectInstance(effect, current.getDuration(), current.getAmplifier(),
                 current.isAmbient(), true, true);
         player.removeEffect(effect);
@@ -328,7 +343,7 @@ public final class InjuryManager {
             return;
         }
         for (Type type : Type.values()) {
-            player.removeEffect(effect(type).get());
+            player.removeEffect(effect(type));
         }
         persistent.remove(DATA_ROOT);
     }
@@ -338,7 +353,7 @@ public final class InjuryManager {
     }
 
     private static boolean has(LivingEntity entity, Type type) {
-        return entity != null && entity.hasEffect(effect(type).get());
+        return entity != null && entity.hasEffect(effect(type));
     }
 
     private static boolean isWound(Type type) {
@@ -346,8 +361,7 @@ public final class InjuryManager {
     }
 
     private static boolean roll(ServerPlayer player, float chance) {
-        float adjustedChance = Math.max(0.0F, Math.min(1.0F, chance * WOUND_ROLL_MULTIPLIER));
-        return player.getRandom().nextFloat() < adjustedChance;
+        return player.getRandom().nextFloat() < Math.max(0.0F, chance * WOUND_ROLL_MULTIPLIER);
     }
 
     private static Type random(ServerPlayer player, Type... values) {
@@ -381,7 +395,7 @@ public final class InjuryManager {
         return root.getCompound(DATA_ROOT);
     }
 
-    private static RegistryObject<MobEffect> effect(Type type) {
+    private static DeferredHolder<MobEffect, MobEffect> effect(Type type) {
         return switch (type) {
             case LEFT_LEG_FRACTURE -> ModEffects.LEFT_LEG_FRACTURE;
             case RIGHT_LEG_FRACTURE -> ModEffects.RIGHT_LEG_FRACTURE;

@@ -5,14 +5,14 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 public class ModCreativeTabs {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, DealtForceSkillsMod.MODID);
 
-    public static final RegistryObject<CreativeModeTab> EQUIPMENT = CREATIVE_TABS.register("equipment",
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EQUIPMENT = CREATIVE_TABS.register("equipment",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.dealt_force_skills.equipment"))
                     .icon(() -> new ItemStack(ModItems.TITAN_BALLISTIC_ARMOR.get()))
@@ -65,7 +65,7 @@ public class ModCreativeTabs {
                     })
                     .build());
 
-    public static final RegistryObject<CreativeModeTab> CONSUMABLES = CREATIVE_TABS.register("consumables",
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> CONSUMABLES = CREATIVE_TABS.register("consumables",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.dealt_force_skills.consumables"))
                     .icon(() -> new ItemStack(ModItems.SPECIAL_EQUIPMENT_SUPPLY.get()))
@@ -88,11 +88,11 @@ public class ModCreativeTabs {
                         output.accept(ModItems.DEK_FIELD_SURGICAL_PACK.get());
                         output.accept(ModItems.PROTOTYPE_MADNESS_COMPOUND.get());
                         output.accept(ModItems.SPECIAL_EQUIPMENT_SUPPLY.get());
-                        output.accept(ModItems.DRIFTWOOD.get());
-                        output.accept(ModItems.LUCKY_COIN.get());
-            output.accept(ModItems.FOX_MUSIC_PLAYER.get());
+                        output.accept(ModItems.FOX_MUSIC_PLAYER.get());
             output.accept(ModItems.ETERNAL_LOVE_BLESSING.get());
-            output.accept(ModItems.HOOK_AUTHOR_BLESSING.get());
+                        output.accept(ModItems.DRIFTWOOD.get());
+               output.accept(ModItems.LUCKY_COIN.get());
+               output.accept(ModItems.HOOK_AUTHOR_BLESSING.get());
                         output.accept(ModItems.RAVEN_SHADOW_EXTRACT.get());
                         output.accept(ModItems.DARK_ZONE_RAINBOW_INJECTION.get());
                         output.accept(ModItems.EXPERIMENTAL_IRON_CURTAIN_CATALYST.get());
@@ -126,7 +126,7 @@ public class ModCreativeTabs {
                     })
                     .build());
 
-    public static final RegistryObject<CreativeModeTab> MATERIALS = CREATIVE_TABS.register("materials",
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MATERIALS = CREATIVE_TABS.register("materials",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.dealt_force_skills.materials"))
                     .icon(() -> new ItemStack(ModItems.BALLISTIC_CERAMIC.get()))
@@ -170,12 +170,12 @@ public class ModCreativeTabs {
                         output.accept(ModItems.ASARA_SNIPER_SPAWN_EGG.get());
                         output.accept(ModItems.ASARA_SENTRY_SNIPER_SPAWN_EGG.get());
                         output.accept(ModItems.ASARA_GUARD_SOLDIER_SPAWN_EGG.get());
-                        output.accept(ModItems.HVK_ASARA_ARENA.get());
-                        output.accept(ModItems.HVK_ENCHANT_INFUSION.get());
                         output.accept(ModItems.PROGRAMMABLE_PROCESSOR.get());
                         output.accept(ModItems.HVK_ADVANCED_STANDARD_TEMPLATE_CONSTRUCTOR.get());
                         output.accept(ModItems.HVK_ADVANCED_DISASSEMBLY_BEAM_EMITTER.get());
                         output.accept(ModItems.HVK_ADVANCED_SPAWNER.get());
+                        output.accept(ModItems.HVK_ASARA_ARENA.get());
+                        output.accept(ModItems.HVK_ENCHANT_INFUSION.get());
                         output.accept(ModItems.HVK_CLONE_PROTOTYPE.get());
                         output.accept(ModItems.HVK_ADVANCED_TREASURE_COMPASS.get());
                         output.accept(ModItems.HVK_TREASURE_CHEST_BOX.get());

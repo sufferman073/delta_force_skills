@@ -7,12 +7,11 @@ import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -30,7 +29,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 public final class AcceleratedTroopsPayloadEntity extends Projectile implements ItemSupplier {
     private static final EntityDataAccessor<Integer> DATA_KIND = SynchedEntityData.defineId(
@@ -54,8 +52,8 @@ public final class AcceleratedTroopsPayloadEntity extends Projectile implements 
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_KIND, Kind.FRAG.ordinal());
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_KIND, Kind.FRAG.ordinal());
     }
 
     public Kind kind() {
@@ -101,8 +99,10 @@ public final class AcceleratedTroopsPayloadEntity extends Projectile implements 
                 "accelerated_troops.payload." + kind.id + ".radius", kind.radius));
         level.sendParticles(kind.fire ? ParticleTypes.FLAME : ParticleTypes.ELECTRIC_SPARK,
                 center.x, center.y, center.z, 45, radius * 0.25D, 0.25D, radius * 0.25D, 0.08D);
-        level.playSound(null, center.x, center.y, center.z,
-                kind.fire ? SoundEvents.GENERIC_EXPLODE : SoundEvents.FIREWORK_ROCKET_BLAST,
+        SoundEvent explosionSound = kind.fire
+                ? SoundEvents.GENERIC_EXPLODE.value()
+                : SoundEvents.FIREWORK_ROCKET_BLAST;
+        level.playSound(null, center.x, center.y, center.z, explosionSound,
                 SoundSource.HOSTILE, 1.0F, 0.8F + random.nextFloat() * 0.4F);
         if (kind == Kind.PULSE || kind == Kind.MEDICAL_WASTE) {
             ElectronicInterferenceManager.disruptElectronicDevices(level, center, radius);
@@ -127,34 +127,34 @@ public final class AcceleratedTroopsPayloadEntity extends Projectile implements 
         int duration = DealtBossesConfig.intValue(
                 "accelerated_troops.payload." + kind.id + ".effect_ticks", kind.effectTicks);
         switch (kind) {
-            case QUICK_FLASH -> target.addEffect(new MobEffectInstance(ModEffects.MORSE_FLASH_BLIND.get(), duration, 0,
+            case QUICK_FLASH -> target.addEffect(new MobEffectInstance(ModEffects.MORSE_FLASH_BLIND, duration, 0,
                     false, true, true), owner);
             case DEWAR -> {
                 target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, duration, 3,
                         false, true, true), owner);
-                target.addEffect(new MobEffectInstance(ModEffects.N_TWO_DISRUPTED.get(), duration, 0,
+                target.addEffect(new MobEffectInstance(ModEffects.N_TWO_DISRUPTED, duration, 0,
                         false, true, true), owner);
             }
-            case SPIDERLING -> target.addEffect(new MobEffectInstance(ModEffects.CORROSION.get(), duration, 1,
+            case SPIDERLING -> target.addEffect(new MobEffectInstance(ModEffects.CORROSION, duration, 1,
                     false, true, true), owner);
             case SHOCK_ARROW, SHOCK_ORB, TIGER_CANNON -> target.addEffect(
-                    new MobEffectInstance(ModEffects.STUN.get(), duration, 0, false, true, true), owner);
+                    new MobEffectInstance(ModEffects.STUN, duration, 0, false, true, true), owner);
             case PULSE -> {
-                target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ACTION_PAUSE.get(), duration, 0,
+                target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ACTION_PAUSE, duration, 0,
                         false, true, true), owner);
-                target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE.get(),
+                target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE,
                         duration, 0, false, true, true), owner);
             }
-            case TEAR_GAS -> target.addEffect(new MobEffectInstance(ModEffects.TOXIK_TEAR_GAS_BLIND.get(),
+            case TEAR_GAS -> target.addEffect(new MobEffectInstance(ModEffects.TOXIK_TEAR_GAS_BLIND,
                     duration, 0, false, true, true), owner);
             case MEDICAL_WASTE -> target.addEffect(new MobEffectInstance(
-                    ModEffects.VLINDER_MEDICAL_WASTE_INTERFERENCE.get(), duration, 0,
+                    ModEffects.VLINDER_MEDICAL_WASTE_INTERFERENCE, duration, 0,
                     false, true, true), owner);
-            case SUPPRESSION_STIM -> target.addEffect(new MobEffectInstance(ModEffects.STINGER_STIM_SUPPRESSION.get(),
+            case SUPPRESSION_STIM -> target.addEffect(new MobEffectInstance(ModEffects.STINGER_STIM_SUPPRESSION,
                     duration, 0, false, true, true), owner);
-            case WALL_DRILL -> target.addEffect(new MobEffectInstance(ModEffects.TEMPEST_DISARMED.get(),
+            case WALL_DRILL -> target.addEffect(new MobEffectInstance(ModEffects.TEMPEST_DISARMED,
                     duration, 0, false, true, true), owner);
-            case COMPOSITE_INCENDIARY -> target.setSecondsOnFire(Math.max(1, duration / 20));
+            case COMPOSITE_INCENDIARY -> target.igniteForSeconds(Math.max(1, duration / 20));
             default -> {
             }
         }
@@ -180,11 +180,6 @@ public final class AcceleratedTroopsPayloadEntity extends Projectile implements 
     @Override
     public ItemStack getItem() {
         return new ItemStack(kind().displayItem);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public enum Kind {

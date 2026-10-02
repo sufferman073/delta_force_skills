@@ -12,18 +12,18 @@ import java.util.ArrayList;
 
 public class VlinderHealingDustEffect extends MobEffect {
     public VlinderHealingDustEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0x7DFFB2);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         for (MobEffectInstance effect : new ArrayList<>(entity.getActiveEffects())) {
-            if (effect.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
+            if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
                 entity.removeEffect(effect.getEffect());
             }
         }
@@ -36,5 +36,6 @@ public class VlinderHealingDustEffect extends MobEffect {
                 DfsAchievements.recordVlinderHealing(owner, healed);
             }
         }
+        return true;
     }
 }

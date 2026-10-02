@@ -1,30 +1,35 @@
 package com.rzy.dealt_force_skills.item;
 
 import com.rzy.dealt_force_skills.registry.ModGameRules;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Multimap;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterials;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 
 import java.nio.charset.StandardCharsets;
@@ -43,7 +48,7 @@ public class DfsEquipmentItem extends ArmorItem {
     private final Profile profile;
     private final DfsItemQuality quality;
     private final String tooltipKey;
-    private final Multimap<Attribute, AttributeModifier> defaultModifiers;
+    private final ItemAttributeModifiers defaultModifiers;
 
     public DfsEquipmentItem(Properties properties, Profile profile, String tooltipKey) {
         super(ArmorMaterials.IRON, armorType(profile.slot()), properties);
@@ -66,7 +71,7 @@ public class DfsEquipmentItem extends ArmorItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         Component qualityLine = Component.translatable("tooltip.dealt_force_skills.quality",
                 Component.translatable("quality.dealt_force_skills." + quality.key()));
         tooltip.add(quality == DfsItemQuality.COLORFUL
@@ -79,7 +84,7 @@ public class DfsEquipmentItem extends ArmorItem {
         if (tooltipKey != null && !tooltipKey.isBlank()) {
             tooltip.add(Component.translatable(tooltipKey).withStyle(ChatFormatting.DARK_GRAY));
         }
-        addExtraTooltip(stack, level, tooltip, flag);
+        addExtraTooltip(stack, context, tooltip, flag);
     }
 
     public Profile profile() {
@@ -92,11 +97,11 @@ public class DfsEquipmentItem extends ArmorItem {
     }
 
     @Override
-    public String getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot, String type) {
+    public ResourceLocation getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot, ArmorMaterial.Layer layer, boolean innerModel) {
         if (profile.slot() == EquipmentSlot.HEAD) {
-            return DealtForceSkillsMod.MODID + ":textures/models/armor/empty_layer_1.png";
+            return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "textures/models/armor/empty_layer_1.png");
         }
-        return DealtForceSkillsMod.MODID + ":textures/models/armor/" + profile.id() + "_layer_1.png";
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "textures/models/armor/" + profile.id() + "_layer_1.png");
     }
 
     @Override
@@ -108,22 +113,20 @@ public class DfsEquipmentItem extends ArmorItem {
     }
 
     @Override
-    public void onArmorTick(ItemStack stack, Level level, Player player) {
-        if (!level.isClientSide) {
+    public void inventoryTick(ItemStack stack, Level level, Entity entity, int slot, boolean selected) {
+        super.inventoryTick(stack, level, entity, slot, selected);
+        if (!level.isClientSide && entity instanceof Player) {
             ensureInstanceId(stack);
         }
     }
 
     @Override
-    public Multimap<Attribute, AttributeModifier> getDefaultAttributeModifiers(EquipmentSlot slot) {
-        if (slot == profile.slot()) {
-            return defaultModifiers;
-        }
-        return super.getDefaultAttributeModifiers(slot);
+    public ItemAttributeModifiers getDefaultAttributeModifiers(ItemStack stack) {
+        return defaultModifiers;
     }
 
     @Override
-    public <T extends LivingEntity> int damageItem(ItemStack stack, int amount, T entity, Consumer<T> onBroken) {
+    public <T extends LivingEntity> int damageItem(ItemStack stack, int amount, T entity, Consumer<Item> onBroken) {
         if (amount <= 0) {
             return 0;
         }
@@ -151,14 +154,14 @@ public class DfsEquipmentItem extends ArmorItem {
     }
 
     @Override
-    public boolean canApplyAtEnchantingTable(ItemStack stack, Enchantment enchantment) {
+    public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment) {
         ItemStack vanillaReference = profile.slot() == EquipmentSlot.HEAD
                 ? new ItemStack(Items.IRON_HELMET)
                 : new ItemStack(Items.IRON_CHESTPLATE);
-        return enchantment.canEnchant(vanillaReference) || super.canApplyAtEnchantingTable(stack, enchantment);
+        return enchantment.value().canEnchant(vanillaReference);
     }
 
-    protected void addExtraTooltip(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    protected void addExtraTooltip(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.equipment.faction",
                 Component.translatable("faction.dealt_force_skills." + profile.faction().key())).withStyle(ChatFormatting.GRAY));
         addFactionSetTooltip(profile.faction(), tooltip);
@@ -220,25 +223,26 @@ public class DfsEquipmentItem extends ArmorItem {
         return slot == EquipmentSlot.HEAD ? Type.HELMET : Type.CHESTPLATE;
     }
 
-    private static Multimap<Attribute, AttributeModifier> buildModifiers(Profile profile) {
-        ImmutableMultimap.Builder<Attribute, AttributeModifier> builder = ImmutableMultimap.builder();
-        builder.put(Attributes.ARMOR, modifier(profile, "armor", profile.defense(), AttributeModifier.Operation.ADDITION));
+    private static ItemAttributeModifiers buildModifiers(Profile profile) {
+        ItemAttributeModifiers.Builder builder = ItemAttributeModifiers.builder();
+        EquipmentSlotGroup slotGroup = EquipmentSlotGroup.bySlot(profile.slot());
+        builder.add(Attributes.ARMOR, modifier(profile, "armor", profile.defense(), AttributeModifier.Operation.ADD_VALUE), slotGroup);
         if (profile.toughness() > 0.0D) {
-            builder.put(Attributes.ARMOR_TOUGHNESS, modifier(profile, "toughness", profile.toughness(), AttributeModifier.Operation.ADDITION));
+            builder.add(Attributes.ARMOR_TOUGHNESS, modifier(profile, "toughness", profile.toughness(), AttributeModifier.Operation.ADD_VALUE), slotGroup);
         }
         if (profile.knockbackResistance() > 0.0D) {
-            builder.put(Attributes.KNOCKBACK_RESISTANCE, modifier(profile, "knockback", profile.knockbackResistance(), AttributeModifier.Operation.ADDITION));
+            builder.add(Attributes.KNOCKBACK_RESISTANCE, modifier(profile, "knockback", profile.knockbackResistance(), AttributeModifier.Operation.ADD_VALUE), slotGroup);
         }
         double movementModifier = profile.lightweight() - profile.movementLimit();
         if (Math.abs(movementModifier) > 0.0001D) {
-            builder.put(Attributes.MOVEMENT_SPEED, modifier(profile, "movement", movementModifier, AttributeModifier.Operation.MULTIPLY_TOTAL));
+            builder.add(Attributes.MOVEMENT_SPEED, modifier(profile, "movement", movementModifier, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL), slotGroup);
         }
         return builder.build();
     }
 
     private static AttributeModifier modifier(Profile profile, String key, double amount, AttributeModifier.Operation operation) {
-        UUID uuid = UUID.nameUUIDFromBytes(("dealt_force_skills:" + profile.id() + ":" + key).getBytes(StandardCharsets.UTF_8));
-        return new AttributeModifier(uuid, "DFS " + profile.id() + " " + key, amount, operation);
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("dealt_force_skills", profile.id() + "_" + key);
+        return new AttributeModifier(id, amount, operation);
     }
 
     public static Profile profile(ItemStack stack) {
@@ -252,10 +256,11 @@ public class DfsEquipmentItem extends ArmorItem {
         if (profile(stack) == null) {
             return null;
         }
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.hasUUID(TAG_INSTANCE_ID)) {
             tag.putUUID(TAG_INSTANCE_ID, UUID.randomUUID());
         }
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         return tag.getUUID(TAG_INSTANCE_ID);
     }
 
@@ -274,9 +279,10 @@ public class DfsEquipmentItem extends ArmorItem {
     }
 
     private static void removeMatchingCopy(ItemStack equipped, UUID instanceId, ItemStack candidate) {
+        CompoundTag candidateTag = candidate.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (candidate.isEmpty() || candidate == equipped || candidate.getItem() != equipped.getItem()
-                || !candidate.hasTag() || !candidate.getTag().hasUUID(TAG_INSTANCE_ID)
-                || !instanceId.equals(candidate.getTag().getUUID(TAG_INSTANCE_ID))) {
+                || !candidateTag.hasUUID(TAG_INSTANCE_ID)
+                || !instanceId.equals(candidateTag.getUUID(TAG_INSTANCE_ID))) {
             return;
         }
         candidate.shrink(1);
@@ -333,8 +339,19 @@ public class DfsEquipmentItem extends ArmorItem {
         if (cost <= 0) {
             return 0;
         }
-        int unbreaking = Math.max(0, EnchantmentHelper.getItemEnchantmentLevel(Enchantments.UNBREAKING, stack));
+        int unbreaking = Math.max(0, enchantmentLevel(stack, Enchantments.UNBREAKING));
         return unbreaking <= 0 ? cost : Math.max(1, (int) Math.ceil(cost / (double) (unbreaking + 1)));
+    }
+
+    private static int enchantmentLevel(ItemStack stack, net.minecraft.resources.ResourceKey<Enchantment> key) {
+        ItemEnchantments enchantments = stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+        int level = 0;
+        for (var entry : enchantments.entrySet()) {
+            if (entry.getKey().is(key)) {
+                level = Math.max(level, entry.getIntValue());
+            }
+        }
+        return level;
     }
 
     public static boolean hasUsableVision(ItemStack stack) {
@@ -361,7 +378,8 @@ public class DfsEquipmentItem extends ArmorItem {
         if (profile == null || !profile.hasHelmetOptics()) {
             return VISION_OFF;
         }
-        CompoundTag tag = stack.getTag();
+        CustomData cd = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = cd != null ? cd.copyTag() : null;
         if (tag == null || !tag.contains(TAG_VISION_MODE)) {
             return firstSupportedVisionMode(profile);
         }
@@ -373,7 +391,9 @@ public class DfsEquipmentItem extends ArmorItem {
         if (profile == null || !profile.hasHelmetOptics()) {
             return;
         }
-        stack.getOrCreateTag().putInt(TAG_VISION_MODE, sanitizeVisionMode(profile, mode));
+        CompoundTag vmTag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        vmTag.putInt(TAG_VISION_MODE, sanitizeVisionMode(profile, mode));
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(vmTag));
     }
 
     public static int firstSupportedVisionMode(Profile profile) {

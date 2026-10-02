@@ -1,0 +1,36 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_ingot"
+                        },
+                        {
+                            "item":  "minecraft:iron_block"
+                        },
+                        {
+                            "item":  "minecraft:iron_block"
+                        },
+                        {
+                            "item":  "minecraft:stick"
+                        },
+                        {
+                            "item":  "minecraft:stick"
+                        },
+                        {
+                            "item":  "minecraft:stick"
+                        },
+                        {
+                            "item":  "minecraft:stick"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:high_output_crushing_pliers",
+                   "count":  3
+               }
+}

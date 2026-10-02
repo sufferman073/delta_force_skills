@@ -11,38 +11,37 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerSleepInBedEvent;
-import net.minecraftforge.event.entity.player.SleepingTimeCheckEvent;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.CanPlayerSleepEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class BeaconBossEvents {
     private BeaconBossEvents() {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) {
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (event.player instanceof ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             FearManager.tick(player);
         }
     }
 
     @SubscribeEvent
-    public static void onLevelTick(TickEvent.LevelTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.level.isClientSide) {
+    public static void onLevelTick(LevelTickEvent.Post event) {
+        if (event.getLevel().isClientSide) {
             return;
         }
-        if (event.level instanceof ServerLevel serverLevel) {
+        if (event.getLevel() instanceof ServerLevel serverLevel) {
             BeaconSummonManager.serverTick(serverLevel);
         }
     }
@@ -51,7 +50,7 @@ public final class BeaconBossEvents {
      * Fear / injury apply on attack connect, even if later damage is fully absorbed (shield / armor).
      */
     @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void onLivingAttack(LivingAttackEvent event) {
+    public static void onLivingAttack(LivingIncomingDamageEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || player.level().isClientSide) {
             return;
         }
@@ -105,18 +104,11 @@ public final class BeaconBossEvents {
     }
 
     @SubscribeEvent
-    public static void onSleep(PlayerSleepInBedEvent event) {
+    public static void onCanPlayerSleep(CanPlayerSleepEvent event) {
         if (FearManager.blocksSleep(event.getEntity())) {
-            event.setResult(Player.BedSleepingProblem.OTHER_PROBLEM);
+            event.setProblem(Player.BedSleepingProblem.OTHER_PROBLEM);
             event.getEntity().displayClientMessage(Component.translatable(
                     "message.dealt_force_skills.beacon_boss.fear_sleep"), true);
-        }
-    }
-
-    @SubscribeEvent
-    public static void onSleepTimeCheck(SleepingTimeCheckEvent event) {
-        if (FearManager.blocksSleep(event.getEntity())) {
-            event.setResult(Event.Result.DENY);
         }
     }
 }

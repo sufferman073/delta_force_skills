@@ -3,15 +3,30 @@ package com.rzy.dealt_force_skills.network;
 import com.rzy.dealt_force_skills.character.stinger.StingerDownedMarker;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_SyncStingerState {
+public class S2C_SyncStingerState implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_SyncStingerState> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_stinger_state"));
+
+    public static final StreamCodec<FriendlyByteBuf, S2C_SyncStingerState> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_SyncStingerState::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int smokeCooldownTicks;
     private final int droneCooldownTicks;
     private final int stimCharges;
@@ -101,10 +116,8 @@ public class S2C_SyncStingerState {
                 rescueCooldownTicks, selfDownedTicks, markers);
     }
 
-    public static void handle(S2C_SyncStingerState msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientStingerHudState.sync(
+    public static void handle(S2C_SyncStingerState msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientStingerHudState.sync(
                         msg.smokeCooldownTicks,
                         msg.droneCooldownTicks,
                         msg.stimCharges,
@@ -117,8 +130,6 @@ public class S2C_SyncStingerState {
                         msg.rescueCooldownTicks,
                         msg.selfDownedTicks,
                         msg.downedMarkers
-                )
-        ));
-        ctx.get().setPacketHandled(true);
+                ));
     }
 }

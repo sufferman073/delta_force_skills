@@ -2,13 +2,27 @@ package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record S2C_OpenSaeedMonitorScreen(CompoundTag data) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_OpenSaeedMonitorScreen> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_open_saeed_monitor_screen"));
 
-public record S2C_OpenSaeedMonitorScreen(CompoundTag data) {
+    public static final StreamCodec<FriendlyByteBuf, S2C_OpenSaeedMonitorScreen> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_OpenSaeedMonitorScreen::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public S2C_OpenSaeedMonitorScreen {
         data = data == null ? new CompoundTag() : data.copy();
     }
@@ -21,11 +35,7 @@ public record S2C_OpenSaeedMonitorScreen(CompoundTag data) {
         return new S2C_OpenSaeedMonitorScreen(buf.readNbt());
     }
 
-    public static void handle(S2C_OpenSaeedMonitorScreen msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> SaeedMonitorScreen.open(msg.data)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_OpenSaeedMonitorScreen msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> SaeedMonitorScreen.open(msg.data));
     }
 }

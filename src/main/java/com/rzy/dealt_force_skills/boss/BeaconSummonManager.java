@@ -130,8 +130,10 @@ public final class BeaconSummonManager {
                     (level.random.nextDouble() - 0.5D) * 1.2D,
                     0.05D);
         }
-        level.playSound(null, pos, SoundEvents.GENERIC_EXPLODE, SoundSource.HOSTILE, 1.2F, 0.9F);
-        level.playSound(null, pos, SoundEvents.WITHER_SPAWN, SoundSource.HOSTILE, 0.7F, 1.1F);
+        level.playSound(null, pos.getX() + 0.5D, pos.getY() + 1.0D, pos.getZ() + 0.5D,
+                SoundEvents.GENERIC_EXPLODE.value(), SoundSource.HOSTILE, 1.2F, 0.9F);
+        level.playSound(null, pos.getX() + 0.5D, pos.getY() + 1.0D, pos.getZ() + 0.5D,
+                SoundEvents.WITHER_SPAWN, SoundSource.HOSTILE, 0.7F, 1.1F);
     }
 
     private static void spawnChargeParticles(ServerLevel level, BlockPos pos) {

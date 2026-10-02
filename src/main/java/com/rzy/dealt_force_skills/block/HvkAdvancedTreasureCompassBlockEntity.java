@@ -10,7 +10,10 @@ import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.shop.SpecialOperationsBaseManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -23,14 +26,12 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.loot.LootDataType;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.Tags;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.Tags;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -81,8 +82,7 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
         NetworkHandler.sendToPlayer(new S2C_UpdateAdvancedWorkBlock(data(player, mode, query, page)), player);
     }
 
-    public void performAction(ServerPlayer player, int mode, ResourceLocation id, int action, int requestedCount,
-                              String query, int page) {
+    public void performAction(ServerPlayer player, int mode, ResourceLocation id, int action, int requestedCount) {
         if (id == null || !canUse(player)) {
             return;
         }
@@ -92,7 +92,7 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
         } else {
             createChestBox(player, id);
         }
-        sendData(player, mode, query, page);
+        sendData(player, mode, "", 0);
     }
 
     private void createChestBox(ServerPlayer player, ResourceLocation lootId) {
@@ -124,7 +124,7 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
     }
 
     private void craftOre(ServerPlayer player, ResourceLocation oreId, int count) {
-        Item item = ForgeRegistries.ITEMS.getValue(oreId);
+        Item item = BuiltInRegistries.ITEM.get(oreId);
         if (item == null || item == Items.AIR || !isOreItem(item)) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.hvk_treasure.ore_missing"), true);
             return;
@@ -152,10 +152,10 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
             chests.add(new EntryView(id, HvkTreasureChestBoxItem.create(id, lootName(id)), lootName(id), "", List.of(), 0, 0));
         }
         List<EntryView> ores = new ArrayList<>();
-        for (Block block : ForgeRegistries.BLOCKS.getValues()) {
+        for (Block block : BuiltInRegistries.BLOCK) {
             if (!isOreBlock(block)) continue;
             ItemStack icon = new ItemStack(block.asItem());
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(icon.getItem());
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(icon.getItem());
             if (id != null) ores.add(new EntryView(id, icon, icon.getHoverName().getString(), "", List.of(icon), 0, 64));
         }
         WorkBlockQueryCatalog.register(level.getServer(), "chests", chests);
@@ -205,7 +205,8 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
         if (player == null || level == null || lootId == null) {
             return null;
         }
-        LootTable table = level.getServer().getLootData().getLootTable(lootId);
+        ResourceKey<LootTable> key = ResourceKey.create(Registries.LOOT_TABLE, lootId);
+        LootTable table = level.getServer().reloadableRegistries().getLootTable(key);
         LootParams params;
         try {
             params = new LootParams.Builder(level)
@@ -223,7 +224,7 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
     }
 
     private static Collection<ResourceLocation> chestLootIds(ServerLevel level) {
-        return level.getServer().getLootData().getKeys(LootDataType.TABLE).stream()
+        return level.getServer().reloadableRegistries().getKeys(Registries.LOOT_TABLE).stream()
                 .filter(HvkAdvancedTreasureCompassBlockEntity::isChestLoot)
                 .sorted(Comparator.comparing(ResourceLocation::toString))
                 .toList();
@@ -329,7 +330,7 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
             return false;
         }
         ItemStack item = new ItemStack(block.asItem());
-        ResourceLocation id = ForgeRegistries.BLOCKS.getKey(block);
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
         String path = id == null ? "" : id.getPath();
         return block.defaultBlockState().is(Tags.Blocks.ORES)
                 || item.is(Tags.Items.ORES)
@@ -355,19 +356,10 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
         if (stack.isEmpty() || stack.is(Tags.Items.ORES)) {
             return false;
         }
-        if (stack.is(Tags.Items.STONE) || stack.is(Tags.Items.COBBLESTONE)) {
-            return true;
-        }
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         String path = id == null ? "" : id.getPath();
         if (path.contains("redstone")) {
             return false;
-        }
-        if (stack.getItem() instanceof BlockItem blockItem) {
-            BlockState state = blockItem.getBlock().defaultBlockState();
-            if (state.is(Tags.Blocks.STONE) || state.is(Tags.Blocks.COBBLESTONE)) {
-                return true;
-            }
         }
         return path.contains("stone")
                 || path.contains("cobble")
@@ -419,7 +411,7 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
     }
 
     private static String itemKey(Item item) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         return key == null ? item.toString() : key.toString();
     }
 

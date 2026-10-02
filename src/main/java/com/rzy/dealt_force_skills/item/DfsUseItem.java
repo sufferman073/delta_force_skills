@@ -7,8 +7,10 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
@@ -88,7 +90,7 @@ public abstract class DfsUseItem extends QualityTooltipItem {
         }
         if (stack.isDamageableItem()) {
             InteractionHand hand = player.getUsedItemHand();
-            stack.hurtAndBreak(1, player, broken -> broken.broadcastBreakEvent(hand));
+            stack.hurtAndBreak(1, player, hand == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
         } else {
             stack.shrink(1);
         }
@@ -107,7 +109,7 @@ public abstract class DfsUseItem extends QualityTooltipItem {
     }
 
     @Override
-    public int getUseDuration(ItemStack stack) {
+    public int getUseDuration(ItemStack stack, LivingEntity entity) {
         return useTicks;
     }
 
@@ -148,7 +150,7 @@ public abstract class DfsUseItem extends QualityTooltipItem {
     }
 
     @Override
-    protected void addExtraTooltip(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    protected void addExtraTooltip(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.use_time",
                 String.format(java.util.Locale.ROOT, "%.1f", useTicks / 20.0D)));
     }

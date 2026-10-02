@@ -49,7 +49,8 @@ public final class StingerSkills {
         }
 
         StingerStimMode mode = StingerStateManager.stimMode(player);
-        if (StingerStateManager.equippedTool(player) != StingerTool.STIM_GUN) {
+        if (StingerStateManager.equippedTool(player) != StingerTool.STIM_GUN
+                || StingerStateManager.stimCharges(player) <= 0) {
             NetworkHandler.sendToPlayer(new S2C_StingerStimLockStatus(false, mode.ordinal(), 0, STIM_LOCK_STATUS_TICKS), player);
             return;
         }
@@ -223,14 +224,16 @@ public final class StingerSkills {
         if (StingerStateManager.equippedTool(player) != StingerTool.STIM_GUN) {
             return false;
         }
+        if (StingerStateManager.stimCharges(player) <= 0) {
+            com.rzy.dealt_force_skills.skill.SkillCooldownHelper.notifyCooldown(player, Component.translatable("message.dealt_force_skills.stinger.stim_empty"));
+            return true;
+        }
+
         StingerStimMode mode = StingerStateManager.stimMode(player);
         List<StimTarget> targets = lockedTargets(player, mode);
         if (targets.isEmpty()) {
             if (StingerStateManager.consumeStimCharge(player)) {
                 spawnStimProjectile(player, null, mode);
-            } else {
-                com.rzy.dealt_force_skills.skill.SkillCooldownHelper.notifyCooldown(player,
-                        Component.translatable("message.dealt_force_skills.stinger.stim_empty"));
             }
             return true;
         }

@@ -15,18 +15,19 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.RenderLivingEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.Set;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class CharacterSkillModelVisuals {
     private static final ResourceLocation MANBA_FLASHLIGHT = model("manba_flashlight");
 
@@ -37,10 +38,10 @@ public final class CharacterSkillModelVisuals {
     public static void onRenderHand(RenderHandEvent event) {
         Player player = Minecraft.getInstance().player;
         SkillModelVisual visual = ClientSkillModelVisualState.visual(player);
-        ModelSpec spec = specFor(visual, player, event.getPartialTick());
+        ModelSpec spec = specFor(visual, player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         if (spec == null && ClientManbaHudState.flashlightActive()) {
             spec = new ModelSpec(MANBA_FLASHLIGHT, "idle_hold",
-                    (player.tickCount + event.getPartialTick()) / 20.0F,
+                    (player.tickCount + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F,
                     Placement.FLASHLIGHT, 0.96F, 0xFFFFFFFF, Set.of());
         }
         if (spec == null || isNikaidouVisual(visual) || !rendersInFirstPerson(spec.placement())) {
@@ -65,7 +66,7 @@ public final class CharacterSkillModelVisuals {
     public static void onRenderArm(RenderArmEvent event) {
         Player player = Minecraft.getInstance().player;
         SkillModelVisual visual = ClientSkillModelVisualState.visual(player);
-        ModelSpec spec = specFor(visual, player, Minecraft.getInstance().getFrameTime());
+        ModelSpec spec = specFor(visual, player, com.rzy.dealt_force_skills.client.ClientRenderCompat.frameTime(Minecraft.getInstance()));
         if ((spec != null && !isNikaidouVisual(visual) && rendersInFirstPerson(spec.placement()))
                 || ClientManbaHudState.flashlightActive()) {
             event.setCanceled(true);
@@ -82,7 +83,7 @@ public final class CharacterSkillModelVisuals {
         }
 
         SkillModelVisual visual = ClientSkillModelVisualState.visual(player);
-        ModelSpec spec = specFor(visual, player, event.getPartialTick());
+        ModelSpec spec = specFor(visual, player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         if (spec == null || isNikaidouVisual(visual)) {
             return;
         }
@@ -110,7 +111,7 @@ public final class CharacterSkillModelVisuals {
         if (visual != SkillModelVisual.UNDEAD_SCHOLAR_FIBERS) {
             return;
         }
-        float partialTick = event.getPartialTick();
+        float partialTick = com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick());
         float ageSeconds = ClientSkillModelVisualState.ageSeconds(entity, partialTick);
         int remainingTicks = ClientSkillModelVisualState.remainingTicks(entity);
         String animation = remainingTicks <= 20 ? "fibers_redden"
@@ -351,7 +352,7 @@ public final class CharacterSkillModelVisuals {
 
     private static void applyKnightImpactShieldTransform(RenderPlayerEvent.Post event, PoseStack poseStack) {
         Player player = event.getEntity();
-        float headYaw = Mth.rotLerp(event.getPartialTick(), player.yHeadRotO, player.yHeadRot);
+        float headYaw = Mth.rotLerp(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()), player.yHeadRotO, player.yHeadRot);
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - headYaw));
         event.getRenderer().getModel().body.translateAndRotate(poseStack);
         poseStack.translate(0.0D, 0.44D, 0.42D);
@@ -359,7 +360,7 @@ public final class CharacterSkillModelVisuals {
 
     private static void applyBodyYawBackTransform(RenderPlayerEvent.Post event, PoseStack poseStack, double y, double z) {
         Player player = event.getEntity();
-        float bodyYaw = Mth.rotLerp(event.getPartialTick(), player.yBodyRotO, player.yBodyRot);
+        float bodyYaw = Mth.rotLerp(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()), player.yBodyRotO, player.yBodyRot);
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - bodyYaw));
         event.getRenderer().getModel().body.translateAndRotate(poseStack);
         poseStack.translate(0.0D, y, z);
@@ -401,7 +402,7 @@ public final class CharacterSkillModelVisuals {
         poseStack.scale(2.0F, 2.0F, 2.0F);
         BlockbenchAnimatedModelRenderer.render(
                 model("catdad_hiss_guard_ghost"), "guard_manifest",
-                ClientSkillModelVisualState.animationSeconds(player, event.getPartialTick()),
+                ClientSkillModelVisualState.animationSeconds(player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())),
                 poseStack, event.getMultiBufferSource(), event.getPackedLight(), 0x88FFFFFF);
         poseStack.popPose();
     }
@@ -430,7 +431,7 @@ public final class CharacterSkillModelVisuals {
     }
 
     private static ResourceLocation model(String path) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, path);
     }
 
     private static float adaptiveFiberScale(LivingEntity entity) {

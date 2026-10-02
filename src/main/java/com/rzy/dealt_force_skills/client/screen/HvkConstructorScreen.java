@@ -13,10 +13,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -191,7 +191,7 @@ public class HvkConstructorScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         int left = panelLeft();
         int top = panelTop();
         graphics.fill(left, top, left + panelWidth(), top + panelHeight(), 0xE012171D);
@@ -202,6 +202,10 @@ public class HvkConstructorScreen extends Screen {
         drawDetail(graphics, mouseX, mouseY);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderHoveredTooltip(graphics, mouseX, mouseY);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override
@@ -283,16 +287,16 @@ public class HvkConstructorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (inside(mouseX, mouseY, listLeft(), listTop(), listWidth(), listHeight())) {
-            recipeScroll = clamp(recipeScroll - (int) Math.round(delta * SCROLL_STEP), 0, maxRecipeScroll());
+            recipeScroll = clamp(recipeScroll - (int) Math.round(scrollY * SCROLL_STEP), 0, maxRecipeScroll());
             return true;
         }
         if (inside(mouseX, mouseY, treeLeft(), treeTop(), treeWidth(), treeHeight())) {
-            detailScroll = clamp(detailScroll - (int) Math.round(delta * SCROLL_STEP), 0, maxDetailScroll());
+            detailScroll = clamp(detailScroll - (int) Math.round(scrollY * SCROLL_STEP), 0, maxDetailScroll());
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void requestRecipes() {
@@ -799,7 +803,6 @@ public class HvkConstructorScreen extends Screen {
                 }
             }
             if (ordered.size() > 2) {
-                // Keep the recipe result first, then surface missing requirements before complete ones.
                 List<RecipeTreeLine> requirements = new ArrayList<>(ordered.subList(1, ordered.size()));
                 requirements.sort(java.util.Comparator.comparing(RecipeTreeLine::missing).reversed());
                 ordered.subList(1, ordered.size()).clear();
@@ -892,7 +895,7 @@ public class HvkConstructorScreen extends Screen {
             if (line.depth() == 1 && line.raw()) {
                 ItemStack selectedStack = selectedLineStack(i, line);
                 if (!selectedStack.isEmpty()) {
-                    ResourceLocation key = ForgeRegistries.ITEMS.getKey(selectedStack.getItem());
+                    ResourceLocation key = BuiltInRegistries.ITEM.getKey(selectedStack.getItem());
                     if (key != null) {
                         outputs.add(key);
                     }

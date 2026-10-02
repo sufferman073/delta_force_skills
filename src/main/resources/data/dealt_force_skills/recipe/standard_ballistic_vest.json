@@ -1,0 +1,29 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polyethylene_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        },
+                        {
+                            "item":  "dealt_force_skills:aramid_fiber"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:standard_ballistic_vest"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

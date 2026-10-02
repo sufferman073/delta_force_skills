@@ -22,7 +22,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,8 +75,8 @@ public class SettingsScreen extends Screen {
     private static final int TAB_START_Y = 10;        // 标签栏距上边缘（固定值）
     private static final int BOTTOM_BTN_MARGIN_RATIO = 1;  // 底栏按钮距右边缘 = 屏幕宽度 * 1 / 100
 
-    private static final ResourceLocation TABS_OFF = new ResourceLocation("deltaforce", "textures/gui/main_tabs_off.png");
-    private static final ResourceLocation TABS_ON = new ResourceLocation("deltaforce", "textures/gui/main_tabs_on.png");
+    private static final ResourceLocation TABS_OFF = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/main_tabs_off.png");
+    private static final ResourceLocation TABS_ON = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/main_tabs_on.png");
 
     // 界面设置（持久化）
     private static int entryRowHeight = ENTRY_ROW_HEIGHT_DEFAULT;
@@ -324,13 +324,13 @@ public class SettingsScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics guiGraphics) {
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         guiGraphics.fill(0, 0, this.width, this.height, 0xFF000000);
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(guiGraphics);
+        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
 
         float inv = 1.0f / this.uiScale;
         int smx = (int)((mouseX - this.offsetX) * inv);
@@ -1062,7 +1062,7 @@ public class SettingsScreen extends Screen {
         Component label;
         if (isCapturing) {
             if (capturedKeys.isEmpty()) {
-                label = Component.translatable("screen.deltaforce.settings.pressing_key");
+                label = Component.literal("> 按下按键 <");
             } else {
                 label = Component.literal("> " + glfwComboKeyName(capturedKeys) + " <");
             }
@@ -1473,10 +1473,10 @@ public class SettingsScreen extends Screen {
         }
 
         DfsItemQuality previewQuality = getPreviewQuality();
-        Component itemName = Component.translatable("screen.deltaforce.settings.preview_item");
+        Component itemName = Component.literal("预览物品");
         Component qualityLine = Component.translatable("tooltip.dealt_force_skills.quality",
                 Component.translatable("quality.dealt_force_skills." + previewQuality.key()));
-        String description = Component.translatable("screen.deltaforce.settings.preview_description").getString();
+        String description = "这是一个预览物品的介绍。\n品质为展示，不代表该物品在实际游戏中的品质表现。";
 
         ItemStack renderStack = (currentPreviewItem != null && !currentPreviewItem.isEmpty())
                 ? currentPreviewItem : ItemStack.EMPTY;
@@ -1629,9 +1629,9 @@ public class SettingsScreen extends Screen {
 
             int[] colors = { 0xAA67D6FF, 0xAAFFC857, 0xAA8EE36A };
             Component[] labels = {
-                    Component.translatable("screen.deltaforce.settings.skill_core"),
-                    Component.translatable("screen.deltaforce.settings.skill_2"),
-                    Component.translatable("screen.deltaforce.settings.skill_1")
+                    Component.literal("核心"),
+                    Component.literal("技能2"),
+                    Component.literal("技能1")
             };
 
             // 使用ClientHudLayout.buttonScale()缩放绘制
@@ -2767,7 +2767,7 @@ public class SettingsScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (showUnsavedDialog) return true;
         if (showSettingsOverlay) return true;
 
@@ -2776,12 +2776,12 @@ public class SettingsScreen extends Screen {
 
         // 子分类栏滚动
         if (my >= subcatBarY && my < subcatBarY + subcatBarH && subcatMaxScroll > 0) {
-            subcatScrollOffset = Math.max(0, Math.min(subcatScrollOffset - (int) (delta * 30), subcatMaxScroll));
+            subcatScrollOffset = Math.max(0, Math.min(subcatScrollOffset - (int) (scrollY * 30), subcatMaxScroll));
             return true;
         }
 
         // 配置项列表滚动
-        scrollOffset = Math.max(0, Math.min(scrollOffset - (int) (delta * entryRowHeight), maxScroll));
+        scrollOffset = Math.max(0, Math.min(scrollOffset - (int) (scrollY * entryRowHeight), maxScroll));
         return true;
     }
 

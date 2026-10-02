@@ -47,8 +47,7 @@ public final class ShepherdStateManager {
     public static boolean isShepherd(Player player) {
         Optional<String> selected = CharacterSelectionManager.getSelectedCharacterId(player);
         return selected.isPresent() && ModCharacters.SHEPHERD_ID.equals(selected.get())
-                || com.rzy.dealt_force_skills.character.commander.CommanderStateManager
-                .inheritsRuntimeSource(player, ModCharacters.SHEPHERD_ID);
+                || CommanderStateManager.inheritsRuntimeSource(player, ModCharacters.SHEPHERD_ID);
     }
 
     public static void initializeIfNeeded(ServerPlayer player) {

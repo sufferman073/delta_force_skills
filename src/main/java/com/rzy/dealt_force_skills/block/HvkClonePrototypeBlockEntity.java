@@ -9,7 +9,9 @@ import com.rzy.dealt_force_skills.network.S2C_UpdateAdvancedWorkBlock;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,7 +34,6 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -82,8 +83,7 @@ public class HvkClonePrototypeBlockEntity extends BlockEntity {
         NetworkHandler.sendToPlayer(new S2C_UpdateAdvancedWorkBlock(data(player, mode, query, page)), player);
     }
 
-    public void performAction(ServerPlayer player, int mode, ResourceLocation entityId, int action, int count,
-                              String query, int page) {
+    public void performAction(ServerPlayer player, int mode, ResourceLocation entityId, int action, int count) {
         if (entityId == null || !canUse(player)) {
             return;
         }
@@ -93,11 +93,11 @@ public class HvkClonePrototypeBlockEntity extends BlockEntity {
         } else {
             cloneSample(player, entityId);
         }
-        sendData(player, mode, query, page);
+        sendData(player, mode, "", 0);
     }
 
     private void extractSample(ServerPlayer player, ResourceLocation entityId) {
-        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entityId);
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(entityId);
         if (type == null) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.hvk_clone.entity_missing"), true);
             return;
@@ -127,7 +127,7 @@ public class HvkClonePrototypeBlockEntity extends BlockEntity {
     }
 
     private void cloneSample(ServerPlayer player, ResourceLocation entityId) {
-        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entityId);
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(entityId);
         if (type == null) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.hvk_clone.entity_missing"), true);
             return;
@@ -182,8 +182,8 @@ public class HvkClonePrototypeBlockEntity extends BlockEntity {
 
     public static void warmQueryCatalog(ServerLevel level) {
         List<EntryView> entries = new ArrayList<>();
-        for (EntityType<?> type : ForgeRegistries.ENTITY_TYPES.getValues()) {
-            ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(type);
+        for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
+            ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
             if (id == null || type == EntityType.PLAYER) continue;
             try {
                 Entity entity = type.create(level);
@@ -207,7 +207,7 @@ public class HvkClonePrototypeBlockEntity extends BlockEntity {
         Map<ResourceLocation, WorkBlockLootSampler> previews = new HashMap<>();
         return WorkBlockQueryCatalog.page(player, this, "entities", AdvancedWorkBlockData.BLOCK_HVK_CLONE,
                 mode, normalizeQuery(query), requestedPage, 0.0D, () -> canUse(player), entry -> {
-                    EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entry.id());
+                    EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(entry.id());
                     WorkBlockLootSampler sampler = previews.computeIfAbsent(entry.id(), id -> entitySampler(player, type, LOOT_PREVIEW_ROLLS));
                     List<ItemStack> outputs = sampler == null ? List.of() : sampler.step();
                     if (outputs == null) return null;
@@ -289,11 +289,11 @@ public class HvkClonePrototypeBlockEntity extends BlockEntity {
             return null;
         }
         living.moveTo(worldPosition.getX() + 0.5D, worldPosition.getY() + 1.0D, worldPosition.getZ() + 0.5D);
-        ResourceLocation lootId = living.getLootTable();
+        ResourceKey<LootTable> lootId = living.getLootTable();
         if (lootId == null || lootId.equals(EntityType.PLAYER.getDefaultLootTable())) {
             return null;
         }
-        LootTable table = serverLevel.getServer().getLootData().getLootTable(lootId);
+        LootTable table = serverLevel.getServer().reloadableRegistries().getLootTable(lootId);
         DamageSource damageSource = player.damageSources().playerAttack(player);
         LootParams params;
         try {
@@ -301,8 +301,8 @@ public class HvkClonePrototypeBlockEntity extends BlockEntity {
                     .withParameter(LootContextParams.THIS_ENTITY, living)
                     .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(worldPosition))
                     .withParameter(LootContextParams.DAMAGE_SOURCE, damageSource)
-                    .withOptionalParameter(LootContextParams.KILLER_ENTITY, player)
-                    .withOptionalParameter(LootContextParams.DIRECT_KILLER_ENTITY, player)
+                    .withOptionalParameter(LootContextParams.ATTACKING_ENTITY, player)
+                    .withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, player)
                     .withOptionalParameter(LootContextParams.LAST_DAMAGE_PLAYER, player)
                     .withLuck(player.getLuck())
                     .create(LootContextParamSets.ENTITY);
@@ -340,7 +340,7 @@ public class HvkClonePrototypeBlockEntity extends BlockEntity {
     }
 
     private static String itemKey(Item item) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         return key == null ? item.toString() : key.toString();
     }
 

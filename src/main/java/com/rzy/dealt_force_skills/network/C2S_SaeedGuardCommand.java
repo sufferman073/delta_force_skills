@@ -5,11 +5,27 @@ import com.rzy.dealt_force_skills.character.SkillSlot;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_SaeedGuardCommand implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_SaeedGuardCommand> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_saeed_guard_command"));
 
-public class C2S_SaeedGuardCommand {
+    public static final StreamCodec<FriendlyByteBuf, C2S_SaeedGuardCommand> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_SaeedGuardCommand::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int entityId;
     private final SkillSlot slot;
     private final float yaw;
@@ -61,14 +77,13 @@ public class C2S_SaeedGuardCommand {
         return new C2S_SaeedGuardCommand(entityId, slot, yaw, pitch, targetEntityId, aimPoint);
     }
 
-    public static void handle(C2S_SaeedGuardCommand msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_SaeedGuardCommand msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player != null && !player.isSpectator()) {
                 SaeedStateManager.commandGuardSkill(player, msg.entityId, msg.slot, msg.targetEntityId,
                         msg.hasAimPoint ? new Vec3(msg.aimX, msg.aimY, msg.aimZ) : null, msg.yaw, msg.pitch);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

@@ -5,10 +5,10 @@ import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_SyncGluedPositions;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 
 /**
  * Keeps {@link HvkClimbGlueManager}'s persisted state in sync with the world (a broken glued block
@@ -16,7 +16,7 @@ import net.minecraftforge.fml.common.Mod;
  * up to date (full resync on join / dimension change, since those are the only times a client can
  * otherwise miss a glue/break that happened while it wasn't around).
  */
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class HvkGlueEvents {
     private HvkGlueEvents() {
     }
@@ -27,7 +27,7 @@ public final class HvkGlueEvents {
             return;
         }
         if (HvkClimbGlueManager.unglue(level, event.getPos())) {
-            NetworkHandler.sendToDimension(syncPacket(level), level.dimension());
+            NetworkHandler.sendToDimension(syncPacket(level), level);
         }
     }
 

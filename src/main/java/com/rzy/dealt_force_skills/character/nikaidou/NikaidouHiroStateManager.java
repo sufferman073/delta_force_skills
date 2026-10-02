@@ -13,6 +13,7 @@ import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import com.rzy.dealt_force_skills.skill.SkillAnimationScheduler;
 import com.rzy.dealt_force_skills.skill.SkillModelVisual;
 import com.rzy.dealt_force_skills.skill.SkillModelVisualSync;
+import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -128,10 +129,10 @@ public final class NikaidouHiroStateManager {
 
     public static void clearState(Player player) {
         player.getPersistentData().remove(ROOT_TAG);
-        player.removeEffect(ModEffects.NIKAIDOU_RIFT_STACKS.get());
-        player.removeEffect(ModEffects.NIKAIDOU_CORRECTION.get());
-        player.removeEffect(ModEffects.NIKAIDOU_CORE.get());
-        player.removeEffect(ModEffects.NIKAIDOU_DOOMED.get());
+        player.removeEffect(ModEffects.NIKAIDOU_RIFT_STACKS);
+        player.removeEffect(ModEffects.NIKAIDOU_CORRECTION);
+        player.removeEffect(ModEffects.NIKAIDOU_CORE);
+        player.removeEffect(ModEffects.NIKAIDOU_DOOMED);
     }
 
     public static void clearRuntimeOnDeath(ServerPlayer player) {
@@ -149,10 +150,10 @@ public final class NikaidouHiroStateManager {
 
         if (tag.getLong(RIFT_UNTIL) <= now) {
             tag.putInt(RIFT_STACKS, 0);
-            player.removeEffect(ModEffects.NIKAIDOU_RIFT_STACKS.get());
+            player.removeEffect(ModEffects.NIKAIDOU_RIFT_STACKS);
         }
         if (tag.getLong(ACTIVE1_UNTIL) <= now) {
-            player.removeEffect(ModEffects.NIKAIDOU_CORRECTION.get());
+            player.removeEffect(ModEffects.NIKAIDOU_CORRECTION);
         }
 
         if (tag.getLong(DOOMED_UNTIL) > 0L) {
@@ -175,7 +176,7 @@ public final class NikaidouHiroStateManager {
         }
         tag.putLong(ACTIVE1_COOLDOWN_UNTIL, SkillCooldownHelper.until(player, now, CORRECTION_COOLDOWN_TICKS));
         tag.putLong(ACTIVE1_UNTIL, now + CORRECTION_DURATION_TICKS);
-        player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_CORRECTION.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_CORRECTION,
                 CORRECTION_DURATION_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.nikaidou.nikaidou_hiro_state_manager.effect.nikaidou_correction.0.amplifier", 0), false, true, true));
         play(player, ModSounds.NIKAIDOU_CORRECTION_START.get(), 0.85F, 1.0F);
         return true;
@@ -222,7 +223,7 @@ public final class NikaidouHiroStateManager {
         tag.putBoolean(SPAWNED_SKELETON, false);
         setEquippedTool(player, NikaidouHiroTool.RITUAL_SWORD);
         player.setHealth(player.getMaxHealth());
-        player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_CORE.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_CORE,
                 com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.nikaidou.nikaidou_hiro_state_manager.effect.nikaidou_core.1.duration_ticks", 60 * 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.nikaidou.nikaidou_hiro_state_manager.effect.nikaidou_core.1.amplifier", 0), false, true, true));
         play(player, ModSounds.NIKAIDOU_CORE_START.get(), 1.0F, 1.0F);
         return true;
@@ -253,7 +254,7 @@ public final class NikaidouHiroStateManager {
         int stacks = Math.min(MAX_RIFT_STACKS, tag.getInt(RIFT_STACKS) + 1);
         tag.putInt(RIFT_STACKS, stacks);
         tag.putLong(RIFT_UNTIL, now + RIFT_DURATION_TICKS);
-        player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_RIFT_STACKS.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_RIFT_STACKS,
                 RIFT_DURATION_TICKS, riftEffectAmplifier(stacks), false, true, true));
         play(player, ModSounds.NIKAIDOU_RIFT_REFRESH.get(), 0.7F, 0.85F + stacks * 0.02F);
         if (active1CooldownRemainingTicks(player) > 0) {
@@ -419,7 +420,7 @@ public final class NikaidouHiroStateManager {
         AABB search = player.getBoundingBox().inflate(range + 1.25D, 1.75D, range + 1.25D);
         int hits = 0;
         for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, search,
-                target -> target.isAlive() && target != player && !target.isSpectator())) {
+                target -> TargetingUtil.isHostileLivingFor(player, target))) {
             AABB hitbox = target.getBoundingBox().inflate(SWEEP_HITBOX_INFLATE);
             Optional<Vec3> directHit = hitbox.clip(eye, rayEnd);
             Vec3 reference = directHit.orElse(target.getBoundingBox().getCenter());
@@ -454,7 +455,7 @@ public final class NikaidouHiroStateManager {
         Vec3 end = eye.add(look.scale(range));
         AABB search = player.getBoundingBox().expandTowards(look.scale(range)).inflate(radius);
         return player.level().getEntitiesOfClass(LivingEntity.class, search,
-                        target -> target.isAlive() && target != player && !target.isSpectator() && player.hasLineOfSight(target))
+                        target -> TargetingUtil.isHostileLivingFor(player, target) && player.hasLineOfSight(target))
                 .stream()
                 .map(target -> scoreLookTarget(target, eye, end, radius))
                 .flatMap(Optional::stream)
@@ -525,8 +526,8 @@ public final class NikaidouHiroStateManager {
         if (now % 4L == 0L) {
             spawnCoreParticles(player);
         }
-        if (!player.hasEffect(ModEffects.NIKAIDOU_CORE.get())) {
-            player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_CORE.get(),
+        if (!player.hasEffect(ModEffects.NIKAIDOU_CORE)) {
+            player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_CORE,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.nikaidou.nikaidou_hiro_state_manager.effect.nikaidou_core.3.duration_ticks", 60 * 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.nikaidou.nikaidou_hiro_state_manager.effect.nikaidou_core.3.amplifier", 0), false, true, true));
         }
         long lastDecayTick = tag.getLong(CORE_LAST_DECAY_TICK);
@@ -576,8 +577,8 @@ public final class NikaidouHiroStateManager {
         tag.putBoolean(CORE_ACTIVE, false);
         setEquippedTool(player, NikaidouHiroTool.RITUAL_SWORD);
         player.setHealth(Math.max(1.0F, player.getHealth()));
-        player.removeEffect(ModEffects.NIKAIDOU_CORE.get());
-        player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_DOOMED.get(),
+        player.removeEffect(ModEffects.NIKAIDOU_CORE);
+        player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_DOOMED,
                 DOOMED_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.nikaidou.nikaidou_hiro_state_manager.effect.nikaidou_doomed.4.amplifier", 0), false, true, true));
         play(player, ModSounds.NIKAIDOU_DOOM_TRIGGER.get(), 1.0F, 1.0F);
     }

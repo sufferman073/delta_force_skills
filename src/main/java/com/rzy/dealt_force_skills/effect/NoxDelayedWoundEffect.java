@@ -29,7 +29,7 @@ public class NoxDelayedWoundEffect extends MobEffect {
     private static final Map<ResourceKey<Level>, Set<UUID>> TRACKED_ENTITIES = new HashMap<>();
 
     public NoxDelayedWoundEffect() {
-        super(MobEffectCategory.NEUTRAL, 0x1A1A20);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
     }
 
     public static void resetCaps(LivingEntity entity, float healthCap) {
@@ -60,8 +60,9 @@ public class NoxDelayedWoundEffect extends MobEffect {
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         enforceCaps(entity);
+        return true;
     }
 
     public static void enforceCaps(LivingEntity entity) {
@@ -115,7 +116,7 @@ public class NoxDelayedWoundEffect extends MobEffect {
             Entity entity = level.getEntity(id);
             if (!(entity instanceof LivingEntity living)
                     || !living.isAlive()
-                    || !living.hasEffect(ModEffects.NOX_DELAYED_WOUND.get())) {
+                    || !living.hasEffect(ModEffects.NOX_DELAYED_WOUND)) {
                 if (entity instanceof LivingEntity staleLiving) {
                     staleLiving.getPersistentData().remove(ROOT_TAG);
                 }
@@ -140,7 +141,7 @@ public class NoxDelayedWoundEffect extends MobEffect {
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 

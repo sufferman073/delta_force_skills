@@ -9,10 +9,10 @@ import com.rzy.dealt_force_skills.character.undead.UndeadProfession;
 import com.rzy.dealt_force_skills.character.undead.UndeadSkillInputAction;
 import com.rzy.dealt_force_skills.character.undead.UndeadSkills;
 import com.rzy.dealt_force_skills.character.undead.UndeadStateManager;
-import com.rzy.dealt_force_skills.network.C2S_OpenSelectionOrShop;
-import com.rzy.dealt_force_skills.network.C2S_OpenOwnShop;
 import com.rzy.dealt_force_skills.network.C2S_UndeadSkillInput;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
+import com.rzy.dealt_force_skills.network.C2S_OpenSelectionOrShop;
+import com.rzy.dealt_force_skills.network.C2S_OpenOwnShop;
 import mccfk.DeltaForce.java.client.screen.DFGUI_MAIN;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -58,8 +58,10 @@ public final class UndeadInputHandler {
                 boolean creative = minecraft.player.getAbilities().instabuild;
                 boolean sneak = minecraft.player.isShiftKeyDown();
                 if ((!creative && !sneak) || (creative && sneak)) {
+                    // 自身长按特殊面板（职业面板）
                     UndeadProfessionScreen.open();
                 } else {
+                    // 长按特勤处
                     DFGUI_MAIN.openToLogistics();
                 }
             }
@@ -68,10 +70,13 @@ public final class UndeadInputHandler {
                 boolean creative = minecraft.player.getAbilities().instabuild;
                 boolean sneak = minecraft.player.isShiftKeyDown();
                 if (creative && !sneak) {
+                    // 创造短按→选人
                     DFGUI_MAIN.openToOperator();
                 } else if (sneak && !creative) {
+                    // 非创造潜行短按→通用商店
                     NetworkHandler.sendToServer(new C2S_OpenSelectionOrShop());
                 } else {
+                    // 自身短按特殊面板（自身商店）
                     NetworkHandler.sendToServer(C2S_OpenOwnShop.open());
                 }
             }

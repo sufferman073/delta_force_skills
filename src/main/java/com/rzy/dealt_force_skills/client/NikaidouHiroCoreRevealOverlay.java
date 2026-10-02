@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.client.character.ClientNikaidouHiroHudState;
+import com.rzy.dealt_force_skills.client.renderer.DfsRenderTypes;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -11,17 +12,17 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class NikaidouHiroCoreRevealOverlay {
     private static final int CORE_USER_COLOR = 0xFFFFD96A;
     private static final int REVEALED_PLAYER_COLOR = 0xFF78E6FF;
@@ -31,7 +32,7 @@ public final class NikaidouHiroCoreRevealOverlay {
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
@@ -61,31 +62,42 @@ public final class NikaidouHiroCoreRevealOverlay {
         Font font = minecraft.font;
 
         RenderSystem.disableDepthTest();
-        var lineBuffer = buffers.getBuffer(RenderType.lines());
-        for (Player target : minecraft.level.players()) {
-            if (target == minecraft.player || !target.isAlive() || target.isSpectator()) {
-                continue;
+        try {
+            var lineBuffer = buffers.getBuffer(DfsRenderTypes.xrayLines());
+            for (Player target : minecraft.level.players()) {
+                if (!shouldRenderTarget(minecraft.player, target, viewerCoreActive)) {
+                    continue;
+                }
+                int color = hasNikaidouCore(target) ? CORE_USER_COLOR : REVEALED_PLAYER_COLOR;
+                AABB box = target.getBoundingBox().inflate(0.06D)
+                        .move(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+                LevelRenderer.renderLineBox(poseStack, lineBuffer, box,
+                        red(color), green(color), blue(color), 0.92F);
             }
-            boolean targetCoreActive = hasNikaidouCore(target);
-            if (!viewerCoreActive && !targetCoreActive) {
-                continue;
+            buffers.endBatch(DfsRenderTypes.xrayLines());
+
+            for (Player target : minecraft.level.players()) {
+                if (!shouldRenderTarget(minecraft.player, target, viewerCoreActive)) {
+                    continue;
+                }
+                int color = hasNikaidouCore(target) ? CORE_USER_COLOR : REVEALED_PLAYER_COLOR;
+                Vec3 labelPos = target.position().add(0.0D, target.getBbHeight() + 0.36D, 0.0D);
+                String text = target.getDisplayName().getString() + " " + Math.round(labelPos.distanceTo(viewerPos)) + "m";
+                renderLabel(poseStack, buffers, font, camera, cameraPos, labelPos, text, color);
             }
-            int color = targetCoreActive ? CORE_USER_COLOR : REVEALED_PLAYER_COLOR;
-            AABB box = target.getBoundingBox().inflate(0.06D)
-                    .move(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-            LevelRenderer.renderLineBox(poseStack, lineBuffer, box,
-                    red(color), green(color), blue(color), 0.92F);
-            Vec3 labelPos = target.position().add(0.0D, target.getBbHeight() + 0.36D, 0.0D);
-            String text = target.getDisplayName().getString() + " " + Math.round(labelPos.distanceTo(viewerPos)) + "m";
-            renderLabel(poseStack, buffers, font, camera, cameraPos, labelPos, text, color);
+            buffers.endBatch();
+        } finally {
+            RenderSystem.enableDepthTest();
         }
-        buffers.endBatch(RenderType.lines());
-        buffers.endBatch();
-        RenderSystem.enableDepthTest();
+    }
+
+    private static boolean shouldRenderTarget(Player viewer, Player target, boolean viewerCoreActive) {
+        return target != viewer && target.isAlive() && !target.isSpectator()
+                && (viewerCoreActive || hasNikaidouCore(target));
     }
 
     private static boolean hasNikaidouCore(Player player) {
-        return player.hasEffect(ModEffects.NIKAIDOU_CORE.get());
+        return player.hasEffect(ModEffects.NIKAIDOU_CORE);
     }
 
     private static float red(int color) {

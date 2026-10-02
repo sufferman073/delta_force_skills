@@ -16,7 +16,7 @@ public class RaptorHummingbirdMarkedEffect extends MobEffect {
     private static final String OWNER_TAG = DealtForceSkillsMod.MODID + ".raptor_hummingbird_owner";
 
     public RaptorHummingbirdMarkedEffect() {
-        super(MobEffectCategory.NEUTRAL, 0xFFE680);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
     }
 
     public static void setOwner(LivingEntity target, ServerPlayer owner) {
@@ -35,12 +35,13 @@ public class RaptorHummingbirdMarkedEffect extends MobEffect {
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         RaptorStateManager.revealFromHummingbird(entity);
+        return true;
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return duration % 20 == 0;
     }
 }

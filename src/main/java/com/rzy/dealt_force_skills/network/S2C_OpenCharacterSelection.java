@@ -1,13 +1,27 @@
 package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class S2C_OpenCharacterSelection implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_OpenCharacterSelection> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_open_character_selection"));
 
-public class S2C_OpenCharacterSelection {
+    public static final StreamCodec<FriendlyByteBuf, S2C_OpenCharacterSelection> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_OpenCharacterSelection::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final boolean allowReselection;
     private final boolean freeReselection;
 
@@ -33,17 +47,13 @@ public class S2C_OpenCharacterSelection {
         return new S2C_OpenCharacterSelection(buf.readBoolean(), buf.readBoolean());
     }
 
-    public static void handle(S2C_OpenCharacterSelection msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> {
+    public static void handle(S2C_OpenCharacterSelection msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
                     if (msg.allowReselection) {
                         ClientCharacterSelectionState.openReselectionScreen(msg.freeReselection);
                     } else {
                         ClientCharacterSelectionState.openSelectionScreen();
                     }
-                }
-        ));
-        ctx.get().setPacketHandled(true);
+                });
     }
 }

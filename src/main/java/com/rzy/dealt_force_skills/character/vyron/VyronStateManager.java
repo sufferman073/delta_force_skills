@@ -1,465 +1,466 @@
 package com.rzy.dealt_force_skills.character.vyron;
 
-import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
 import com.rzy.dealt_force_skills.stamina.StaminaManager;
+import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_SyncVyronState;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
+import java.util.Optional;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.Optional;
-import java.util.UUID;
-
 public final class VyronStateManager {
-    public static volatile int DASH_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DASH_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.dash_cooldown_ticks", 160));
-    public static volatile int DASH_DURATION_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DASH_DURATION_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.dash_duration_ticks", 12));
-    public static volatile int DASH_STAMINA_PERCENT_COST = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DASH_STAMINA_PERCENT_COST", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.dash_stamina_percent_cost", 0));
-    private static volatile double DASH_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DASH_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.vyron.vyron_state_manager.dash_speed", 1.3667));
-    public static volatile int POWERED_DURATION_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("POWERED_DURATION_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.powered_duration_ticks", 60));
-    public static volatile int MAGNETIC_BOMB_MAX_CHARGES = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAGNETIC_BOMB_MAX_CHARGES", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.magnetic_bomb_max_charges", 2));
-    public static volatile int MAGNETIC_BOMB_RECHARGE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAGNETIC_BOMB_RECHARGE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.magnetic_bomb_recharge_ticks", 560));
-    public static volatile int MAGNETIC_BOMB_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAGNETIC_BOMB_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.magnetic_bomb_fuse_ticks", 60));
-    public static volatile int TIGER_CANNON_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("TIGER_CANNON_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.tiger_cannon_cooldown_ticks", 900));
-    public static final UUID POWERED_SPEED_UUID = UUID.fromString("f98e31d3-cd09-4e75-94dc-0180ad55d97a");
+   public static volatile int DASH_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DASH_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.dash_cooldown_ticks", 160));
+   public static volatile int DASH_DURATION_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DASH_DURATION_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.dash_duration_ticks", 12));
+   public static volatile int DASH_STAMINA_PERCENT_COST = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DASH_STAMINA_PERCENT_COST", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.dash_stamina_percent_cost", 0));
+   private static volatile double DASH_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DASH_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.vyron.vyron_state_manager.dash_speed", 1.3667));
+   public static volatile int POWERED_DURATION_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("POWERED_DURATION_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.powered_duration_ticks", 60));
+   public static volatile int MAGNETIC_BOMB_MAX_CHARGES = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAGNETIC_BOMB_MAX_CHARGES", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.magnetic_bomb_max_charges", 2));
+   public static volatile int MAGNETIC_BOMB_RECHARGE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAGNETIC_BOMB_RECHARGE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.magnetic_bomb_recharge_ticks", 560));
+   public static volatile int MAGNETIC_BOMB_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAGNETIC_BOMB_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.magnetic_bomb_fuse_ticks", 60));
+   public static volatile int TIGER_CANNON_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("TIGER_CANNON_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.tiger_cannon_cooldown_ticks", 900));
+   public static final ResourceLocation POWERED_SPEED_UUID = ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "vyron_state_manager.powered_speed");
+   private static final String ROOT_TAG = "dealt_force_skills.vyron";
+   private static final String INITIALIZED = "Initialized";
+   private static final String DASH_COOLDOWN_UNTIL = "DashCooldownUntil";
+   private static final String DASH_TICKS = "DashTicks";
+   private static final String DASH_DIR_X = "DashDirX";
+   private static final String DASH_DIR_Z = "DashDirZ";
+   private static final String POWERED_UNTIL = "PoweredUntil";
+   private static final String BOMB_CHARGES = "BombCharges";
+   private static final String BOMB_NEXT_RECHARGE = "BombNextRecharge";
+   private static final String CORE_COOLDOWN_UNTIL = "CoreCooldownUntil";
+   private static final String EQUIPPED_TOOL = "EquippedTool";
+   private static final String FALLING_SOUND_ACTIVE = "FallingSoundActive";
+   private static final String FALLING_SOUND_LAST_TICK = "FallingSoundLastTick";
+   private static final String PROPULSION_DESCENDING = "PropulsionDescending";
+   private static final String LAST_POWERED_LANDING_TICK = "LastPoweredLandingTick";
+   private static final int FALLING_SOUND_REPLAY_TICKS = 140;
 
-    private static final String ROOT_TAG = DealtForceSkillsMod.MODID + ".vyron";
-    private static final String INITIALIZED = "Initialized";
-    private static final String DASH_COOLDOWN_UNTIL = "DashCooldownUntil";
-    private static final String DASH_TICKS = "DashTicks";
-    private static final String DASH_DIR_X = "DashDirX";
-    private static final String DASH_DIR_Z = "DashDirZ";
-    private static final String POWERED_UNTIL = "PoweredUntil";
-    private static final String BOMB_CHARGES = "BombCharges";
-    private static final String BOMB_NEXT_RECHARGE = "BombNextRecharge";
-    private static final String CORE_COOLDOWN_UNTIL = "CoreCooldownUntil";
-    private static final String EQUIPPED_TOOL = "EquippedTool";
-    private static final String FALLING_SOUND_ACTIVE = "FallingSoundActive";
-    private static final String FALLING_SOUND_LAST_TICK = "FallingSoundLastTick";
-    private static final String PROPULSION_DESCENDING = "PropulsionDescending";
-    private static final String LAST_POWERED_LANDING_TICK = "LastPoweredLandingTick";
-    private static final int FALLING_SOUND_REPLAY_TICKS = 140;
+   private VyronStateManager() {
+   }
 
-    private VyronStateManager() {
-    }
+   public static boolean isVyron(Player player) {
+      Optional<String> selected = CharacterSelectionManager.getSelectedCharacterId(player);
+      return selected.isPresent() && ModCharacters.VYRON_ID.equals(selected.get())
+         || CommanderStateManager.inheritsRuntimeSource(player, ModCharacters.VYRON_ID);
+   }
 
-    public static boolean isVyron(Player player) {
-        Optional<String> selected = CharacterSelectionManager.getSelectedCharacterId(player);
-        return selected.isPresent() && ModCharacters.VYRON_ID.equals(selected.get())
-                || com.rzy.dealt_force_skills.character.commander.CommanderStateManager
-                .inheritsRuntimeSource(player, ModCharacters.VYRON_ID);
-    }
+   public static void initializeIfNeeded(ServerPlayer player) {
+      if (isVyron(player)) {
+         CompoundTag tag = data(player);
+         if (!tag.getBoolean("Initialized")) {
+            tag.putBoolean("Initialized", true);
+            tag.putLong("DashCooldownUntil", 0L);
+            tag.putInt("DashTicks", 0);
+            tag.putDouble("DashDirX", 0.0);
+            tag.putDouble("DashDirZ", 0.0);
+            tag.putLong("PoweredUntil", 0L);
+            tag.putInt("BombCharges", bombCapacity(player));
+            tag.putLong("BombNextRecharge", 0L);
+            tag.putLong("CoreCooldownUntil", 0L);
+            tag.putInt("EquippedTool", VyronTool.NONE.ordinal());
+            tag.putBoolean("FallingSoundActive", false);
+            tag.putLong("FallingSoundLastTick", 0L);
+            tag.putBoolean("PropulsionDescending", false);
+            tag.putLong("LastPoweredLandingTick", -1L);
+         }
+      }
+   }
 
-    public static void initializeIfNeeded(ServerPlayer player) {
-        if (!isVyron(player)) {
-            return;
-        }
+   public static void copyState(Player original, Player target) {
+      CompoundTag originalData = original.getPersistentData();
+      if (originalData.contains("dealt_force_skills.vyron", 10)) {
+         target.getPersistentData().put("dealt_force_skills.vyron", originalData.getCompound("dealt_force_skills.vyron").copy());
+      }
+   }
 
-        CompoundTag tag = data(player);
-        if (tag.getBoolean(INITIALIZED)) {
-            return;
-        }
+   public static void clearState(Player player) {
+      if (player instanceof ServerPlayer serverPlayer) {
+         RangedSoundHelper.stop(serverPlayer.serverLevel(), (SoundEvent)ModSounds.VYRON_FALLING_LOOP.get(), SoundSource.PLAYERS);
+      }
 
-        tag.putBoolean(INITIALIZED, true);
-        tag.putLong(DASH_COOLDOWN_UNTIL, 0L);
-        tag.putInt(DASH_TICKS, 0);
-        tag.putDouble(DASH_DIR_X, 0.0D);
-        tag.putDouble(DASH_DIR_Z, 0.0D);
-        tag.putLong(POWERED_UNTIL, 0L);
-        tag.putInt(BOMB_CHARGES, bombCapacity(player));
-        tag.putLong(BOMB_NEXT_RECHARGE, 0L);
-        tag.putLong(CORE_COOLDOWN_UNTIL, 0L);
-        tag.putInt(EQUIPPED_TOOL, VyronTool.NONE.ordinal());
-        tag.putBoolean(FALLING_SOUND_ACTIVE, false);
-        tag.putLong(FALLING_SOUND_LAST_TICK, 0L);
-        tag.putBoolean(PROPULSION_DESCENDING, false);
-        tag.putLong(LAST_POWERED_LANDING_TICK, -1L);
-    }
+      player.getPersistentData().remove("dealt_force_skills.vyron");
+      removePoweredModifier(player);
+   }
 
-    public static void copyState(Player original, Player target) {
-        CompoundTag originalData = original.getPersistentData();
-        if (originalData.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
-            target.getPersistentData().put(ROOT_TAG, originalData.getCompound(ROOT_TAG).copy());
-        }
-    }
+   public static void tick(ServerPlayer player) {
+      if (!isVyron(player)) {
+         if (player.getPersistentData().contains("dealt_force_skills.vyron", 10)) {
+            stopFallingSound(player);
+         }
 
-    public static void clearState(Player player) {
-        if (player instanceof ServerPlayer serverPlayer) {
-            RangedSoundHelper.stop(serverPlayer.serverLevel(), ModSounds.VYRON_FALLING_LOOP.get(), SoundSource.PLAYERS);
-        }
-        player.getPersistentData().remove(ROOT_TAG);
-        removePoweredModifier(player);
-    }
+         removePoweredModifier(player);
+      } else {
+         initializeIfNeeded(player);
+         long now = SkillCooldownHelper.now(player);
+         recharge(player, now);
+         tickDash(player);
+         tickPowered(player, now);
+         tickFallingSound(player, now);
+         tickPropulsionLanding(player);
+      }
+   }
 
-    public static void tick(ServerPlayer player) {
-        if (!isVyron(player)) {
-            if (player.getPersistentData().contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
-                stopFallingSound(player);
-            }
-            removePoweredModifier(player);
-            return;
-        }
-
-        initializeIfNeeded(player);
-        long now = SkillCooldownHelper.now(player);
-        recharge(player, now);
-        tickDash(player);
-        tickPowered(player, now);
-        tickFallingSound(player, now);
-        tickPropulsionLanding(player);
-    }
-
-    public static boolean startDash(ServerPlayer player, Vec3 direction) {
-        if (!isVyron(player) || !isDashReady(player)) {
-            return false;
-        }
-        Vec3 horizontal = new Vec3(direction.x, 0.0D, direction.z);
-        if (horizontal.lengthSqr() < 0.0001D) {
+   public static boolean startDash(ServerPlayer player, Vec3 direction) {
+      if (isVyron(player) && isDashReady(player)) {
+         Vec3 horizontal = new Vec3(direction.x, 0.0, direction.z);
+         if (horizontal.lengthSqr() < 1.0E-4) {
             Vec3 look = player.getLookAngle();
-            horizontal = new Vec3(look.x, 0.0D, look.z);
-        }
-        if (horizontal.lengthSqr() < 0.0001D) {
-            return false;
-        }
-        if (!consumeDashStamina(player)) {
-            return false;
-        }
+            horizontal = new Vec3(look.x, 0.0, look.z);
+         }
 
-        CompoundTag tag = data(player);
-        Vec3 normalized = horizontal.normalize();
-        long now = SkillCooldownHelper.now(player);
-        boolean poweredBeforeDash = isPowered(player);
-        tag.putInt(DASH_TICKS, CommanderStateManager.skillDuration(player, DASH_DURATION_TICKS));
-        tag.putDouble(DASH_DIR_X, normalized.x);
-        tag.putDouble(DASH_DIR_Z, normalized.z);
-        tag.putLong(DASH_COOLDOWN_UNTIL, SkillCooldownHelper.until(player, now, DASH_COOLDOWN_TICKS));
-        grantPowered(player, false);
-        if (poweredBeforeDash) {
-            DfsAchievements.recordVyronDashWhilePowered(player);
-        }
-        RangedSoundHelper.playFollowingPlayer(player, ModSounds.VYRON_DASH.get(),
-                SoundSource.PLAYERS, 1.0f, 1.0f, 32.0D);
-        return true;
-    }
-
-    public static boolean updateDashDirection(ServerPlayer player, Vec3 direction) {
-        if (!isVyron(player) || dashTicks(player) <= 0
-                || !CommanderStateManager.hasBranchUpgrade(player,
-                CommanderBranchUpgrade.VYRON_PROPULSION_MOD)) {
+         if (horizontal.lengthSqr() < 1.0E-4) {
             return false;
-        }
-        Vec3 horizontal = new Vec3(direction.x, 0.0D, direction.z);
-        if (horizontal.lengthSqr() < 0.0001D) {
-            Vec3 look = player.getLookAngle();
-            horizontal = new Vec3(look.x, 0.0D, look.z);
-        }
-        if (horizontal.lengthSqr() < 0.0001D) {
+         } else if (!consumeDashStamina(player)) {
             return false;
-        }
-        Vec3 normalized = horizontal.normalize();
-        CompoundTag tag = data(player);
-        tag.putDouble(DASH_DIR_X, normalized.x);
-        tag.putDouble(DASH_DIR_Z, normalized.z);
-        return true;
-    }
+         } else {
+            CompoundTag tag = data(player);
+            Vec3 normalized = horizontal.normalize();
+            long now = SkillCooldownHelper.now(player);
+            boolean poweredBeforeDash = isPowered(player);
+            tag.putInt("DashTicks", CommanderStateManager.skillDuration(player, DASH_DURATION_TICKS));
+            tag.putDouble("DashDirX", normalized.x);
+            tag.putDouble("DashDirZ", normalized.z);
+            tag.putLong("DashCooldownUntil", SkillCooldownHelper.until(player, now, DASH_COOLDOWN_TICKS));
+            grantPowered(player, false);
+            if (poweredBeforeDash) {
+               DfsAchievements.recordVyronDashWhilePowered(player);
+            }
 
-    private static boolean consumeDashStamina(ServerPlayer player) {
-        double cost = StaminaManager.skillCost(player, DASH_STAMINA_PERCENT_COST * 0.1D);
-        if (cost <= 0) {
+            RangedSoundHelper.playFollowingPlayer(player, (SoundEvent)ModSounds.VYRON_DASH.get(), SoundSource.PLAYERS, 1.0F, 1.0F, 32.0);
             return true;
-        }
-        StaminaManager.ConsumeResult result = StaminaManager.consume(player, cost);
-        if (result == StaminaManager.ConsumeResult.SUCCESS) {
+         }
+      } else {
+         return false;
+      }
+   }
+
+   public static boolean updateDashDirection(ServerPlayer player, Vec3 direction) {
+      if (!isVyron(player) || dashTicks(player) <= 0
+         || !CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.VYRON_PROPULSION_MOD)) {
+         return false;
+      }
+      Vec3 horizontal = new Vec3(direction.x, 0.0, direction.z);
+      if (horizontal.lengthSqr() < 1.0E-4) {
+         Vec3 look = player.getLookAngle();
+         horizontal = new Vec3(look.x, 0.0, look.z);
+      }
+      if (horizontal.lengthSqr() < 1.0E-4) {
+         return false;
+      }
+      Vec3 normalized = horizontal.normalize();
+      CompoundTag tag = data(player);
+      tag.putDouble("DashDirX", normalized.x);
+      tag.putDouble("DashDirZ", normalized.z);
+      return true;
+   }
+
+   private static boolean consumeDashStamina(ServerPlayer player) {
+      double cost = StaminaManager.skillCost(player, DASH_STAMINA_PERCENT_COST * 0.1D);
+      if (cost <= 0) {
+         return true;
+      } else {
+         StaminaManager.ConsumeResult result = StaminaManager.consume(player, cost);
+         if (result == StaminaManager.ConsumeResult.SUCCESS) {
             return true;
-        }
-        player.displayClientMessage(Component.translatable(result == StaminaManager.ConsumeResult.NOT_ENOUGH
-                ? "message.dealt_force_skills.vyron.not_enough_stamina"
-                : "message.dealt_force_skills.vyron.parcool_stamina_unavailable"), true);
-        return false;
-    }
-
-    public static boolean isDashReady(Player player) {
-        return SkillCooldownHelper.now(player) >= data(player).getLong(DASH_COOLDOWN_UNTIL);
-    }
-
-    public static int dashCooldownRemainingTicks(Player player) {
-        return remainingTicks(player, DASH_COOLDOWN_UNTIL);
-    }
-
-    public static int dashTicks(Player player) {
-        return data(player).getInt(DASH_TICKS);
-    }
-
-    public static void resetDashCooldown(ServerPlayer player) {
-        if (!isVyron(player)) {
-            return;
-        }
-        data(player).putLong(DASH_COOLDOWN_UNTIL, 0L);
-        syncToClient(player);
-    }
-
-    public static void grantPowered(ServerPlayer player, boolean landing) {
-        if (!isVyron(player)) {
-            return;
-        }
-        int duration = CommanderStateManager.skillDuration(player, POWERED_DURATION_TICKS);
-        int amplifier = CommanderStateManager.skillEffectAmplifier(player,
-                com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.effect.vyron_powered.0.amplifier", 0));
-        data(player).putLong(POWERED_UNTIL, SkillCooldownHelper.now(player) + duration);
-        player.addEffect(new MobEffectInstance(ModEffects.VYRON_POWERED.get(), duration, amplifier, false, true, true));
-        RangedSoundHelper.playFollowingPlayer(player,
-                landing ? ModSounds.VYRON_POWERED_LAND.get() : ModSounds.VYRON_POWERED_ACTIVATE.get(),
-                SoundSource.PLAYERS, 0.85f, 1.0f, 32.0D);
-        RangedSoundHelper.playFollowingPlayer(player, ModSounds.VYRON_POWERED_ACTIVE.get(),
-                SoundSource.PLAYERS, 0.55f, 1.0f, 20.0D);
-    }
-
-    public static int poweredRemainingTicks(Player player) {
-        return remainingTicks(player, POWERED_UNTIL);
-    }
-
-    public static boolean isPowered(Player player) {
-        return isVyron(player) && poweredRemainingTicks(player) > 0;
-    }
-
-    public static int bombCharges(Player player) {
-        return Math.min(bombCapacity(player), Math.max(0, data(player).getInt(BOMB_CHARGES)));
-    }
-
-    public static int bombRechargeRemainingTicks(Player player) {
-        if (bombCharges(player) >= bombCapacity(player)) {
-            return 0;
-        }
-        return remainingTicks(player, BOMB_NEXT_RECHARGE);
-    }
-
-    public static boolean consumeBombCharge(ServerPlayer player) {
-        CompoundTag tag = data(player);
-        int capacity = bombCapacity(player);
-        int charges = Math.min(capacity, tag.getInt(BOMB_CHARGES));
-        if (charges <= 0) {
+         } else {
+            player.displayClientMessage(
+               Component.translatable(
+                  result == StaminaManager.ConsumeResult.NOT_ENOUGH
+                     ? "message.dealt_force_skills.vyron.not_enough_stamina"
+                     : "message.dealt_force_skills.vyron.parcool_stamina_unavailable"
+               ),
+               true
+            );
             return false;
-        }
-        tag.putInt(BOMB_CHARGES, charges - 1);
-        if (charges == capacity) {
-            tag.putLong(BOMB_NEXT_RECHARGE,
-                    SkillCooldownHelper.until(player, SkillCooldownHelper.now(player), MAGNETIC_BOMB_RECHARGE_TICKS));
-        }
-        return true;
-    }
+         }
+      }
+   }
 
-    public static VyronTool equippedTool(Player player) {
-        int ordinal = data(player).getInt(EQUIPPED_TOOL);
-        VyronTool[] values = VyronTool.values();
-        return ordinal >= 0 && ordinal < values.length ? values[ordinal] : VyronTool.NONE;
-    }
+   public static boolean isDashReady(Player player) {
+      return SkillCooldownHelper.now(player) >= data(player).getLong("DashCooldownUntil");
+   }
 
-    public static void setEquippedTool(Player player, VyronTool tool) {
-        data(player).putInt(EQUIPPED_TOOL, tool.ordinal());
-    }
+   public static int dashCooldownRemainingTicks(Player player) {
+      return remainingTicks(player, "DashCooldownUntil");
+   }
 
-    public static boolean isCoreReady(Player player) {
-        return SkillCooldownHelper.now(player) >= data(player).getLong(CORE_COOLDOWN_UNTIL);
-    }
+   public static int dashTicks(Player player) {
+      return data(player).getInt("DashTicks");
+   }
 
-    public static int coreCooldownRemainingTicks(Player player) {
-        return remainingTicks(player, CORE_COOLDOWN_UNTIL);
-    }
+   public static void resetDashCooldown(ServerPlayer player) {
+      if (isVyron(player)) {
+         data(player).putLong("DashCooldownUntil", 0L);
+         syncToClient(player);
+      }
+   }
 
-    public static void setCoreCooldown(ServerPlayer player) {
-        data(player).putLong(CORE_COOLDOWN_UNTIL,
-                SkillCooldownHelper.until(player, SkillCooldownHelper.now(player), TIGER_CANNON_COOLDOWN_TICKS));
-    }
+   public static void grantPowered(ServerPlayer player, boolean landing) {
+      if (isVyron(player)) {
+         int duration = CommanderStateManager.skillDuration(player, POWERED_DURATION_TICKS);
+         int amplifier = CommanderStateManager.skillEffectAmplifier(player,
+            DealtForceConfig.intValue("characters.vyron.vyron_state_manager.effect.vyron_powered.0.amplifier", 0));
+         data(player).putLong("PoweredUntil", SkillCooldownHelper.now(player) + (long)duration);
+         player.addEffect(
+            new MobEffectInstance(
+               ModEffects.VYRON_POWERED,
+               duration,
+               amplifier,
+               false,
+               true,
+               true
+            )
+         );
+         RangedSoundHelper.playFollowingPlayer(
+            player,
+            landing ? (SoundEvent)ModSounds.VYRON_POWERED_LAND.get() : (SoundEvent)ModSounds.VYRON_POWERED_ACTIVATE.get(),
+            SoundSource.PLAYERS,
+            0.85F,
+            1.0F,
+            32.0
+         );
+         RangedSoundHelper.playFollowingPlayer(player, (SoundEvent)ModSounds.VYRON_POWERED_ACTIVE.get(), SoundSource.PLAYERS, 0.55F, 1.0F, 20.0);
+      }
+   }
 
-    public static void syncToClient(ServerPlayer player) {
-        if (!isVyron(player)) {
-            return;
-        }
-        initializeIfNeeded(player);
-        NetworkHandler.sendToPlayer(new S2C_SyncVyronState(
-                dashCooldownRemainingTicks(player),
-                dashTicks(player),
-                poweredRemainingTicks(player),
-                bombCharges(player),
-                bombCapacity(player),
-                bombRechargeRemainingTicks(player),
-                coreCooldownRemainingTicks(player),
-                equippedTool(player).ordinal()
-        ), player);
-    }
+   public static void grantPoweredOnLanding(ServerPlayer player) {
+      if (!isVyron(player)) {
+         return;
+      }
+      initializeIfNeeded(player);
+      CompoundTag tag = data(player);
+      tag.putBoolean("PropulsionDescending", false);
+      long now = SkillCooldownHelper.now(player);
+      if (tag.getLong("LastPoweredLandingTick") == now) {
+         return;
+      }
+      tag.putLong("LastPoweredLandingTick", now);
+      grantPowered(player, true);
+      syncToClient(player);
+   }
 
-    private static void tickDash(ServerPlayer player) {
-        CompoundTag tag = data(player);
-        int ticks = tag.getInt(DASH_TICKS);
-        if (ticks <= 0) {
-            return;
-        }
+   public static int poweredRemainingTicks(Player player) {
+      return remainingTicks(player, "PoweredUntil");
+   }
 
-        Vec3 direction = new Vec3(tag.getDouble(DASH_DIR_X), 0.0D, tag.getDouble(DASH_DIR_Z));
-        if (direction.lengthSqr() < 0.0001D || player.horizontalCollision) {
-            tag.putInt(DASH_TICKS, 0);
-            return;
-        }
+   public static boolean isPowered(Player player) {
+      return isVyron(player) && poweredRemainingTicks(player) > 0;
+   }
 
-        Vec3 motion = direction.normalize().scale(DASH_SPEED);
-        player.setDeltaMovement(motion.x, 0.0D, motion.z);
-        player.fallDistance = 0.0F;
-        player.hurtMarked = true;
-        tag.putInt(DASH_TICKS, ticks - 1);
-    }
+   public static int bombCharges(Player player) {
+      return Math.min(bombCapacity(player), Math.max(0, data(player).getInt("BombCharges")));
+   }
 
-    private static void tickPowered(ServerPlayer player, long now) {
-        boolean active = data(player).getLong(POWERED_UNTIL) > now;
-        var attr = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (attr == null) {
-            return;
-        }
-        AttributeModifier existing = attr.getModifier(POWERED_SPEED_UUID);
-        if (active && existing == null) {
-            attr.addTransientModifier(new AttributeModifier(
-                    POWERED_SPEED_UUID, "vyron_powered_speed", 0.5D, AttributeModifier.Operation.MULTIPLY_TOTAL
-            ));
-        }
-        if (!active && existing != null) {
+   public static int bombRechargeRemainingTicks(Player player) {
+      return bombCharges(player) >= bombCapacity(player) ? 0 : remainingTicks(player, "BombNextRecharge");
+   }
+
+   public static boolean consumeBombCharge(ServerPlayer player) {
+      CompoundTag tag = data(player);
+      int capacity = bombCapacity(player);
+      int charges = Math.min(capacity, tag.getInt("BombCharges"));
+      if (charges <= 0) {
+         return false;
+      } else {
+         tag.putInt("BombCharges", charges - 1);
+         if (charges == capacity) {
+            tag.putLong("BombNextRecharge", SkillCooldownHelper.until(player, SkillCooldownHelper.now(player), MAGNETIC_BOMB_RECHARGE_TICKS));
+         }
+
+         return true;
+      }
+   }
+
+   public static VyronTool equippedTool(Player player) {
+      int ordinal = data(player).getInt("EquippedTool");
+      VyronTool[] values = VyronTool.values();
+      return ordinal >= 0 && ordinal < values.length ? values[ordinal] : VyronTool.NONE;
+   }
+
+   public static void setEquippedTool(Player player, VyronTool tool) {
+      data(player).putInt("EquippedTool", tool.ordinal());
+   }
+
+   public static boolean isCoreReady(Player player) {
+      return SkillCooldownHelper.now(player) >= data(player).getLong("CoreCooldownUntil");
+   }
+
+   public static int coreCooldownRemainingTicks(Player player) {
+      return remainingTicks(player, "CoreCooldownUntil");
+   }
+
+   public static void setCoreCooldown(ServerPlayer player) {
+      data(player).putLong("CoreCooldownUntil", SkillCooldownHelper.until(player, SkillCooldownHelper.now(player), TIGER_CANNON_COOLDOWN_TICKS));
+   }
+
+   public static void syncToClient(ServerPlayer player) {
+      if (isVyron(player)) {
+         initializeIfNeeded(player);
+         NetworkHandler.sendToPlayer(
+            new S2C_SyncVyronState(
+               dashCooldownRemainingTicks(player),
+               dashTicks(player),
+               poweredRemainingTicks(player),
+               bombCharges(player),
+               bombCapacity(player),
+               bombRechargeRemainingTicks(player),
+               coreCooldownRemainingTicks(player),
+               equippedTool(player).ordinal()
+            ),
+            player
+         );
+      }
+   }
+
+   private static void tickDash(ServerPlayer player) {
+      CompoundTag tag = data(player);
+      int ticks = tag.getInt("DashTicks");
+      if (ticks > 0) {
+         Vec3 direction = new Vec3(tag.getDouble("DashDirX"), 0.0, tag.getDouble("DashDirZ"));
+         if (!(direction.lengthSqr() < 1.0E-4) && !player.horizontalCollision) {
+            Vec3 motion = direction.normalize().scale(DASH_SPEED);
+            player.setDeltaMovement(motion.x, 0.0, motion.z);
+            player.fallDistance = 0.0F;
+            player.hurtMarked = true;
+            tag.putInt("DashTicks", ticks - 1);
+         } else {
+            tag.putInt("DashTicks", 0);
+         }
+      }
+   }
+
+   private static void tickPowered(ServerPlayer player, long now) {
+      boolean active = data(player).getLong("PoweredUntil") > now;
+      AttributeInstance attr = player.getAttribute(Attributes.MOVEMENT_SPEED);
+      if (attr != null) {
+         AttributeModifier existing = attr.getModifier(POWERED_SPEED_UUID);
+         if (active && existing == null) {
+            attr.addTransientModifier(new AttributeModifier(POWERED_SPEED_UUID, 0.5, Operation.ADD_MULTIPLIED_TOTAL));
+         }
+
+         if (!active && existing != null) {
             attr.removeModifier(POWERED_SPEED_UUID);
-        }
-    }
+         }
+      }
+   }
 
-    private static void tickFallingSound(ServerPlayer player, long now) {
-        CompoundTag tag = data(player);
-        boolean falling = player.fallDistance >= 4.0F && player.getDeltaMovement().y < -0.16D;
-        if (falling) {
-            long lastSoundTick = tag.getLong(FALLING_SOUND_LAST_TICK);
-            if (!tag.getBoolean(FALLING_SOUND_ACTIVE) || now - lastSoundTick >= FALLING_SOUND_REPLAY_TICKS) {
-                RangedSoundHelper.playFollowingPlayer(player, ModSounds.VYRON_FALLING_LOOP.get(),
-                        SoundSource.PLAYERS, 0.7f, 1.0f, 32.0D);
-                tag.putLong(FALLING_SOUND_LAST_TICK, now);
+   private static void tickFallingSound(ServerPlayer player, long now) {
+      CompoundTag tag = data(player);
+      boolean falling = player.fallDistance >= 4.0F && player.getDeltaMovement().y < -0.16;
+      if (!falling) {
+         stopFallingSound(player);
+      } else {
+         long lastSoundTick = tag.getLong("FallingSoundLastTick");
+         if (!tag.getBoolean("FallingSoundActive") || now - lastSoundTick >= 140L) {
+            RangedSoundHelper.playFollowingPlayer(player, (SoundEvent)ModSounds.VYRON_FALLING_LOOP.get(), SoundSource.PLAYERS, 0.7F, 1.0F, 32.0);
+            tag.putLong("FallingSoundLastTick", now);
+         }
+
+         tag.putBoolean("FallingSoundActive", true);
+      }
+   }
+
+   private static void tickPropulsionLanding(ServerPlayer player) {
+      CompoundTag tag = data(player);
+      if (!CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.VYRON_PROPULSION_MOD)) {
+         tag.putBoolean("PropulsionDescending", false);
+         return;
+      }
+      if (player.onGround()) {
+         if (tag.getBoolean("PropulsionDescending")) {
+            grantPoweredOnLanding(player);
+         }
+         return;
+      }
+      if (player.isPassenger() || player.getAbilities().flying
+         || player.isInWaterOrBubble() || player.onClimbable()) {
+         tag.putBoolean("PropulsionDescending", false);
+         return;
+      }
+      if (player.getDeltaMovement().y < -0.01) {
+         tag.putBoolean("PropulsionDescending", true);
+      }
+   }
+
+   private static void stopFallingSound(ServerPlayer player) {
+      CompoundTag tag = data(player);
+      if (tag.getBoolean("FallingSoundActive")) {
+         RangedSoundHelper.stop(player.serverLevel(), (SoundEvent)ModSounds.VYRON_FALLING_LOOP.get(), SoundSource.PLAYERS);
+         tag.putBoolean("FallingSoundActive", false);
+         tag.putLong("FallingSoundLastTick", 0L);
+      }
+   }
+
+   private static void removePoweredModifier(Player player) {
+      AttributeInstance attr = player.getAttribute(Attributes.MOVEMENT_SPEED);
+      if (attr != null && attr.getModifier(POWERED_SPEED_UUID) != null) {
+         attr.removeModifier(POWERED_SPEED_UUID);
+      }
+
+      player.removeEffect(ModEffects.VYRON_POWERED);
+   }
+
+   private static void recharge(ServerPlayer player, long now) {
+      CompoundTag tag = data(player);
+      int capacity = bombCapacity(player);
+      int charges = Math.min(capacity, Math.max(0, tag.getInt("BombCharges")));
+      tag.putInt("BombCharges", charges);
+      long nextRecharge = tag.getLong("BombNextRecharge");
+      if (charges >= capacity) {
+         tag.putLong("BombNextRecharge", 0L);
+      } else if (nextRecharge <= 0L) {
+         tag.putLong("BombNextRecharge", SkillCooldownHelper.until(player, now, MAGNETIC_BOMB_RECHARGE_TICKS));
+      } else if (now >= nextRecharge) {
+         while (++charges < capacity) {
+            nextRecharge += (long)SkillCooldownHelper.ticks(player, MAGNETIC_BOMB_RECHARGE_TICKS);
+            if (now < nextRecharge) {
+               tag.putInt("BombCharges", charges);
+               tag.putLong("BombNextRecharge", nextRecharge);
+               return;
             }
-            tag.putBoolean(FALLING_SOUND_ACTIVE, true);
-            return;
-        }
-        stopFallingSound(player);
-    }
+         }
 
-    private static void tickPropulsionLanding(ServerPlayer player) {
-        CompoundTag tag = data(player);
-        if (!CommanderStateManager.hasBranchUpgrade(player,
-                CommanderBranchUpgrade.VYRON_PROPULSION_MOD)) {
-            tag.putBoolean(PROPULSION_DESCENDING, false);
-            return;
-        }
-        if (player.onGround()) {
-            if (tag.getBoolean(PROPULSION_DESCENDING)) {
-                grantPoweredOnLanding(player);
-            }
-            return;
-        }
-        if (player.isPassenger() || player.getAbilities().flying
-                || player.isInWaterOrBubble() || player.onClimbable()) {
-            tag.putBoolean(PROPULSION_DESCENDING, false);
-            return;
-        }
-        if (player.getDeltaMovement().y < -0.01D) {
-            tag.putBoolean(PROPULSION_DESCENDING, true);
-        }
-    }
+         tag.putInt("BombCharges", capacity);
+         tag.putLong("BombNextRecharge", 0L);
+      }
+   }
 
-    public static void grantPoweredOnLanding(ServerPlayer player) {
-        if (!isVyron(player)) {
-            return;
-        }
-        initializeIfNeeded(player);
-        CompoundTag tag = data(player);
-        tag.putBoolean(PROPULSION_DESCENDING, false);
-        long now = SkillCooldownHelper.now(player);
-        if (tag.getLong(LAST_POWERED_LANDING_TICK) == now) {
-            return;
-        }
-        tag.putLong(LAST_POWERED_LANDING_TICK, now);
-        grantPowered(player, true);
-        syncToClient(player);
-    }
+   private static int remainingTicks(Player player, String key) {
+      long remaining = data(player).getLong(key) - SkillCooldownHelper.now(player);
+      return remaining > 0L ? (int)Math.min(2147483647L, remaining) : 0;
+   }
 
-    private static void stopFallingSound(ServerPlayer player) {
-        CompoundTag tag = data(player);
-        if (!tag.getBoolean(FALLING_SOUND_ACTIVE)) {
-            return;
-        }
-        RangedSoundHelper.stop(player.serverLevel(), ModSounds.VYRON_FALLING_LOOP.get(), SoundSource.PLAYERS);
-        tag.putBoolean(FALLING_SOUND_ACTIVE, false);
-        tag.putLong(FALLING_SOUND_LAST_TICK, 0L);
-    }
+   private static int bombCapacity(Player player) {
+      return CommanderStateManager.skillCapacity(player, MAGNETIC_BOMB_MAX_CHARGES);
+   }
 
-    private static void removePoweredModifier(Player player) {
-        var attr = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (attr != null && attr.getModifier(POWERED_SPEED_UUID) != null) {
-            attr.removeModifier(POWERED_SPEED_UUID);
-        }
-        player.removeEffect(ModEffects.VYRON_POWERED.get());
-    }
+   private static CompoundTag data(Player player) {
+      CompoundTag persistent = player.getPersistentData();
+      if (!persistent.contains("dealt_force_skills.vyron", 10)) {
+         persistent.put("dealt_force_skills.vyron", new CompoundTag());
+      }
 
-    private static void recharge(ServerPlayer player, long now) {
-        CompoundTag tag = data(player);
-        int capacity = bombCapacity(player);
-        int charges = Math.min(capacity, Math.max(0, tag.getInt(BOMB_CHARGES)));
-        tag.putInt(BOMB_CHARGES, charges);
-        long nextRecharge = tag.getLong(BOMB_NEXT_RECHARGE);
-        if (charges >= capacity) {
-            tag.putLong(BOMB_NEXT_RECHARGE, 0L);
-            return;
-        }
-        if (nextRecharge <= 0L) {
-            tag.putLong(BOMB_NEXT_RECHARGE,
-                    SkillCooldownHelper.until(player, now, MAGNETIC_BOMB_RECHARGE_TICKS));
-            return;
-        }
-        if (now < nextRecharge) {
-            return;
-        }
-
-        do {
-            charges++;
-            if (charges >= capacity) {
-                tag.putInt(BOMB_CHARGES, capacity);
-                tag.putLong(BOMB_NEXT_RECHARGE, 0L);
-                return;
-            }
-            nextRecharge += SkillCooldownHelper.ticks(player, MAGNETIC_BOMB_RECHARGE_TICKS);
-        } while (now >= nextRecharge);
-
-        tag.putInt(BOMB_CHARGES, charges);
-        tag.putLong(BOMB_NEXT_RECHARGE, nextRecharge);
-    }
-
-    private static int remainingTicks(Player player, String key) {
-        return SkillCooldownHelper.remainingTicks(player, data(player).getLong(key));
-    }
-
-    private static int bombCapacity(Player player) {
-        return CommanderStateManager.skillCapacity(player, MAGNETIC_BOMB_MAX_CHARGES);
-    }
-
-    private static CompoundTag data(Player player) {
-        CompoundTag persistent = player.getPersistentData();
-        if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
-            persistent.put(ROOT_TAG, new CompoundTag());
-        }
-        return persistent.getCompound(ROOT_TAG);
-    }
+      return persistent.getCompound("dealt_force_skills.vyron");
+   }
 }

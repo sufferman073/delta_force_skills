@@ -1,0 +1,25 @@
+{
+    "type":  "minecraft:crafting_shaped",
+    "pattern":  [
+                    "SBS",
+                    "DCD",
+                    "SBS"
+                ],
+    "key":  {
+                "S":  {
+                          "item":  "dealt_force_skills:special_steel"
+                      },
+                "B":  {
+                          "item":  "dealt_force_skills:blueprint"
+                      },
+                "D":  {
+                          "item":  "minecraft:diamond"
+                      },
+                "C":  {
+                          "item":  "dealt_force_skills:programmable_processor"
+                      }
+            },
+    "result":  {
+                   "id":  "dealt_force_skills:gti_special_operations"
+               }
+}

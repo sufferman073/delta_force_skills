@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 
-@Mixin(PlayerList.class)
+@Mixin(value = PlayerList.class, remap = false)
 public abstract class HearingSoundBroadcastMixin {
     @Shadow public abstract List<ServerPlayer> getPlayers();
 

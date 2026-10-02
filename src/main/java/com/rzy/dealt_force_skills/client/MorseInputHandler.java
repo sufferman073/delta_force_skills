@@ -2,13 +2,13 @@ package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.morse.MorseTool;
 import com.rzy.dealt_force_skills.character.morse.MorseToolAction;
 import com.rzy.dealt_force_skills.client.character.ClientCharacterSelectionState;
-import com.rzy.dealt_force_skills.client.character.ClientMorseHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
+import com.rzy.dealt_force_skills.client.character.ClientMorseHudState;
 import com.rzy.dealt_force_skills.client.visual.ClientToolReleaseAction;
 import com.rzy.dealt_force_skills.network.C2S_MorseToolAction;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
@@ -20,18 +20,19 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Method;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class MorseInputHandler {
     private static volatile int FLASH_EQUIP_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_EQUIP_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.morse_input_handler.flash_equip_hold_ticks", 8));
     private static volatile int FLASH_RELEASE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_RELEASE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.morse_input_handler.flash_release_ticks", 2));
@@ -125,6 +126,9 @@ public final class MorseInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if ((event.isAttack() || event.isUseItem())
                 && shouldCancelMorseShockClientAction(Minecraft.getInstance(), GLFW.GLFW_PRESS)) {
             event.setSwingHand(false);
@@ -159,7 +163,7 @@ public final class MorseInputHandler {
         if (minecraft.player == null) {
             return;
         }
-        MobEffectInstance effect = minecraft.player.getEffect(ModEffects.MORSE_STRONG_SHOCK.get());
+        MobEffectInstance effect = minecraft.player.getEffect(ModEffects.MORSE_STRONG_SHOCK);
         if (effect == null) {
             return;
         }
@@ -172,7 +176,7 @@ public final class MorseInputHandler {
         if (minecraft.player == null) {
             return;
         }
-        MobEffectInstance effect = minecraft.player.getEffect(ModEffects.MORSE_STRONG_SHOCK.get());
+        MobEffectInstance effect = minecraft.player.getEffect(ModEffects.MORSE_STRONG_SHOCK);
         if (effect == null) {
             return;
         }
@@ -275,7 +279,7 @@ public final class MorseInputHandler {
 
     private static void applyMorseShockClientSlow(Minecraft minecraft) {
         LocalPlayer player = minecraft.player;
-        MobEffectInstance effect = player.getEffect(ModEffects.MORSE_STRONG_SHOCK.get());
+        MobEffectInstance effect = player.getEffect(ModEffects.MORSE_STRONG_SHOCK);
         if (effect == null) {
             resetMorseShockLookState();
             return;
@@ -341,12 +345,12 @@ public final class MorseInputHandler {
     private static boolean shouldCancelMorseShockClientAction(Minecraft minecraft, int action) {
         return action == GLFW.GLFW_PRESS
                 && minecraft.player != null
-                && minecraft.player.hasEffect(ModEffects.MORSE_STRONG_SHOCK.get())
+                && minecraft.player.hasEffect(ModEffects.MORSE_STRONG_SHOCK)
                 && shouldClientMorseShockSkipAction(minecraft.player);
     }
 
     private static boolean shouldClientMorseShockSkipAction(Player player) {
-        MobEffectInstance effect = player.getEffect(ModEffects.MORSE_STRONG_SHOCK.get());
+        MobEffectInstance effect = player.getEffect(ModEffects.MORSE_STRONG_SHOCK);
         if (effect == null) {
             return false;
         }

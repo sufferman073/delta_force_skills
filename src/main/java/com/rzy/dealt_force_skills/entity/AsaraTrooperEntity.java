@@ -1,17 +1,15 @@
 package com.rzy.dealt_force_skills.entity;
 
 import com.rzy.dealt_force_skills.character.saeed.AsaraTaczEquipment;
-import com.rzy.dealt_force_skills.character.saeed.SaeedGuardType;
 import com.rzy.dealt_force_skills.character.saeed.SaeedStateManager;
-import com.rzy.dealt_force_skills.compat.TamarindCompatEvents;
 import com.rzy.dealt_force_skills.registry.ModItems;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -26,28 +24,16 @@ public final class AsaraTrooperEntity extends SaeedGuardEntity {
         super(type, level);
         this.role = role;
         configureStandalone(role.guardType());
-        setItemSlot(EquipmentSlot.MAINHAND, AsaraTaczEquipment.randomGun(role, random));
-        if (role == AsaraTrooperRole.GUARD_SOLDIER) {
-            setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
-        }
+        setItemSlot(EquipmentSlot.MAINHAND, AsaraTaczEquipment.randomGun(role, random, level.registryAccess()));
+        if (role == AsaraTrooperRole.GUARD_SOLDIER) setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
     }
+
+    @Override protected boolean isStandaloneTrooper() { return true; }
+    public AsaraTrooperRole role() { return role; }
+    @Override protected double standaloneAttributeMultiplier() { return role.attributeMultiplier(); }
 
     @Override
-    protected boolean isStandaloneTrooper() {
-        return true;
-    }
-
-    public AsaraTrooperRole role() {
-        return role;
-    }
-
-    @Override
-    protected double standaloneAttributeMultiplier() {
-        return role.attributeMultiplier();
-    }
-
-    @Override
-    protected void applyStandaloneAttributes(SaeedGuardType type) {
+    protected void applyStandaloneAttributes(com.rzy.dealt_force_skills.character.saeed.SaeedGuardType type) {
         super.applyStandaloneAttributes(type);
         if (getAttribute(Attributes.MOVEMENT_SPEED) != null) {
             getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(type.speed() * role.speedMultiplier());
@@ -58,27 +44,17 @@ public final class AsaraTrooperEntity extends SaeedGuardEntity {
         }
     }
 
-    public float outgoingDamageMultiplier() {
-        return 0.6F * (float) role.damageMultiplier();
-    }
+    public float outgoingDamageMultiplier() { return 0.6F * (float) role.damageMultiplier(); }
 
     public static AsaraTrooperEntity sourceTrooper(DamageSource source) {
-        if (source == null) {
-            return null;
-        }
-        if (source.getEntity() instanceof AsaraTrooperEntity trooper) {
-            return trooper;
-        }
+        if (source == null) return null;
+        if (source.getEntity() instanceof AsaraTrooperEntity trooper) return trooper;
         return source.getDirectEntity() instanceof AsaraTrooperEntity trooper ? trooper : null;
     }
 
     public static boolean isAsaraAlly(Entity entity) {
-        if (entity instanceof AsaraTrooperEntity || entity instanceof BeaconBossEntity) {
-            return true;
-        }
-        if (entity instanceof SaeedGuardEntity guard) {
-            return !guard.isStandaloneTrooper();
-        }
+        if (entity instanceof AsaraTrooperEntity || entity instanceof BeaconBossEntity) return true;
+        if (entity instanceof SaeedGuardEntity guard) return !guard.isStandaloneTrooper();
         return entity instanceof Player player && SaeedStateManager.isSaeed(player);
     }
 
@@ -88,41 +64,29 @@ public final class AsaraTrooperEntity extends SaeedGuardEntity {
     }
 
     public static boolean shouldCancelFriendlyDamage(Entity target, DamageSource source) {
-        if (source == null) {
-            return false;
-        }
+        if (source == null) return false;
         return sourceIsAsara(source) && isAsaraAlly(target)
                 || target instanceof AsaraTrooperEntity
                 && (isAsaraAlly(source.getEntity()) || isAsaraAlly(source.getDirectEntity()));
     }
 
-    @Override
-    public boolean isAlliedTo(Entity entity) {
-        return isAsaraAlly(entity) || super.isAlliedTo(entity);
-    }
+    @Override public boolean isAlliedTo(Entity entity) { return isAsaraAlly(entity) || super.isAlliedTo(entity); }
 
-    @Override
-    public boolean hurt(DamageSource source, float amount) {
-        if (isAsaraAlly(source.getEntity()) || isAsaraAlly(source.getDirectEntity())) {
-            return false;
-        }
+    @Override public boolean hurt(DamageSource source, float amount) {
+        if (isAsaraAlly(source.getEntity()) || isAsaraAlly(source.getDirectEntity())) return false;
         return super.hurt(source, amount);
     }
 
     @Override
     protected void dropStandaloneDeathLoot() {
-        if (!(level() instanceof ServerLevel serverLevel) || getPersistentData().getBoolean(DROPPED_LOOT)) {
-            return;
-        }
+        if (!(level() instanceof ServerLevel) || getPersistentData().getBoolean(DROPPED_LOOT)) return;
         getPersistentData().putBoolean(DROPPED_LOOT, true);
         ItemStack weapon = getMainHandItem().copy();
         if (!weapon.isEmpty()) {
             weapon.setCount(1);
             AsaraTaczEquipment.clearReserveAmmo(weapon);
             spawnAtLocation(weapon);
-            for (ItemStack ammo : AsaraTaczEquipment.matchingAmmo(weapon, 30 + random.nextInt(61))) {
-                spawnAtLocation(ammo);
-            }
+            for (ItemStack ammo : AsaraTaczEquipment.matchingAmmo(weapon, 30 + random.nextInt(61))) spawnAtLocation(ammo);
         }
         switch (guardType()) {
             case FIREEYE -> dropRepairKits();
@@ -131,26 +95,15 @@ public final class AsaraTrooperEntity extends SaeedGuardEntity {
                 spawnAtLocation(new ItemStack(ModItems.D6_TACTICAL_HELMET.get()));
                 spawnAtLocation(new ItemStack(ModItems.SAMURAI_BALLISTIC_VEST.get()));
             }
-            default -> {
-            }
-        }
-        for (ItemStack stack : TamarindCompatEvents.createBirdNestLoot(serverLevel, 1, 4)) {
-            spawnAtLocation(stack);
+            default -> { }
         }
     }
 
     private void dropRepairKits() {
-        List<Item> kits = List.of(
-                ModItems.STANDARD_ARMOR_REPAIR_KIT.get(),
-                ModItems.STANDARD_HELMET_REPAIR_KIT.get(),
-                ModItems.PRECISION_ARMOR_REPAIR_KIT.get(),
-                ModItems.PRECISION_HELMET_REPAIR_KIT.get(),
-                ModItems.ADVANCED_ARMOR_REPAIR_KIT.get(),
-                ModItems.ADVANCED_HELMET_REPAIR_KIT.get());
+        List<Item> kits = List.of(ModItems.STANDARD_ARMOR_REPAIR_KIT.get(), ModItems.STANDARD_HELMET_REPAIR_KIT.get(),
+                ModItems.PRECISION_ARMOR_REPAIR_KIT.get(), ModItems.PRECISION_HELMET_REPAIR_KIT.get(),
+                ModItems.ADVANCED_ARMOR_REPAIR_KIT.get(), ModItems.ADVANCED_HELMET_REPAIR_KIT.get());
         int count = 1 + random.nextInt(2);
-        for (int i = 0; i < count; i++) {
-            spawnAtLocation(new ItemStack(kits.get(random.nextInt(kits.size()))));
-        }
+        for (int i = 0; i < count; i++) spawnAtLocation(new ItemStack(kits.get(random.nextInt(kits.size()))));
     }
-
 }

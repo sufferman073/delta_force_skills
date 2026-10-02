@@ -1,0 +1,27 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:glowstone"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "minecraft:quartz_block"
+                        },
+                        {
+                            "item":  "dealt_force_skills:sterile_water"
+                        },
+                        {
+                            "item":  "dealt_force_skills:antioxidant_stabilizer"
+                        },
+                        {
+                            "item":  "dealt_force_skills:perception_activation_injection"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:perception_activator",
+                   "count":  4
+               }
+}

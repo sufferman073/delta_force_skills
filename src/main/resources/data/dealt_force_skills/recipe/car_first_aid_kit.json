@@ -1,0 +1,40 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "tag":  "minecraft:wool"
+                        },
+                        {
+                            "item":  "minecraft:string"
+                        },
+                        {
+                            "type":  "neoforge:compound",
+                            "children":  [
+                                             {
+                                                 "type":  "neoforge:components",
+                                                 "items":  "minecraft:potion",
+                                                 "components":  {
+                                                                    "minecraft:potion_contents":  {
+                                                                                                      "potion":  "minecraft:healing"
+                                                                                                  }
+                                                                }
+                                             },
+                                             {
+                                                 "type":  "neoforge:components",
+                                                 "items":  "minecraft:potion",
+                                                 "components":  {
+                                                                    "minecraft:potion_contents":  {
+                                                                                                      "potion":  "minecraft:regeneration"
+                                                                                                  }
+                                                                }
+                                             },
+                                             {
+                                                 "item":  "minecraft:golden_apple"
+                                             }
+                                         ]
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:car_first_aid_kit"
+               }
+}

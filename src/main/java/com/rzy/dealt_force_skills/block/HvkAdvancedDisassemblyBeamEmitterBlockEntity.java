@@ -17,12 +17,12 @@ import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.Container;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -30,17 +30,18 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
 import com.rzy.dealt_force_skills.shop.SpecialOperationsBaseManager;
-import net.minecraftforge.registries.ForgeRegistries;
+import mccfk.DeltaForce.java.data.DfWarehouseManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -258,8 +259,12 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         if (owner != null && owner.level() == level
                 && owner.distanceToSqr(worldPosition.getX() + 0.5D, worldPosition.getY() + 0.5D,
                 worldPosition.getZ() + 0.5D) <= OWNER_INVENTORY_RANGE * OWNER_INVENTORY_RANGE) {
-            for (SpecialOperationsBaseManager.WarehouseEntry entry : SpecialOperationsBaseManager.warehouseEntries(owner)) {
-                sources.add(new WarehouseSourceSlot(owner, entry.slot(), entry.stack()));
+            List<ItemStack> warehouse = DfWarehouseManager.loadWarehouse(owner);
+            for (int slot = 0; slot < warehouse.size(); slot++) {
+                ItemStack stack = warehouse.get(slot);
+                if (!stack.isEmpty()) {
+                    sources.add(new WarehouseSourceSlot(owner, slot, stack));
+                }
             }
             Inventory inventory = owner.getInventory();
             for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
@@ -268,12 +273,15 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         }
 
         for (Direction direction : Direction.values()) {
-            BlockEntity neighbor = level.getBlockEntity(worldPosition.relative(direction));
-            if (neighbor == null) {
+            BlockPos neighborPos = worldPosition.relative(direction);
+            if (level.getBlockEntity(neighborPos) == null) {
                 continue;
             }
-            neighbor.getCapability(ForgeCapabilities.ITEM_HANDLER, direction.getOpposite())
-                    .ifPresent(handler -> addHandlerSources(sources, handler));
+            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK,
+                    neighborPos, direction.getOpposite());
+            if (handler != null) {
+                addHandlerSources(sources, handler);
+            }
         }
         HvkLogisticsBridge.collectNetworkItemHandlers(level, worldPosition,
                 handler -> addHandlerSources(sources, handler));
@@ -434,30 +442,6 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         }
     }
 
-    private static final class HandlerSourceSlot implements SourceSlot {
-        private final IItemHandler handler;
-        private final int slot;
-
-        private HandlerSourceSlot(IItemHandler handler, int slot) {
-            this.handler = handler;
-            this.slot = slot;
-        }
-
-        @Override
-        public ItemStack stack() {
-            return handler.getStackInSlot(slot);
-        }
-
-        @Override
-        public int extract(ItemStack template, int max) {
-            ItemStack stack = handler.getStackInSlot(slot);
-            if (!matchesSource(stack, template)) {
-                return 0;
-            }
-            return handler.extractItem(slot, max, false).getCount();
-        }
-    }
-
     private static final class WarehouseSourceSlot implements SourceSlot {
         private final ServerPlayer owner;
         private final int slot;
@@ -479,9 +463,34 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
             if (!matchesSource(cached, template)) {
                 return 0;
             }
-            ItemStack removed = SpecialOperationsBaseManager.extractWarehouse(owner, slot, max);
+            ItemStack removed = DfWarehouseManager.extractMatching(
+                    owner, slot, max, stack -> matchesSource(stack, template));
             cached.shrink(removed.getCount());
             return removed.getCount();
+        }
+    }
+
+    private static final class HandlerSourceSlot implements SourceSlot {
+        private final IItemHandler handler;
+        private final int slot;
+
+        private HandlerSourceSlot(IItemHandler handler, int slot) {
+            this.handler = handler;
+            this.slot = slot;
+        }
+
+        @Override
+        public ItemStack stack() {
+            return handler.getStackInSlot(slot);
+        }
+
+        @Override
+        public int extract(ItemStack template, int max) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (!matchesSource(stack, template)) {
+                return 0;
+            }
+            return handler.extractItem(slot, max, false).getCount();
         }
     }
 
@@ -561,7 +570,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
             List<IndexedRecipe> recipes = new ArrayList<>();
             Map<ResourceLocation, DisassemblyRecipe> byId = new HashMap<>();
             Set<ResourceLocation> seen = new HashSet<>();
-            for (RecipeType<?> type : ForgeRegistries.RECIPE_TYPES.getValues()) {
+            for (RecipeType<?> type : BuiltInRegistries.RECIPE_TYPE.stream().toList()) {
                 collectIndexedRecipes(level, type, seen, recipes, byId);
             }
             for (SyntheticRecipe recipe : syntheticRecipes(level)) {
@@ -649,20 +658,21 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         collectTypedIndexedRecipes(level, (RecipeType) type, seen, recipes, byId);
     }
 
-    private static <C extends Container, T extends Recipe<C>> void collectTypedIndexedRecipes(
+    private static <I extends net.minecraft.world.item.crafting.RecipeInput, T extends Recipe<I>> void collectTypedIndexedRecipes(
             Level level, RecipeType<T> type, Set<ResourceLocation> seen, List<IndexedRecipe> recipes,
             Map<ResourceLocation, DisassemblyRecipe> byId) {
-        for (T recipe : level.getRecipeManager().getAllRecipesFor(type)) {
-            RecipeIndex.addIndexedRecipe(recipe.getId(), selectedRecipe(level, recipe), seen, recipes, byId);
+        for (RecipeHolder<T> holder : level.getRecipeManager().getAllRecipesFor(type)) {
+            RecipeIndex.addIndexedRecipe(holder.id(), selectedRecipe(level, holder), seen, recipes, byId);
         }
     }
 
-    private static DisassemblyRecipe selectedRecipe(Level level, Recipe<?> recipe) {
+    private static DisassemblyRecipe selectedRecipe(Level level, RecipeHolder<?> holder) {
+        Recipe<?> recipe = holder.value();
         List<RecipeInput> inputs = recipeInputs(recipe);
         if (!hasInputs(inputs)) {
             return null;
         }
-        ItemStack result = resultItem(level, recipe);
+        ItemStack result = resultItem(level, holder.id(), recipe);
         return !result.isEmpty() && result.getCount() > 0 ? new DisassemblyRecipe(result.copy(), inputs) : null;
     }
 
@@ -743,7 +753,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
 
     private static void addContainerBrewingRecipes(Level level, Ingredient ingredient, Item from, Item to,
                                                    Set<ResourceLocation> seen, List<SyntheticRecipe> recipes) {
-        for (Potion potion : ForgeRegistries.POTIONS.getValues()) {
+        for (Potion potion : BuiltInRegistries.POTION.stream().toList()) {
             ItemStack base = potionStack(from, potion);
             ItemStack result = potionStack(to, potion);
             ResourceLocation id = brewingRecipeId("container", from, potion, ingredient, to);
@@ -766,14 +776,12 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
     }
 
     private static ItemStack potionStack(Item item, Potion potion) {
-        ItemStack stack = new ItemStack(item);
-        PotionUtils.setPotion(stack, potion);
-        return stack;
+        return PotionContents.createItemStack(item, BuiltInRegistries.POTION.wrapAsHolder(potion));
     }
 
     private static ResourceLocation brewingRecipeId(String category, Item container, Potion from,
                                                     Ingredient ingredient, Object to) {
-        return new ResourceLocation(SYNTHETIC_RECIPE_NAMESPACE, BREWING_RECIPE_PREFIX
+        return ResourceLocation.fromNamespaceAndPath(SYNTHETIC_RECIPE_NAMESPACE, BREWING_RECIPE_PREFIX
                 + sanitizePath(category) + "/"
                 + sanitizePath(itemKey(container)) + "/"
                 + sanitizePath(potionKey(from)) + "/"
@@ -801,7 +809,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
     }
 
     private static String potionKey(Potion potion) {
-        ResourceLocation key = ForgeRegistries.POTIONS.getKey(potion);
+        ResourceLocation key = BuiltInRegistries.POTION.getKey(potion);
         return key == null ? potion.toString() : key.toString();
     }
 
@@ -811,7 +819,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
                 .replaceAll("[^a-z0-9_./-]", "_");
     }
 
-    private static ItemStack resultItem(Level level, Recipe<?> recipe) {
+    private static ItemStack resultItem(Level level, ResourceLocation id, Recipe<?> recipe) {
         ItemStack result = recipe.getResultItem(level.registryAccess());
         if (!result.isEmpty()) {
             return result;
@@ -820,7 +828,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         if (!result.isEmpty()) {
             return result;
         }
-        return touhouAltarPlaceholder(recipe);
+        return touhouAltarPlaceholder(id, recipe);
     }
 
     private static ItemStack smithingResult(Recipe<?> recipe) {
@@ -843,8 +851,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         return ItemStack.EMPTY;
     }
 
-    private static ItemStack touhouAltarPlaceholder(Recipe<?> recipe) {
-        ResourceLocation id = recipe.getId();
+    private static ItemStack touhouAltarPlaceholder(ResourceLocation id, Recipe<?> recipe) {
         if (id == null || !"touhou_little_maid".equals(id.getNamespace())) {
             return ItemStack.EMPTY;
         }
@@ -852,7 +859,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         if (Boolean.TRUE.equals(itemCraft)) {
             return ItemStack.EMPTY;
         }
-        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation("touhou_little_maid", "entity_placeholder"));
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("touhou_little_maid", "entity_placeholder"));
         if (item == null) {
             return ItemStack.EMPTY;
         }
@@ -1059,8 +1066,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
     }
 
     private static ResourceLocation itemKeyLocation(Item item) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
-        return key;
+        return BuiltInRegistries.ITEM.getKey(item);
     }
 
     private record RecipeInput(Ingredient ingredient, int count) {

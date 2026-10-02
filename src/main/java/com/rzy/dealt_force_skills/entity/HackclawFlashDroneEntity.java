@@ -9,8 +9,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -29,11 +27,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier {
     private static volatile int MAX_LIFETIME_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_LIFETIME_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.hackclawflashdroneentity.max_lifetime_ticks", 240));
@@ -77,7 +75,7 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -148,11 +146,6 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
         tag.putInt("Health", health);
         tag.putInt("FlashesUsed", flashesUsed);
         tag.putInt("GuidedTargetId", guidedTargetId);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private Vec3 adjustedMotion() {
@@ -303,7 +296,7 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
         if (TargetingUtil.shouldSkipFriendlyControl(flashOwner, target)) {
             return;
         }
-        target.addEffect(new MobEffectInstance(ModEffects.HACKCLAW_FLASH_BLIND.get(),
+        target.addEffect(new MobEffectInstance(ModEffects.HACKCLAW_FLASH_BLIND,
                 FLASH_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.hackclaw_flash_drone_entity.effect.hackclaw_flash_blind.0.amplifier", 0), false, false, true), flashOwner);
         RangedSoundHelper.playThrottled(level, target.position(), ModSounds.HACKCLAW_FLASH_DRONE_FLASH.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f, 18.0D, 3, 3.0D);

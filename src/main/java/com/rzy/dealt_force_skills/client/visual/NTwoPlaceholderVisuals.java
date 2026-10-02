@@ -9,14 +9,15 @@ import com.rzy.dealt_force_skills.client.renderer.BlockbenchAnimatedModelRendere
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class NTwoPlaceholderVisuals {
     private static final ResourceLocation DEWAR_MODEL = model("shared_hand_grenade");
     private static final ResourceLocation CONDENSER_MODEL = model("uluru_missile_launcher");
@@ -48,7 +49,7 @@ public final class NTwoPlaceholderVisuals {
             poseStack.mulPose(Axis.XP.rotationDegrees(-20.0F));
             poseStack.scale(0.82F, 0.82F, 0.82F);
         }
-        float seconds = animationSeconds(event.getPartialTick());
+        float seconds = animationSeconds(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         BlockbenchAnimatedModelRenderer.render(modelFor(tool), animationFor(tool), seconds,
                 poseStack, event.getMultiBufferSource(), event.getPackedLight());
         poseStack.popPose();
@@ -75,6 +76,6 @@ public final class NTwoPlaceholderVisuals {
     }
 
     private static ResourceLocation model(String path) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, path);
     }
 }

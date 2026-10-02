@@ -16,7 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -416,7 +416,7 @@ public final class SpecialOperationsBaseScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int total = switch (tab) {
             case FACILITIES -> snapshot.facilities().size();
             case SELL -> sellStacks().size();
@@ -429,13 +429,13 @@ public final class SpecialOperationsBaseScreen extends Screen {
                 : Math.max(1, (panelHeight() - 105) / SLOT);
         int max = Math.max(0, (total + cols - 1) / cols - visible);
         if (max > 0) {
-            scrollRow = Math.max(0, Math.min(max, scrollRow - (int) Math.signum(delta)));
+            scrollRow = Math.max(0, Math.min(max, scrollRow - (int) Math.signum(scrollY)));
             if (tab == Tab.FACILITIES) {
                 refreshWidgets();
             }
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
@@ -495,7 +495,7 @@ public final class SpecialOperationsBaseScreen extends Screen {
     private List<S2C_SpecialOperationsBaseSnapshot.BuybackView> filteredBuyback() {
         return snapshot.buyback().stream().filter(view -> {
             ItemStack stack = view.stack();
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
             return !stack.isEmpty() && JustEnoughCharactersCompat.matches(
                     stack.getHoverName().getString() + " " + (id == null ? "" : id), buybackSearch);
         }).toList();
@@ -567,7 +567,7 @@ public final class SpecialOperationsBaseScreen extends Screen {
 
     private Item item(String idText) {
         ResourceLocation id = ResourceLocation.tryParse(idText);
-        return id == null ? null : ForgeRegistries.ITEMS.getValue(id);
+        return id == null ? null : BuiltInRegistries.ITEM.get(id);
     }
 
     private boolean hasMissingConditions(S2C_SpecialOperationsBaseSnapshot.FacilityView facility) {

@@ -7,27 +7,26 @@ import com.rzy.dealt_force_skills.block.WorkBlockQueryCatalog;
 import com.rzy.dealt_force_skills.block.InterdimensionalBlockEntity;
 import com.rzy.dealt_force_skills.block.HvkAdvancedTreasureCompassBlockEntity;
 import com.rzy.dealt_force_skills.block.HvkClonePrototypeBlockEntity;
-import net.minecraftforge.event.TickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraftforge.event.OnDatapackSyncEvent;
-import net.minecraftforge.event.level.LevelEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class HvkRecipeCatalogEvents {
     private HvkRecipeCatalogEvents() {
     }
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            WorkBlockQueryCatalog.tick(event.getServer());
-            HvkAdvancedStandardTemplateConstructorBlockEntity.tickPlanningJobs(event.getServer());
-        }
+    public static void onServerTick(ServerTickEvent.Post event) {
+        WorkBlockQueryCatalog.tick(event.getServer());
+        HvkAdvancedStandardTemplateConstructorBlockEntity.tickPlanningJobs(event.getServer());
     }
 
     @SubscribeEvent

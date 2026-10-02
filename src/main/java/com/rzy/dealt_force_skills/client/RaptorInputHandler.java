@@ -2,8 +2,9 @@ package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.character.SkillSlot;
+import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.raptor.RaptorTool;
 import com.rzy.dealt_force_skills.character.raptor.RaptorToolAction;
 import com.rzy.dealt_force_skills.client.character.ClientCharacterSelectionState;
@@ -15,14 +16,15 @@ import com.rzy.dealt_force_skills.network.NetworkHandler;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class RaptorInputHandler {
     private static volatile int ACTIVE_LONG_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("ACTIVE_LONG_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.raptor_input_handler.active_long_hold_ticks", 15));
     private static volatile int PULSE_EQUIP_HOLD_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PULSE_EQUIP_HOLD_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("client.raptor_input_handler.pulse_equip_hold_ticks", 8));
@@ -59,21 +61,9 @@ public final class RaptorInputHandler {
             resetCore();
             return;
         }
-        if (active1Owned) {
-            handleActive1Key();
-        } else {
-            resetActive1();
-        }
-        if (active2Owned) {
-            handleActive2Key();
-        } else {
-            resetActive2();
-        }
-        if (coreOwned) {
-            handleCoreKey();
-        } else {
-            resetCore();
-        }
+        if (active1Owned) handleActive1Key(); else resetActive1();
+        if (active2Owned) handleActive2Key(); else resetActive2();
+        if (coreOwned) handleCoreKey(); else resetCore();
         if (ClientRaptorHudState.hasEquippedTool()) {
             releaseBlockedKey(minecraft.options.keyAttack);
             releaseBlockedKey(minecraft.options.keyUse);
@@ -121,6 +111,9 @@ public final class RaptorInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!ClientRaptorHudState.hasEquippedTool()) {
             return;
         }

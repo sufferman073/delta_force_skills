@@ -1,0 +1,21 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:glowstone_dust"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "minecraft:quartz"
+                        },
+                        {
+                            "item":  "dealt_force_skills:norepinephrine"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:perception_activation_injection",
+                   "count":  3
+               }
+}

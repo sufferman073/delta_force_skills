@@ -10,15 +10,16 @@ import com.rzy.dealt_force_skills.client.renderer.BlockbenchAnimatedModelRendere
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class LunaPlaceholderVisuals {
     private static final ResourceLocation BOW_MODEL = model("luna_composite_bow");
     private static final ResourceLocation GRENADE_MODEL = model("shared_hand_grenade");
@@ -59,13 +60,13 @@ public final class LunaPlaceholderVisuals {
             poseStack.scale(1.12F, 1.12F, 1.12F);
         }
 
-        float seconds = (minecraft.player.tickCount + event.getPartialTick()) / 20.0F;
+        float seconds = (minecraft.player.tickCount + com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) / 20.0F;
         String animation = "idle";
         if (bowVisual) {
             animation = ClientLunaBowVisualState.phase(minecraft.player) == ClientLunaBowVisualState.PHASE_RELEASE
                     ? "release"
                     : "draw";
-            seconds = ClientLunaBowVisualState.animationSeconds(minecraft.player, event.getPartialTick());
+            seconds = ClientLunaBowVisualState.animationSeconds(minecraft.player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         } else if (grenadeAction) {
             ClientToolModelAnimationState.AnimationFrame frame = ClientToolReleaseAction.frame(
                     ClientToolReleaseAction.Action.LUNA_GRENADE, animation, seconds);
@@ -106,7 +107,7 @@ public final class LunaPlaceholderVisuals {
         BlockbenchAnimatedModelRenderer.render(
                 BOW_MODEL,
                 animation,
-                ClientLunaBowVisualState.animationSeconds(event.getEntity(), event.getPartialTick()),
+                ClientLunaBowVisualState.animationSeconds(event.getEntity(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())),
                 poseStack,
                 event.getMultiBufferSource(),
                 event.getPackedLight());
@@ -121,6 +122,6 @@ public final class LunaPlaceholderVisuals {
     }
 
     private static ResourceLocation model(String path) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, path);
     }
 }

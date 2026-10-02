@@ -3,10 +3,9 @@ package com.rzy.dealt_force_skills.entity;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper;
 import com.rzy.dealt_force_skills.registry.ModSounds;
+import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -23,9 +22,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class UluruBombletEntity extends Projectile implements ItemSupplier {
     private static volatile double EXPLOSION_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("EXPLOSION_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.ulurubombletentity.explosion_radius", 4.6));
@@ -53,7 +52,7 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -113,11 +112,6 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
         tag.putBoolean("Landed", landed);
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
     private BlockHitResult findBlockHit(Vec3 motion) {
         Vec3 from = position();
         Vec3 to = from.add(motion);
@@ -151,16 +145,18 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
                 6, 0.65, 0.45, 0.65, 0.0);
         UluruExplosionHelper.damageRadiusBlockedByWalls(serverLevel, center, this, owner, EXPLOSION_RADIUS,
                 50.0f, 125.0f, true, false, 0, true);
-        if (owner instanceof ServerPlayer player && hasBombletTarget(serverLevel, center)) {
+        if (owner instanceof ServerPlayer player && hasBombletTarget(serverLevel, center, owner)) {
             DfsAchievements.recordUluruMissileCombo(player, false, true);
         }
         UluruExplosionHelper.destroyQuickCovers(serverLevel, center, EXPLOSION_RADIUS);
         discard();
     }
 
-    private boolean hasBombletTarget(ServerLevel level, Vec3 center) {
+    private boolean hasBombletTarget(ServerLevel level, Vec3 center, LivingEntity owner) {
         return !level.getEntitiesOfClass(LivingEntity.class, new net.minecraft.world.phys.AABB(center, center).inflate(EXPLOSION_RADIUS),
-                target -> target.isAlive()
+                target -> (owner != null
+                        ? TargetingUtil.isHostileLivingFor(owner, target)
+                        : TargetingUtil.isTargetableLiving(target))
                         && target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D).distanceTo(center) <= EXPLOSION_RADIUS
                         && UluruExplosionHelper.hasExplosionLineOfSight(level, center, target)).isEmpty();
     }

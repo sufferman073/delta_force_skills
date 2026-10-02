@@ -13,15 +13,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class NikaidouHiroHeldItemVisuals {
     private NikaidouHiroHeldItemVisuals() {
     }
@@ -45,7 +46,7 @@ public final class NikaidouHiroHeldItemVisuals {
             tool = ClientNikaidouHiroHudState.equippedTool();
         }
         float seconds = isAttackVisual(visual)
-                ? ClientSkillModelVisualState.animationSeconds(player, event.getPartialTick())
+                ? ClientSkillModelVisualState.animationSeconds(player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()))
                 : 0.0F;
         applyScreenAction(poseStack, visual, seconds);
         if (tool == NikaidouHiroTool.RITUAL_SWORD) {
@@ -94,7 +95,7 @@ public final class NikaidouHiroHeldItemVisuals {
         poseStack.translate(-0.06D, 0.18D, -0.08D);
         poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
         poseStack.mulPose(Axis.ZP.rotationDegrees(-90.0F));
-        float seconds = ClientSkillModelVisualState.animationSeconds(player, event.getPartialTick());
+        float seconds = ClientSkillModelVisualState.animationSeconds(player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         applyThirdPersonAction(poseStack, visual, seconds);
         float scale = tool == NikaidouHiroTool.RITUAL_SWORD ? 0.56F : 0.46F;
         poseStack.scale(scale, scale, scale);
@@ -190,7 +191,7 @@ public final class NikaidouHiroHeldItemVisuals {
     }
 
     private static ResourceLocation modelFor(NikaidouHiroTool tool) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID,
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID,
                 tool == NikaidouHiroTool.RITUAL_SWORD
                         ? "nikaidou_hiro_ritual_sword"
                         : "nikaidou_hiro_hot_iron");

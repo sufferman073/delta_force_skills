@@ -1,0 +1,23 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "dealt_force_skills:car_first_aid_kit"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:field_first_aid_kit"
+               }
+}

@@ -8,6 +8,7 @@ import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -96,7 +97,6 @@ public final class AcceleratedTroopsSquadManager {
         return true;
     }
 
-    /** Performs the post-beacon natural spawn loop once per server tick. */
     public static void tickServer(MinecraftServer server) {
         if (server == null) {
             return;
@@ -349,7 +349,7 @@ public final class AcceleratedTroopsSquadManager {
 
     private static WorldData data(MinecraftServer server) {
         return server.overworld().getDataStorage()
-                .computeIfAbsent(WorldData::load, WorldData::new, DATA_NAME);
+                .computeIfAbsent(new SavedData.Factory<>(WorldData::new, WorldData::load), DATA_NAME);
     }
 
     private enum State {
@@ -371,8 +371,8 @@ public final class AcceleratedTroopsSquadManager {
         private State state = State.IDLE;
         private int warningTicks;
         private UUID primaryTarget;
-        private long nextUtilityUseAt;
         private long lastTick = Long.MIN_VALUE;
+        private long nextUtilityUseAt;
         private boolean warningThirdPlayed;
         private boolean closed;
 
@@ -783,7 +783,7 @@ public final class AcceleratedTroopsSquadManager {
         private boolean unlocked;
         private long nextAttemptTick;
 
-        private static WorldData load(CompoundTag tag) {
+        private static WorldData load(CompoundTag tag, HolderLookup.Provider provider) {
             WorldData data = new WorldData();
             data.activeSquad = tag.hasUUID("ActiveSquad") ? tag.getUUID("ActiveSquad") : null;
             data.lockoutUntil = tag.getLong("LockoutUntil");
@@ -793,7 +793,7 @@ public final class AcceleratedTroopsSquadManager {
         }
 
         @Override
-        public CompoundTag save(CompoundTag tag) {
+        public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
             if (activeSquad != null) {
                 tag.putUUID("ActiveSquad", activeSquad);
             }

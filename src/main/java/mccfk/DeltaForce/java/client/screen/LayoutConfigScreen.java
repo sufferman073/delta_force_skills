@@ -220,6 +220,8 @@ public class LayoutConfigScreen extends Screen {
                     setSelectedTab(df, tabIndex);
                 }
                 // 用预览区尺寸初始化Screen
+                s.width = prevW;
+                s.height = prevH;
                 s.init(minecraft, prevW, prevH);
                 this.editingScreen = s;
             } catch (Exception ex) {
@@ -488,7 +490,7 @@ public class LayoutConfigScreen extends Screen {
         }
     }
 
-    /**
+    /** 
      * 模拟路径：在模拟渲染元素之上叠加边框和拖拽手柄
      * 仅用于无Screen类的HUD条目
      */
@@ -613,7 +615,7 @@ public class LayoutConfigScreen extends Screen {
         return elementId;
     }
 
-    /**
+    /** 
      * 按HUD元素类型绘制真实外观
      */
     private void renderElementByType(GuiGraphics g, int wx, int wy, int ww,
@@ -674,7 +676,7 @@ public class LayoutConfigScreen extends Screen {
         }
     }
 
-    /**
+    /** 
      * 根据元素ID后缀智能渲染 — 不再画"自定义框"而是按实际元素含义绘制
      */
     private void renderSmartCustomBox(GuiGraphics g, int x, int y, int w, int h,
@@ -683,7 +685,7 @@ public class LayoutConfigScreen extends Screen {
         // 根据ID中的关键字判定渲染风格
         if (lowerId.contains("button") || lowerId.contains("btn")) {
             renderButtonGroup(g, x, y, w, h, lowerId);
-        } else if (lowerId.contains("bar") || lowerId.contains("底栏")
+        } else if (lowerId.contains("bar") || lowerId.contains("底栏") 
                 || lowerId.contains("bottom")) {
             renderBarStrip(g, x, y, w, h);
         } else if (lowerId.contains("title") || lowerId.contains("label")
@@ -734,33 +736,33 @@ public class LayoutConfigScreen extends Screen {
             int segW = w / 4;
             for (int s = 0; s < 4; s++) {
                 int sx = x + s * segW + segW / 4;
-                g.fill(sx, barY + barH / 2 - 1, sx + segW / 2,
+                g.fill(sx, barY + barH / 2 - 1, sx + segW / 2, 
                         barY + barH / 2 + 1, 0x18FFFFFF);
             }
         }
     }
 
-    /** 无特征占位框 — 虚线框提示 */
-    private void renderGenericPlaceholder(GuiGraphics g, int x, int y, int w,
+    /** 无特征占位框 — 虚线框提示 */  
+    private void renderGenericPlaceholder(GuiGraphics g, int x, int y, int w, 
             int h, LayoutEntry entry) {
         // 虚线边框
         for (int i = x + 1; i < x + w - 1; i += 4) {
             g.fill(i, y + 1, Math.min(i + 2, x + w - 1), y + 2, 0x44FFFFFF);
-            g.fill(i, y + h - 2, Math.min(i + 2, x + w - 1), y + h - 1,
+            g.fill(i, y + h - 2, Math.min(i + 2, x + w - 1), y + h - 1, 
                     0x44FFFFFF);
         }
         for (int i = y + 1; i < y + h - 1; i += 4) {
             g.fill(x + 1, i, x + 2, Math.min(i + 2, y + h - 1), 0x44FFFFFF);
-            g.fill(x + w - 2, i, x + w - 1, Math.min(i + 2, y + h - 1),
+            g.fill(x + w - 2, i, x + w - 1, Math.min(i + 2, y + h - 1), 
                     0x44FFFFFF);
         }
         // 显示名称
-        String label = entry.displayName != null ? entry.displayName
+        String label = entry.displayName != null ? entry.displayName 
                 : (entry.id != null ? entry.id : "?");
         int tw = this.font.width(label);
         if (w > tw + 6 && h > this.font.lineHeight + 4) {
             g.fill(x + (w - tw) / 2 - 2, y + (h - this.font.lineHeight) / 2 - 1,
-                    x + (w + tw) / 2 + 2,
+                    x + (w + tw) / 2 + 2, 
                     y + (h + this.font.lineHeight) / 2 + 1, 0x88000000);
             g.drawString(this.font, label,
                     x + (w - tw) / 2, y + (h - this.font.lineHeight) / 2,
@@ -1026,8 +1028,8 @@ public class LayoutConfigScreen extends Screen {
 
         // Row1: scaleX, scaleY
         int labelY1 = row1Y;
-        drawToolbarLabel(g, Component.translatable("gui.deltaforce.layout.scale_x"), sxStr, col1, labelY1, colW);
-        drawToolbarLabel(g, Component.translatable("gui.deltaforce.layout.scale_y"), syStr, col2, labelY1, colW);
+        drawToolbarLabel(g, Component.literal("X缩放"), sxStr, col1, labelY1, colW);
+        drawToolbarLabel(g, Component.literal("Y缩放"), syStr, col2, labelY1, colW);
         int sliderY1 = labelY1 + this.font.lineHeight + 1;
         renderInteractiveSlider(g, smx, smy, col1, sliderY1, colW, SLIDER_BAR_H,
                 sxVal, 0);
@@ -1052,8 +1054,8 @@ public class LayoutConfigScreen extends Screen {
         // 当前选中元素名称
         int selLabelH = this.font.lineHeight + 2;
         String selLabel = selectedWidget != null
-                ? Component.translatable("gui.deltaforce.layout.current_selection", selectedWidget.displayName).getString()
-                : Component.translatable("gui.deltaforce.layout.no_selection").getString();
+                ? "当前: " + selectedWidget.displayName
+                : "未选中元素";
         int slw = this.font.width(selLabel);
         g.drawString(this.font, selLabel,
                 rightAreaX + (rightAreaW - Math.min(slw, rightAreaW)) / 2,
@@ -1076,9 +1078,7 @@ public class LayoutConfigScreen extends Screen {
             psBg = psHover ? 0x603366CC : 0x403366CC;
         }
         g.fill(psBtnX, psBtnY, psBtnX + psBtnW, psBtnY + psBtnH, psBg);
-        String psStr = hasUnsavedPreSaves
-                ? "\u25C6" + Component.translatable("gui.deltaforce.layout.presave").getString()
-                : Component.translatable("gui.deltaforce.layout.presave").getString();
+        String psStr = hasUnsavedPreSaves ? "◆预保存" : "预保存";
         int psw3 = this.font.width(psStr);
         g.drawString(this.font, psStr,
                 psBtnX + (psBtnW - psw3) / 2,
@@ -1627,17 +1627,18 @@ public class LayoutConfigScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double scrollDelta) {
+    public boolean mouseScrolled(double mx, double my, double sx,
+            double sy) {
         int smx = (int) ((mx - offX) / uiScale);
         int smy = (int) ((my - offY) / uiScale);
         // 右侧列表滚动
         if (smx >= listAreaX && smx < listAreaX + listAreaW
                 && smy >= listAreaY && smy < listAreaY + listAreaH) {
             listScrollY = Math.max(0,
-                    Math.min(listMaxScroll, listScrollY - (int) (scrollDelta * ENTRY_H)));
+                    Math.min(listMaxScroll, listScrollY - (int) (sy * ENTRY_H)));
             return true;
         }
-        return super.mouseScrolled(mx, my, scrollDelta);
+        return super.mouseScrolled(mx, my, sx, sy);
     }
 
     // ====================== 键盘 ======================

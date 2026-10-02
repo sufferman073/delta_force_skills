@@ -2,13 +2,27 @@ package com.rzy.dealt_force_skills.network;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record S2C_OpenLexNinjiaShop(long lotusBoxes, CompoundTag data) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<S2C_OpenLexNinjiaShop> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_open_lex_ninjia_shop"));
 
-public record S2C_OpenLexNinjiaShop(long lotusBoxes, CompoundTag data) {
+    public static final StreamCodec<FriendlyByteBuf, S2C_OpenLexNinjiaShop> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    S2C_OpenLexNinjiaShop::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public S2C_OpenLexNinjiaShop {
         lotusBoxes = Math.max(0L, lotusBoxes);
         data = data == null ? new CompoundTag() : data.copy();
@@ -25,11 +39,7 @@ public record S2C_OpenLexNinjiaShop(long lotusBoxes, CompoundTag data) {
         return new S2C_OpenLexNinjiaShop(lotusBoxes, data);
     }
 
-    public static void handle(S2C_OpenLexNinjiaShop msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> LexNinjiaShopScreen.open(msg.lotusBoxes, msg.data)
-        ));
-        ctx.get().setPacketHandled(true);
+    public static void handle(S2C_OpenLexNinjiaShop msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> LexNinjiaShopScreen.open(msg.lotusBoxes, msg.data));
     }
 }

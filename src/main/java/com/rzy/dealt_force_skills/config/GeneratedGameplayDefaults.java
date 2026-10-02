@@ -392,7 +392,7 @@ DealtForceConfig.intValue("characters.department.department_of_transportation_st
         DealtForceConfig.intValue("characters.nox.nox_state_manager.core_duration_ticks", 35 * 20);
         DealtForceConfig.intValue("characters.nox.nox_state_manager.core_prep_ticks", 12);
         DealtForceConfig.intValue("characters.nox.nox_state_manager.crippled_ticks", 8 * 20);
-        DealtForceConfig.floatValue("characters.nox.nox_state_manager.decoy_damage_multiplier", 1.0f);
+        DealtForceConfig.floatValue("characters.nox.nox_state_manager.decoy_damage_multiplier", 0.5f);
         DealtForceConfig.intValue("characters.nox.nox_state_manager.decoy_interval_ticks", 5 * 20);
         DealtForceConfig.intValue("characters.nox.nox_state_manager.delayed_wound_ticks", 10 * 20);
         DealtForceConfig.intValue("characters.nox.nox_state_manager.effect.nox_crippled.1.amplifier", 0);
@@ -466,7 +466,7 @@ DealtForceConfig.intValue("characters.department.department_of_transportation_st
         DealtForceConfig.doubleValue("characters.sineva.sineva_shield_geometry.viewport_ray_length", 50.0D);
         DealtForceConfig.intValue("characters.sineva.sineva_skills.bash_active_stamina_ticks", 20);
         DealtForceConfig.intValue("characters.sineva.sineva_skills.bash_cooldown_ticks", 10);
-        DealtForceConfig.intValue("characters.sineva.sineva_skills.charge_cooldown_ticks", 10);
+        DealtForceConfig.intValue("characters.sineva.sineva_skills.charge_cooldown_ticks", 20);
         DealtForceConfig.intValue("characters.sineva.sineva_skills.effect.stun.0.amplifier", 0);
         DealtForceConfig.doubleValue("characters.sineva.sineva_skills.projectile_charge_speed_bonus", 0.45D);
         DealtForceConfig.doubleValue("characters.sineva.sineva_skills.projectile_reflect_max_speed", 3.8D);
@@ -479,7 +479,7 @@ DealtForceConfig.intValue("characters.department.department_of_transportation_st
         DealtForceConfig.intValue("characters.sineva.sineva_state_manager.bomb_suit_equip_ticks", 30);
         DealtForceConfig.intValue("characters.sineva.sineva_state_manager.grapple_cooldown_ticks", 8 * 20);
         DealtForceConfig.doubleValue("characters.sineva.sineva_state_manager.bomb_suit_jump_height_reduction_fraction", 0.5D);
-        DealtForceConfig.doubleValue("characters.sineva.sineva_state_manager.bomb_suit_step_height_bonus", 1.0D);
+        DealtForceConfig.doubleValue("characters.sineva.sineva_state_manager.bomb_suit_step_height_bonus", 0.5D);
         DealtForceConfig.intValue("characters.sineva.sineva_state_manager.shield_block_stamina_cost_percent", 2);
         DealtForceConfig.intValue("characters.sineva.sineva_state_manager.shield_block_stamina_floor_percent", 40);
         DealtForceConfig.doubleValue("characters.sineva.sineva_state_manager.shield_damage_slow_max", 0.95D);
@@ -1336,6 +1336,8 @@ DealtForceConfig.intValue("characters.department.department_of_transportation_st
         DealtForceConfig.intValue("summons.uluruloiteringmissileentity.server_camera_refresh_interval_ticks", 20);
         DealtForceConfig.intValue("summons.uluruloiteringmissileentity.warning_interval_ticks", 10);
         DealtForceConfig.doubleValue("summons.uluruloiteringmissileentity.warning_radius", 256.0D);
+        DealtForceConfig.booleanValue("summons.uluruloiteringmissileentity.enable_forced_chunk_loading", false);
+        DealtForceConfig.booleanValue("summons.uluruloiteringmissileentity.enable_entity_streaming", false);
         DealtForceConfig.doubleValue("summons.uluruquickcoverpackageentity.max_distance_sqr", 15.0 * 15.0);
         DealtForceConfig.intValue("summons.vlinder_active_defense_drone_entity.effect.absorption.0.amplifier", 9);
         DealtForceConfig.intValue("summons.vlinderactivedefensedroneentity.absorb_interval_ticks", 5 * 20);

@@ -1,17 +1,20 @@
 package mccfk.DeltaForce.java.client.overlay;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import mccfk.DeltaForce.java.client.CustomDropConfig;
-import mccfk.DeltaForce.java.client.screen.LayoutDataManager;
-import mccfk.DeltaForce.java.client.screen.LayoutEntry;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.rzy.dealt_force_skills.item.DfsItemQuality;
 import mccfk.DeltaForce.java.DeltaForce;
+import mccfk.DeltaForce.java.client.CustomDropConfig;
+import mccfk.DeltaForce.java.client.screen.LayoutDataManager;
+import mccfk.DeltaForce.java.client.screen.LayoutEntry;
 import mccfk.DeltaForce.java.entity.GroundItemEntity;
 import mccfk.DeltaForce.java.item.DeltaForceItems;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.resources.ResourceLocation;
@@ -21,8 +24,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -34,17 +35,23 @@ import java.util.Set;
  */
 public class GroundItemOverlay {
 
-    public static final IGuiOverlay OVERLAY = GroundItemOverlay::renderOverlay;
+    public static final LayeredDraw.Layer OVERLAY = GroundItemOverlay::render;
 
     private static float fadeProgress = 0f;
     private static GroundItemEntity currentTarget = null;
     private static long lastDropTime = 0;
 
-    private static void renderOverlay(net.minecraftforge.client.gui.overlay.ForgeGui forgeGui, GuiGraphics guiGraphics,
-                                       float partialTick, int screenWidth, int screenHeight) {
+    public static void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
 
-        if (mc.options.hideGui || mc.player == null || mc.level == null || !CustomDropConfig.hudEnabled()) {
+        if (mc.options.hideGui || mc.player == null || mc.level == null) {
+            fadeProgress = 0f;
+            currentTarget = null;
+            return;
+        }
+
+        // 检查自定义掉落物屏幕HUD是否启用
+        if (!CustomDropConfig.hudEnabled()) {
             fadeProgress = 0f;
             currentTarget = null;
             return;
@@ -95,7 +102,7 @@ public class GroundItemOverlay {
                 Component.translatable("quality.dealt_force_skills." + quality.key()));
 
         boolean simpleMode = CustomDropConfig.hudSimpleMode();
-        boolean hotkeyPressed = mc.screen == null && CustomDropConfig.hudHotkeyDetailed()
+        boolean hotkeyPressed = CustomDropConfig.hudHotkeyDetailed()
                 && areAllKeysDown(mc.getWindow().getWindow(), CustomDropConfig.hudHotKeys());
 
         String description = null;
@@ -308,7 +315,7 @@ public class GroundItemOverlay {
             return fileDescription;
         }
 
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(itemStack.getItem());
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem());
         if (itemId != null && warnedItems.add(itemId)) {
             if (warnedItems.size() > MAX_WARNED_ITEMS) {
                 warnedItems.clear();
@@ -317,8 +324,8 @@ public class GroundItemOverlay {
             if (mc.player != null) {
                 String locKey = itemStack.getItem().getDescriptionId();
                 mc.player.displayClientMessage(
-                    Component.literal("§e[DF] §f" + locKey + " §e(" + itemId + ") 未添加描述文件，建议添加，目前自动从物品定义设置，可能失败"),
-                    false
+                        Component.literal("§e[DF] §f" + locKey + " §e(" + itemId + ") 未添加描述文件，建议添加，目前自动从物品定义设置，可能失败"),
+                        false
                 );
             }
         }
@@ -337,8 +344,9 @@ public class GroundItemOverlay {
             }
 
             List<Component> tooltip = itemStack.getTooltipLines(
-                mc.player,
-                TooltipFlag.Default.NORMAL
+                    Item.TooltipContext.of(mc.level),
+                    mc.player,
+                    TooltipFlag.Default.NORMAL
             );
 
             if (tooltip.size() <= 1) {
@@ -365,9 +373,9 @@ public class GroundItemOverlay {
     private static String safeGetString(Component component) {
         String result = component.getString();
         if (result.startsWith("item.") || result.startsWith("tooltip.") ||
-            result.startsWith("block.") || result.startsWith("quality.") ||
-            result.startsWith("faction.") || result.startsWith("coverage.") ||
-            result.startsWith("noise_reduction.") || result.startsWith("value.")) {
+                result.startsWith("block.") || result.startsWith("quality.") ||
+                result.startsWith("faction.") || result.startsWith("coverage.") ||
+                result.startsWith("noise_reduction.") || result.startsWith("value.")) {
             ComponentContents contents = component.getContents();
             if (contents instanceof net.minecraft.network.chat.contents.TranslatableContents translatable) {
                 String key = translatable.getKey();
@@ -381,10 +389,11 @@ public class GroundItemOverlay {
         }
         return result;
     }
+
     /** 检查组合键是否全部按下 */
     private static boolean areAllKeysDown(long window, List<Integer> keys) {
         for (int key : keys) {
-            if (key < 32 || key > 348 || !InputConstants.isKeyDown(window, key)) {
+            if (!InputConstants.isKeyDown(window, key)) {
                 return false;
             }
         }

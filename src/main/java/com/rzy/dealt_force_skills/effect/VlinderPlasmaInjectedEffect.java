@@ -5,6 +5,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 
 public class VlinderPlasmaInjectedEffect extends MobEffect {
     public VlinderPlasmaInjectedEffect() {
-        super(MobEffectCategory.BENEFICIAL, 0xFF3366);
+        super(MobEffectCategory.BENEFICIAL, 0xFFFFFF);
     }
 }

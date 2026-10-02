@@ -17,9 +17,8 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSetCameraPacket;
 import net.minecraft.network.protocol.game.ClientboundSetChunkCacheCenterPacket;
 import net.minecraft.network.protocol.game.ClientboundSetChunkCacheRadiusPacket;
@@ -29,6 +28,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -45,7 +45,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 import org.joml.Vector3f;
 
 import java.util.Comparator;
@@ -147,10 +146,10 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_DIRECTION_X, 0.0F);
-        entityData.define(DATA_DIRECTION_Y, 0.0F);
-        entityData.define(DATA_DIRECTION_Z, 1.0F);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_DIRECTION_X, 0.0F);
+        builder.define(DATA_DIRECTION_Y, 0.0F);
+        builder.define(DATA_DIRECTION_Z, 1.0F);
     }
 
     @Override
@@ -239,11 +238,6 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
         tag.putInt("SpiderNestModuleId", spiderNestModuleId);
         tag.putBoolean("AttachedModulesTriggered", attachedModulesTriggered);
         tag.putInt("BatteryUsedTicks", batteryUsedTicks);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public static RaptorFalconDroneEntity activeFor(ServerPlayer owner) {
@@ -545,7 +539,6 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
         spiderNestModuleId = -1;
     }
 
-
     private void damageSelfDestructTargets(ServerLevel level, ServerPlayer owner) {
         AABB box = new AABB(position(), position()).inflate(SELF_DESTRUCT_DAMAGE_RADIUS);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
@@ -691,8 +684,10 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
         if (!isActivelyControlledBy(player) || !player.isAlive()) {
             return;
         }
-        if (forceSpawn) {
-            player.connection.send(getAddEntityPacket());
+        if (forceSpawn && level() instanceof ServerLevel serverLevel) {
+            player.connection.send(new ClientboundAddEntityPacket(this,
+                    new ServerEntity(serverLevel, this, 0, false, packet -> {
+                    })));
         }
         if (forceSpawn || tickCount % OWNER_FALCON_FULL_SYNC_INTERVAL_TICKS == 0) {
             player.connection.send(new ClientboundTeleportEntityPacket(this));
@@ -701,7 +696,37 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
     }
 
     private void updateControlledChunks(ServerLevel level, ServerPlayer player, Vec3 motion) {
-        releaseForcedChunks();
+        int curChunkX = blockPosition().getX() >> 4;
+        int curChunkZ = blockPosition().getZ() >> 4;
+        int nextChunkX = (int) Math.floor((getX() + motion.x * 16.0D) / 16.0D);
+        int nextChunkZ = (int) Math.floor((getZ() + motion.z * 16.0D) / 16.0D);
+        long currentPacked = ChunkPos.asLong(curChunkX, curChunkZ);
+        long nextPacked = ChunkPos.asLong(nextChunkX, nextChunkZ);
+
+        desiredForcedChunks.clear();
+        addChunkArea(desiredForcedChunks, curChunkX, curChunkZ, FORCED_CHUNK_RADIUS);
+        addChunkArea(desiredForcedChunks, nextChunkX, nextChunkZ, FORCED_CHUNK_RADIUS);
+
+        for (long packed : desiredForcedChunks) {
+            if (forcedChunks.add(packed)) {
+                retainForcedChunk(level, packed);
+            }
+        }
+
+        Iterator<Long> iterator = forcedChunks.iterator();
+        while (iterator.hasNext()) {
+            long packed = iterator.next();
+            if (!desiredForcedChunks.contains(packed)) {
+                releaseForcedChunk(level, packed);
+                iterator.remove();
+            }
+        }
+
+        ensureChunkLoadedIfNeeded(level, curChunkX, curChunkZ, currentPacked, true);
+        if (nextPacked != currentPacked) {
+            ensureChunkLoadedIfNeeded(level, nextChunkX, nextChunkZ, nextPacked, false);
+        }
+        streamTerrainForOwner(level, player, desiredForcedChunks, curChunkX, curChunkZ);
     }
 
     private static void addChunkArea(Set<Long> chunks, int centerX, int centerZ, int radius) {
@@ -860,7 +885,16 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
     }
 
     private static void restoreTerrainCenter(ServerPlayer player) {
-        // The controlled camera no longer changes the client's terrain cache center.
+        ChunkPos playerChunk = player.chunkPosition();
+        player.connection.send(new ClientboundSetChunkCacheRadiusPacket(player.server.getPlayerList().getViewDistance()));
+        player.connection.send(new ClientboundSetChunkCacheCenterPacket(playerChunk.x, playerChunk.z));
+        if (player.level() instanceof ServerLevel level) {
+            for (int dx = -CRITICAL_TERRAIN_RADIUS; dx <= CRITICAL_TERRAIN_RADIUS; dx++) {
+                for (int dz = -CRITICAL_TERRAIN_RADIUS; dz <= CRITICAL_TERRAIN_RADIUS; dz++) {
+                    sendChunkTerrain(level, player, ChunkPos.asLong(playerChunk.x + dx, playerChunk.z + dz));
+                }
+            }
+        }
     }
 
     private void spawnClientParticles() {

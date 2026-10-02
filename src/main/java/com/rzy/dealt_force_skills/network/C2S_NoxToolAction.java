@@ -9,11 +9,27 @@ import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.team.RoundStartFreezeManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_NoxToolAction implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_NoxToolAction> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_nox_tool_action"));
 
-public class C2S_NoxToolAction {
+    public static final StreamCodec<FriendlyByteBuf, C2S_NoxToolAction> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_NoxToolAction::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final NoxToolAction action;
     private final int targetEntityId;
     private final boolean alternate;
@@ -41,14 +57,14 @@ public class C2S_NoxToolAction {
         return new C2S_NoxToolAction(action, buf.readVarInt(), buf.readBoolean());
     }
 
-    public static void handle(C2S_NoxToolAction msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_NoxToolAction msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player == null || player.isSpectator() || UluruLoiteringMissileEntity.isPlayerControlling(player)) {
                 return;
             }
-            if (player.hasEffect(ModEffects.STUN.get())
-                    || player.hasEffect(ModEffects.WEBBED.get())
+            if (player.hasEffect(ModEffects.STUN)
+                    || player.hasEffect(ModEffects.WEBBED)
                     || StingerStateManager.isDowned(player)
                     || RoundStartFreezeManager.isFrozen(player)) {
                 return;
@@ -56,6 +72,5 @@ public class C2S_NoxToolAction {
             NoxSkills.handleToolAction(player, msg.action, msg.targetEntityId, msg.alternate);
             NoxStateManager.syncToClient(player);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

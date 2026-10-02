@@ -26,12 +26,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class CommanderHudOverlay {
     private static final int SLOT = 40;
     private static final int GAP = 4;
@@ -40,7 +40,7 @@ public final class CommanderHudOverlay {
     }
 
     @SubscribeEvent
-    public static void render(RenderGuiOverlayEvent.Post event) {
+    public static void render(RenderGuiLayerEvent.Post event) {
         if (!SkillHudRenderCompat.shouldRender(event) || !ClientCommanderState.shouldRender()) {
             return;
         }

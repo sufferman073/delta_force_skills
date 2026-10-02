@@ -153,6 +153,7 @@ public final class ConfigLabelHelper {
         put("seconds", "秒");
         put("amplifier", "效果等级");
         put("enabled", "启用");
+        put("enable", "启用");
         put("charges", "充能次数");
         put("charge", "充能/蓄力");
         put("stack", "层数");
@@ -376,6 +377,9 @@ public final class ConfigLabelHelper {
         put("smoke", "烟");
         put("tactical", "战术");
         put("boost", "加速/强化");
+        put("forced", "强制");
+        put("loading", "加载");
+        put("streaming", "流式传输");
         put("immune", "免疫");
         put("justice", "正义");
         put("noon", "正午");

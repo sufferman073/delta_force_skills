@@ -9,6 +9,11 @@ import mccfk.DeltaForce.java.client.screen.DFGUI_MAIN;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
+/**
+ * 典狱长（Ghroth）K 键处理：
+ * 非创造：短按→特殊商店，潜行短按→通用商店，长按→特勤处
+ * 创造：短按→选人，潜行短按→特殊商店，长按→特勤处
+ */
 public final class GhrothInputHandler {
     private static final int LONG_HOLD_TICKS = 15;
     private static boolean wasDown;
@@ -29,6 +34,7 @@ public final class GhrothInputHandler {
             return;
         }
         while (key.consumeClick()) {
+            // Short press and hold are resolved on release / threshold.
         }
         boolean down = key.isDown();
         if (down) {
@@ -39,6 +45,7 @@ public final class GhrothInputHandler {
             heldTicks++;
             if (!longTriggered && heldTicks >= LONG_HOLD_TICKS && minecraft.screen == null) {
                 longTriggered = true;
+                // 长按→特勤处
                 DFGUI_MAIN.openToLogistics();
             }
         } else if (wasDown) {
@@ -46,10 +53,13 @@ public final class GhrothInputHandler {
                 boolean creative = minecraft.player.getAbilities().instabuild;
                 boolean sneak = minecraft.player.isShiftKeyDown();
                 if (creative && !sneak) {
+                    // 创造短按→选人
                     DFGUI_MAIN.openToOperator();
                 } else if (sneak && !creative) {
+                    // 非创造潜行短按→通用商店
                     NetworkHandler.sendToServer(new C2S_OpenSelectionOrShop());
                 } else {
+                    // 短按→特殊商店
                     NetworkHandler.sendToServer(C2S_OpenOwnShop.open());
                 }
             }

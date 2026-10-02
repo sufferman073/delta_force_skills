@@ -6,12 +6,10 @@ import com.rzy.dealt_force_skills.shop.DfsShopCatalog;
 import com.rzy.dealt_force_skills.shop.GhrothArmoryCatalog;
 import com.rzy.dealt_force_skills.shop.TaczShopCatalog;
 import com.rzy.dealt_force_skills.network.C2S_RequestConfigSnapshot;
-import com.rzy.dealt_force_skills.compat.TamarindLootConfig;
-import com.rzy.dealt_force_skills.compat.TamarindCompatEvents;
 import com.rzy.dealt_force_skills.registry.ModGameRules;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * Hot-reloads mod TOML configuration without invoking the full vanilla datapack {@code /reload}.
@@ -30,8 +28,6 @@ public final class ConfigHotReload {
         boolean shopSet = DealtShopSetConfig.reload();
         boolean gambler = GamblerArenaConfig.reload();
         boolean itemsHavoc = DealtItemsHavocConfig.reload();
-        boolean tamarind = TamarindLootConfig.reload();
-        TamarindCompatEvents.invalidateLootCache();
         boolean liveValues = DealtForceConfig.refreshLiveValues();
 
         CharacterBranchPackManager.verifyGeneratedDataPacks();
@@ -53,7 +49,7 @@ public final class ConfigHotReload {
         DealtShopSetConfig.flush();
         GamblerArenaConfig.flush();
 
-        boolean ok = gameplay && base && bosses && player && shop && shopSet && gambler && itemsHavoc && tamarind && liveValues;
+        boolean ok = gameplay && base && bosses && player && shop && shopSet && gambler && itemsHavoc && liveValues;
         return new Result(ok, gameplay, bosses, player, shop, shopSet, gambler, liveValues);
     }
 

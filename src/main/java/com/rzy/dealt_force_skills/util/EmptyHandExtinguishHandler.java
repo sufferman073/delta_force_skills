@@ -3,15 +3,15 @@ package com.rzy.dealt_force_skills.util;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class EmptyHandExtinguishHandler {
     private static final long REQUIRED_TICKS = 60L;
     private static final long MAX_SIGNAL_GAP_TICKS = 20L;

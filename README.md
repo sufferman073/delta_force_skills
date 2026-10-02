@@ -1,46 +1,37 @@
-# dealt_force_skills
+# delta_force_skills - NeoForge 1.21.1
 
-A Minecraft Forge mod that adds special-force inspired characters, skills, equipment, and combat mechanics.
+This branch contains the NeoForge 1.21.1 edition of delta_force_skills.
+The Forge 1.20.1 edition is maintained on the `1.20.1forge` branch.
 
-## Minecraft Version
+Build with Java 21 and `gradlew.bat build` on Windows or `./gradlew build`
+on Linux/macOS. The mod JAR is generated in `build/libs/`.
 
-* Minecraft: 1.20.1
-* Mod Loader: Forge
+Repository license notices are retained in `LICENSE-CODE.txt` and
+`ASSETS_LICENSE.md`. The original MDK notice is in `TEMPLATE_LICENSE.txt`.
 
-## Project Status
+## Original NeoForge MDK notes
 
-This project is under active development. APIs, mechanics, balance values, assets, and compatibility behavior may change between versions.
 
-## Build
+### Installation information
 
-On Windows:
+This template repository can be directly cloned to get you started with a new
+mod. Simply create a new repository cloned from this one, by following the
+instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
 
-```bash
-gradlew.bat build
-```
+Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
 
-On Linux/macOS:
+If at any point you are missing libraries in your IDE, or you've run into problems you can
+run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything
+{this does not affect your code} and then start the process again.
 
-```bash
-./gradlew build
-```
+### Mapping names
 
-The built mod jar will usually be generated under:
+By default, the MDK is configured to use the official mapping names from Mojang for methods and fields
+in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
+license. For the latest license text, refer to the mapping file itself, or the reference copy here:
+https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
 
-```text
-build/libs/
-```
+### Additional resources
 
-## Configuration
-
-Gameplay values, `/reload` behavior, energy examples, and local HUD positioning/scaling are documented in [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
-
-## License
-
-Code in this repository is licensed under the MIT License. See `LICENSE-CODE.txt`.
-
-Unless explicitly stated otherwise, textures, models, sounds, character names, character settings, design documents, development notes, and private archives are not covered by the MIT License. See `ASSETS_LICENSE.md`.
-
-## AI-Assisted Development Notice
-
-Parts of this project were implemented with AI-assisted coding tools under human direction and review. Game design, integration decisions, testing, and release ownership are maintained by the project maintainer.
+Community Documentation: https://docs.neoforged.net/
+NeoForged Discord: https://discord.neoforged.net/

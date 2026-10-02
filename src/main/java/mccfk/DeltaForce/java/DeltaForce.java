@@ -7,19 +7,19 @@ import mccfk.DeltaForce.java.client.screen.IConfigProvider;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.InterModComms;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.event.TickEvent.ServerTickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
-import net.minecraftforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.InterModComms;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.InterModEnqueueEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.minecraft.server.level.ServerPlayer;
 
 import mccfk.DeltaForce.java.item.DeltaForceItems;
@@ -58,10 +58,8 @@ public class DeltaForce {
     // 配置提供者注册表：modId -> IConfigProvider
     private static final Map<String, IConfigProvider> configProviders = new HashMap<>();
 
-    public DeltaForce() {
+    public DeltaForce(IEventBus modEventBus, ModContainer modContainer) {
         instance = this;
-
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         // 注册 IMC 侦听：接收其他模组的"注册可配置"消息
         modEventBus.addListener(this::onInterModEnqueue);
@@ -73,13 +71,14 @@ public class DeltaForce {
         DeltaForceEntities.ENTITY_TYPES.register(modEventBus);
 
         // 注册服务端事件
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
 
         // 客户端专用初始化（通过反射调用，避免服务端类加载触发 RuntimeDistCleaner）
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) {
+        if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
             try {
                 Class<?> clientSetup = Class.forName("mccfk.DeltaForce.java.client.DeltaForceClientSetup");
-                clientSetup.getMethod("init", IEventBus.class).invoke(null, modEventBus);
+                clientSetup.getMethod("init", IEventBus.class, ModContainer.class)
+                    .invoke(null, modEventBus, modContainer);
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(DeltaForce.class)
                     .error("客户端初始化失败", e);
@@ -206,7 +205,7 @@ public class DeltaForce {
     }
 
     @SubscribeEvent
-    public void onServerTick(net.minecraftforge.event.TickEvent.ServerTickEvent event) {
+    public void onServerTick(ServerTickEvent.Post event) {
         if (MarkerManager.tick()) {
             var server = event.getServer();
             if (server != null) {

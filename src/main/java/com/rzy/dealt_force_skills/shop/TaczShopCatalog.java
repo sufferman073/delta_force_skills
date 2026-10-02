@@ -1,8 +1,11 @@
 package com.rzy.dealt_force_skills.shop;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -269,11 +272,32 @@ public final class TaczShopCatalog {
             if (count > 1) {
                 builder = builderClass.getMethod("setCount", int.class).invoke(builder, count);
             }
-            Object stack = builderClass.getMethod("build").invoke(builder);
+            Object stack = buildStack(builderClass, builder);
             return stack instanceof ItemStack itemStack ? itemStack : ItemStack.EMPTY;
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
             return ItemStack.EMPTY;
         }
+    }
+
+    private static Object buildStack(Class<?> builderClass, Object builder) throws ReflectiveOperationException {
+        try {
+            return builderClass.getMethod("build").invoke(builder);
+        } catch (NoSuchMethodException ignored) {
+            HolderLookup.Provider provider = registryProvider();
+            if (provider == null) {
+                return ItemStack.EMPTY;
+            }
+            try {
+                return builderClass.getMethod("build", HolderLookup.Provider.class).invoke(builder, provider);
+            } catch (NoSuchMethodException missingBuild) {
+                return builderClass.getMethod("forceBuild", HolderLookup.Provider.class).invoke(builder, provider);
+            }
+        }
+    }
+
+    private static HolderLookup.Provider registryProvider() {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        return server == null ? null : server.registryAccess();
     }
 
     private static int reflectedSort(Object index) {
@@ -292,7 +316,7 @@ public final class TaczShopCatalog {
     private static void applyIndexDisplayName(ItemStack stack, Object index, ResourceLocation id) {
         Component displayName = reflectedDisplayName(index, id);
         if (displayName != null && !displayName.getString().isBlank()) {
-            stack.setHoverName(displayName);
+            stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, displayName);
         }
     }
 

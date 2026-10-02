@@ -8,11 +8,27 @@ import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.team.RoundStartFreezeManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_UluruToolAction implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_UluruToolAction> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_uluru_tool_action"));
 
-public class C2S_UluruToolAction {
+    public static final StreamCodec<FriendlyByteBuf, C2S_UluruToolAction> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_UluruToolAction::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final boolean secondary;
     private final boolean guidedLaunch;
 
@@ -30,13 +46,13 @@ public class C2S_UluruToolAction {
         return new C2S_UluruToolAction(buf.readBoolean(), buf.readBoolean());
     }
 
-    public static void handle(C2S_UluruToolAction msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_UluruToolAction msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player == null || player.isSpectator()) {
                 return;
             }
-            if (player.hasEffect(ModEffects.STUN.get()) || player.hasEffect(ModEffects.WEBBED.get()) || StingerStateManager.isDowned(player) || RoundStartFreezeManager.isFrozen(player)) {
+            if (player.hasEffect(ModEffects.STUN) || player.hasEffect(ModEffects.WEBBED) || StingerStateManager.isDowned(player) || RoundStartFreezeManager.isFrozen(player)) {
                 return;
             }
             if (UluruLoiteringMissileEntity.isPlayerControlling(player)) {
@@ -45,6 +61,5 @@ public class C2S_UluruToolAction {
             UluruSkills.handleToolAction(player, msg.secondary, msg.guidedLaunch);
             UluruStateManager.syncToClient(player);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

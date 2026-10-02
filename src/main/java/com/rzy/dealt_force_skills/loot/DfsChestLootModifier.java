@@ -1,7 +1,7 @@
 package com.rzy.dealt_force_skills.loot;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem;
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem.Faction;
@@ -20,14 +20,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
-import net.minecraftforge.common.loot.IGlobalLootModifier;
-import net.minecraftforge.common.loot.LootModifier;
+import net.neoforged.neoforge.common.loot.LootModifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
 public class DfsChestLootModifier extends LootModifier {
-    public static final Codec<DfsChestLootModifier> CODEC = RecordCodecBuilder.create(instance ->
+    public static final MapCodec<DfsChestLootModifier> CODEC = RecordCodecBuilder.mapCodec(instance ->
             codecStart(instance).apply(instance, DfsChestLootModifier::new));
 
     private static volatile float SPECIAL_EQUIPMENT_SUPPLY_CHANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPECIAL_EQUIPMENT_SUPPLY_CHANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue(
@@ -54,11 +53,11 @@ public class DfsChestLootModifier extends LootModifier {
         Entity entity = context.getParamOrNull(LootContextParams.THIS_ENTITY);
         if (entity instanceof Player player) {
             HvkTreasureProgress.recordOpenedChestLoot(player);
-        }
-        if (entity instanceof Player player && hasGtiEquipment(player)) {
-            for (ItemStack stack : new ArrayList<>(generatedLoot)) {
-                if (!stack.isEmpty()) {
-                    generatedLoot.add(stack.copy());
+            if (hasGtiEquipment(player)) {
+                for (ItemStack stack : new ArrayList<>(generatedLoot)) {
+                    if (!stack.isEmpty()) {
+                        generatedLoot.add(stack.copy());
+                    }
                 }
             }
         }
@@ -101,7 +100,7 @@ public class DfsChestLootModifier extends LootModifier {
     }
 
     @Override
-    public Codec<? extends IGlobalLootModifier> codec() {
+    public MapCodec<DfsChestLootModifier> codec() {
         return ModLootModifiers.CHEST_LOOT.get();
     }
 }

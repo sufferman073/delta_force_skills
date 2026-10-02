@@ -4,11 +4,8 @@ import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
-import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -18,9 +15,9 @@ import net.minecraft.world.entity.projectile.ItemSupplier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class UluruFireFieldEntity extends Entity implements ItemSupplier {
     private static final EntityDataAccessor<Boolean> DATA_EARTH_FIRE =
@@ -48,8 +45,8 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_EARTH_FIRE, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_EARTH_FIRE, false);
     }
 
     @Override
@@ -98,11 +95,6 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier {
             tag.putUUID("Owner", ownerId);
         }
         tag.putBoolean("EarthFire", entityData.get(DATA_EARTH_FIRE));
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private LivingEntity findOwner(ServerLevel level) {

@@ -1,32 +1,26 @@
 package com.rzy.dealt_force_skills.compat.jei;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import com.rzy.dealt_force_skills.registry.ModBrewingRecipes;
 import com.rzy.dealt_force_skills.registry.ModItems;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.constants.RecipeTypes;
-import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.core.NonNullList;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
-
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.enchantment.EnchantmentInstance;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @JeiPlugin
 public final class DfsJeiPlugin implements IModPlugin {
@@ -37,7 +31,6 @@ public final class DfsJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        registerBrewing(registration);
         registerInfusionCrafting(registration);
         for (Item item : List.of(
                 ModItems.SPECIAL_EQUIPMENT_SUPPLY.get(),
@@ -68,72 +61,26 @@ public final class DfsJeiPlugin implements IModPlugin {
         }
     }
 
-    private static void registerBrewing(IRecipeRegistration registration) {
-        ItemStack stew = new ItemStack(Items.SUSPICIOUS_STEW);
-        Map<Item, List<ItemStack>> inputsByOutput = new LinkedHashMap<>();
-        for (ItemStack input : registration.getIngredientManager().getAllIngredients(VanillaTypes.ITEM_STACK)) {
-            ItemStack output = ModBrewingRecipes.getOutput(input, stew);
-            if (!output.isEmpty()) {
-                inputsByOutput.computeIfAbsent(output.getItem(), item -> new ArrayList<>()).add(input.copy());
-            }
-        }
-        for (var entry : inputsByOutput.entrySet()) {
-            var recipe = registration.getVanillaRecipeFactory().createBrewingRecipe(
-                    List.of(stew), entry.getValue(), new ItemStack(entry.getKey()),
-                    id("brewing/" + BuiltInRegistries.ITEM.getKey(entry.getKey()).getPath()));
-            registration.addRecipes(RecipeTypes.BREWING, List.of(recipe));
-        }
-    }
-
     private static void registerInfusionCrafting(IRecipeRegistration registration) {
-        NonNullList<Ingredient> books = NonNullList.create();
-        // These nine books are examples; the actual recipe accepts any nine distinct item data sets.
-        for (String name : List.of("protection", "fire_protection", "feather_falling", "blast_protection",
-                "projectile_protection", "respiration", "aqua_affinity", "thorns", "depth_strider")) {
-            var enchantment = BuiltInRegistries.ENCHANTMENT.get(new ResourceLocation("minecraft", name));
-            books.add(Ingredient.of(EnchantedBookItem.createForEnchantment(new EnchantmentInstance(enchantment, 1))));
-        }
-        var recipe = new ShapelessRecipe(id("hvk_enchant_infusion"),  "",
-                CraftingBookCategory.MISC, new ItemStack(ModItems.HVK_ENCHANT_INFUSION.get()), books);
-        registration.addRecipes(RecipeTypes.CRAFTING, List.of(recipe));
-    }
-
-
-    @Override
-    public void registerVanillaCategoryExtensions(mezz.jei.api.registration.IVanillaCategoryExtensionRegistration registration) {
-        registration.getCraftingCategory().addCategoryExtension(ShapelessRecipe.class,
-                recipe -> recipe.getId().equals(id("ph_regulator")),
-                recipe -> (builder, grid, focuses) -> setPhRecipe(recipe, builder, grid));
-    }
-
-    private static void setPhRecipe(ShapelessRecipe recipe, mezz.jei.api.gui.builder.IRecipeLayoutBuilder builder,
-                                    mezz.jei.api.gui.ingredient.ICraftingGridHelper grid) {
         var level = Minecraft.getInstance().level;
         if (level == null) {
             return;
         }
-        List<List<ItemStack>> inputs = new ArrayList<>();
-        for (Ingredient ingredient : recipe.getIngredients()) {
-            ItemStack[] stacks = ingredient.getItems();
-            if (stacks.length == 1 && stacks[0].is(Items.POTION)) {
-                List<ItemStack> potions = new ArrayList<>();
-                for (var potion : BuiltInRegistries.POTION) {
-                    if (potion != net.minecraft.world.item.alchemy.Potions.EMPTY) {
-                        potions.add(net.minecraft.world.item.alchemy.PotionUtils.setPotion(new ItemStack(Items.POTION), potion));
-                    }
-                }
-                inputs.add(potions);
-            } else {
-                inputs.add(List.of(stacks));
-            }
+        var enchantments = level.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        NonNullList<Ingredient> books = NonNullList.create();
+        // These nine books are examples; the actual recipe accepts any nine distinct item data sets.
+        for (String name : List.of("protection", "fire_protection", "feather_falling", "blast_protection",
+                "projectile_protection", "respiration", "aqua_affinity", "thorns", "depth_strider")) {
+            var enchantment = enchantments.getHolder(ResourceLocation.withDefaultNamespace(name)).orElseThrow();
+            books.add(Ingredient.of(EnchantedBookItem.createForEnchantment(new EnchantmentInstance(enchantment, 1))));
         }
-        grid.createAndSetInputs(builder, inputs, 0, 0);
-        grid.createAndSetOutputs(builder, List.of(recipe.getResultItem(level.registryAccess())));
-        builder.setShapeless();
+        var recipe = new ShapelessRecipe( "",
+                CraftingBookCategory.MISC, new ItemStack(ModItems.HVK_ENCHANT_INFUSION.get()), books);
+        registration.addRecipes(RecipeTypes.CRAFTING, List.of(new net.minecraft.world.item.crafting.RecipeHolder<>(id("hvk_enchant_infusion"), recipe)));
     }
 
 
     private static ResourceLocation id(String path) {
-        return new ResourceLocation(DealtForceSkillsMod.MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, path);
     }
 }

@@ -177,10 +177,10 @@ public final class RoverWolfEntity extends Wolf {
                 if (target instanceof ServerPlayer victim) RoverStateManager.sound(victim, RoverSounds.DOG_KILL_VICTIM);
             }
             if (level().getGameRules().getBoolean(ModGameRules.DEALT_WOUND) && random.nextDouble() < RoverConfig.DOG_INJURY_CHANCE) {
-                boolean abdomen = target.hasEffect(ModEffects.ABDOMEN_INJURY.get());
-                boolean chest = target.hasEffect(ModEffects.CHEST_INJURY.get());
-                var effect = abdomen != chest ? (abdomen ? ModEffects.CHEST_INJURY.get() : ModEffects.ABDOMEN_INJURY.get())
-                        : random.nextBoolean() ? ModEffects.ABDOMEN_INJURY.get() : ModEffects.CHEST_INJURY.get();
+                boolean abdomen = target.hasEffect(ModEffects.ABDOMEN_INJURY);
+                boolean chest = target.hasEffect(ModEffects.CHEST_INJURY);
+                var effect = abdomen != chest ? (abdomen ? ModEffects.CHEST_INJURY : ModEffects.ABDOMEN_INJURY)
+                        : random.nextBoolean() ? ModEffects.ABDOMEN_INJURY : ModEffects.CHEST_INJURY;
                 target.addEffect(new MobEffectInstance(effect, Math.max(1, RoverConfig.DOG_INJURY_DURATION)), owner);
             }
         }

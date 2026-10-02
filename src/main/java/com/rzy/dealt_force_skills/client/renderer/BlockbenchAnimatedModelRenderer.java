@@ -18,7 +18,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.slf4j.Logger;
 
@@ -90,8 +89,30 @@ public final class BlockbenchAnimatedModelRenderer {
             Set<String> hiddenGroups,
             int argbColor
     ) {
-        return renderInternal(modelId, animationName, animationSeconds, poseStack, buffer,
-                packedLight, hiddenGroups, argbColor, Map.of());
+        ModelData model = modelFor(modelId);
+        if (model.empty()) {
+            return false;
+        }
+
+        Animation animation = model.findAnimation(animationName);
+        float sampleTime = animation == null ? 0.0F : animation.sampleTime(animationSeconds);
+        RenderContext context = new RenderContext(
+                poseStack,
+                buffer,
+                packedLight,
+                model.textureWidth(),
+                model.textureHeight(),
+                model.textures(),
+                animation,
+                sampleTime,
+                hiddenGroups == null ? Set.of() : hiddenGroups,
+                argbColor,
+                Map.of()
+        );
+        for (Node root : model.roots()) {
+            renderNode(root, Vec.ZERO, context);
+        }
+        return true;
     }
 
     public static boolean renderWithGroupReplacements(
@@ -102,22 +123,6 @@ public final class BlockbenchAnimatedModelRenderer {
             MultiBufferSource buffer,
             int packedLight,
             Set<String> hiddenGroups,
-            Map<String, Runnable> groupReplacements
-    ) {
-        return renderInternal(modelId, animationName, animationSeconds, poseStack, buffer,
-                packedLight, hiddenGroups, 0xFFFFFFFF,
-                groupReplacements == null ? Map.of() : groupReplacements);
-    }
-
-    private static boolean renderInternal(
-            ResourceLocation modelId,
-            String animationName,
-            float animationSeconds,
-            PoseStack poseStack,
-            MultiBufferSource buffer,
-            int packedLight,
-            Set<String> hiddenGroups,
-            int argbColor,
             Map<String, Runnable> groupReplacements
     ) {
         ModelData model = modelFor(modelId);
@@ -137,8 +142,8 @@ public final class BlockbenchAnimatedModelRenderer {
                 animation,
                 sampleTime,
                 hiddenGroups == null ? Set.of() : hiddenGroups,
-                argbColor,
-                groupReplacements
+                0xFFFFFFFF,
+                groupReplacements == null ? Map.of() : groupReplacements
         );
         for (Node root : model.roots()) {
             renderNode(root, Vec.ZERO, context);
@@ -166,7 +171,7 @@ public final class BlockbenchAnimatedModelRenderer {
     }
 
     private static ModelData loadModel(ResourceLocation modelId) {
-        ResourceLocation file = new ResourceLocation(
+        ResourceLocation file = ResourceLocation.fromNamespaceAndPath(
                 modelId.getNamespace(),
                 "animated_models/" + modelId.getPath() + ".bbmodel"
         );
@@ -201,7 +206,7 @@ public final class BlockbenchAnimatedModelRenderer {
     }
 
     private static List<TextureData> loadTextures(ResourceLocation modelId, JsonArray textures) throws IOException {
-        if (textures == null || textures.isEmpty()) {
+        if (textures == null || textures.size() == 0) {
             return List.of(new TextureData(MissingTextureAtlasSprite.getLocation(), false));
         }
         List<TextureData> loaded = new ArrayList<>(textures.size());
@@ -220,7 +225,7 @@ public final class BlockbenchAnimatedModelRenderer {
 
             byte[] imageBytes = Base64.getDecoder().decode(source.substring(separator + 1));
             NativeImage image = NativeImage.read(new ByteArrayInputStream(imageBytes));
-            ResourceLocation location = new ResourceLocation(
+            ResourceLocation location = ResourceLocation.fromNamespaceAndPath(
                     modelId.getNamespace(),
                     "dynamic/blockbench/" + modelId.getPath().replace('/', '_') + "_" + index
             );
@@ -412,7 +417,7 @@ public final class BlockbenchAnimatedModelRenderer {
                                 continue;
                             }
                             JsonArray points = keyframe.getAsJsonArray("data_points");
-                            if (points == null || points.isEmpty()) {
+                            if (points == null || points.size() == 0) {
                                 continue;
                             }
                             JsonObject point = points.get(0).getAsJsonObject();
@@ -603,7 +608,6 @@ public final class BlockbenchAnimatedModelRenderer {
     ) {
         PoseStack.Pose pose = context.poseStack().last();
         Matrix4f matrix = pose.pose();
-        Matrix3f normalMatrix = pose.normal();
         VertexConsumer consumer = context.consumer(textureIndex);
         int color = context.argbColor();
         int alpha = color >>> 24 & 0xFF;
@@ -613,13 +617,13 @@ public final class BlockbenchAnimatedModelRenderer {
         for (int i = 0; i < 4; i++) {
             Vec point = points.get(i);
             Uv uv = uvs.get(i);
-            consumer.vertex(matrix, point.x(), point.y(), point.z())
-                    .color(red, green, blue, alpha)
-                    .uv(uv.u() / context.textureWidth(), uv.v() / context.textureHeight())
-                    .overlayCoords(OverlayTexture.NO_OVERLAY)
-                    .uv2(context.packedLight())
-                    .normal(normalMatrix, normal.x(), normal.y(), normal.z())
-                    .endVertex();
+            consumer.addVertex(matrix, point.x(), point.y(), point.z())
+                    .setColor(red, green, blue, alpha)
+                    .setUv(uv.u() / context.textureWidth(), uv.v() / context.textureHeight())
+                    .setOverlay(OverlayTexture.NO_OVERLAY)
+                    .setLight(context.packedLight())
+                    .setNormal(pose, normal.x(), normal.y(), normal.z())
+                    ;
         }
     }
 

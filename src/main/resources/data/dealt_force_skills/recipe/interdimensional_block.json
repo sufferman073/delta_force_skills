@@ -1,0 +1,19 @@
+{
+    "type":  "minecraft:crafting_shaped",
+    "pattern":  [
+                    "HHH",
+                    "HFH",
+                    "HHH"
+                ],
+    "key":  {
+                "F":  {
+                          "item":  "minecraft:feather"
+                      },
+                "H":  {
+                          "item":  "minecraft:hay_block"
+                      }
+            },
+    "result":  {
+                   "id":  "dealt_force_skills:interdimensional_block"
+               }
+}

@@ -1,6 +1,7 @@
 package mccfk.DeltaForce.java.item;
 
 import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,8 +30,12 @@ public class CocktailItem extends Item {
 
     /**
      * 单个药水效果配置
+     *
+     * @param effect    效果类型
+     * @param duration  持续时间（tick）
+     * @param amplifier 效果等级（0为I级）
      */
-    public record Effect(MobEffect effect, int duration, int amplifier) {}
+    public record Effect(Holder<MobEffect> effect, int duration, int amplifier) {}
 
     private final List<Effect> effects;
 
@@ -50,12 +55,14 @@ public class CocktailItem extends Item {
         if (player != null) {
             player.awardStat(Stats.ITEM_USED.get(this));
 
+            // 应用药水效果
             if (!level.isClientSide && !effects.isEmpty()) {
                 for (Effect e : effects) {
                     entity.addEffect(new MobEffectInstance(e.effect(), e.duration(), e.amplifier(), false, true));
                 }
             }
 
+            // 生存模式返还玻璃瓶
             if (!player.getAbilities().instabuild) {
                 stack.shrink(1);
                 ItemStack bottle = new ItemStack(Items.GLASS_BOTTLE);
@@ -71,8 +78,8 @@ public class CocktailItem extends Item {
     }
 
     @Override
-    public int getUseDuration(ItemStack stack) {
-        return 60;
+    public int getUseDuration(ItemStack stack, LivingEntity entity) {
+        return 60; // 3秒饮用时间
     }
 
     @Override
@@ -81,13 +88,13 @@ public class CocktailItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
-        Item item = stack.getItem();
-        ResourceLocation id = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(item);
-        if (id != null) {
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
+        // 物品介绍：参照 friend 模组对应酒类的 tooltip 文本，本地化键 item.<modid>.<注册名>.desc
+        stack.getItemHolder().unwrapKey().ifPresent(key -> {
+            ResourceLocation id = key.location();
             tooltip.add(Component.translatable("item." + id.getNamespace() + "." + id.getPath() + ".desc"));
-        }
+        });
     }
 
     @Override

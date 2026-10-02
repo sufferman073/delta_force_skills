@@ -2,7 +2,7 @@ package com.rzy.dealt_force_skills.config;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +88,6 @@ public final class DealtBossesConfig {
         doubleValue("beacon.max_health", 500.0D);
         doubleValue("beacon.armor_phase1", 20.0D);
         doubleValue("beacon.armor_phase2", 15.0D);
-        // movement_speed is design blocks/sec (default 6 ≈ attr 0.14). Legacy 0.14/1.2 migrated below.
         migrateBeaconMovementSpeed();
         doubleValue("beacon.movement_speed", 6.0D);
         doubleValue("beacon.follow_range", 50.0D);
@@ -131,7 +130,6 @@ public final class DealtBossesConfig {
         intValue("beacon.loot.experience", 5345);
         intValue("beacon.summon.delay_ticks", 40);
         intValue("beacon.summon.cooldown_ticks", 60 * 20);
-
         intValue("accelerated_troops.squad_size", 6);
         doubleValue("accelerated_troops.member_max_health", 125.0D);
         doubleValue("accelerated_troops.member_armor", 20.0D);
@@ -260,21 +258,16 @@ public final class DealtBossesConfig {
         return defaultValue;
     }
 
-    /**
-     * Old defaults used vanilla attribute scale (0.14) or mis-set 1.2 (strafe). Design unit is now
-     * blocks/sec with default 6. Only rewrite known wrong defaults so intentional custom values stay.
-     */
+    /** Rewrite known wrong defaults: 0.14 (old attr) / 1.2 (strafe mislabel) → 6 blocks/sec; attack 30 → 40. */
     private static void migrateBeaconMovementSpeed() {
         CommentedFileConfig current = config();
         Object raw = current.get("beacon.movement_speed");
-        if (!(raw instanceof Number number)) {
-            return;
-        }
-        double value = number.doubleValue();
-        // Known legacy defaults / mislabels — not user-tuned combat values.
-        if (Math.abs(value - 0.14D) < 0.0001D || Math.abs(value - 1.2D) < 0.0001D) {
-            current.set("beacon.movement_speed", 6.0D);
-            dirty = true;
+        if (raw instanceof Number number) {
+            double value = number.doubleValue();
+            if (Math.abs(value - 0.14D) < 0.0001D || Math.abs(value - 1.2D) < 0.0001D) {
+                current.set("beacon.movement_speed", 6.0D);
+                dirty = true;
+            }
         }
         Object attack = current.get("beacon.attack_range");
         if (attack instanceof Number attackNumber && Math.abs(attackNumber.doubleValue() - 30.0D) < 0.0001D) {

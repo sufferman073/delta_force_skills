@@ -129,12 +129,12 @@ public class DealtForceConfigScreen extends Screen {
         searchBox.setResponder(text -> rebuildEntryList());
         addRenderableWidget(searchBox);
 
-        sidebarList = new SidebarList(minecraft, SIDEBAR_WIDTH - 4, listBottom - 24, 24, listBottom, SIDEBAR_ROW);
-        sidebarList.setLeftPos(2);
+        sidebarList = new SidebarList(minecraft, SIDEBAR_WIDTH - 4, listBottom - 24, 24, SIDEBAR_ROW);
+        sidebarList.setX(2);
         addWidget(sidebarList);
 
-        entryList = new EntryList(minecraft, contentWidth, listBottom - listTop, listTop, listBottom, ROW_HEIGHT);
-        entryList.setLeftPos(contentLeft);
+        entryList = new EntryList(minecraft, contentWidth, listBottom - listTop, listTop, ROW_HEIGHT);
+        entryList.setX(contentLeft);
         addWidget(entryList);
 
         int buttonY = height - 28;
@@ -294,18 +294,15 @@ public class DealtForceConfigScreen extends Screen {
                 .comparing((ConfigEntryData e) -> ConfigAccess.subcategoryKey(e))
                 .thenComparing(ConfigEntryData::path));
 
-        // Large categories: force a concrete subcategory so EditBoxes stay interactive and few.
         boolean largeCategory = "characters".equals(selectedCategory)
                 || "summons".equals(selectedCategory)
                 || "items".equals(selectedCategory);
         if (selectedSubcategory.isEmpty() && largeCategory && filtered.size() > 40) {
             List<String> subs = presentSubcategories(selectedCategory);
             if (!subs.isEmpty()) {
-                // Auto-pick first sub so the right pane is always editable (not a dead "too many" wall).
                 selectedSubcategory = subs.get(0);
                 expandedCategories.add(selectedCategory);
                 rebuildSidebar();
-                // Re-filter with the chosen sub.
                 filtered.clear();
                 for (ConfigEntryData entry : allEntries) {
                     String category = ConfigAccess.categoryKey(entry);
@@ -477,7 +474,7 @@ public class DealtForceConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         // Sidebar background
         graphics.fill(0, 0, SIDEBAR_WIDTH, height, 0xE0101010);
         graphics.fill(SIDEBAR_WIDTH, 0, SIDEBAR_WIDTH + 1, height, 0xFF404040);
@@ -533,7 +530,6 @@ public class DealtForceConfigScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // Prefer EditBoxes over the entry list so value fields receive focus reliably.
         for (EditBox field : valueFields) {
             if (field.visible && field.active
                     && mouseX >= field.getX() && mouseX <= field.getX() + field.getWidth()
@@ -565,14 +561,14 @@ public class DealtForceConfigScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (mouseX < SIDEBAR_WIDTH && sidebarList != null) {
-            return sidebarList.mouseScrolled(mouseX, mouseY, delta);
+            return sidebarList.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         }
         if (entryList != null && entryList.isMouseOver(mouseX, mouseY)) {
-            return entryList.mouseScrolled(mouseX, mouseY, delta);
+            return entryList.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
@@ -643,7 +639,6 @@ public class DealtForceConfigScreen extends Screen {
                     expandedCategories.remove(category);
                 } else {
                     expandedCategories.add(category);
-                    // Expanding large categories: jump to first real sub so values are editable.
                     List<String> subs = presentSubcategories(category);
                     selectedSubcategory = subs.isEmpty() ? "" : subs.get(0);
                 }
@@ -711,20 +706,13 @@ public class DealtForceConfigScreen extends Screen {
     }
 
     private final class SidebarList extends ObjectSelectionList<SidebarRow> {
-        private SidebarList(Minecraft minecraft, int width, int height, int top, int bottom, int itemHeight) {
-            super(minecraft, width, height, top, bottom, itemHeight);
-            setRenderBackground(false);
-            setRenderTopAndBottom(false);
+        private SidebarList(Minecraft minecraft, int width, int height, int y, int itemHeight) {
+            super(minecraft, width, height, y, itemHeight);
         }
 
         @Override
         public int getRowWidth() {
-            return this.width - 8;
-        }
-
-        @Override
-        protected int getScrollbarPosition() {
-            return this.x0 + this.width - 5;
+            return this.getWidth() - 8;
         }
 
         private void reset() {
@@ -838,7 +826,6 @@ public class DealtForceConfigScreen extends Screen {
 
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            // Always allow focusing the value field when the row is on-screen.
             if (field.visible && canEdit(entry)
                     && mouseX >= field.getX() && mouseX <= field.getX() + field.getWidth()
                     && mouseY >= field.getY() && mouseY <= field.getY() + field.getHeight()) {
@@ -864,27 +851,18 @@ public class DealtForceConfigScreen extends Screen {
     }
 
     private final class EntryList extends ObjectSelectionList<Row> {
-        private EntryList(Minecraft minecraft, int width, int height, int top, int bottom, int itemHeight) {
-            super(minecraft, width, height, top, bottom, itemHeight);
+        private EntryList(Minecraft minecraft, int width, int height, int y, int itemHeight) {
+            super(minecraft, width, height, y, itemHeight);
         }
 
         @Override
         public int getRowWidth() {
-            return Math.max(200, this.width - 16);
+            return Math.max(200, this.getWidth() - 16);
         }
 
-        @Override
-        protected int getScrollbarPosition() {
-            return this.x0 + this.width - 6;
-        }
+        private int viewportTop() { return this.getY(); }
 
-        private int viewportTop() {
-            return this.y0;
-        }
-
-        private int viewportBottom() {
-            return this.y1;
-        }
+        private int viewportBottom() { return this.getY() + this.height; }
 
         private void reset() {
             this.clearEntries();

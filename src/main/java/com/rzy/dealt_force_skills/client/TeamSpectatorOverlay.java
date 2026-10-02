@@ -6,20 +6,21 @@ import com.rzy.dealt_force_skills.client.visual.HeldToolThirdPersonVisuals;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class TeamSpectatorOverlay {
     private TeamSpectatorOverlay() {
     }
 
     @SubscribeEvent
-    public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {
-        if (!VanillaGuiOverlay.HOTBAR.id().equals(event.getOverlay().id())) {
+    public static void onRenderGuiLayer(RenderGuiLayerEvent.Post event) {
+        if (!VanillaGuiLayers.HOTBAR.equals(event.getName())) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
@@ -43,7 +44,7 @@ public final class TeamSpectatorOverlay {
 
         int targetEntityId = ClientTeamSpectatorState.targetEntityId();
         if (targetEntityId >= 0) {
-            float partialTick = minecraft.getFrameTime();
+            float partialTick = com.rzy.dealt_force_skills.client.ClientRenderCompat.frameTime(minecraft);
             if (!CharacterSkillModelVisuals.renderSpectatorFirstPerson(graphics, targetEntityId, partialTick)) {
                 HeldToolThirdPersonVisuals.renderSpectatorFirstPerson(graphics, targetEntityId, partialTick);
             }

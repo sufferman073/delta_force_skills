@@ -1,0 +1,19 @@
+{
+    "type":  "minecraft:crafting_shaped",
+    "pattern":  [
+                    " T ",
+                    "TKT",
+                    " T "
+                ],
+    "key":  {
+                "T":  {
+                          "item":  "dealt_force_skills:titanium_alloy"
+                      },
+                "K":  {
+                          "item":  "dealt_force_skills:precision_helmet_repair_kit"
+                      }
+            },
+    "result":  {
+                   "id":  "dealt_force_skills:advanced_helmet_repair_kit"
+               }
+}

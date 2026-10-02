@@ -6,9 +6,11 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.RecordItem;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.registries.ForgeRegistries;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -26,10 +28,10 @@ public final class FoxMusicData {
     private FoxMusicData() { }
 
     public static CompoundTag data(ItemStack stack) {
-        return stack.hasTag() ? stack.getTag().getCompound(ROOT).copy() : new CompoundTag();
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompound(ROOT);
     }
     public static void save(ItemStack stack, CompoundTag data) {
-        stack.getOrCreateTag().put(ROOT, data);
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.put(ROOT, data));
     }
     public static UUID id(ItemStack stack) {
         CompoundTag data = data(stack);
@@ -41,13 +43,14 @@ public final class FoxMusicData {
         return tag.hasUUID("Id") && id.equals(tag.getUUID("Id"));
     }
     public static Song song(ItemStack disc, Level level) {
-        if (!(disc.getItem() instanceof RecordItem record)) return null;
-        SoundEvent sound = record.getSound();
-        return sound == null ? null : new Song(sound.getLocation(), Math.max(1, record.getLengthInTicks()));
+        var playable = disc.get(DataComponents.JUKEBOX_PLAYABLE);
+        if (playable == null || level == null) return null;
+        return playable.song().unwrap(level.registryAccess()).map(holder -> new Song(
+                holder.value().soundEvent().value().getLocation(), Math.max(1, (int) Math.ceil(holder.value().lengthInSeconds() * 20.0)))).orElse(null);
     }
     public static String kind(ItemStack stack, Level level) {
         Song song = song(stack, level);
-        return song == null ? "" : ForgeRegistries.ITEMS.getKey(stack.getItem()) + "|" + song.sound();
+        return song == null ? "" : BuiltInRegistries.ITEM.getKey(stack.getItem()) + "|" + song.sound();
     }
     public static int count(ItemStack stack) {
         return Math.min(CAPACITY, data(stack).getList("Discs", Tag.TAG_COMPOUND).size());
@@ -57,10 +60,10 @@ public final class FoxMusicData {
         List<ItemStack> result = new ArrayList<>();
         Set<String> kinds = new HashSet<>();
         for (int i = 0; i < Math.min(CAPACITY, stored.size()); i++) {
-            ItemStack disc = ItemStack.of(stored.getCompound(i));
+            ItemStack disc = ItemStack.parseOptional(level.registryAccess(), stored.getCompound(i));
             // Preserve unknown/custom discs for removal even if their playback data is temporarily unavailable.
             if (!disc.isEmpty() && kinds.add(kind(disc, level).isEmpty()
-                    ? ForgeRegistries.ITEMS.getKey(disc.getItem()).toString() : kind(disc, level))) {
+                    ? BuiltInRegistries.ITEM.getKey(disc.getItem()).toString() : kind(disc, level))) {
                 disc.setCount(1); result.add(disc);
             }
         }
@@ -70,7 +73,7 @@ public final class FoxMusicData {
         if (discs.size() > CAPACITY) throw new IllegalArgumentException("Disc capacity exceeded");
         CompoundTag tag = data(stack);
         ListTag list = new ListTag();
-        for (ItemStack disc : discs) { ItemStack copy = disc.copy(); copy.setCount(1); list.add(copy.save(new CompoundTag())); }
+        for (ItemStack disc : discs) { ItemStack copy = disc.copy(); copy.setCount(1); list.add(copy.save(level.registryAccess())); }
         tag.put("Discs", list);
         tag.putInt("Track", Math.max(0, Math.min(Math.max(0, discs.size() - 1), tag.getInt("Track"))));
         if (discs.isEmpty()) tag.putBoolean("Playing", false);
@@ -90,6 +93,6 @@ public final class FoxMusicData {
         CompoundTag tag = data(stack);
         ListTag discs = tag.getList("Discs", Tag.TAG_COMPOUND);
         int index = tag.getInt("Track");
-        return index < 0 || index >= Math.min(CAPACITY, discs.size()) ? ItemStack.EMPTY : ItemStack.of(discs.getCompound(index));
+        return index < 0 || index >= Math.min(CAPACITY, discs.size()) ? ItemStack.EMPTY : ItemStack.parseOptional(level.registryAccess(), discs.getCompound(index));
     }
 }

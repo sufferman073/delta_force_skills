@@ -1,0 +1,26 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:ballistic_ceramic"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:polymer_fabric"
+                        },
+                        {
+                            "item":  "dealt_force_skills:high_output_crushing_pliers"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:dich_training_helmet"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

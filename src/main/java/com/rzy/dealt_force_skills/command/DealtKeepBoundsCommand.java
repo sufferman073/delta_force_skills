@@ -8,26 +8,13 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import java.util.Collection;
 
-/**
- * {@code /dealtkeepbounds <all|players> <true|false>}
- *
- * <ul>
- *   <li>{@code all true/false} — server-wide default for players without a personal override.
- *       Applies to currently online and future players (via the default).</li>
- *   <li>player selector — per-player override that takes priority over {@code all}.</li>
- *   <li>{@code true} (default) — keep purchase progress and special currency across matchstart
- *       and rejoin.</li>
- *   <li>{@code false} — clear purchase progress and special currency on the next
- *       {@code /dealtmatch start} (initial start only, not mid-match round reset) and on rejoin.</li>
- * </ul>
- */
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class DealtKeepBoundsCommand {
     private DealtKeepBoundsCommand() {
     }

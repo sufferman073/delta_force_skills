@@ -2,13 +2,13 @@ package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.shepherd.ShepherdPlacementHelper;
 import com.rzy.dealt_force_skills.character.shepherd.ShepherdTool;
 import com.rzy.dealt_force_skills.character.shepherd.ShepherdToolAction;
 import com.rzy.dealt_force_skills.character.shepherd.ShepherdTrapMarker;
 import com.rzy.dealt_force_skills.client.character.ClientShepherdHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
-import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.client.visual.ClientToolReleaseAction;
 import com.rzy.dealt_force_skills.network.C2S_ShepherdToolAction;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
@@ -23,13 +23,14 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
@@ -37,7 +38,7 @@ import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.Optional;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ShepherdInputHandler {
     private static final DustParticleOptions TRAP_PREVIEW = new DustParticleOptions(new Vector3f(1.0f, 0.82f, 0.18f), 1.0f);
     private static final int TOOL_ACTION_DEDUP_TICKS = 3;
@@ -124,6 +125,9 @@ public final class ShepherdInputHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null) {
+            return;
+        }
         if ((event.isAttack() || event.isUseItem()) && shouldCancelSonicShockClientAction(minecraft, GLFW.GLFW_PRESS)) {
             event.setSwingHand(false);
             event.setCanceled(true);
@@ -147,6 +151,9 @@ public final class ShepherdInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (ClientShepherdHudState.hasEquippedTool()) {
             event.setCanceled(true);
         }
@@ -158,7 +165,7 @@ public final class ShepherdInputHandler {
         if (minecraft.player == null) {
             return;
         }
-        var effect = minecraft.player.getEffect(ModEffects.SONIC_SHOCK.get());
+        var effect = minecraft.player.getEffect(ModEffects.SONIC_SHOCK);
         if (effect == null) {
             return;
         }
@@ -171,7 +178,7 @@ public final class ShepherdInputHandler {
         if (minecraft.player == null) {
             return;
         }
-        var effect = minecraft.player.getEffect(ModEffects.SONIC_SHOCK.get());
+        var effect = minecraft.player.getEffect(ModEffects.SONIC_SHOCK);
         if (effect == null) {
             return;
         }
@@ -185,7 +192,7 @@ public final class ShepherdInputHandler {
 
     private static void applySonicShockClientSlow(Minecraft minecraft) {
         LocalPlayer player = minecraft.player;
-        MobEffectInstance effect = player.getEffect(ModEffects.SONIC_SHOCK.get());
+        MobEffectInstance effect = player.getEffect(ModEffects.SONIC_SHOCK);
         if (effect == null) {
             resetSonicLookState();
             return;
@@ -251,12 +258,12 @@ public final class ShepherdInputHandler {
     private static boolean shouldCancelSonicShockClientAction(Minecraft minecraft, int action) {
         return action == GLFW.GLFW_PRESS
                 && minecraft.player != null
-                && minecraft.player.hasEffect(ModEffects.SONIC_SHOCK.get())
+                && minecraft.player.hasEffect(ModEffects.SONIC_SHOCK)
                 && shouldClientSonicShockSkipAction(minecraft.player);
     }
 
     private static boolean shouldClientSonicShockSkipAction(Player player) {
-        MobEffectInstance effect = player.getEffect(ModEffects.SONIC_SHOCK.get());
+        MobEffectInstance effect = player.getEffect(ModEffects.SONIC_SHOCK);
         if (effect == null) {
             return false;
         }

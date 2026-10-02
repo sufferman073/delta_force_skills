@@ -7,7 +7,7 @@ import com.rzy.dealt_force_skills.item.DfsItemQuality;
 import com.rzy.dealt_force_skills.registry.ModItems;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -181,7 +181,7 @@ public final class DfsShopCatalog {
         return found.map(entry -> entry.preview().copy()).orElse(ItemStack.EMPTY);
     }
 
-    private static Spec entry(String id, RegistryObject<Item> item, Category category, DfsItemQuality quality, int price) {
+    private static Spec entry(String id, DeferredHolder<Item, Item> item, Category category, DfsItemQuality quality, int price) {
         return new Spec(id, item, category, quality, price);
     }
 
@@ -274,7 +274,7 @@ public final class DfsShopCatalog {
         }
     }
 
-    private record Spec(String id, RegistryObject<Item> item, Category category, DfsItemQuality quality, int price) {
+    private record Spec(String id, DeferredHolder<Item, Item> item, Category category, DfsItemQuality quality, int price) {
         Optional<Entry> toEntry(boolean honorEnabled) {
             int configuredPrice = DealtForceShopConfig.intValue("haff_shop.items." + id + ".price", price);
             boolean enabled = DealtForceShopConfig.booleanValue("haff_shop.items." + id + ".enabled", true);

@@ -1,18 +1,32 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.config.ConfigAccess;
 import com.rzy.dealt_force_skills.config.ConfigEntryData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-public final class C2S_RequestConfigSnapshot {
+public final class C2S_RequestConfigSnapshot implements CustomPacketPayload {
+    public static final Type<C2S_RequestConfigSnapshot> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_request_config_snapshot"));
+
+    public static final StreamCodec<FriendlyByteBuf, C2S_RequestConfigSnapshot> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), C2S_RequestConfigSnapshot::decode);
+
     private static final int CHUNK_SIZE = 80;
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
 
     public static void encode(C2S_RequestConfigSnapshot msg, FriendlyByteBuf buf) {
     }
@@ -21,10 +35,9 @@ public final class C2S_RequestConfigSnapshot {
         return new C2S_RequestConfigSnapshot();
     }
 
-    public static void handle(C2S_RequestConfigSnapshot msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) {
+    public static void handle(C2S_RequestConfigSnapshot msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer player)) {
                 return;
             }
             if (!player.hasPermissions(2)) {
@@ -34,7 +47,6 @@ public final class C2S_RequestConfigSnapshot {
             }
             sendSnapshot(player, true);
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public static void sendSnapshot(ServerPlayer player, boolean canEdit) {

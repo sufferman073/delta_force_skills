@@ -13,7 +13,7 @@ import net.minecraft.world.phys.Vec3;
 
 public final class DWolfHandCannonGrenadeRenderer extends EntityRenderer<DWolfHandCannonGrenadeEntity> {
     private static final ResourceLocation MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "d_wolf_hand_cannon_grenade");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "d_wolf_hand_cannon_grenade");
     private final ThrownItemRenderer<DWolfHandCannonGrenadeEntity> fallback;
 
     public DWolfHandCannonGrenadeRenderer(EntityRendererProvider.Context context) {

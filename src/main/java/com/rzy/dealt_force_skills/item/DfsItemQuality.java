@@ -1,11 +1,11 @@
 package com.rzy.dealt_force_skills.item;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -96,13 +96,13 @@ public enum DfsItemQuality {
         if (stack.isEmpty()) {
             return WHITE;
         }
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (id != null) {
             Integer overrideTier = TAG_QUALITY_OVERRIDES.get(id);
             if (overrideTier != null) {
-                for (DfsItemQuality quality : values()) {
-                    if (quality.tier == overrideTier) {
-                        return quality;
+                for (DfsItemQuality q : values()) {
+                    if (q.tier == overrideTier) {
+                        return q;
                     }
                 }
             }
@@ -113,25 +113,6 @@ public enum DfsItemQuality {
         if (stack.getItem() instanceof DfsEquipmentItem equipmentItem) {
             return equipmentItem.profile().quality();
         }
-        if (id != null && "tamarind".equals(id.getNamespace())) {
-            String name = stack.getHoverName().getString();
-            int marker = name.indexOf('\u00a7');
-            if (marker >= 0 && marker + 1 < name.length()) {
-                return tamarindQuality(Character.toLowerCase(name.charAt(marker + 1)));
-            }
-        }
         return WHITE;
-    }
-
-    static DfsItemQuality tamarindQuality(char colorCode) {
-        return switch (colorCode) {
-            case 'a' -> GREEN;
-            case '9' -> BLUE;
-            case '5' -> PURPLE;
-            case '6' -> GOLD;
-            case 'c' -> RED;
-            case 'f' -> WHITE;
-            default -> WHITE;
-        };
     }
 }

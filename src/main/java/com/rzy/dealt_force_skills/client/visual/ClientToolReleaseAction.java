@@ -101,7 +101,7 @@ public final class ClientToolReleaseAction {
         private final float fallbackLength;
 
         Action(String model, String animation, float fallbackLength) {
-            this.model = new ResourceLocation(DealtForceSkillsMod.MODID, model);
+            this.model = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, model);
             this.animation = animation;
             this.fallbackLength = fallbackLength;
         }

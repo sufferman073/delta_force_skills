@@ -6,6 +6,7 @@ import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_OpenHvkAsaraArena;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -24,7 +25,6 @@ public final class HvkAsaraArenaBlockEntity extends BlockEntity {
     private static final String STRUCTURE_ID_KEY = "StructureId";
     private static final String MODIFIER_MASK_KEY = "ModifierMask";
 
-    // Kept only as a fallback for worlds created before selections became player-specific.
     private ResourceLocation legacyStructureId;
     private long legacyModifierMask;
 
@@ -60,19 +60,16 @@ public final class HvkAsaraArenaBlockEntity extends BlockEntity {
 
     private List<String> availableStructures(ServerPlayer player) {
         return player.server.registryAccess().registryOrThrow(Registries.STRUCTURE).keySet().stream()
-                .map(ResourceLocation::toString)
-                .filter(id -> id.length() <= MAX_STRUCTURE_ID_LENGTH)
-                .sorted()
-                .limit(MAX_STRUCTURES)
-                .toList();
+                .map(ResourceLocation::toString).filter(id -> id.length() <= MAX_STRUCTURE_ID_LENGTH)
+                .sorted().limit(MAX_STRUCTURES).toList();
     }
 
     private Selection selectionFor(ServerPlayer player) {
         CompoundTag configs = player.getPersistentData().getCompound(PLAYER_CONFIGS_KEY);
         String key = selectionKey(player);
         if (!configs.contains(key, Tag.TAG_COMPOUND)) {
-            String legacy = legacyStructureId == null ? "" : legacyStructureId.toString();
-            return new Selection(legacy, HvkAsaraArenaModifier.sanitize(legacyModifierMask));
+            return new Selection(legacyStructureId == null ? "" : legacyStructureId.toString(),
+                    HvkAsaraArenaModifier.sanitize(legacyModifierMask));
         }
         CompoundTag config = configs.getCompound(key);
         return new Selection(config.getString(STRUCTURE_ID_KEY),
@@ -106,8 +103,8 @@ public final class HvkAsaraArenaBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         if (legacyStructureId != null) {
             tag.putString(STRUCTURE_ID_KEY, legacyStructureId.toString());
         }
@@ -115,8 +112,8 @@ public final class HvkAsaraArenaBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         legacyStructureId = ResourceLocation.tryParse(tag.getString(STRUCTURE_ID_KEY));
         legacyModifierMask = HvkAsaraArenaModifier.sanitize(tag.getLong(MODIFIER_MASK_KEY));
     }

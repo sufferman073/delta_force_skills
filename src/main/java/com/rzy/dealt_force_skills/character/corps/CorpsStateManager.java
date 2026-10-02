@@ -16,6 +16,7 @@ import com.rzy.dealt_force_skills.util.MeleeWeaponCompat;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -38,9 +39,8 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.portal.PortalInfo;
+import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.util.ITeleporter;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,12 +51,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 
 public final class CorpsStateManager {
     public static final ResourceKey<Level> ALLEY_MAZE_LEVEL = ResourceKey.create(
             Registries.DIMENSION,
-            new ResourceLocation(DealtForceSkillsMod.MODID, "corps_alley_maze"));
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "corps_alley_maze"));
 
     private static final String ROOT_TAG = DealtForceSkillsMod.MODID + ".corps";
     private static final String INITIALIZED = "Initialized";
@@ -94,7 +93,7 @@ public final class CorpsStateManager {
     private static final int ARENA_VOID_CLEAR_MIN_Y = 0;
     private static final int ARENA_VOID_CLEAR_MAX_Y = ARENA_Y + 48;
     private static final ResourceLocation DUEL_MUSIC_FILE =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "corps/duel_music");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "corps/duel_music");
 
     private static final Map<UUID, DuelRuntime> ACTIVE_DUELS = new HashMap<>();
     private static final Map<UUID, UUID> TARGET_TO_OWNER = new HashMap<>();
@@ -169,7 +168,7 @@ public final class CorpsStateManager {
                     Component.translatable("message.dealt_force_skills.corps.active1_cooldown"));
             return true;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.CORPS_WARM_ENFORCEMENT.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.CORPS_WARM_ENFORCEMENT,
                 ACTIVE_DURATION_TICKS, 0, false, true, true), player);
         tag.putLong(ACTIVE_1_COOLDOWN_UNTIL,
                 SkillCooldownHelper.until(player, now, ACTIVE_COOLDOWN_TICKS));
@@ -187,7 +186,7 @@ public final class CorpsStateManager {
                     Component.translatable("message.dealt_force_skills.corps.active2_cooldown"));
             return true;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.CORPS_FORCEFUL_BATON.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.CORPS_FORCEFUL_BATON,
                 ACTIVE_DURATION_TICKS, 0, false, true, true), player);
         tag.putLong(ACTIVE_2_COOLDOWN_UNTIL,
                 SkillCooldownHelper.until(player, now, ACTIVE_COOLDOWN_TICKS));
@@ -313,9 +312,9 @@ public final class CorpsStateManager {
         }
         CompoundTag tag = data(player);
         tag.putFloat(PENDING_RECOVERY, tag.getFloat(PENDING_RECOVERY) + 2.0F + amount * 0.5F);
-        MobEffectInstance current = player.getEffect(ModEffects.CORPS_LOYALTY_BOOST.get());
+        MobEffectInstance current = player.getEffect(ModEffects.CORPS_LOYALTY_BOOST);
         int nextAmplifier = current == null ? 0 : Math.min(19, current.getAmplifier() + 1);
-        player.addEffect(new MobEffectInstance(ModEffects.CORPS_LOYALTY_BOOST.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.CORPS_LOYALTY_BOOST,
                 20 * 20, nextAmplifier, false, true, true), player);
     }
 
@@ -376,21 +375,25 @@ public final class CorpsStateManager {
     }
 
     public static boolean isWarmEnforcementEffect(MobEffect effect) {
-        return effect == ModEffects.CORPS_WARM_ENFORCEMENT.get()
-                || effect == ModEffects.CORPS_FORCEFUL_BATON.get()
-                || effect == ModEffects.CORPS_LOYALTY_BOOST.get();
+        return effect == ModEffects.CORPS_WARM_ENFORCEMENT.value()
+                || effect == ModEffects.CORPS_FORCEFUL_BATON.value()
+                || effect == ModEffects.CORPS_LOYALTY_BOOST.value();
     }
 
     public static boolean shouldDenyIncomingEffect(Player player, MobEffect effect) {
         return player != null
-                && player.hasEffect(ModEffects.CORPS_WARM_ENFORCEMENT.get())
+                && player.hasEffect(ModEffects.CORPS_WARM_ENFORCEMENT)
                 && effect != null
                 && !isWarmEnforcementEffect(effect)
-                && effect != ModEffects.CORPS_DECAYED_SOLDIER.get();
+                && effect != ModEffects.CORPS_DECAYED_SOLDIER.value();
+    }
+
+    public static boolean shouldDenyIncomingEffect(Player player, Holder<MobEffect> effect) {
+        return effect != null && shouldDenyIncomingEffect(player, effect.value());
     }
 
     public static boolean hasForcefulBaton(ServerPlayer player) {
-        return player != null && player.hasEffect(ModEffects.CORPS_FORCEFUL_BATON.get());
+        return player != null && player.hasEffect(ModEffects.CORPS_FORCEFUL_BATON);
     }
 
     public static boolean isLesRaisinsMeleeBoosted(ServerPlayer player) {
@@ -412,9 +415,9 @@ public final class CorpsStateManager {
             return;
         }
         int remaining = (int) Math.min(Integer.MAX_VALUE, until - now);
-        MobEffectInstance current = player.getEffect(ModEffects.CORPS_DECAYED_SOLDIER.get());
+        MobEffectInstance current = player.getEffect(ModEffects.CORPS_DECAYED_SOLDIER);
         if (current == null || current.getDuration() < remaining - 20) {
-            player.addEffect(new MobEffectInstance(ModEffects.CORPS_DECAYED_SOLDIER.get(),
+            player.addEffect(new MobEffectInstance(ModEffects.CORPS_DECAYED_SOLDIER,
                     remaining, 0, false, true, true));
         }
     }
@@ -476,7 +479,7 @@ public final class CorpsStateManager {
     }
 
     public static boolean shouldCancelDecayedSoldierRemoval(LivingEntity entity, MobEffect effect) {
-        if (effect != ModEffects.CORPS_DECAYED_SOLDIER.get()) {
+        if (effect != ModEffects.CORPS_DECAYED_SOLDIER.value()) {
             return false;
         }
         if (isVanillaEffectClearCommand() || isRecentEffectClearCommand()) {
@@ -486,6 +489,10 @@ public final class CorpsStateManager {
             return false;
         }
         return true;
+    }
+
+    public static boolean shouldCancelDecayedSoldierRemoval(LivingEntity entity, Holder<MobEffect> effect) {
+        return effect != null && shouldCancelDecayedSoldierRemoval(entity, effect.value());
     }
 
     private static void tickDuel(ServerPlayer player) {
@@ -529,9 +536,9 @@ public final class CorpsStateManager {
             executeLoyaltyKill(player, target);
             return;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.CORPS_WARM_ENFORCEMENT.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.CORPS_WARM_ENFORCEMENT,
                 40, 0, false, false, true), player);
-        player.addEffect(new MobEffectInstance(ModEffects.CORPS_FORCEFUL_BATON.get(),
+        player.addEffect(new MobEffectInstance(ModEffects.CORPS_FORCEFUL_BATON,
                 40, 0, false, false, true), player);
         if (player.gameMode.getGameModeForPlayer() != GameType.SURVIVAL) {
             player.setGameMode(GameType.SURVIVAL);
@@ -605,10 +612,10 @@ public final class CorpsStateManager {
         EXECUTING_LOYALTY_TARGETS.add(target.getUUID());
         boolean dead = false;
         try {
-            target.addEffect(new MobEffectInstance(ModEffects.CORPS_DECAYED_SOLDIER.get(),
+            target.addEffect(new MobEffectInstance(ModEffects.CORPS_DECAYED_SOLDIER,
                     DECAY_DURATION_TICKS, 0, false, true, true), owner);
             if (target instanceof ServerPlayer targetPlayer) {
-                data(targetPlayer).putLong(DECAY_UNTIL, SkillCooldownHelper.now(targetPlayer) + DECAY_DURATION_TICKS);
+                data(targetPlayer).putLong(DECAY_UNTIL, targetPlayer.level().getGameTime() + DECAY_DURATION_TICKS);
             }
             DamageSource source = SkillDamageHelper.trueDamage(owner.serverLevel(), owner, owner);
             for (int attempt = 0; attempt < LOYALTY_KILL_ATTEMPTS_PER_TICK && isStillAliveAfterLoyaltyKill(target); attempt++) {
@@ -672,13 +679,13 @@ public final class CorpsStateManager {
     }
 
     private static void removeExternalEffectsWhileWarm(ServerPlayer player) {
-        if (!player.hasEffect(ModEffects.CORPS_WARM_ENFORCEMENT.get())) {
+        if (!player.hasEffect(ModEffects.CORPS_WARM_ENFORCEMENT)) {
             return;
         }
         for (MobEffectInstance effect : new ArrayList<>(player.getActiveEffects())) {
-            MobEffect type = effect.getEffect();
-            if (!isWarmEnforcementEffect(type)
-                    && type != ModEffects.CORPS_DECAYED_SOLDIER.get()) {
+            net.minecraft.core.Holder<MobEffect> type = effect.getEffect();
+            if (!isWarmEnforcementEffect(type.value())
+                    && type.value() != ModEffects.CORPS_DECAYED_SOLDIER.value()) {
                 player.removeEffect(type);
             }
         }
@@ -869,7 +876,7 @@ public final class CorpsStateManager {
         }
         LivingEntity moved = entity;
         if (entity.level() != arena) {
-            Entity changed = entity.changeDimension(arena, new FixedDimensionTeleporter(x, y, z, yaw, pitch));
+            Entity changed = entity.changeDimension(new DimensionTransition(arena, new Vec3(x, y, z), Vec3.ZERO, yaw, pitch, DimensionTransition.DO_NOTHING));
             if (changed instanceof LivingEntity living) {
                 moved = living;
             }
@@ -892,8 +899,8 @@ public final class CorpsStateManager {
         }
         LivingEntity restored = entity;
         if (entity.level() != level) {
-            Entity changed = entity.changeDimension(level, new FixedDimensionTeleporter(
-                    snapshot.x(), snapshot.y(), snapshot.z(), snapshot.yRot(), snapshot.xRot()));
+            Entity changed = entity.changeDimension(new DimensionTransition(level,
+                    new Vec3(snapshot.x(), snapshot.y(), snapshot.z()), Vec3.ZERO, snapshot.yRot(), snapshot.xRot(), DimensionTransition.DO_NOTHING));
             if (changed instanceof LivingEntity living) {
                 restored = living;
             }
@@ -1049,29 +1056,6 @@ public final class CorpsStateManager {
     ) {
     }
 
-    private record FixedDimensionTeleporter(
-            double x,
-            double y,
-            double z,
-            float yRot,
-            float xRot
-    ) implements ITeleporter {
-        @Override
-        public PortalInfo getPortalInfo(Entity entity, ServerLevel destWorld,
-                                        Function<ServerLevel, PortalInfo> defaultPortalInfo) {
-            return new PortalInfo(new Vec3(x, y, z), Vec3.ZERO, yRot, xRot);
-        }
-
-        @Override
-        public Entity placeEntity(Entity entity, ServerLevel currentWorld, ServerLevel destWorld, float yaw,
-                                  Function<Boolean, Entity> repositionEntity) {
-            Entity placed = repositionEntity.apply(false);
-            placed.teleportTo(x, y, z);
-            placed.setYRot(yRot);
-            placed.setXRot(xRot);
-            return placed;
-        }
-    }
 
     private record ParticipantSnapshot(
             ResourceKey<Level> level,

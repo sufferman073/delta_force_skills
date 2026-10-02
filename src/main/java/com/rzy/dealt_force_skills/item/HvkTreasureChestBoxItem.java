@@ -4,6 +4,7 @@ import com.rzy.dealt_force_skills.block.HvkAdvancedTreasureCompassBlockEntity;
 import com.rzy.dealt_force_skills.block.WorkBlockStorageAccess;
 import com.rzy.dealt_force_skills.registry.ModItems;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -15,6 +16,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
@@ -29,10 +31,11 @@ public class HvkTreasureChestBoxItem extends Item {
 
     public static ItemStack create(ResourceLocation lootTable, String name) {
         ItemStack stack = new ItemStack(ModItems.HVK_TREASURE_CHEST_BOX.get());
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = new CompoundTag();
         tag.putString(TAG_LOOT_TABLE, lootTable == null ? "minecraft:chests/simple_dungeon" : lootTable.toString());
         tag.putString(TAG_LOOT_NAME, name == null || name.isBlank() ? tag.getString(TAG_LOOT_TABLE) : name);
-        stack.setHoverName(Component.translatable("item.dealt_force_skills.hvk_treasure_chest_box.named",
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        stack.set(DataComponents.CUSTOM_NAME, Component.translatable("item.dealt_force_skills.hvk_treasure_chest_box.named",
                 tag.getString(TAG_LOOT_NAME)).withStyle(ChatFormatting.GOLD));
         return stack;
     }
@@ -71,17 +74,19 @@ public class HvkTreasureChestBoxItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip,
+                                TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.hvk_treasure_chest_box",
                 displayName(stack)).withStyle(ChatFormatting.GRAY));
     }
 
     private static ResourceLocation lootTable(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !stack.hasTag()) {
+        if (stack == null || stack.isEmpty()) {
             return null;
         }
-        String value = stack.getOrCreateTag().getString(TAG_LOOT_TABLE);
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        String value = tag.getString(TAG_LOOT_TABLE);
         if (value.isBlank()) {
             return null;
         }
@@ -93,10 +98,11 @@ public class HvkTreasureChestBoxItem extends Item {
     }
 
     private static String displayName(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !stack.hasTag()) {
+        if (stack == null || stack.isEmpty()) {
             return "";
         }
-        String name = stack.getOrCreateTag().getString(TAG_LOOT_NAME);
-        return name.isBlank() ? stack.getOrCreateTag().getString(TAG_LOOT_TABLE) : name;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        String name = tag.getString(TAG_LOOT_NAME);
+        return name.isBlank() ? tag.getString(TAG_LOOT_TABLE) : name;
     }
 }

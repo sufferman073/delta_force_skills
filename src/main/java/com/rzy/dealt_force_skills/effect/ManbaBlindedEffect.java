@@ -1,4 +1,6 @@
 package com.rzy.dealt_force_skills.effect;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.LivingEntity;
@@ -8,17 +10,19 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
 
 public class ManbaBlindedEffect extends MobEffect {
-    private static final String LIGHT_WARRIOR_SLOW_UUID = "e134cf46-5f93-4e65-a5fd-3d137c2fd743";
+    private static final ResourceLocation LIGHT_WARRIOR_SLOW_ID =
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "effect.manba_blinded.movement_speed");
 
     public ManbaBlindedEffect() {
-        super(MobEffectCategory.NEUTRAL, 0xF6F3DA);
-        addAttributeModifier(Attributes.MOVEMENT_SPEED, LIGHT_WARRIOR_SLOW_UUID,
-                -0.2D, AttributeModifier.Operation.MULTIPLY_TOTAL);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
+        addAttributeModifier(Attributes.MOVEMENT_SPEED, LIGHT_WARRIOR_SLOW_ID,
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL, amplifier -> amplifier >= 1 ? -0.2D * (amplifier + 1) : 0.0D);
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         suppressHostileTargeting(entity);
+        return true;
     }
 
     public static void suppressHostileTargeting(LivingEntity entity) {
@@ -37,12 +41,7 @@ public class ManbaBlindedEffect extends MobEffect {
     }
 
     @Override
-    public double getAttributeModifierValue(int amplifier, AttributeModifier modifier) {
-        return amplifier >= 1 ? super.getAttributeModifierValue(amplifier, modifier) : 0.0D;
-    }
-
-    @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 }

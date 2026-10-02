@@ -1,11 +1,15 @@
 package com.rzy.dealt_force_skills.entity;
 
 import com.rzy.dealt_force_skills.character.toxik.ToxikStateManager;
+import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
+import java.util.UUID;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.network.syncher.SynchedEntityData.Builder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -20,165 +24,155 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraft.network.syncher.EntityDataAccessor;
-import net.minecraft.network.syncher.EntityDataSerializers;
-import net.minecraft.network.syncher.SynchedEntityData;
-import java.util.UUID;
 
 public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, SmokeCloudModelState {
-    public static final String COMMANDER_REVEAL_TAG =
-            "dealt_force_skills.commander_smoke_reveal";
-    public static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.toxikteargascloudentity.life_ticks", 400));
-    public static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.toxikteargascloudentity.radius", 4.8));
-    private static final int PARTICLE_REFRESH_TICKS = 15;
-    private static volatile int BASE_BLIND_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BASE_BLIND_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.toxikteargascloudentity.base_blind_ticks", 60));
-    private static final EntityDataAccessor<Integer> DATA_LIFE_TICKS =
-            SynchedEntityData.defineId(ToxikTearGasCloudEntity.class, EntityDataSerializers.INT);
-    private UUID ownerId;
-    private int lifeTicks = LIFE_TICKS;
+   public static final String COMMANDER_REVEAL_TAG = "dealt_force_skills.commander_smoke_reveal";
+   public static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.toxikteargascloudentity.life_ticks", 400));
+   public static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.toxikteargascloudentity.radius", 4.8));
+   private static volatile int BASE_BLIND_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BASE_BLIND_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.toxikteargascloudentity.base_blind_ticks", 60));
+   private static final EntityDataAccessor<Integer> DATA_LIFE_TICKS =
+      SynchedEntityData.defineId(ToxikTearGasCloudEntity.class, EntityDataSerializers.INT);
+   private UUID ownerId;
+   private int lifeTicks = LIFE_TICKS;
 
-    public ToxikTearGasCloudEntity(EntityType<? extends ToxikTearGasCloudEntity> type, Level level) {
-        super(type, level);
-        noPhysics = true;
-        noCulling = true;
-    }
+   public ToxikTearGasCloudEntity(EntityType<? extends ToxikTearGasCloudEntity> type, Level level) {
+      super(type, level);
+      this.noPhysics = true;
+      this.noCulling = true;
+   }
 
-    public ToxikTearGasCloudEntity(EntityType<? extends ToxikTearGasCloudEntity> type, Level level, UUID ownerId, int lifeTicks) {
-        this(type, level);
-        this.ownerId = ownerId;
-        setLifeTicks(lifeTicks);
-    }
+   public ToxikTearGasCloudEntity(EntityType<? extends ToxikTearGasCloudEntity> type, Level level, UUID ownerId, int lifeTicks) {
+      this(type, level);
+      this.ownerId = ownerId;
+      this.setLifeTicks(lifeTicks);
+   }
 
-    @Override
-    public int smokeLifetimeTicks() {
-        return Math.max(1, entityData.get(DATA_LIFE_TICKS));
-    }
+   public ItemStack getItem() {
+      return new ItemStack(Items.CYAN_STAINED_GLASS);
+   }
 
-    @Override
-    public ItemStack getItem() {
-        return new ItemStack(Items.CYAN_STAINED_GLASS);
-    }
+   public int smokeLifetimeTicks() {
+      return Math.max(1, this.entityData.get(DATA_LIFE_TICKS));
+   }
 
-    @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_LIFE_TICKS, LIFE_TICKS);
-    }
+   protected void defineSynchedData(Builder builder) {
+      builder.define(DATA_LIFE_TICKS, LIFE_TICKS);
+   }
 
-    @Override
-    public void tick() {
-        super.tick();
-        if (level().isClientSide) {
-            return;
-        }
-        if (level() instanceof ServerLevel serverLevel) {
-            applyBlind(serverLevel);
-            suppressTargetsThroughSmoke(serverLevel);
-        }
-        if (tickCount >= smokeLifetimeTicks()) {
-            discard();
-        }
-    }
+   public void tick() {
+      super.tick();
+      if (!this.level().isClientSide) {
+         if (this.level() instanceof ServerLevel serverlevel) {
+            this.applyBlind(serverlevel);
+            this.suppressTargetsThroughSmoke(serverlevel);
+         }
 
-    @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
-        ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
-        setLifeTicks(tag.getInt("LifeTicks") <= 0 ? LIFE_TICKS : tag.getInt("LifeTicks"));
-    }
+         if (this.tickCount >= this.smokeLifetimeTicks()) {
+            this.discard();
+         }
+      }
+   }
 
-    @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
-        if (ownerId != null) {
-            tag.putUUID("Owner", ownerId);
-        }
-        tag.putInt("LifeTicks", lifeTicks);
-    }
+   protected void readAdditionalSaveData(CompoundTag tag) {
+      this.ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+      this.setLifeTicks(tag.getInt("LifeTicks") <= 0 ? LIFE_TICKS : tag.getInt("LifeTicks"));
+   }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
+   protected void addAdditionalSaveData(CompoundTag tag) {
+      if (this.ownerId != null) {
+         tag.putUUID("Owner", this.ownerId);
+      }
 
-    @Override
-    public boolean shouldRenderAtSqrDistance(double distance) {
-        double renderDistance = 512.0D;
-        return distance < renderDistance * renderDistance;
-    }
+      tag.putInt("LifeTicks", this.lifeTicks);
+   }
 
-    private void applyBlind(ServerLevel level) {
-        if (tickCount % 10 != 0) {
-            return;
-        }
-        LivingEntity owner = owner(level);
-        AABB box = new AABB(position(), position()).inflate(RADIUS);
-        for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isHostileLivingFor(owner, target)) {
-                continue;
+   private void applyBlind(ServerLevel level) {
+      if (this.tickCount % 10 == 0) {
+         LivingEntity livingentity = this.owner(level);
+         AABB aabb = new AABB(this.position(), this.position()).inflate(RADIUS);
+
+         for (LivingEntity livingentity1 : level.getEntitiesOfClass(LivingEntity.class, aabb, LivingEntity::isAlive)) {
+            if (TargetingUtil.isHostileLivingFor(livingentity, livingentity1)) {
+               Vec3 vec3 = livingentity1.position().add(0.0, (double)livingentity1.getBbHeight() * 0.5, 0.0);
+               if (!(vec3.distanceTo(this.position()) > RADIUS)) {
+                  if (livingentity instanceof ServerPlayer) {
+                     ServerPlayer serverplayer = (ServerPlayer)livingentity;
+                     if (ToxikStateManager.isToxik(serverplayer)) {
+                        ToxikStateManager.addToxikScaledEffect(serverplayer, livingentity1, ModEffects.TOXIK_TEAR_GAS_BLIND, BASE_BLIND_TICKS, 0);
+                        continue;
+                     }
+                  }
+
+                  livingentity1.addEffect(
+                     new MobEffectInstance(
+                        ModEffects.TOXIK_TEAR_GAS_BLIND,
+                        BASE_BLIND_TICKS,
+                        DealtForceConfig.intValue("summons.toxik_tear_gas_cloud_entity.effect.toxik_tear_gas_blind.0.amplifier", 0),
+                        false,
+                        true,
+                        true
+                     ),
+                     livingentity
+                  );
+                  if (this.getPersistentData().getBoolean(COMMANDER_REVEAL_TAG)) {
+                     livingentity1.addEffect(new MobEffectInstance(MobEffects.GLOWING, 30, 0,
+                        false, true, true), livingentity);
+                  }
+               }
             }
-            Vec3 center = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
-            if (center.distanceTo(position()) > RADIUS) {
-                continue;
+         }
+      }
+   }
+
+   private void suppressTargetsThroughSmoke(ServerLevel level) {
+      if (this.ownerId != null && level.getEntity(this.ownerId) instanceof LivingEntity livingentity && livingentity.isAlive()) {
+         AABB aabb = new AABB(this.position(), this.position()).inflate(40.0);
+         boolean flag = livingentity.position().distanceTo(this.position()) <= RADIUS;
+
+         for (Mob mob : level.getEntitiesOfClass(Mob.class, aabb, mobx -> mobx.isAlive() && mobx.getTarget() == livingentity)) {
+            boolean flag1 = mob.position().distanceTo(this.position()) <= RADIUS;
+            if ((!flag || !flag1) && this.segmentIntersectsSmoke(mob.getEyePosition(), livingentity.getEyePosition())) {
+               mob.setTarget(null);
+               mob.getNavigation().stop();
             }
-            if (owner instanceof ServerPlayer toxik && ToxikStateManager.isToxik(toxik)) {
-                ToxikStateManager.addToxikScaledEffect(toxik, target,
-                        ModEffects.TOXIK_TEAR_GAS_BLIND.get(), BASE_BLIND_TICKS, 0);
-            } else {
-                target.addEffect(new MobEffectInstance(ModEffects.TOXIK_TEAR_GAS_BLIND.get(),
-                        BASE_BLIND_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.toxik_tear_gas_cloud_entity.effect.toxik_tear_gas_blind.0.amplifier", 0), false, true, true), owner);
-            }
-            if (getPersistentData().getBoolean(COMMANDER_REVEAL_TAG)) {
-                target.addEffect(new MobEffectInstance(MobEffects.GLOWING, 30, 0,
-                        false, true, true), owner);
-            }
-        }
-    }
+         }
+      }
+   }
 
-    private void suppressTargetsThroughSmoke(ServerLevel level) {
-        if (ownerId == null || !(level.getEntity(ownerId) instanceof LivingEntity owner) || !owner.isAlive()) {
-            return;
-        }
-        AABB box = new AABB(position(), position()).inflate(40.0D);
-        boolean ownerInside = owner.position().distanceTo(position()) <= RADIUS;
-        for (Mob mob : level.getEntitiesOfClass(Mob.class, box, mob -> mob.isAlive() && mob.getTarget() == owner)) {
-            boolean mobInside = mob.position().distanceTo(position()) <= RADIUS;
-            if (ownerInside && mobInside) {
-                continue;
-            }
-            if (segmentIntersectsSmoke(mob.getEyePosition(), owner.getEyePosition())) {
-                mob.setTarget(null);
-                mob.getNavigation().stop();
-            }
-        }
-    }
+   private boolean segmentIntersectsSmoke(Vec3 start, Vec3 end) {
+      Vec3 vec3 = end.subtract(start);
+      double d0 = vec3.lengthSqr();
+      if (d0 < 1.0E-4) {
+         return start.distanceTo(this.position()) <= RADIUS;
+      } else {
+         double d1 = this.position().subtract(start).dot(vec3) / d0;
+         d1 = Math.max(0.0, Math.min(1.0, d1));
+         Vec3 vec31 = start.add(vec3.scale(d1));
+         return vec31.distanceTo(this.position()) <= RADIUS;
+      }
+   }
 
-    private boolean segmentIntersectsSmoke(Vec3 start, Vec3 end) {
-        Vec3 segment = end.subtract(start);
-        double lengthSqr = segment.lengthSqr();
-        if (lengthSqr < 0.0001D) {
-            return start.distanceTo(position()) <= RADIUS;
-        }
-        double t = position().subtract(start).dot(segment) / lengthSqr;
-        t = Math.max(0.0D, Math.min(1.0D, t));
-        Vec3 closest = start.add(segment.scale(t));
-        return closest.distanceTo(position()) <= RADIUS;
-    }
+   private LivingEntity owner(ServerLevel level) {
+      return this.ownerId != null && level.getEntity(this.ownerId) instanceof LivingEntity livingentity ? livingentity : null;
+   }
 
-    private LivingEntity owner(ServerLevel level) {
-        return ownerId == null || !(level.getEntity(ownerId) instanceof LivingEntity owner) ? null : owner;
-    }
+   private void setLifeTicks(int value) {
+      this.lifeTicks = Math.max(1, value);
+      this.entityData.set(DATA_LIFE_TICKS, this.lifeTicks);
+   }
 
-    private void setLifeTicks(int value) {
-        lifeTicks = Math.max(1, value);
-        entityData.set(DATA_LIFE_TICKS, lifeTicks);
-    }
+   @Override
+   public boolean shouldRenderAtSqrDistance(double distance) {
+      return distance < 512.0D * 512.0D;
+   }
 
-    @Override
-    public boolean isPickable() {
-        return false;
-    }
+   @Override
+   public boolean isPickable() {
+      return false;
+   }
 
-    @Override
-    public boolean isAttackable() {
-        return false;
-    }
+   @Override
+   public boolean isAttackable() {
+      return false;
+   }
 }

@@ -1,0 +1,39 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:night_vision"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:night_vision"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "type":  "neoforge:components",
+                            "items":  "minecraft:potion",
+                            "components":  {
+                                               "minecraft:potion_contents":  {
+                                                                                 "potion":  "minecraft:night_vision"
+                                                                             }
+                                           }
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:starlight_glitter",
+                   "count":  6
+               }
+}

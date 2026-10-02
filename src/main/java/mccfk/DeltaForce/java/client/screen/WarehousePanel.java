@@ -7,7 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import com.rzy.dealt_force_skills.network.NetworkHandler;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.HashSet;
 import java.util.List;
@@ -597,36 +597,36 @@ public class WarehousePanel {
                     case SOURCE_INVENTORY -> {
                         // 物品栏 → 装备槽 / 仓库指定格 / 物品栏另一格
                         if (armorSlot >= 0) {
-                            NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+                            PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                                     C2S_DfWarehouseAction.Action.EQUIP, dragIndex, armorSlot, dragStack.getCount()));
                         } else if (wh >= 0 && wh != dragIndex) {
-                            NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+                            PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                                     C2S_DfWarehouseAction.Action.DEPOSIT, dragIndex, wh, dragStack.getCount()));
                         } else if (inv >= 0 && inv != dragIndex) {
-                            NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+                            PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                                     C2S_DfWarehouseAction.Action.MOVE_INV, dragIndex, inv, dragStack.getCount()));
                         }
                     }
                     case SOURCE_WAREHOUSE -> {
                         // 仓库 → 装备槽 / 物品栏指定格 / 仓库另一格
                         if (armorSlot >= 0) {
-                            NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+                            PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                                     C2S_DfWarehouseAction.Action.EQUIP_WH, dragIndex, armorSlot, dragStack.getCount()));
                         } else if (inv >= 0 && inv != dragIndex) {
-                            NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+                            PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                                     C2S_DfWarehouseAction.Action.WITHDRAW, dragIndex, inv, dragStack.getCount()));
                         } else if (wh >= 0 && wh != dragIndex) {
-                            NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+                            PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                                     C2S_DfWarehouseAction.Action.MOVE_WH, dragIndex, wh, dragStack.getCount()));
                         }
                     }
                     case SOURCE_ARMOR -> {
                         // 装备 → 物品栏指定格 或 仓库指定格
                         if (inv >= 0) {
-                            NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+                            PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                                     C2S_DfWarehouseAction.Action.UNEQUIP, dragIndex, inv, 0));
                         } else if (wh >= 0) {
-                            NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+                            PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                                     C2S_DfWarehouseAction.Action.UNEQUIP_WH, dragIndex, wh, 0));
                         }
                     }
@@ -657,7 +657,7 @@ public class WarehousePanel {
         if (stack.isEmpty()) {
             return;
         }
-        NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+        PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                 C2S_DfWarehouseAction.Action.DEPOSIT_AUTO, inventorySlot, -1, stack.getCount()));
         flashSource = SOURCE_INVENTORY;
         flashIndex = inventorySlot;
@@ -675,7 +675,7 @@ public class WarehousePanel {
         if (stack.isEmpty()) {
             return;
         }
-        NetworkHandler.sendToServer(new C2S_DfWarehouseAction(
+        PacketDistributor.sendToServer(new C2S_DfWarehouseAction(
                 C2S_DfWarehouseAction.Action.WITHDRAW_AUTO, warehouseSlot, -1, stack.getCount()));
         flashSource = SOURCE_WAREHOUSE;
         flashIndex = warehouseSlot;

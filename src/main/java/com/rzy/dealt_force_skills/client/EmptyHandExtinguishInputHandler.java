@@ -4,12 +4,12 @@ import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.network.C2S_EmptyHandExtinguish;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class EmptyHandExtinguishInputHandler {
     private static final int HEARTBEAT_INTERVAL_TICKS = 5;
     private static boolean holdingSent;
@@ -19,14 +19,8 @@ public final class EmptyHandExtinguishInputHandler {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-        tick(Minecraft.getInstance());
-    }
-
-    private static void tick(Minecraft minecraft) {
+    public static void onClientTick(ClientTickEvent.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
         boolean holding = minecraft.player != null
                 && minecraft.screen == null
                 && minecraft.player.getMainHandItem().isEmpty()
@@ -34,12 +28,12 @@ public final class EmptyHandExtinguishInputHandler {
                 && minecraft.options.keyUse.isDown();
         if (holding) {
             if (!holdingSent || heartbeatTicks-- <= 0) {
-                NetworkHandler.CHANNEL.sendToServer(new C2S_EmptyHandExtinguish(true));
+                NetworkHandler.sendToServer(new C2S_EmptyHandExtinguish(true));
                 holdingSent = true;
                 heartbeatTicks = HEARTBEAT_INTERVAL_TICKS;
             }
         } else if (holdingSent) {
-            NetworkHandler.CHANNEL.sendToServer(new C2S_EmptyHandExtinguish(false));
+            NetworkHandler.sendToServer(new C2S_EmptyHandExtinguish(false));
             holdingSent = false;
             heartbeatTicks = 0;
         }

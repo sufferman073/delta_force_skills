@@ -1,52 +1,52 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterAvailability;
 import com.rzy.dealt_force_skills.team.DealtTeamManager;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public record C2S_StartPageAction(Action action, UUID playerId, String teamName) {
+public record C2S_StartPageAction(Action action, UUID playerId, String teamName) implements CustomPacketPayload {
     private static final UUID NO_PLAYER = new UUID(0L, 0L);
+    public static final Type<C2S_StartPageAction> TYPE = new Type<>(
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_start_page_action"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2S_StartPageAction> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), C2S_StartPageAction::decode);
 
     public enum Action {
-        REFRESH,
-        CREATE,
-        REQUEST_JOIN,
-        INVITE,
-        ACCEPT_INVITE,
-        DECLINE_INVITE,
-        ACCEPT_JOIN,
-        DECLINE_JOIN,
-        LEAVE,
-        KICK,
-        PROMOTE
+        REFRESH, CREATE, REQUEST_JOIN, INVITE, ACCEPT_INVITE, DECLINE_INVITE,
+        ACCEPT_JOIN, DECLINE_JOIN, LEAVE, KICK, PROMOTE
     }
 
     public static C2S_StartPageAction refresh() {
         return new C2S_StartPageAction(Action.REFRESH, NO_PLAYER, "");
     }
 
-    public static void encode(C2S_StartPageAction msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private static void encode(C2S_StartPageAction msg, RegistryFriendlyByteBuf buf) {
         buf.writeEnum(msg.action);
         buf.writeUUID(msg.playerId == null ? NO_PLAYER : msg.playerId);
         buf.writeUtf(msg.teamName == null ? "" : msg.teamName, 64);
     }
 
-    public static C2S_StartPageAction decode(FriendlyByteBuf buf) {
+    private static C2S_StartPageAction decode(RegistryFriendlyByteBuf buf) {
         return new C2S_StartPageAction(buf.readEnum(Action.class), buf.readUUID(), buf.readUtf(64));
     }
 
-    public static void handle(C2S_StartPageAction msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) {
-                return;
-            }
+    public static void handle(C2S_StartPageAction msg, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player)) return;
             runAction(player, msg);
             if (msg.action == Action.REFRESH) {
                 NetworkHandler.sendToPlayer(S2C_StartPageSnapshot.capture(player), player);
@@ -56,7 +56,6 @@ public record C2S_StartPageAction(Action action, UUID playerId, String teamName)
                 NetworkHandler.sendToPlayer(S2C_StartPageSnapshot.capture(online), online);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static void runAction(ServerPlayer player, C2S_StartPageAction msg) {

@@ -7,8 +7,6 @@ import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -27,7 +25,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Comparator;
 import java.util.Optional;
@@ -59,8 +56,8 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Blockb
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_ATTACHED_FACE, Direction.UP.get3DDataValue());
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_ATTACHED_FACE, Direction.UP.get3DDataValue());
     }
 
     @Override
@@ -115,11 +112,6 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Blockb
             tag.putUUID("Owner", ownerId);
         }
         tag.putInt("AttachedFace", attachedFace.get3DDataValue());
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public boolean isOwnedBy(UUID owner) {

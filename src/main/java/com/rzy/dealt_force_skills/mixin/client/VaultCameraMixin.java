@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Camera.class)
+@Mixin(value = Camera.class, remap = false)
 public abstract class VaultCameraMixin {
     @Shadow public abstract Vec3 getPosition();
     @Shadow protected abstract void setPosition(Vec3 position);

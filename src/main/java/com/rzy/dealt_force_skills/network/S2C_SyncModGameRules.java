@@ -1,16 +1,24 @@
 package com.rzy.dealt_force_skills.network;
 
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.registry.ModGameRules;
 import com.rzy.dealt_force_skills.config.DealtItemsHavocConfig;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-public final class S2C_SyncModGameRules {
+public final class S2C_SyncModGameRules implements CustomPacketPayload {
+    public static final Type<S2C_SyncModGameRules> TYPE = new Type<>(
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_sync_mod_game_rules"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2C_SyncModGameRules> STREAM_CODEC = StreamCodec.of(
+            S2C_SyncModGameRules::encode, S2C_SyncModGameRules::decode);
+
     private final boolean armorSpecialsEnabled;
     private final boolean rebuyEnabled;
     private final boolean havocValueVisible;
@@ -27,7 +35,12 @@ public final class S2C_SyncModGameRules {
         this.havocVariantPrices = List.copyOf(havocVariantPrices);
     }
 
-    public static void encode(S2C_SyncModGameRules msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private static void encode(RegistryFriendlyByteBuf buf, S2C_SyncModGameRules msg) {
         buf.writeBoolean(msg.armorSpecialsEnabled);
         buf.writeBoolean(msg.rebuyEnabled);
         buf.writeBoolean(msg.havocValueVisible);
@@ -35,12 +48,12 @@ public final class S2C_SyncModGameRules {
         for (long price : msg.havocPrices) buf.writeVarLong(price);
         buf.writeVarInt(msg.havocVariantPrices.size());
         for (DealtItemsHavocConfig.VariantPrice variant : msg.havocVariantPrices) {
-            buf.writeItem(variant.stack());
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, variant.stack());
             buf.writeVarLong(variant.price());
         }
     }
 
-    public static S2C_SyncModGameRules decode(FriendlyByteBuf buf) {
+    private static S2C_SyncModGameRules decode(RegistryFriendlyByteBuf buf) {
         boolean armorSpecialsEnabled = buf.readBoolean();
         boolean rebuyEnabled = buf.readBoolean();
         boolean havocValueVisible = buf.readBoolean();
@@ -54,17 +67,16 @@ public final class S2C_SyncModGameRules {
         }
         List<DealtItemsHavocConfig.VariantPrice> variants = new ArrayList<>(variantCount);
         for (int i = 0; i < variantCount; i++) {
-            ItemStack stack = buf.readItem();
+            ItemStack stack = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
             variants.add(new DealtItemsHavocConfig.VariantPrice(stack, buf.readVarLong()));
         }
         return new S2C_SyncModGameRules(armorSpecialsEnabled, rebuyEnabled, havocValueVisible, havocPrices, variants);
     }
 
-    public static void handle(S2C_SyncModGameRules msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    public static void handle(S2C_SyncModGameRules msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             ModGameRules.acceptClientSync(msg.armorSpecialsEnabled, msg.rebuyEnabled, msg.havocValueVisible);
             DealtItemsHavocConfig.acceptClientPrices(msg.havocPrices, msg.havocVariantPrices);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

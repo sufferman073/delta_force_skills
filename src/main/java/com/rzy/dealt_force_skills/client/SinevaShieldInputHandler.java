@@ -2,9 +2,9 @@ package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import com.rzy.dealt_force_skills.client.character.ClientSinevaHudState;
-import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
 import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
+import com.rzy.dealt_force_skills.client.character.ClientSinevaHudState;
 import com.rzy.dealt_force_skills.client.visual.ClientSinevaVisualState;
 import com.rzy.dealt_force_skills.stamina.StaminaManager;
 import com.rzy.dealt_force_skills.stamina.StaminaRules;
@@ -13,20 +13,20 @@ import com.rzy.dealt_force_skills.network.C2S_SinevaShieldCharge;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class SinevaShieldInputHandler {
     private static int lockedHotbarSlot = -1;
 
@@ -43,10 +43,14 @@ public final class SinevaShieldInputHandler {
             return;
         }
 
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null) {
+            return;
+        }
+
         event.setCanceled(true);
 
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.screen != null || event.getAction() != GLFW.GLFW_PRESS) {
+        if (event.getAction() != GLFW.GLFW_PRESS) {
             return;
         }
 
@@ -59,6 +63,9 @@ public final class SinevaShieldInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!shouldBlockVanillaInventory()) {
             return;
         }
@@ -79,19 +86,22 @@ public final class SinevaShieldInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (shouldBlockVanillaInventory()) {
             event.setCanceled(true);
         }
     }
 
     public static void tick(Minecraft minecraft) {
-        if (minecraft.player == null || !shouldBlockVanillaInventory()) {
+        if (minecraft.screen != null) {
             lockedHotbarSlot = -1;
             return;
         }
-
-        if (minecraft.screen instanceof AbstractContainerScreen<?>) {
-            minecraft.setScreen(null);
+        if (minecraft.player == null || !shouldBlockVanillaInventory()) {
+            lockedHotbarSlot = -1;
+            return;
         }
 
         releaseBlockedKey(minecraft.options.keyAttack);
@@ -120,7 +130,7 @@ public final class SinevaShieldInputHandler {
             return false;
         }
         Minecraft minecraft = Minecraft.getInstance();
-        return minecraft.screen == null || minecraft.screen instanceof AbstractContainerScreen<?>;
+        return minecraft.screen == null;
     }
 
     private static boolean isBlockedMouseButton(int button) {
@@ -155,7 +165,7 @@ public final class SinevaShieldInputHandler {
             return;
         }
 
-        ClientSinevaHudState.startChargeCooldown(10);
+        ClientSinevaHudState.startChargeCooldown(20);
         ClientSinevaVisualState.startChargeAnimation();
         NetworkHandler.sendToServer(new C2S_SinevaShieldCharge());
     }

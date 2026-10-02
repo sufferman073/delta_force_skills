@@ -6,17 +6,18 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class WebbedEffect extends MobEffect {
     public WebbedEffect() {
-        super(MobEffectCategory.NEUTRAL, 0xEDEDED);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         entity.setDeltaMovement(0.0D, Math.min(0.0D, entity.getDeltaMovement().y), 0.0D);
         entity.hurtMarked = true;
+        return true;
     }
 }

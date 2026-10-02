@@ -2,8 +2,6 @@ package com.rzy.dealt_force_skills.entity;
 
 import com.rzy.dealt_force_skills.character.tempest.TempestStateManager;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -12,7 +10,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
@@ -41,9 +38,9 @@ public final class TempestRecallAnchorEntity extends Entity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_OWNER_ID, -1);
-        entityData.define(DATA_RECALLING, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_OWNER_ID, -1);
+        builder.define(DATA_RECALLING, false);
     }
 
     @Override
@@ -79,11 +76,6 @@ public final class TempestRecallAnchorEntity extends Entity {
         if (ownerUuid != null) {
             tag.putUUID("Owner", ownerUuid);
         }
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public int ownerEntityId() {

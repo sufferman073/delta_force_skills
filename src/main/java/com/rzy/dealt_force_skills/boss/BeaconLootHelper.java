@@ -2,17 +2,12 @@ package com.rzy.dealt_force_skills.boss;
 
 import com.rzy.dealt_force_skills.config.DealtBossesConfig;
 import com.rzy.dealt_force_skills.registry.ModItems;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.TagParser;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 public final class BeaconLootHelper {
-    private static final String M1911_SNBT =
-            "{Count:1b,id:\"tacz:modern_kinetic_gun\",tag:{AttachmentEXTENDED_MAG:{Count:1b,id:\"tacz:attachment\",tag:{AttachmentId:\"tacz:light_extended_mag_3\"}},AttachmentMUZZLE:{Count:1b,id:\"tacz:attachment\",tag:{AttachmentId:\"tacz:muzzle_silencer_mirage\"}},GunCurrentAmmoCount:12,GunFireMode:\"SEMI\",GunId:\"tacz:m1911\",HasBulletInBarrel:1b}}";
-
     private BeaconLootHelper() {
     }
 
@@ -21,13 +16,8 @@ public final class BeaconLootHelper {
     }
 
     public static ItemStack createM1911Reward() {
-        try {
-            CompoundTag tag = TagParser.parseTag(M1911_SNBT);
-            ItemStack stack = ItemStack.of(tag);
-            return stack.isEmpty() ? ItemStack.EMPTY : stack;
-        } catch (Exception ignored) {
-            return ItemStack.EMPTY;
-        }
+        // 1.21 uses DataComponents; reuse the same builder as the boss loadout.
+        return BeaconTaczEquipment.createM1911();
     }
 
     public static void dropAt(ServerLevel level, Vec3 pos, int looting) {

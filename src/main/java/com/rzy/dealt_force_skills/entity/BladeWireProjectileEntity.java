@@ -4,8 +4,6 @@ import com.rzy.dealt_force_skills.character.sineva.SinevaSkills;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -20,7 +18,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 public class BladeWireProjectileEntity extends Projectile implements ItemSupplier {
     private int bounces;
@@ -40,7 +38,7 @@ public class BladeWireProjectileEntity extends Projectile implements ItemSupplie
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -78,11 +76,6 @@ public class BladeWireProjectileEntity extends Projectile implements ItemSupplie
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.putInt("Bounces", bounces);
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private void handleBlockHit(BlockHitResult hit) {

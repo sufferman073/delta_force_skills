@@ -8,12 +8,13 @@ import net.minecraft.world.entity.monster.Enemy;
 
 public class ToxikTearGasBlindEffect extends MobEffect {
     public ToxikTearGasBlindEffect() {
-        super(MobEffectCategory.NEUTRAL, 0x48F0D8);
+        super(MobEffectCategory.NEUTRAL, 0xFFFFFF);
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         suppressHostileTargeting(entity);
+        return true;
     }
 
     public static void suppressHostileTargeting(LivingEntity entity) {
@@ -31,7 +32,7 @@ public class ToxikTearGasBlindEffect extends MobEffect {
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return true;
     }
 }

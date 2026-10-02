@@ -3,11 +3,27 @@ package com.rzy.dealt_force_skills.network;
 import com.rzy.dealt_force_skills.character.manba.ManbaStateManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_ManbaLoadout implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_ManbaLoadout> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_manba_loadout"));
 
-public class C2S_ManbaLoadout {
+    public static final StreamCodec<FriendlyByteBuf, C2S_ManbaLoadout> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_ManbaLoadout::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private final int[] talents;
     private final int[] bulbs;
     private final int lens;
@@ -35,14 +51,13 @@ public class C2S_ManbaLoadout {
         return new C2S_ManbaLoadout(talents, bulbs, lens, batteries);
     }
 
-    public static void handle(C2S_ManbaLoadout msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_ManbaLoadout msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player != null) {
                 ManbaStateManager.configure(player, msg.talents, msg.bulbs, msg.lens, msg.batteries);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static void writeArray(FriendlyByteBuf buf, int[] values) {

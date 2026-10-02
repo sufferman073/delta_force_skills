@@ -1,6 +1,5 @@
 package com.rzy.dealt_force_skills.client;
 
-import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -11,10 +10,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraft.world.scores.Team;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,13 +19,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Mod-internal teammate position exposure (client-only).
- *
- * <p>Unlike vanilla spectator outlines or server glowing tags, this only runs on the
- * receiving client using entity ids pushed by the server for <em>that client's team</em>.
- * Outline color follows the team's ChatFormatting color (never forced white).</p>
+ * Mod-internal teammate position exposure (client-only). Ticked from ClientEvents.
  */
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ClientTeammateRevealState {
     private static final EntityDataAccessor<Byte> SHARED_FLAGS = new EntityDataAccessor<>(0, EntityDataSerializers.BYTE);
     private static final int GLOWING_FLAG = 6;
@@ -50,12 +41,11 @@ public final class ClientTeammateRevealState {
         }
         ClientTeammateRevealState.teamColorRgb = teamColorRgb == 0 ? 0x55FFFF : teamColorRgb;
         outlineTeamName = OUTLINE_TEAM_PREFIX + Integer.toHexString(ClientTeammateRevealState.teamColorRgb & 0xFFFFFF);
-        refreshGlows(Minecraft.getInstance());
+        tick();
     }
 
     public static void clear() {
-        Minecraft minecraft = Minecraft.getInstance();
-        restoreAll(minecraft);
+        restoreAll(Minecraft.getInstance());
         ACTIVE_IDS.clear();
     }
 
@@ -67,11 +57,7 @@ public final class ClientTeammateRevealState {
         return ACTIVE_IDS.contains(entityId);
     }
 
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
+    public static void tick() {
         refreshGlows(Minecraft.getInstance());
     }
 
@@ -121,13 +107,12 @@ public final class ClientTeammateRevealState {
             team = scoreboard.addPlayerTeam(outlineTeamName);
         }
         ChatFormatting formatting = closestFormatting(rgb);
-        // Prefer a non-white team color so players can tell teams apart.
         if (formatting == ChatFormatting.WHITE || formatting == ChatFormatting.RESET) {
             formatting = ChatFormatting.AQUA;
         }
         team.setColor(formatting);
         team.setSeeFriendlyInvisibles(true);
-        team.setNameTagVisibility(net.minecraft.world.scores.Team.Visibility.ALWAYS);
+        team.setNameTagVisibility(Team.Visibility.ALWAYS);
     }
 
     private static void applyOutlineTeam(ClientLevel level, Entity entity) {
@@ -156,7 +141,7 @@ public final class ClientTeammateRevealState {
         if (current == outlineTeam) {
             scoreboard.removePlayerFromTeam(entry, outlineTeam);
         }
-        if (original != null && !original.isEmpty()) {
+        if (!original.isEmpty()) {
             PlayerTeam restore = scoreboard.getPlayerTeam(original);
             if (restore != null && scoreboard.getPlayersTeam(entry) == null) {
                 scoreboard.addPlayerToTeam(entry, restore);
@@ -201,11 +186,7 @@ public final class ClientTeammateRevealState {
                 continue;
             }
             Integer color = formatting.getColor();
-            if (color == null) {
-                continue;
-            }
-            // Skip pure white — it collides with many UI/highlight colors.
-            if (formatting == ChatFormatting.WHITE) {
+            if (color == null || formatting == ChatFormatting.WHITE) {
                 continue;
             }
             int cr = (color >> 16) & 0xFF;

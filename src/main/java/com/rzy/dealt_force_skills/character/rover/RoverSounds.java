@@ -10,7 +10,7 @@ public final class RoverSounds {
     public static final SoundEvent SMOKE_BOUNCE = com.rzy.dealt_force_skills.registry.ModSounds.ROVER_SMOKE_BOUNCE.get();
     public static final SoundEvent SMOKE_BURST = com.rzy.dealt_force_skills.registry.ModSounds.ROVER_SMOKE_BURST.get();
     public static final SoundEvent INJECTOR_EQUIP = com.rzy.dealt_force_skills.registry.ModSounds.ROVER_INJECTOR_EQUIP.get();
-    public static final SoundEvent INJECTOR_STOW = SoundEvents.CROSSBOW_LOADING_END;
+    public static final SoundEvent INJECTOR_STOW = SoundEvents.CROSSBOW_LOADING_END.value();
     public static final SoundEvent INJECTOR_MODE = com.rzy.dealt_force_skills.registry.ModSounds.ROVER_INJECTOR_MODE.get();
     public static final SoundEvent INJECTOR_FIRE = com.rzy.dealt_force_skills.registry.ModSounds.ROVER_INJECTOR_FIRE.get();
     public static final SoundEvent INJECTOR_BURST = com.rzy.dealt_force_skills.registry.ModSounds.ROVER_INJECTOR_BURST.get();

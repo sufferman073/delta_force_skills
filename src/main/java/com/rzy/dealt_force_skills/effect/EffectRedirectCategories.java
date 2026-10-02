@@ -3,6 +3,7 @@ package com.rzy.dealt_force_skills.effect;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -16,7 +17,7 @@ import java.util.Set;
  * character's effect should or should not be redirected back onto an attacker.
  *
  * <p>Lazily built on first access so it only touches {@link ModEffects} fields after the
- * registry has finished populating its {@code RegistryObject} instances.
+ * registry has finished populating its {@code DeferredHolder} instances.
  */
 public final class EffectRedirectCategories {
     private static Set<MobEffect> controlEffects;
@@ -95,8 +96,8 @@ public final class EffectRedirectCategories {
         return specialNegativeEffects;
     }
 
-    private static void add(Set<MobEffect> set, net.minecraftforge.registries.RegistryObject<MobEffect> holder) {
-        if (holder != null && holder.isPresent()) {
+    private static void add(Set<MobEffect> set, DeferredHolder<MobEffect, MobEffect> holder) {
+        if (holder != null && holder.isBound()) {
             set.add(holder.get());
         }
     }

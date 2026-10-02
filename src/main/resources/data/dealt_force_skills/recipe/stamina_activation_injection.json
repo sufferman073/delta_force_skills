@@ -1,0 +1,27 @@
+{
+    "type":  "minecraft:crafting_shapeless",
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:oe2_combat_stimulant"
+                        },
+                        {
+                            "item":  "dealt_force_skills:norepinephrine"
+                        },
+                        {
+                            "item":  "minecraft:glowstone_dust"
+                        },
+                        {
+                            "item":  "minecraft:glowstone_dust"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        },
+                        {
+                            "item":  "minecraft:redstone"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:stamina_activation_injection",
+                   "count":  3
+               }
+}

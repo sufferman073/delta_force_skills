@@ -28,6 +28,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.resources.ResourceLocation;
 
 public final class GizmoStateManager {
     public static volatile int SMOKE_MAX_CHARGES = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SMOKE_MAX_CHARGES", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.gizmo.gizmo_state_manager.smoke_max_charges", 2));
@@ -40,8 +41,8 @@ public final class GizmoStateManager {
     public static volatile int WEBBED_DURATION_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WEBBED_DURATION_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.gizmo.gizmo_state_manager.webbed_duration_ticks", 800));
     public static volatile int WEB_ESCAPE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WEB_ESCAPE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.gizmo.gizmo_state_manager.web_escape_ticks", 100));
     public static volatile double PASSIVE_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PASSIVE_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.gizmo.gizmo_state_manager.passive_radius", 8.0));
-    public static final UUID PASSIVE_MOVE_UUID = UUID.fromString("872ad489-74b0-4c30-a739-5cedda9b7c48");
-    public static final UUID PASSIVE_ATTACK_UUID = UUID.fromString("33338d13-a4fe-4db5-a62c-c0491e53ed6d");
+    public static final ResourceLocation PASSIVE_MOVE_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "gizmo_state_manager.passive_move");
+    public static final ResourceLocation PASSIVE_ATTACK_UUID = ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "gizmo_state_manager.passive_attack");
 
     private static final String ROOT_TAG = DealtForceSkillsMod.MODID + ".gizmo";
     private static final String WEB_ROOT_TAG = DealtForceSkillsMod.MODID + ".gizmo_web";
@@ -61,8 +62,7 @@ public final class GizmoStateManager {
     public static boolean isGizmo(Player player) {
         Optional<String> selected = CharacterSelectionManager.getSelectedCharacterId(player);
         return selected.isPresent() && ModCharacters.GIZMO_ID.equals(selected.get())
-                || com.rzy.dealt_force_skills.character.commander.CommanderStateManager
-                .inheritsRuntimeSource(player, ModCharacters.GIZMO_ID);
+                || CommanderStateManager.inheritsRuntimeSource(player, ModCharacters.GIZMO_ID);
     }
 
     public static void initializeIfNeeded(ServerPlayer player) {
@@ -191,7 +191,7 @@ public final class GizmoStateManager {
     }
 
     public static void tickWebbedEscape(ServerPlayer player) {
-        if (!player.hasEffect(ModEffects.WEBBED.get())) {
+        if (!player.hasEffect(ModEffects.WEBBED)) {
             clearWebControl(player);
             return;
         }
@@ -202,7 +202,7 @@ public final class GizmoStateManager {
                 : 0;
         tag.putInt(WEB_ESCAPE_PROGRESS, progress);
         if (progress >= WEB_ESCAPE_TICKS) {
-            player.removeEffect(ModEffects.WEBBED.get());
+            player.removeEffect(ModEffects.WEBBED);
             clearWebControl(player);
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.gizmo.webbed_escaped"), true);
         }
@@ -294,21 +294,21 @@ public final class GizmoStateManager {
         boolean hasAttack = attack.getModifier(PASSIVE_ATTACK_UUID) != null;
         if (active) {
             double bonus = positionDefense ? 0.3D : 0.1D;
-            if (hasMove && Math.abs(move.getModifier(PASSIVE_MOVE_UUID).getAmount() - bonus) > 0.0001D) {
+            if (hasMove && Math.abs(move.getModifier(PASSIVE_MOVE_UUID).amount() - bonus) > 0.0001D) {
                 move.removeModifier(PASSIVE_MOVE_UUID);
                 hasMove = false;
             }
-            if (hasAttack && Math.abs(attack.getModifier(PASSIVE_ATTACK_UUID).getAmount() - bonus) > 0.0001D) {
+            if (hasAttack && Math.abs(attack.getModifier(PASSIVE_ATTACK_UUID).amount() - bonus) > 0.0001D) {
                 attack.removeModifier(PASSIVE_ATTACK_UUID);
                 hasAttack = false;
             }
             if (!hasMove) {
-                move.addTransientModifier(new AttributeModifier(PASSIVE_MOVE_UUID, "gizmo_passive_timeflow_move", bonus,
-                        AttributeModifier.Operation.MULTIPLY_TOTAL));
+                move.addTransientModifier(new AttributeModifier(PASSIVE_MOVE_UUID, bonus,
+                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
             }
             if (!hasAttack) {
-                attack.addTransientModifier(new AttributeModifier(PASSIVE_ATTACK_UUID, "gizmo_passive_timeflow_attack", bonus,
-                        AttributeModifier.Operation.MULTIPLY_TOTAL));
+                attack.addTransientModifier(new AttributeModifier(PASSIVE_ATTACK_UUID, bonus,
+                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
             }
         } else {
             if (hasMove) {

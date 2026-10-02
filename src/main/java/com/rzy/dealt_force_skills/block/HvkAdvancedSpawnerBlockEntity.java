@@ -4,6 +4,8 @@ import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_OpenHvkAdvancedSpawner;
 import com.rzy.dealt_force_skills.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -15,7 +17,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -30,7 +31,7 @@ public final class HvkAdvancedSpawnerBlockEntity extends BlockEntity {
     public static final String SPAWNER_Z = "HvkSpawnerZ";
     public static final String ACTIVITY_RANGE = "HvkSpawnerActivityRange";
 
-    private ResourceLocation entityId = new ResourceLocation("minecraft", "zombie");
+    private ResourceLocation entityId = ResourceLocation.fromNamespaceAndPath("minecraft", "zombie");
     private int spawnInterval = 600;
     private int spawnCount = 1;
     private int livingLimit = 5;
@@ -92,7 +93,7 @@ public final class HvkAdvancedSpawnerBlockEntity extends BlockEntity {
             BlockPos target = findSpawnPosition(level, mob);
             mob.moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D,
                     level.random.nextFloat() * 360.0F, 0.0F);
-            mob.finalizeSpawn(level, level.getCurrentDifficultyAt(target), MobSpawnType.SPAWNER, null, null);
+            mob.finalizeSpawn(level, level.getCurrentDifficultyAt(target), MobSpawnType.SPAWNER, null);
             markGenerated(level, mob);
             if (level.addFreshEntity(mob)) {
                 generated.add(mob.getUUID());
@@ -137,7 +138,7 @@ public final class HvkAdvancedSpawnerBlockEntity extends BlockEntity {
     }
 
     private Mob createMob(ServerLevel level) {
-        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entityId);
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(entityId);
         Entity entity = type == null ? null : type.create(level);
         if (entity instanceof Mob mob) {
             return mob;
@@ -204,10 +205,7 @@ public final class HvkAdvancedSpawnerBlockEntity extends BlockEntity {
     }
 
     public boolean setEntityTypeFromEgg(EntityType<?> type, ServerLevel level) {
-        ResourceLocation registeredId = ForgeRegistries.ENTITY_TYPES.getKey(type);
-        if (registeredId == null) {
-            return false;
-        }
+        ResourceLocation registeredId = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         Entity probe = type.create(level);
         boolean mobType = probe instanceof Mob;
         if (probe != null) {
@@ -231,7 +229,7 @@ public final class HvkAdvancedSpawnerBlockEntity extends BlockEntity {
             return false;
         }
         ResourceLocation parsed = ResourceLocation.tryParse(requestedEntityId);
-        EntityType<?> type = parsed == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(parsed);
+        EntityType<?> type = parsed == null ? null : BuiltInRegistries.ENTITY_TYPE.get(parsed);
         if (type == null) {
             return false;
         }
@@ -256,8 +254,8 @@ public final class HvkAdvancedSpawnerBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         tag.putString("EntityId", entityId.toString());
         tag.putInt("SpawnInterval", spawnInterval);
         tag.putInt("SpawnCount", spawnCount);
@@ -277,10 +275,10 @@ public final class HvkAdvancedSpawnerBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         ResourceLocation parsed = ResourceLocation.tryParse(tag.getString("EntityId"));
-        entityId = parsed == null ? new ResourceLocation("minecraft", "zombie") : parsed;
+        entityId = parsed == null ? ResourceLocation.fromNamespaceAndPath("minecraft", "zombie") : parsed;
         spawnInterval = Math.max(1, tag.contains("SpawnInterval") ? tag.getInt("SpawnInterval") : 600);
         spawnCount = Math.max(0, tag.contains("SpawnCount") ? tag.getInt("SpawnCount") : 1);
         livingLimit = Math.max(-1, tag.contains("LivingLimit") ? tag.getInt("LivingLimit") : 5);

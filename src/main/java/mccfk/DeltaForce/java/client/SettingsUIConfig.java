@@ -1,7 +1,7 @@
 package mccfk.DeltaForce.java.client;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

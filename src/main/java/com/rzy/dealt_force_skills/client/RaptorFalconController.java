@@ -10,17 +10,18 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class RaptorFalconController {
     private static final int MISSING_ENTITY_TIMEOUT_TICKS = 40;
     private static final int RESTORE_FREEZE_TICKS = 10;
@@ -153,7 +154,10 @@ public final class RaptorFalconController {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
-        if (!isControlling() || !localPlayerAlive()) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
+        if (!isControlling()) {
             return;
         }
         event.setCanceled(true);
@@ -169,6 +173,9 @@ public final class RaptorFalconController {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (isControlling()) {
             event.setCanceled(true);
         }
@@ -176,6 +183,9 @@ public final class RaptorFalconController {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (Minecraft.getInstance().screen != null) {
+            return;
+        }
         if (!isControlling()) {
             return;
         }
@@ -190,17 +200,9 @@ public final class RaptorFalconController {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onScreenOpening(ScreenEvent.Opening event) {
-        if (isControlling() && localPlayerAlive() && event.getNewScreen() != null
-                && !(event.getNewScreen() instanceof net.minecraft.client.gui.screens.DeathScreen)) {
-            event.setCanceled(true);
+        if (isControlling() && event.getNewScreen() != null) {
+            stop(true);
         }
-    }
-
-    private static boolean localPlayerAlive() {
-        Minecraft minecraft = Minecraft.getInstance();
-        return minecraft.player != null
-                && minecraft.player.isAlive()
-                && !com.rzy.dealt_force_skills.compat.PlayerReviveCompat.isBleeding(minecraft.player);
     }
 
     @SubscribeEvent

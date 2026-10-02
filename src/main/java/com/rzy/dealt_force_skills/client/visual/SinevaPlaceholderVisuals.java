@@ -27,16 +27,17 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.client.event.RenderArmEvent;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.RenderArmEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.ModList;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,15 +47,15 @@ import java.util.Locale;
 import java.util.Set;
 import org.joml.Matrix4f;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class SinevaPlaceholderVisuals {
     private static final ItemStack BLADE_WIRE_PLACEHOLDER = new ItemStack(Items.COBWEB);
     private static final ResourceLocation BLADE_WIRE_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "sineva_blade_wire_core");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "sineva_blade_wire_core");
     private static final ResourceLocation GRAPPLE_GUN_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "sineva_grapple_gun");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "sineva_grapple_gun");
     private static final ResourceLocation RIOT_SHIELD_MODEL =
-            new ResourceLocation(DealtForceSkillsMod.MODID, "sineva_riot_shield");
+            ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "sineva_riot_shield");
     private static final String GRAPPLE_GUN_KEY = "sineva_grapple_gun";
     private static final int OUTER_R = 10;
     private static final int OUTER_G = 12;
@@ -148,8 +149,8 @@ public final class SinevaPlaceholderVisuals {
 
         // Render the shield first so the offhand grapple gun remains visible over its edge.
         if (shieldMode) {
-            float bash = ClientSinevaVisualState.bashProgress(event.getPartialTick());
-            float charge = ClientSinevaVisualState.chargeProgress(event.getPartialTick());
+            float bash = ClientSinevaVisualState.bashProgress(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
+            float charge = ClientSinevaVisualState.chargeProgress(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
             float thrust = Mth.sin(bash * Mth.PI) * 0.08f + charge * 0.05f;
 
             poseStack.pushPose();
@@ -369,7 +370,7 @@ public final class SinevaPlaceholderVisuals {
     }
 
     private static void renderYsmWorldFallbackShield(RenderLevelStageEvent event, Player player, MultiBufferSource buffer) {
-        float partialTick = event.getPartialTick();
+        float partialTick = com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick());
         double x = Mth.lerp(partialTick, player.xOld, player.getX()) - event.getCamera().getPosition().x;
         double y = Mth.lerp(partialTick, player.yOld, player.getY()) - event.getCamera().getPosition().y;
         double z = Mth.lerp(partialTick, player.zOld, player.getZ()) - event.getCamera().getPosition().z;
@@ -396,7 +397,7 @@ public final class SinevaPlaceholderVisuals {
     }
 
     private static void renderYsmWorldFallbackGrapple(RenderLevelStageEvent event, Player player, MultiBufferSource buffer) {
-        float partialTick = event.getPartialTick();
+        float partialTick = com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick());
         Vec3 muzzle = GrappleHookEntity.ropeOrigin(player, partialTick)
                 .subtract(event.getCamera().getPosition());
         Vec3 look = player.getViewVector(partialTick);
@@ -438,7 +439,7 @@ public final class SinevaPlaceholderVisuals {
     }
 
     public static void registerLayers(EntityRenderersEvent.AddLayers event) {
-        for (String skin : event.getSkins()) {
+        for (net.minecraft.client.resources.PlayerSkin.Model skin : event.getSkins()) {
             PlayerRenderer renderer = event.getSkin(skin);
             if (renderer != null) {
                 renderer.addLayer(new SinevaShieldLayer(renderer));
@@ -579,7 +580,7 @@ public final class SinevaPlaceholderVisuals {
         boolean rendered = BlockbenchAnimatedModelRenderer.render(
                 RIOT_SHIELD_MODEL,
                 ClientSinevaVisualState.shieldAnimation(),
-                ClientSinevaVisualState.shieldAnimationSeconds(Minecraft.getInstance().getFrameTime()),
+                ClientSinevaVisualState.shieldAnimationSeconds(com.rzy.dealt_force_skills.client.ClientRenderCompat.frameTime(Minecraft.getInstance())),
                 poseStack,
                 buffer,
                 packedLight,
@@ -694,18 +695,18 @@ public final class SinevaPlaceholderVisuals {
         }
 
         Matrix4f matrix = poseStack.last().pose();
-        consumer.vertex(matrix, left, bottom, z).color(r, g, b, a).endVertex();
-        consumer.vertex(matrix, right, bottom, z).color(r, g, b, a).endVertex();
-        consumer.vertex(matrix, right, top, z).color(r, g, b, a).endVertex();
-        consumer.vertex(matrix, left, top, z).color(r, g, b, a).endVertex();
+        consumer.addVertex(matrix, left, bottom, z).setColor(r, g, b, a);
+        consumer.addVertex(matrix, right, bottom, z).setColor(r, g, b, a);
+        consumer.addVertex(matrix, right, top, z).setColor(r, g, b, a);
+        consumer.addVertex(matrix, left, top, z).setColor(r, g, b, a);
 
-        consumer.vertex(matrix, left, top, z).color(r, g, b, a).endVertex();
-        consumer.vertex(matrix, right, top, z).color(r, g, b, a).endVertex();
-        consumer.vertex(matrix, right, bottom, z).color(r, g, b, a).endVertex();
-        consumer.vertex(matrix, left, bottom, z).color(r, g, b, a).endVertex();
+        consumer.addVertex(matrix, left, top, z).setColor(r, g, b, a);
+        consumer.addVertex(matrix, right, top, z).setColor(r, g, b, a);
+        consumer.addVertex(matrix, right, bottom, z).setColor(r, g, b, a);
+        consumer.addVertex(matrix, left, bottom, z).setColor(r, g, b, a);
     }
 
-    @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+    @EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
     public static final class ModBus {
         private ModBus() {
         }

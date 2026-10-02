@@ -3,7 +3,7 @@ package com.rzy.dealt_force_skills.compat;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.rzy.dealt_force_skills.item.DfsItemQuality;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

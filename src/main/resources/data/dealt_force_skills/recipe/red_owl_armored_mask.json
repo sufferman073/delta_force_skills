@@ -1,0 +1,29 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:high_output_crushing_pliers"
+                        },
+                        {
+                            "item":  "dealt_force_skills:raw_wood_plank"
+                        },
+                        {
+                            "item":  "dealt_force_skills:raw_wood_plank"
+                        },
+                        {
+                            "item":  "minecraft:glass"
+                        },
+                        {
+                            "item":  "minecraft:glass"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:red_owl_armored_mask"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

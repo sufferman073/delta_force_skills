@@ -104,7 +104,7 @@ public final class CatDadStateManager {
     public static void clearState(Player player) {
         player.getPersistentData().remove(ROOT_TAG);
         HISS_TARGETS.remove(player.getUUID());
-        player.removeEffect(ModEffects.CATDAD_DOWNED.get());
+        player.removeEffect(ModEffects.CATDAD_DOWNED);
     }
 
     public static void clearRuntimeOnDeath(ServerPlayer player) {
@@ -269,7 +269,7 @@ public final class CatDadStateManager {
         tag.putInt(SELF_RESCUE_PROGRESS, 0);
         player.setHealth(1.0F);
         player.stopUsingItem();
-        player.addEffect(new MobEffectInstance(ModEffects.CATDAD_DOWNED.get(), DOWNED_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.catdad.cat_dad_state_manager.effect.catdad_downed.0.amplifier", 0), false, true, true));
+        player.addEffect(new MobEffectInstance(ModEffects.CATDAD_DOWNED, DOWNED_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.catdad.cat_dad_state_manager.effect.catdad_downed.0.amplifier", 0), false, true, true));
         play(player, ModSounds.CATDAD_TRUCK_SELF_DOWNED.get(), 1.0F, 0.92F);
     }
 
@@ -361,12 +361,12 @@ public final class CatDadStateManager {
             default -> 0;
         };
         if (stage == 1) {
-            target.addEffect(new MobEffectInstance(ModEffects.CATDAD_HISS_SLOW.get(),
+            target.addEffect(new MobEffectInstance(ModEffects.CATDAD_HISS_SLOW,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.catdad.cat_dad_state_manager.effect.catdad_hiss_slow.1.duration_ticks", 15 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.catdad.cat_dad_state_manager.effect.catdad_hiss_slow.1.amplifier", 0), false, true, true), player);
             rememberHissTarget(player, target);
             DfsAchievements.recordCatDadHissStageHit(player, target, stage);
         } else if (stage == 2) {
-            target.addEffect(new MobEffectInstance(ModEffects.CATDAD_ARMOR_REDUCED.get(),
+            target.addEffect(new MobEffectInstance(ModEffects.CATDAD_ARMOR_REDUCED,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.catdad.cat_dad_state_manager.effect.catdad_armor_reduced.2.duration_ticks", 9 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.catdad.cat_dad_state_manager.effect.catdad_armor_reduced.2.amplifier", 0), false, true, true), player);
             rememberHissTarget(player, target);
             DfsAchievements.recordCatDadHissStageHit(player, target, stage);
@@ -396,7 +396,7 @@ public final class CatDadStateManager {
         double attack = Math.max(1.0D, player.getAttributeValue(Attributes.ATTACK_DAMAGE));
         int hits = 0;
         for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, search,
-                target -> target.isAlive() && target != player && !target.isSpectator())) {
+                target -> TargetingUtil.isHostileLivingFor(player, target))) {
             Vec3 offset = target.getBoundingBox().getCenter().subtract(player.getEyePosition());
             double forward = offset.x * look.x + offset.z * look.z;
             if (forward < 0.0D || forward > EMPOWERED_STRIKE_RANGE) {
@@ -480,8 +480,8 @@ public final class CatDadStateManager {
         long until = tag.getLong(DOWNED_UNTIL);
         if (until <= 0L) {
             tag.putInt(SELF_RESCUE_PROGRESS, 0);
-            if (player.hasEffect(ModEffects.CATDAD_DOWNED.get())) {
-                player.removeEffect(ModEffects.CATDAD_DOWNED.get());
+            if (player.hasEffect(ModEffects.CATDAD_DOWNED)) {
+                player.removeEffect(ModEffects.CATDAD_DOWNED);
             }
             return;
         }
@@ -490,8 +490,8 @@ public final class CatDadStateManager {
             expireDowned(player);
             return;
         }
-        if (!player.hasEffect(ModEffects.CATDAD_DOWNED.get())) {
-            player.addEffect(new MobEffectInstance(ModEffects.CATDAD_DOWNED.get(), remaining, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.catdad.cat_dad_state_manager.effect.catdad_downed.3.amplifier", 0), false, true, true));
+        if (!player.hasEffect(ModEffects.CATDAD_DOWNED)) {
+            player.addEffect(new MobEffectInstance(ModEffects.CATDAD_DOWNED, remaining, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.catdad.cat_dad_state_manager.effect.catdad_downed.3.amplifier", 0), false, true, true));
         }
         player.stopUsingItem();
         player.setSprinting(false);
@@ -510,7 +510,7 @@ public final class CatDadStateManager {
         if (progress >= SELF_RESCUE_TICKS) {
             tag.putLong(DOWNED_UNTIL, 0L);
             tag.putInt(SELF_RESCUE_PROGRESS, 0);
-            player.removeEffect(ModEffects.CATDAD_DOWNED.get());
+            player.removeEffect(ModEffects.CATDAD_DOWNED);
             float minimumHealth = player.getMaxHealth() * 0.30F;
             float restoredHealth = Math.max(tag.getFloat(SNAPSHOT_HEALTH), minimumHealth);
             player.setHealth(Math.max(1.0F, Math.min(player.getMaxHealth(), restoredHealth)));
@@ -522,7 +522,7 @@ public final class CatDadStateManager {
         CompoundTag tag = data(player);
         tag.putLong(DOWNED_UNTIL, 0L);
         tag.putInt(SELF_RESCUE_PROGRESS, 0);
-        player.removeEffect(ModEffects.CATDAD_DOWNED.get());
+        player.removeEffect(ModEffects.CATDAD_DOWNED);
         player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
     }
 
@@ -619,8 +619,8 @@ public final class CatDadStateManager {
         for (UUID targetId : targets) {
             Entity entity = player.serverLevel().getEntity(targetId);
             if (entity instanceof LivingEntity living) {
-                living.removeEffect(ModEffects.CATDAD_HISS_SLOW.get());
-                living.removeEffect(ModEffects.CATDAD_ARMOR_REDUCED.get());
+                living.removeEffect(ModEffects.CATDAD_HISS_SLOW);
+                living.removeEffect(ModEffects.CATDAD_ARMOR_REDUCED);
             }
         }
     }

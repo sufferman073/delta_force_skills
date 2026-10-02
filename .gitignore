@@ -135,3 +135,6 @@ secrets.*
 /src/**/*.swp
 /src/**/*.swo
 /src/**/*~
+
+# Preserve the NeoForge MDK template notice.
+!/TEMPLATE_LICENSE.txt

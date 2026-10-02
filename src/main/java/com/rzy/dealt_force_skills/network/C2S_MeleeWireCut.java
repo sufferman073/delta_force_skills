@@ -7,12 +7,29 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public class C2S_MeleeWireCut implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<C2S_MeleeWireCut> TYPE =
+            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "c2s_melee_wire_cut"));
 
-public class C2S_MeleeWireCut {
+    public static final StreamCodec<FriendlyByteBuf, C2S_MeleeWireCut> STREAM_CODEC =
+            StreamCodec.of(
+                    (buf, msg) -> encode(msg, buf),
+                    C2S_MeleeWireCut::decode
+            );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     private static final double DIRECT_TARGET_RANGE = 5.0D;
     private static final String LAST_SUCCESS_TICK = "dealt_force_skills.melee_wire_cut_packet_tick";
 
@@ -30,9 +47,9 @@ public class C2S_MeleeWireCut {
         return new C2S_MeleeWireCut(buf.readBoolean());
     }
 
-    public static void handle(C2S_MeleeWireCut msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(C2S_MeleeWireCut msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player == null || player.isSpectator() || !player.isAlive()
                     || !(player.level() instanceof ServerLevel level)) {
                 return;
@@ -64,13 +81,12 @@ public class C2S_MeleeWireCut {
                 damageCuttingWeapon(player);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static void damageCuttingWeapon(ServerPlayer player) {
         ItemStack weapon = player.getMainHandItem();
         if (!weapon.isEmpty() && !player.getAbilities().instabuild) {
-            weapon.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(InteractionHand.MAIN_HAND));
+            weapon.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
         }
     }
 }

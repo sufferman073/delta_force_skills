@@ -15,10 +15,10 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -27,7 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class FoxMusicClient {
     private record Key(UUID owner, UUID device) { }
     private static final Map<Key, FollowingSound> SOUNDS = new HashMap<>();
@@ -55,8 +55,7 @@ public final class FoxMusicClient {
         mc.getSoundManager().play(sound);
     }
 
-    @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != level) clear();
         SOUNDS.entrySet().removeIf(entry -> entry.getValue().isStopped());
@@ -98,7 +97,7 @@ public final class FoxMusicClient {
         @Override public WeighedSoundEvents resolve(SoundManager manager) {
             WeighedSoundEvents event = super.resolve(manager);
             if (event != null && sound != SoundManager.EMPTY_SOUND) {
-                sound = new Sound(sound.getLocation().toString(), sound.getVolume(), sound.getPitch(), sound.getWeight(),
+                sound = new Sound(sound.getLocation(), sound.getVolume(), sound.getPitch(), sound.getWeight(),
                         sound.getType(), true, false, 64);
             }
             return event;

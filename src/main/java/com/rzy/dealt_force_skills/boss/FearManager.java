@@ -19,7 +19,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
-import java.util.UUID;
 
 public final class FearManager {
     private static final String ROOT = "DealtForceFear";
@@ -28,8 +27,8 @@ public final class FearManager {
     private static final String CROSSED_50 = "Crossed50";
     private static final String CROSSED_80 = "Crossed80";
     private static final String LAST_SOURCE = "LastSourceUuid";
-    private static final UUID SPEED_MODIFIER_ID = UUID.fromString("a6b2c3d4-e5f6-4789-a012-3456789abcde");
-    private static final String SPEED_MODIFIER_NAME = "dealt_force_skills.fear_slow";
+    private static final net.minecraft.resources.ResourceLocation SPEED_MODIFIER_ID =
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "fear_slow");
 
     // Live config reads for /reload hot-apply.
     private static int decayIdleTicks() {
@@ -269,7 +268,7 @@ public final class FearManager {
         }
         double amount = -speedPenaltyPerPercent() * percents;
         movement.addTransientModifier(new AttributeModifier(
-                SPEED_MODIFIER_ID, SPEED_MODIFIER_NAME, amount, AttributeModifier.Operation.MULTIPLY_TOTAL));
+                SPEED_MODIFIER_ID, amount, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 
     private static void clearSpeedModifier(ServerPlayer player) {

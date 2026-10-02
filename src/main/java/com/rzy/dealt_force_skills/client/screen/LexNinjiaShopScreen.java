@@ -152,7 +152,7 @@ public final class LexNinjiaShopScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        graphics.fill(0, 0, width, height, 0xAA000000);
         int panelWidth = panelWidth();
         int panelHeight = panelHeight();
         int left = (width - panelWidth) / 2;
@@ -182,6 +182,10 @@ public final class LexNinjiaShopScreen extends Screen {
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    }
+
     private void renderEntry(GuiGraphics graphics, int panelLeft, int panelWidth, EntryLayout layout) {
         int row = layout.index() - scroll;
         int y = layout.y();
@@ -203,15 +207,15 @@ public final class LexNinjiaShopScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int maximumScroll = Math.max(0, visibleEntries().size() - 1);
-        int next = Math.max(0, Math.min(maximumScroll, scroll + (delta < 0.0D ? 1 : -1)));
+        int next = Math.max(0, Math.min(maximumScroll, scroll + (scrollY < 0.0D ? 1 : -1)));
         if (next != scroll) {
             scroll = next;
             rebuildWidgets();
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

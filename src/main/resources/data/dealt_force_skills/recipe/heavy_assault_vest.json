@@ -1,0 +1,32 @@
+{
+    "ingredients":  [
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        },
+                        {
+                            "item":  "dealt_force_skills:titanium_alloy"
+                        }
+                    ],
+    "result":  {
+                   "id":  "dealt_force_skills:heavy_assault_vest"
+               },
+    "type":  "minecraft:crafting_shapeless"
+}

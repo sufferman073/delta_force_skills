@@ -5,8 +5,8 @@ import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.item.DfsItemQuality;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.fml.ModList;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
@@ -29,8 +29,8 @@ public final class RarityCoreCompat {
 
         Map<Item, Integer> rarities = new LinkedHashMap<>();
         boolean tamarindLoaded = ModList.get().isLoaded(TAMARIND_MOD_ID);
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        for (Item item : BuiltInRegistries.ITEM) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
             if (id == null || !DealtForceSkillsMod.MODID.equals(id.getNamespace())
                     && !(tamarindLoaded && TAMARIND_MOD_ID.equals(id.getNamespace()))) {
                 continue;

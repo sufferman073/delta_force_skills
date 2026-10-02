@@ -31,8 +31,6 @@ import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -64,7 +62,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Comparator;
 import java.util.Optional;
@@ -319,12 +316,12 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        entityData.define(DATA_TYPE, SaeedGuardType.THUNDER.ordinal());
-        entityData.define(DATA_OWNER, Optional.empty());
-        entityData.define(DATA_TEMPORARY, false);
-        entityData.define(DATA_FIREEYE_DETONATING, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_TYPE, SaeedGuardType.THUNDER.ordinal());
+        builder.define(DATA_OWNER, Optional.empty());
+        builder.define(DATA_TEMPORARY, false);
+        builder.define(DATA_FIREEYE_DETONATING, false);
     }
 
     @Override
@@ -438,7 +435,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
     }
 
     @Override
-    protected void dropAllDeathLoot(DamageSource source) {
+    protected void dropAllDeathLoot(ServerLevel level, DamageSource source) {
         if (isStandaloneTrooper() && mobLootEnabled()) {
             dropStandaloneDeathLoot();
         }
@@ -465,11 +462,6 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
     @Override
     public HumanoidArm getMainArm() {
         return HumanoidArm.RIGHT;
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     @Override
@@ -1013,9 +1005,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
         if (isStandaloneTrooper() && (type == SaeedGuardType.HAKIM || type == SaeedGuardType.SHARP_EAGLE)) {
             ticks = Math.max(100, ticks);
         }
-        if (isStandaloneTrooper()) {
-            ticks = Math.max(1, ticks * 2);
-        }
+        if (isStandaloneTrooper()) ticks = Math.max(1, ticks * 2);
         if (this instanceof AsaraTrooperEntity trooper && trooper.role() == AsaraTrooperRole.GUARD_SOLDIER) {
             ticks = Math.max(1, (int) Math.ceil(ticks * 1.5D));
         }
@@ -1379,7 +1369,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
                     damage = target.getMaxHealth() * 0.05F;
                 }
                 target.invulnerableTime = 0;
-                target.setSecondsOnFire(type == SaeedGuardType.KARIM ? 8 : 5);
+                target.igniteForSeconds(type == SaeedGuardType.KARIM ? 8 : 5);
                 Vec3 motionBeforeFireDamage = isAsaraFlamethrower() && target instanceof Player
                         ? target.getDeltaMovement()
                         : null;
