@@ -48,7 +48,13 @@ public final class RoverStateManager {
     public static CompoundTag data(LivingEntity entity) {
         CompoundTag root = entity.getPersistentData();
         if (!root.contains(ROOT)) root.put(ROOT, new CompoundTag());
-        return root.getCompound(ROOT);
+        CompoundTag tag = root.getCompound(ROOT);
+        if (entity instanceof ServerPlayer player) {
+            SkillCooldownHelper.clampCooldown(player, tag, "SmokeNext", SMOKE_COOLDOWN);
+            SkillCooldownHelper.clampCooldown(player, tag, "InjectorNext", INJECTOR_COOLDOWN);
+            SkillCooldownHelper.clampCooldown(player, tag, "CoreUntil", CORE_COOLDOWN);
+        }
+        return tag;
     }
 
     public static boolean isRover(Player player) {

@@ -14,19 +14,32 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
  * Client-side mirror of {@link com.rzy.dealt_force_skills.climb.HvkClimbGlueManager}'s glued
  * positions for whichever dimension the local player currently occupies. Kept up to date by
  * {@link com.rzy.dealt_force_skills.network.S2C_SyncGluedPositions} (always a full replace);
- * read every tick by the client-side climbing mixin, so lookups must stay O(1).
+ * endpoint pairs are rendered by HvkGlueLineRenderer. The legacy climbing mixin is inactive.
  */
 @EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class HvkGlueClientCache {
     private static ResourceKey<Level> cachedDimension;
+    private static long[] pairs = new long[0];
+    public static long[] links(ResourceKey<Level> dimension) {
+        return dimension.equals(cachedDimension) ? pairs : new long[0];
+    }
+    private static final LongOpenHashSet RESTRICTED_ENDPOINTS = new LongOpenHashSet();
     private static final LongOpenHashSet GLUED_POSITIONS = new LongOpenHashSet();
 
     private HvkGlueClientCache() {
     }
 
-    public static void replaceAll(ResourceKey<Level> dimension, long[] positions) {
+    public static void replaceAll(ResourceKey<Level> dimension, long[] positions, boolean[] blockedLinks) {
+        if (positions.length % 2 != 0 || blockedLinks.length != positions.length / 2)
+            throw new IllegalArgumentException("Invalid glue link modes");
         cachedDimension = dimension;
+        pairs = positions.clone();
         GLUED_POSITIONS.clear();
+        RESTRICTED_ENDPOINTS.clear();
+        for (int i = 0; i < blockedLinks.length; i++) if (blockedLinks[i]) {
+            RESTRICTED_ENDPOINTS.add(positions[i * 2]);
+            RESTRICTED_ENDPOINTS.add(positions[i * 2 + 1]);
+        }
         for (long pos : positions) {
             GLUED_POSITIONS.add(pos);
         }
@@ -36,9 +49,15 @@ public final class HvkGlueClientCache {
         return cachedDimension != null && cachedDimension.equals(dimension) && GLUED_POSITIONS.contains(pos.asLong());
     }
 
+    public static boolean blocksSkills(ResourceKey<Level> dimension, BlockPos endpoint) {
+        return dimension.equals(cachedDimension) && RESTRICTED_ENDPOINTS.contains(endpoint.asLong());
+    }
+
     private static void clear() {
         cachedDimension = null;
+        pairs = new long[0];
         GLUED_POSITIONS.clear();
+        RESTRICTED_ENDPOINTS.clear();
     }
 
     @SubscribeEvent

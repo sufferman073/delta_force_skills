@@ -591,7 +591,13 @@ public final class NTwoStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, TRACKING_COOLDOWN_UNTIL, TRACKING_GRENADE_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, DEWAR_NEXT_RECHARGE, DEWAR_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 
     private static CompoundTag coldData(LivingEntity entity) {

@@ -846,7 +846,12 @@ public final class VlinderStateManager {
       if (!persistent.contains("dealt_force_skills.vlinder", 10)) {
          persistent.put("dealt_force_skills.vlinder", new CompoundTag());
       }
-
-      return persistent.getCompound("dealt_force_skills.vlinder");
+      CompoundTag tag = persistent.getCompound("dealt_force_skills.vlinder");
+      if (player instanceof ServerPlayer) {
+          SkillCooldownHelper.clampCooldown(player, tag, MEDICAL_NEXT_RECHARGE, MEDICAL_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, SMOKE_NEXT_RECHARGE, SMOKE_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+      }
+      return tag;
    }
 }

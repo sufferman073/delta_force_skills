@@ -625,6 +625,9 @@ public class SettingsScreen extends Screen {
         if (hoveredEntry != null && hoveredEntryPath != null
                 && System.currentTimeMillis() - hoverStartTime > HOVER_DELAY_MS) {
             String desc = hoveredEntry.description();
+            if (getCurrentProvider() instanceof DfsConfigProvider dfs && dfs.entry(hoveredEntry.path()) != null) {
+                desc = ConfigLabelHelper.entryTooltip(dfs.entry(hoveredEntry.path())).getString();
+            }
             if (desc == null || desc.isBlank()) {
                 desc = buildAutoDescription(hoveredEntry);
             }
@@ -946,7 +949,6 @@ public class SettingsScreen extends Screen {
             case INTEGER, LONG -> renderIntegerWidget(guiGraphics, mouseX, mouseY, entry, rowY, widgetLeft, widgetRight, false);
             case FLOAT, DOUBLE -> renderIntegerWidget(guiGraphics, mouseX, mouseY, entry, rowY, widgetLeft, widgetRight, true);
             case STRING -> renderStringWidget(guiGraphics, mouseX, mouseY, entry, rowY, widgetLeft, widgetRight);
-            case BUTTON -> renderButtonWidget(guiGraphics, mouseX, mouseY, entry, rowY, widgetLeft, widgetRight);
         }
 
         // 编辑光标（仅文本输入模式显示，滑块模式不显示）
@@ -1269,25 +1271,6 @@ public class SettingsScreen extends Screen {
     private void renderStringWidget(GuiGraphics guiGraphics, int mouseX, int mouseY,
                                     IConfigProvider.ConfigEntry entry, int rowY, int widgetLeft, int widgetRight) {
         renderTextInputWidget(guiGraphics, mouseX, mouseY, entry, rowY, widgetLeft, widgetRight);
-    }
-
-    // ======================== 按钮控件 ========================
-
-    private void renderButtonWidget(GuiGraphics guiGraphics, int mouseX, int mouseY,
-                                     IConfigProvider.ConfigEntry entry, int rowY, int widgetLeft, int widgetRight) {
-        int btnW = 100;
-        int btnH = 16;
-        int btnX = widgetRight - btnW;
-        int btnY = rowY + (entryRowHeight - btnH) / 2;
-
-        boolean hoverBtn = mouseX >= btnX && mouseX < btnX + btnW && mouseY >= btnY && mouseY < btnY + btnH;
-        int bg = hoverBtn ? 0xFF4488FF : 0xFF3366CC;
-        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, bg);
-
-        Component label = Component.translatable("config.deltaforce.layout.go_to_config.button");
-        int textW = this.font.width(label);
-        guiGraphics.drawString(this.font, label, btnX + (btnW - textW) / 2,
-                btnY + (btnH - this.font.lineHeight) / 2, 0xFFFFFFFF, false);
     }
 
     // ======================== 编辑光标 ========================
@@ -2522,10 +2505,6 @@ public class SettingsScreen extends Screen {
                             globalSearchFocused = false;
                             return true;
                         }
-                        case BUTTON -> {
-                            handleButtonClick(entry);
-                            return true;
-                        }
                     }
                 }
                 return true;
@@ -2542,15 +2521,6 @@ public class SettingsScreen extends Screen {
         String newValue = "true".equalsIgnoreCase(currentValue) ? "false" : "true";
         putDirty(path, newValue);
         if (provider != null) provider.setValue(path, newValue);
-        invalidateEntriesCache();
-    }
-
-    /** 处理按钮点击 */
-    private void handleButtonClick(IConfigProvider.ConfigEntry entry) {
-        String path = entry.path();
-        if ("layout.go_to_config".equals(path)) {
-            LayoutConfigScreen.open();
-        }
         invalidateEntriesCache();
     }
 

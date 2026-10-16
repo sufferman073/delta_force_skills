@@ -25,9 +25,6 @@ public final class DFClientConfig {
     @SerializedName("tab_y_offset")
     private int tabYOffset = 0;
 
-    @SerializedName("layout_custom_enabled")
-    private boolean layoutCustomEnabled = false;
-
     private DFClientConfig() {
     }
 
@@ -52,14 +49,6 @@ public final class DFClientConfig {
 
     public void setTabYOffset(int tabYOffset) {
         this.tabYOffset = tabYOffset;
-    }
-
-    public boolean isLayoutCustomEnabled() {
-        return layoutCustomEnabled;
-    }
-
-    public void setLayoutCustomEnabled(boolean layoutCustomEnabled) {
-        this.layoutCustomEnabled = layoutCustomEnabled;
     }
 
     public static DFClientConfig load() {

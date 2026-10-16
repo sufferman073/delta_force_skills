@@ -1548,7 +1548,12 @@ public final class GamblerStateManager {
                 durableRoot.put(ROOT_TAG, new CompoundTag());
             }
         }
-        return durableRoot.getCompound(ROOT_TAG);
+        CompoundTag tag = durableRoot.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, ACTIVE1_COOLDOWN_UNTIL, ACTIVE1_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, ACTIVE2_COOLDOWN_UNTIL, ACTIVE2_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 
     private static boolean hasStateData(Player player) {

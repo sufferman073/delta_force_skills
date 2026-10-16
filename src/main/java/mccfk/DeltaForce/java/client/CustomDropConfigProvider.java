@@ -3,7 +3,6 @@ package mccfk.DeltaForce.java.client;
 import mccfk.DeltaForce.java.client.screen.IConfigProvider;
 import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import net.minecraft.client.Minecraft;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -16,8 +15,6 @@ import java.util.Map;
  * 在 DeltaForce 主类中注册，使得设置界面可以编辑自定义掉落物配置
  */
 public class CustomDropConfigProvider implements IConfigProvider {
-
-    private static final String LAYOUT_BUTTON_PATH = "layout.go_to_config";
 
     private final Map<String, String> dirtyValues = new HashMap<>();
     private String status = "";
@@ -33,16 +30,11 @@ public class CustomDropConfigProvider implements IConfigProvider {
         flatten(config, "", entries);
         // 按层级排序：父项在前，子项在后（父→子→孙）
         entries.sort(Comparator.comparingInt(e -> sortOrderFor(e.path())));
-        // 添加布局自定义前往配置按钮
-        addLayoutButton(entries);
         return entries;
     }
 
     @Override
     public String getValue(String path) {
-        if (LAYOUT_BUTTON_PATH.equals(path)) {
-            return String.valueOf(DFClientConfig.getInstance().isLayoutCustomEnabled());
-        }
         CustomDropConfig.reload();
         CommentedFileConfig config = CustomDropConfig.rawConfig();
         if (config == null) return "";
@@ -52,11 +44,6 @@ public class CustomDropConfigProvider implements IConfigProvider {
 
     @Override
     public boolean setValue(String path, String value) {
-        if (LAYOUT_BUTTON_PATH.equals(path)) {
-            DFClientConfig.getInstance().setLayoutCustomEnabled("true".equalsIgnoreCase(value));
-            dirtyValues.put(path, value);
-            return true;
-        }
         dirtyValues.put(path, value);
         return true;
     }
@@ -64,14 +51,12 @@ public class CustomDropConfigProvider implements IConfigProvider {
     @Override
     public void save() {
         if (!validate()) return;
-        boolean hasLayoutDirty = dirtyValues.containsKey(LAYOUT_BUTTON_PATH);
         CommentedFileConfig config = CustomDropConfig.rawConfig();
         if (config != null) {
             Map<String, Object> before = new HashMap<>();
             try {
                 for (Map.Entry<String, String> dirty : dirtyValues.entrySet()) {
                     String path = dirty.getKey();
-                    if (LAYOUT_BUTTON_PATH.equals(path)) continue;
                     String newValue = dirty.getValue();
                     before.put(path, config.get(path));
                     Object current = config.get(path);
@@ -102,9 +87,6 @@ public class CustomDropConfigProvider implements IConfigProvider {
                 return;
             }
         }
-        if (hasLayoutDirty) {
-            DFClientConfig.getInstance().save();
-        }
         dirtyValues.clear();
         status = "";
     }
@@ -113,7 +95,6 @@ public class CustomDropConfigProvider implements IConfigProvider {
     public boolean validate() {
         for (Map.Entry<String, String> dirty : dirtyValues.entrySet()) {
             String path = dirty.getKey();
-            if (LAYOUT_BUTTON_PATH.equals(path)) continue;
             try {
                 String value = dirty.getValue();
                 if (value.length() > 1024) throw new IllegalArgumentException();
@@ -215,7 +196,7 @@ public class CustomDropConfigProvider implements IConfigProvider {
         };
     }
 
-    /** 根据路径计算排序权重：HUD显示 → 缩放比例 → X偏移 → Y偏移 → 简易模式 → 快捷键显示详情 → 快捷键设置 → 布局按钮 */
+    /** 根据路径计算排序权重：HUD显示 → 缩放比例 → X偏移 → Y偏移 → 简易模式 → 快捷键显示详情 → 快捷键设置 */
     private static int sortOrderFor(String path) {
         return switch (path) {
             case "customdrop.hud.enabled" -> 0;
@@ -225,7 +206,6 @@ public class CustomDropConfigProvider implements IConfigProvider {
             case "customdrop.hud.simple_mode" -> 4;
             case "customdrop.hud.hotkey_detailed" -> 5;
             case "customdrop.hud.hotkey" -> 6;
-            case "layout.go_to_config" -> 7;
             default -> 99;
         };
     }
@@ -239,19 +219,6 @@ public class CustomDropConfigProvider implements IConfigProvider {
             case "customdrop.hud.hotkey" -> "customdrop.hud.hotkey_detailed";
             default -> null;
         };
-    }
-
-    /** 添加布局自定义前往配置按钮（客户端本地布局） */
-    private void addLayoutButton(List<ConfigEntry> entries) {
-        var player = Minecraft.getInstance().player;
-        if (player == null) {
-            return;
-        }
-        String path = LAYOUT_BUTTON_PATH;
-        String currentValue = String.valueOf(DFClientConfig.getInstance().isLayoutCustomEnabled());
-        entries.add(new ConfigEntry(path, path, currentValue, "false",
-                "前往自定义布局配置界面（alpha版功能）", ConfigValueKind.BUTTON, "layout", "layout",
-                0, null, true));
     }
 
     private static ConfigValueKind kindOf(Object value) {

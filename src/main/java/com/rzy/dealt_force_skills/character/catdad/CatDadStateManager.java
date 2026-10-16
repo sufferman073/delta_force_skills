@@ -638,7 +638,13 @@ public final class CatDadStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, HISS_COOLDOWN_UNTIL, HISS_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, BLOCK_NEXT_RECHARGE, BLOCK_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 
     private record TargetScore(LivingEntity target, double distanceToRay, double eyeDistance) {

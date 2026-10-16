@@ -21,7 +21,7 @@ public final class HvkGlueEvents {
     private HvkGlueEvents() {
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.LOWEST)
     public static void onGluedBlockBreak(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level)) {
             return;
@@ -45,7 +45,15 @@ public final class HvkGlueEvents {
         }
     }
 
+    @SubscribeEvent
+    public static void prune(net.neoforged.neoforge.event.tick.LevelTickEvent.Post event) {
+        if (event.getLevel() instanceof ServerLevel level
+                && level.getGameTime() % 20 == 0 && HvkClimbGlueManager.prune(level)) {
+            NetworkHandler.sendToDimension(syncPacket(level), level);
+        }
+    }
+
     private static S2C_SyncGluedPositions syncPacket(ServerLevel level) {
-        return new S2C_SyncGluedPositions(level.dimension(), HvkClimbGlueManager.allGluedPositions(level));
+        return new S2C_SyncGluedPositions(level.dimension(), HvkClimbGlueManager.allGluedPositions(level), HvkClimbGlueManager.skillBlockedLinks(level));
     }
 }

@@ -140,7 +140,8 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
                 earthFire ? 90 : 36, radius * 0.55, 0.35, radius * 0.55, 0.05);
 
         UluruExplosionHelper.damageRadius(serverLevel, center, this, owner, radius,
-                12.0f, 12.0f, false, true, 20, false);
+                com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.uluruincendiarygrenadeentity.player_damage", 12.0F),
+                com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.uluruincendiarygrenadeentity.non_player_damage", 12.0F), false, true, 20, false);
         UluruExplosionHelper.destroyQuickCovers(serverLevel, center, radius);
 
         UluruFireFieldEntity field = new UluruFireFieldEntity(ModEntities.ULURU_FIRE_FIELD.get(), serverLevel, owner);

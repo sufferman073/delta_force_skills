@@ -208,6 +208,7 @@ public final class VyronInputHandler {
     }
 
     private static boolean canDashWithStamina(Player player) {
+        if (!com.rzy.dealt_force_skills.stamina.StaminaFeature.VYRON_DASH.enabled(player)) return false;
         double cost = VyronStateManager.DASH_STAMINA_PERCENT_COST * 0.1D * (ClientCommanderState.shouldRender() ? 0.5D : 1.0D);
         if (cost <= 0) {
             return true;

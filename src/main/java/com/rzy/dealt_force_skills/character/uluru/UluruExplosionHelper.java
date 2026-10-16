@@ -146,7 +146,8 @@ public final class UluruExplosionHelper {
             }
 
             float baseDamage = target instanceof Player ? playerDamage : nonPlayerDamage;
-            float amount = falloff ? baseDamage * Math.max(0.0f, 1.0f - (float) distance * 0.1f) : baseDamage;
+            float amount = falloff ? baseDamage * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.ulurubombletentity", distance,
+                    com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.ulurubombletentity", 0.1D)) : baseDamage;
             if (amount <= 0.0f) {
                 continue;
             }

@@ -112,39 +112,13 @@
   "screen.deltaforce.settings.text_scale": "Text Scale",
   "screen.deltaforce.settings.close": "Close",
   "screen.deltaforce.settings.undo": "Undo",
-  "screen.deltaforce.layout_config": "Custom Layout",
-  "screen.deltaforce.layout_config.configure": "Configure",
 
-  "gui.deltaforce.layout.scale": "Scale",
-  "gui.deltaforce.layout.pos_x": "Pos X",
-  "gui.deltaforce.layout.pos_y": "Pos Y",
-  "gui.deltaforce.layout.add_element": "+ Add",
-  "gui.deltaforce.layout.delete": "- Delete",
-  "gui.deltaforce.layout.presave": "Pre-Save",
-  "gui.deltaforce.layout.no_elements": "No elements, click \"+ Add\" to add HUD controls",
-  "gui.deltaforce.layout.presave_done": "Pre-saved",
-  "gui.deltaforce.layout.presave_pending": "Unsaved pre-saves pending",
 
   "gui.deltaforce.exit_confirm.title": "Exit Confirmation",
   "gui.deltaforce.exit_confirm.message": "You have unsaved pre-save changes. Save before exit?",
   "gui.deltaforce.exit_confirm.save_quit": "Save & Quit",
   "gui.deltaforce.exit_confirm.discard_quit": "Discard & Quit",
 
-  "gui.deltaforce.element.hotbar": "Hotbar",
-  "gui.deltaforce.element.health": "Health",
-  "gui.deltaforce.element.armor": "Armor",
-  "gui.deltaforce.element.hunger": "Hunger",
-  "gui.deltaforce.element.crosshair": "Crosshair",
-  "gui.deltaforce.element.experience": "Experience",
-  "gui.deltaforce.element.chat": "Chat",
-  "gui.deltaforce.element.scoreboard": "Scoreboard",
-  "gui.deltaforce.element.bossbar": "Boss Bar",
-  "gui.deltaforce.element.actionbar": "Action Bar",
-  "gui.deltaforce.element.player_list": "Player List",
-  "gui.deltaforce.element.container_slots": "Container Slots",
-  "gui.deltaforce.element.player_inventory": "Player Inventory",
-  "gui.deltaforce.element.title_label": "Title Label",
-  "gui.deltaforce.element.custom_box": "Custom Box",
   "screen.deltaforce.main": "Main Screen",
   "screen.deltaforce.main.start_game": "Start Game",
   "screen.deltaforce.main.warehouse": "Warehouse",
@@ -161,9 +135,7 @@
   "screen.deltaforce.special_ops": "Special Ops",
 
   "config.deltaforce.category.customdrop": "Custom Drop",
-  "config.deltaforce.category.layout": "Interface",
   "config.deltaforce.subcategory.hud": "HUD",
-  "config.deltaforce.subcategory.layout": "Layout",
   "config.deltaforce.customdrop.hud.enabled": "HUD Display",
   "config.deltaforce.customdrop.hud.scale": "Scale",
   "config.deltaforce.customdrop.hud.x_offset": "X Offset",
@@ -171,8 +143,6 @@
   "config.deltaforce.customdrop.hud.simple_mode": "Simple Mode",
   "config.deltaforce.customdrop.hud.hotkey_detailed": "Hotkey Details",
   "config.deltaforce.customdrop.hud.hotkey": "Hotkey",
-  "config.deltaforce.layout.go_to_config": "Custom Layout",
-  "config.deltaforce.layout.go_to_config.button": "Config",
   "config.deltaforce.button.preview": "Preview",
 
   "config.dealt_force_skills.category.GAMEPLAY": "Gameplay",
@@ -414,7 +384,6 @@
   "warehouse.deltaforce.cannot_equip": "This item cannot be equipped here!",
   "warehouse.deltaforce.page": "Page %s",
 
-  "screen.deltaforce.dfs_skill_buttons": "DFS Skill Buttons",
 
   "deltaforce.wip.making": "In Development"
 }

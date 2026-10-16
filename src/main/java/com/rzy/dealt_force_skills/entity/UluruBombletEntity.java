@@ -144,7 +144,8 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
         serverLevel.sendParticles(ParticleTypes.EXPLOSION, center.x, center.y, center.z,
                 6, 0.65, 0.45, 0.65, 0.0);
         UluruExplosionHelper.damageRadiusBlockedByWalls(serverLevel, center, this, owner, EXPLOSION_RADIUS,
-                50.0f, 125.0f, true, false, 0, true);
+                com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.ulurubombletentity.player_damage", 50.0F),
+                com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.ulurubombletentity.non_player_damage", 125.0F), true, false, 0, true);
         if (owner instanceof ServerPlayer player && hasBombletTarget(serverLevel, center, owner)) {
             DfsAchievements.recordUluruMissileCombo(player, false, true);
         }

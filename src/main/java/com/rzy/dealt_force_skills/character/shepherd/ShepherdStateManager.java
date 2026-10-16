@@ -369,6 +369,12 @@ public final class ShepherdStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, TRAP_NEXT_RECHARGE, SONIC_TRAP_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, FRAG_NEXT_RECHARGE, FRAG_GRENADE_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 }

@@ -66,6 +66,10 @@ public final class UndeadSkills {
                 || slot == SkillSlot.PASSIVE) {
             return false;
         }
+        if (com.rzy.dealt_force_skills.climb.HvkZiplineManager.blocksSkills(player)) {
+            UndeadStateManager.clearSkillInput(player, slot);
+            return false;
+        }
         UndeadStateManager.initializeIfNeeded(player);
         if (action == UndeadSkillInputAction.PRESS) {
             UndeadStateManager.beginSkillInput(player, slot);
@@ -105,6 +109,10 @@ public final class UndeadSkills {
     }
 
     public static void tickHeldInputs(ServerPlayer player) {
+        if (com.rzy.dealt_force_skills.climb.HvkZiplineManager.blocksSkills(player)) {
+            UndeadStateManager.clearSkillInput(player, SkillSlot.ACTIVE_1);
+            return;
+        }
         if (!UndeadStateManager.isUndead(player)
                 || UndeadStateManager.profession(player) != UndeadProfession.EXPLORER
                 || UndeadStateManager.isActionLocked(player)) {

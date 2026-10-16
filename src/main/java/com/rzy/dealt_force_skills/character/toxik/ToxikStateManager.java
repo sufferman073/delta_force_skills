@@ -689,7 +689,12 @@ public final class ToxikStateManager {
       if (!persistent.contains("dealt_force_skills.toxik", 10)) {
          persistent.put("dealt_force_skills.toxik", new CompoundTag());
       }
-
-      return persistent.getCompound("dealt_force_skills.toxik");
+      CompoundTag tag = persistent.getCompound("dealt_force_skills.toxik");
+      if (player instanceof ServerPlayer) {
+          SkillCooldownHelper.clampCooldown(player, tag, ADRENALINE_COOLDOWN_UNTIL, ADRENALINE_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, TEAR_GAS_NEXT_RECHARGE, TEAR_GAS_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, FIREFLY_COOLDOWN_UNTIL, FIREFLY_COOLDOWN_TICKS);
+      }
+      return tag;
    }
 }

@@ -777,7 +777,12 @@ public final class NoxStateManager {
       if (!persistent.contains("dealt_force_skills.nox", 10)) {
          persistent.put("dealt_force_skills.nox", new CompoundTag());
       }
-
-      return persistent.getCompound("dealt_force_skills.nox");
+      CompoundTag tag = persistent.getCompound("dealt_force_skills.nox");
+      if (player instanceof ServerPlayer) {
+          SkillCooldownHelper.clampCooldown(player, tag, ROTOR_COOLDOWN_UNTIL, ROTOR_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, FLASH_NEXT_RECHARGE, FLASH_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+      }
+      return tag;
    }
 }

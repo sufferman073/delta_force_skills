@@ -655,7 +655,13 @@ public final class NikaidouHiroStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, ACTIVE1_COOLDOWN_UNTIL, CORRECTION_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, ATTACK_COOLDOWN_UNTIL, Math.max(HOT_IRON_ATTACK_COOLDOWN_TICKS, RITUAL_SWORD_ATTACK_COOLDOWN_TICKS));
+        }
+        return tag;
     }
 
     private record TargetScore(LivingEntity target, double eyeDistance) {

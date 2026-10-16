@@ -809,7 +809,15 @@ public final class CommanderStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            CompoundTag supportCooldowns = tag.getCompound(SUPPORT_COOLDOWNS);
+            for (CommanderSupport support : CommanderSupport.values()) {
+                SkillCooldownHelper.clampDeadline(supportCooldowns, support.name(),
+                        SkillCooldownHelper.now(player), support.cooldownTicks());
+            }
+        }
+        return tag;
     }
 
     private static int scalePositiveInt(int base, double multiplier) {

@@ -255,7 +255,7 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
         LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
         ServerPlayer ownerPlayer = owner instanceof ServerPlayer player ? player : null;
         double radius = CommanderStateManager.skillRadius(ownerPlayer, RADIUS);
-        double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, 0.1D);
+        double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.shepherdfraggrenadeentity", 0.1D));
         boolean bounced = blockImpacts > 0 || audibleBounces > 0;
         RangedSoundHelper.playThrottled(serverLevel, center, ModSounds.SHEPHERD_FRAG_GRENADE_EXPLODE.get(),
                 SoundSource.PLAYERS, 1.25f, 1.0f, 24.0D, 3, 4.0D);
@@ -274,7 +274,7 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
                 continue;
             }
 
-            float baseDamage = 100.0f * Math.max(0.0f, 1.0f - (float) (distance * falloff));
+            float baseDamage = com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.shepherdfraggrenadeentity.base_damage", 100.0F) * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.shepherdfraggrenadeentity", distance, falloff);
             if (baseDamage <= 0.0f) {
                 continue;
             }

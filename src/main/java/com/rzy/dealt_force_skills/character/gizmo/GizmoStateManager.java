@@ -434,7 +434,13 @@ public final class GizmoStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, SMOKE_NEXT_RECHARGE, SMOKE_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, SPIDER_NEXT_RECHARGE, SPIDER_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 
     private static CompoundTag webData(Player player) {

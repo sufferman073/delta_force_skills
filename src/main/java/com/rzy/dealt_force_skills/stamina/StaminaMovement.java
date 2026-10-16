@@ -61,13 +61,13 @@ public final class StaminaMovement {
         else if (value <= 1.0D) exhausted = true;
         state.putBoolean("BoostExhausted", exhausted);
         boolean eligible = canMove(player) && state.getInt("VaultTicks") == 0;
-        boolean swim = boost(player, state, "SwimBoostTicks", eligible && player.isInWater(),
-                moving && player.isSwimming() && !exhausted, StaminaRules.SWIM_COST_PER_TICK);
-        boolean sprint = boost(player, state, "SprintBoostTicks", eligible && !player.isInWater(),
-                moving && player.isSprinting() && !exhausted, StaminaRules.SPRINT_COST_PER_TICK);
+        boolean swim = boost(player, state, "SwimBoostTicks", eligible && StaminaFeature.SWIM.enabled(player) && player.isInWater(),
+                moving && player.isSwimming() && !exhausted, StaminaSettings.swimCost());
+        boolean sprint = boost(player, state, "SprintBoostTicks", eligible && StaminaFeature.SPRINT.enabled(player) && !player.isInWater(),
+                moving && player.isSprinting() && !exhausted, StaminaSettings.sprintCost());
         double multiplier = StaminaManager.actionMultiplier(player);
-        modifier(player.getAttribute(Attributes.MOVEMENT_SPEED), SPRINT_ID, sprint ? 0.50D * multiplier : 0.0D);
-        modifier(player.getAttribute(NeoForgeMod.SWIM_SPEED), SWIM_ID, swim ? 1.0D * multiplier : 0.0D);
+        modifier(player.getAttribute(Attributes.MOVEMENT_SPEED), SPRINT_ID, sprint ? StaminaSettings.sprintBonus() * multiplier : 0.0D);
+        modifier(player.getAttribute(NeoForgeMod.SWIM_SPEED), SWIM_ID, swim ? StaminaSettings.swimBonus() * multiplier : 0.0D);
     }
 
     private static boolean boost(ServerPlayer player, CompoundTag state, String key,
@@ -91,12 +91,12 @@ public final class StaminaMovement {
     }
 
     public static void tryVault(ServerPlayer player) {
-        if (!canMove(player)) return;
+        if (!canMove(player) || !StaminaFeature.VAULT.enabled(player)) return;
         CompoundTag state = StaminaManager.data(player);
         long now = player.level().getGameTime();
         if (state.getInt("VaultTicks") > 0 || now < state.getLong("NextVault")) return;
         state.putLong("NextVault", now + 4);
-        if (StaminaManager.canConsume(player, StaminaRules.VAULT_COST) != StaminaManager.ConsumeResult.SUCCESS) return;
+        if (StaminaManager.canConsume(player, StaminaSettings.vaultCost()) != StaminaManager.ConsumeResult.SUCCESS) return;
         Vec3 look = player.getLookAngle();
         Vec3 forward = new Vec3(look.x, 0.0D, look.z).normalize();
         if (forward.lengthSqr() < 0.5D) return;
@@ -105,7 +105,7 @@ public final class StaminaMovement {
         if (canJumpOnto(player, target)) return;
         Vec3 raised = new Vec3(player.getX(), target.y, player.getZ());
         if (!clearPath(player, player.position(), raised) || !clearPath(player, raised, target)) return;
-        if (StaminaManager.consume(player, StaminaRules.VAULT_COST) != StaminaManager.ConsumeResult.SUCCESS) return;
+        if (StaminaManager.consume(player, StaminaSettings.vaultCost()) != StaminaManager.ConsumeResult.SUCCESS) return;
         int ticks = Math.max(2, (int) Math.ceil(5.0D / StaminaManager.actionMultiplier(player)));
         state.putInt("VaultTicks", ticks);
         state.putInt("VaultTotal", ticks);
@@ -183,7 +183,7 @@ public final class StaminaMovement {
         Vec3 previous = player.position();
         Vec3 next = previous;
         Vec3 raised = new Vec3(start.x, target.y, start.z);
-        boolean clear = canMove(player) && previous.distanceTo(start) <= 4.0D;
+        boolean clear = canMove(player) && StaminaFeature.VAULT.enabled(player) && previous.distanceTo(start) <= 4.0D;
         // Three swept movement judgments per tick; rendering is interpolated independently.
         for (int substep = 1; clear && substep <= 3; substep++) {
             double progress = (total - remaining + substep / 3.0D) / total;

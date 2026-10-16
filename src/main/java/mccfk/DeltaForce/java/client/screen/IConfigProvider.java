@@ -120,6 +120,6 @@ public interface IConfigProvider {
      * 配置值类型
      */
     enum ConfigValueKind {
-        BOOLEAN, INTEGER, LONG, FLOAT, DOUBLE, STRING, BUTTON
+        BOOLEAN, INTEGER, LONG, FLOAT, DOUBLE, STRING
     }
 }

@@ -42,9 +42,21 @@ public final class FoxMusicPlayerManager {
         if (stack.is(ModItems.FOX_MUSIC_PLAYER.get()) && seen.add(stack)) result.add(stack);
     }
     public static int discCount(ServerPlayer player) {
-        int count = 0;
-        for (ItemStack stack : carried(player)) count += FoxMusicData.count(stack);
-        return count;
+        return FoxMusicData.count(strongestDevice(carried(player)));
+    }
+
+    /** Inventory slot order, then Curios order; equal bonuses never replace the first device. */
+    public static ItemStack strongestDevice(List<ItemStack> devices) {
+        ItemStack best = ItemStack.EMPTY;
+        int highest = 0;
+        for (ItemStack stack : devices) {
+            int count = FoxMusicData.count(stack);
+            if (count > highest) {
+                best = stack;
+                highest = count;
+            }
+        }
+        return best;
     }
     public static void open(ServerPlayer player, ItemStack stack, int requestedPage, String feedback) {
         if (!stack.is(ModItems.FOX_MUSIC_PLAYER.get())) return;
@@ -122,7 +134,7 @@ public final class FoxMusicPlayerManager {
     public static void tick(ServerPlayer player, boolean force) {
         if (!force && player.tickCount % 5 != 0) return;
         List<ItemStack> players = player.isAlive() ? carried(player) : List.of();
-        int count = players.stream().mapToInt(FoxMusicData::count).sum();
+        int count = FoxMusicData.count(strongestDevice(players));
         modifier(player.getAttribute(Attributes.ATTACK_SPEED), SPEED, count * 0.025, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
         modifier(player.getAttribute(Attributes.ARMOR), ARMOR, count, AttributeModifier.Operation.ADD_VALUE);
         modifier(player.getAttribute(Attributes.ARMOR_TOUGHNESS), TOUGHNESS, count * 0.5, AttributeModifier.Operation.ADD_VALUE);

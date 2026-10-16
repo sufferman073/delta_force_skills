@@ -176,6 +176,7 @@ public final class VyronStateManager {
    }
 
    private static boolean consumeDashStamina(ServerPlayer player) {
+        if (!com.rzy.dealt_force_skills.stamina.StaminaFeature.VYRON_DASH.enabled(player)) return false;
       double cost = StaminaManager.skillCost(player, DASH_STAMINA_PERCENT_COST * 0.1D);
       if (cost <= 0) {
          return true;
@@ -460,7 +461,12 @@ public final class VyronStateManager {
       if (!persistent.contains("dealt_force_skills.vyron", 10)) {
          persistent.put("dealt_force_skills.vyron", new CompoundTag());
       }
-
-      return persistent.getCompound("dealt_force_skills.vyron");
+      CompoundTag tag = persistent.getCompound("dealt_force_skills.vyron");
+      if (player instanceof ServerPlayer) {
+          SkillCooldownHelper.clampCooldown(player, tag, DASH_COOLDOWN_UNTIL, DASH_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, BOMB_NEXT_RECHARGE, MAGNETIC_BOMB_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, TIGER_CANNON_COOLDOWN_TICKS);
+      }
+      return tag;
    }
 }

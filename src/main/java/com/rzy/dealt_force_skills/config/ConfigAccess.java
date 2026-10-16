@@ -15,6 +15,13 @@ import java.util.Map;
  * Client HUD layout stays in {@code ClientHudLayout} and never crosses the network.
  */
 public final class ConfigAccess {
+    // Kept on disk for compatibility, but no longer read by native stamina actions.
+    private static final java.util.Set<String> LEGACY_STAMINA_SETTINGS = java.util.Set.of(
+            "characters.dwolf.d_wolf_state_manager.slide_stamina_percent_cost",
+            "characters.sineva.sineva_skills.bash_active_stamina_ticks",
+            "client.sineva_shield_input_handler.bash_active_stamina_ticks",
+            "client.sineva_shield_input_handler.bash_stamina_percent_cost",
+            "client.sineva_shield_input_handler.charge_stamina_percent_cost");
     private ConfigAccess() {
     }
 
@@ -149,6 +156,7 @@ public final class ConfigAccess {
             if (!(value instanceof Number || value instanceof Boolean || value instanceof String || value instanceof Character)) {
                 continue;
             }
+            if (file == ConfigFileId.GAMEPLAY && LEGACY_STAMINA_SETTINGS.contains(path)) continue;
             ConfigValueKind kind = ConfigValueKind.of(value);
             String comment = "";
             if (config instanceof CommentedFileConfig commented) {
@@ -183,16 +191,17 @@ public final class ConfigAccess {
             return "player";
         }
         if (entry.file() == ConfigFileId.GAMBLER) {
-            return "gambler";
+            return "characters";
         }
         String path = entry.path().toLowerCase(Locale.ROOT);
+        if (!CharacterConfigGrouping.owner(path).isEmpty()) return "characters";
         if (path.startsWith("characters.")) {
             return "characters";
         }
         if (path.startsWith("summons.") || path.startsWith("entities.") || path.startsWith("deployables.")) {
             return "summons";
         }
-        if (path.startsWith("match.") || path.startsWith("general.") || path.startsWith("events.")
+        if (path.startsWith("stamina.") || path.startsWith("match.") || path.startsWith("general.") || path.startsWith("events.")
                 || path.startsWith("client.") || path.startsWith("work_blocks.") || path.startsWith("loot.")
                 || path.startsWith("experience_growth.") || path.startsWith("effects.")) {
             return "rules";
@@ -210,11 +219,15 @@ public final class ConfigAccess {
         String path = entry.path();
         String[] parts = path.split("\\.");
         if (entry.file() == ConfigFileId.HUD) {
-            return parts.length > 1 && "hud".equals(parts[0]) ? parts[1] : "global";
+            return "stamina_features".equals(parts[0]) ? "stamina_features"
+                    : parts.length > 1 && "hud".equals(parts[0]) ? parts[1] : "global";
         }
         if (entry.file() == ConfigFileId.BOSSES) {
             return parts.length > 0 ? parts[0] : "boss";
         }
+        if (entry.file() == ConfigFileId.GAMBLER) return "gambler";
+        String owner = entry.file() == ConfigFileId.GAMEPLAY ? CharacterConfigGrouping.owner(path) : "";
+        if (!owner.isEmpty()) return owner;
         if (path.startsWith("characters.") && parts.length > 1) {
             return parts[1];
         }

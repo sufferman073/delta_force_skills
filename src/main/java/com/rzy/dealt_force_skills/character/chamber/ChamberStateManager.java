@@ -488,6 +488,14 @@ public final class ChamberStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, TELEPORT_COOLDOWN_UNTIL, TELEPORT_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, TRAP_COOLDOWN_UNTIL, TRAP_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, HEADHUNTER_COOLDOWN_UNTIL, HEADHUNTER_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, TOUR_DE_FORCE_COOLDOWN_UNTIL, TOUR_DE_FORCE_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, TOUR_SLOW_FIELD_COOLDOWN_UNTIL, TOUR_SLOW_FIELD_TRIGGER_INTERVAL_TICKS);
+        }
+        return tag;
     }
 }

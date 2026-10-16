@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:slime_ball"
+    },
+    {
+      "item": "minecraft:slime_ball"
+    },
+    {
+      "item": "minecraft:slime_ball"
+    },
+    {
+      "item": "dealt_force_skills:blueprint"
+    }
+  ],
+  "result": {
+    "id": "dealt_force_skills:hvk_universal_glue",
+    "count": 2
+  }
+}

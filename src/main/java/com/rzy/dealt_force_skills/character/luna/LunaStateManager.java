@@ -342,7 +342,12 @@ public final class LunaStateManager {
       if (!persistent.contains("dealt_force_skills.luna", 10)) {
          persistent.put("dealt_force_skills.luna", new CompoundTag());
       }
-
-      return persistent.getCompound("dealt_force_skills.luna");
+      CompoundTag tag = persistent.getCompound("dealt_force_skills.luna");
+      if (player instanceof ServerPlayer) {
+          SkillCooldownHelper.clampCooldown(player, tag, SHOCK_NEXT_RECHARGE, SHOCK_ARROW_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, GRENADE_NEXT_RECHARGE, COMPOSITE_GRENADE_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, RECON_ARROW_COOLDOWN_TICKS);
+      }
+      return tag;
    }
 }

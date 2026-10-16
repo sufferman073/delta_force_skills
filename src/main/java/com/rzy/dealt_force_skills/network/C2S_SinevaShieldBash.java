@@ -38,6 +38,7 @@ public class C2S_SinevaShieldBash implements CustomPacketPayload {
     public static void handle(C2S_SinevaShieldBash msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) ctx.player();
+            if (com.rzy.dealt_force_skills.climb.HvkZiplineManager.blocksSkills(player)) return;
             if (player.isSpectator()) return;
             if (player.hasEffect(ModEffects.STUN) || player.hasEffect(ModEffects.WEBBED) || StingerStateManager.isDowned(player) || RoundStartFreezeManager.isFrozen(player)) return;
             SinevaSkills.tryShieldBash(player);

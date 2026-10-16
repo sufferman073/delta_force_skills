@@ -3248,7 +3248,6 @@ public class CommonEvents {
          if (event.getLevel() instanceof ServerLevel serverLevel && serverLevel == serverLevel.getServer().overworld()) {
             com.rzy.dealt_force_skills.team.TeammateRevealSync.serverTick(serverLevel.getServer());
          }
-         HvkZiplineManager.tick(event.getLevel());
       }
    }
 

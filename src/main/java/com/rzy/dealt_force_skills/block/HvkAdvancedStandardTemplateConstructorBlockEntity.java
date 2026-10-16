@@ -1680,6 +1680,11 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
             for (SyntheticRecipe recipe : syntheticRecipes(level)) {
                 addIndexedRecipe(recipe.id, recipe.recipe, seen, recipes, byId, mutableOptions);
             }
+            for (var entry : com.rzy.dealt_force_skills.compat.HvkJeiRecipeCatalog.entries(level)) {
+                List<RecipeInput> inputs = entry.inputs().stream()
+                        .map(input -> new RecipeInput(Ingredient.of(input.choices().stream()), input.count())).toList();
+                addIndexedRecipe(entry.id(), new SelectedRecipe(entry.output(), inputs), seen, recipes, byId, mutableOptions);
+            }
             recipes.sort(Comparator
                     .comparing((IndexedRecipe recipe) -> itemKey(recipe.view.result.getItem()))
                     .thenComparing(recipe -> recipe.view.id.toString()));
@@ -2707,7 +2712,9 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
 
     private record RecipeInput(Ingredient ingredient, int count) {
         private RecipeInput {
-            ingredient = ingredient == null ? Ingredient.EMPTY : ingredient;
+            ingredient = ingredient == null ? Ingredient.EMPTY : Ingredient.of(
+                    java.util.Arrays.stream(ingredient.getItems()).filter(stack -> !stack.isEmpty())
+                            .map(stack -> { ItemStack copy = stack.copy(); copy.setCount(1); return copy; }));
             count = Math.max(0, count);
         }
 

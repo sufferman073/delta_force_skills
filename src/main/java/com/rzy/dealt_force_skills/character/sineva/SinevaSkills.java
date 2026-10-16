@@ -107,12 +107,13 @@ public final class SinevaSkills {
     }
 
     public static boolean tryShieldBash(ServerPlayer player) {
+        if (!com.rzy.dealt_force_skills.stamina.StaminaFeature.SINEVA_BASH.enabled(player)) return false;
         if (!canUseShieldAction(player) || !SinevaStateManager.isBashReady(player)) {
             return false;
         }
 
         if (StaminaManager.consume(player, StaminaManager.skillCost(player,
-                StaminaRules.SINEVA_BASH_COST))
+                com.rzy.dealt_force_skills.stamina.StaminaSettings.bashCost()))
                 != StaminaManager.ConsumeResult.SUCCESS) return false;
         SinevaStateManager.setBashCooldown(player, BASH_COOLDOWN_TICKS);
 
@@ -130,7 +131,9 @@ public final class SinevaSkills {
                     .subtract(player.getEyePosition()).normalize();
             if (forward.dot(toTarget) < FRONT_DOT) continue;
 
-            float damage = target instanceof Player ? 5.0f : 50.0f;
+            float damage = target instanceof Player
+                    ? com.rzy.dealt_force_skills.config.SkillBalance.damage("characters.sineva.shield_bash.player_damage", 5.0F)
+                    : com.rzy.dealt_force_skills.config.SkillBalance.damage("characters.sineva.shield_bash.non_player_damage", 50.0F);
             SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaShieldBash(player.serverLevel(), null, player), player, damage);
             playShieldBashHit(player, target);
             if (applyShieldBashControl(player, target) && !controlVoicePlayed) {
@@ -146,6 +149,7 @@ public final class SinevaSkills {
     }
 
     public static boolean tryShieldCharge(ServerPlayer player) {
+        if (!com.rzy.dealt_force_skills.stamina.StaminaFeature.SINEVA_CHARGE.enabled(player)) return false;
         if (!canUseShieldAction(player) || !SinevaStateManager.isChargeReady(player)) {
             return false;
         }
@@ -160,7 +164,7 @@ public final class SinevaSkills {
         }
 
         if (StaminaManager.consume(player, StaminaManager.skillCost(player,
-                StaminaRules.SINEVA_CHARGE_COST))
+                com.rzy.dealt_force_skills.stamina.StaminaSettings.chargeCost()))
                 != StaminaManager.ConsumeResult.SUCCESS) return false;
         SinevaStateManager.setChargeCooldown(player, CHARGE_COOLDOWN_TICKS);
         CHARGING_PLAYERS.put(player.getUUID(), new ChargeData(horizontal.normalize(), 14));
@@ -199,7 +203,9 @@ public final class SinevaSkills {
                 Vec3 toTarget = target.position().subtract(player.position()).normalize();
                 if (data.direction.dot(new Vec3(toTarget.x, 0.0, toTarget.z).normalize()) < 0.0) continue;
 
-                float damage = target instanceof Player ? 5.0f : 50.0f;
+                float damage = target instanceof Player
+                    ? com.rzy.dealt_force_skills.config.SkillBalance.damage("characters.sineva.shield_charge.player_damage", 5.0F)
+                    : com.rzy.dealt_force_skills.config.SkillBalance.damage("characters.sineva.shield_charge.non_player_damage", 50.0F);
                 SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaShieldBash(player.serverLevel(), null, player), player, damage);
                 playShieldBashHit(player, target);
                 if (applyShieldBashControl(player, target) && !data.controlVoicePlayed) {

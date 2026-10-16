@@ -80,6 +80,51 @@ public final class SkillCooldownHelper {
         return remainingTicks(until, now(player));
     }
 
+    /**
+     * Repairs a persisted cooldown before readiness checks or HUD synchronization.
+     * The configured base is the ceiling, allowing existing penalties that lengthen
+     * it. Do not apply this to active effects, startup timers or historical timestamps.
+     */
+    public static void clampCooldown(Player player, net.minecraft.nbt.CompoundTag tag,
+                                     String key, int baseTicks) {
+        clampCooldown(player, tag, key, baseTicks, 0L);
+    }
+
+    /** activeAllowance is only for deadlines that already include an active phase. */
+    public static void clampCooldown(Player player, net.minecraft.nbt.CompoundTag tag,
+                                     String key, int baseTicks, long activeAllowance) {
+        if (!(player instanceof ServerPlayer) || !tag.contains(key, net.minecraft.nbt.Tag.TAG_LONG)) {
+            return;
+        }
+        long now = now(player);
+        long base = Math.max(0, baseTicks);
+        long allowance = Math.max(0L, Math.min(Integer.MAX_VALUE, activeAllowance));
+        // Avoid recalculating modifiers on the ordinary, already-valid path.
+        if (tag.getLong(key) <= deadlineCeiling(now, base + allowance)) {
+            return;
+        }
+        clampDeadline(tag, key, now, Math.max(base, ticks(player, baseTicks)) + allowance);
+    }
+
+    /** For cooldowns whose existing writer does not use player cooldown modifiers. */
+    public static void clampDeadline(net.minecraft.nbt.CompoundTag tag, String key,
+                                     long now, long maximumTicks) {
+        if (!tag.contains(key, net.minecraft.nbt.Tag.TAG_LONG)) {
+            return;
+        }
+        long until = tag.getLong(key);
+        long ceiling = deadlineCeiling(now, maximumTicks);
+        if (until > 0L && until > ceiling) {
+            // Persist the repaired deadline once; repeated reads must not restart it.
+            tag.putLong(key, ceiling);
+        }
+    }
+
+    private static long deadlineCeiling(long now, long maximumTicks) {
+        long duration = Math.max(0L, maximumTicks);
+        return now > Long.MAX_VALUE - duration ? Long.MAX_VALUE : now + duration;
+    }
+
     public static void notifyCooldown(ServerPlayer player, Component message) {
         SkillSoundFeedback.cooldown(player, message);
     }

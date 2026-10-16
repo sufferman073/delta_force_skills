@@ -210,7 +210,7 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
         LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
         ServerPlayer ownerPlayer = owner instanceof ServerPlayer player ? player : null;
         double radius = CommanderStateManager.skillRadius(ownerPlayer, RADIUS);
-        double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, 0.14D);
+        double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.vyronmagneticbombentity", 0.14D));
         Vec3 center = position();
         RangedSoundHelper.playThrottled(serverLevel, center, ModSounds.VYRON_MAGNETIC_BOMB_EXPLODE.get(),
                 SoundSource.PLAYERS, 1.25f, 1.0f, 26.0D, 3, 4.0D);
@@ -229,7 +229,7 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
             if (distance > radius || !hasLineOfSight(center, targetCenter)) {
                 continue;
             }
-            float damage = 100.0f * Math.max(0.0f, 1.0f - (float) distance * (float) falloff);
+            float damage = com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.vyronmagneticbombentity.base_damage", 100.0F) * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.vyronmagneticbombentity", distance, falloff);
             if (damage <= 0.0f) {
                 continue;
             }

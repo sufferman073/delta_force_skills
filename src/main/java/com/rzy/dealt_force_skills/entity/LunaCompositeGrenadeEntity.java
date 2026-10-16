@@ -198,7 +198,7 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
         LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
         ServerPlayer ownerPlayer = owner instanceof ServerPlayer player ? player : null;
         double radius = CommanderStateManager.skillRadius(ownerPlayer, RADIUS);
-        double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, 0.1D);
+        double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.lunacompositegrenadeentity", 0.1D));
         RangedSoundHelper.playThrottled(serverLevel, center, ModSounds.LUNA_GRENADE_EXPLODE.get(),
                 SoundSource.PLAYERS, 1.25f, 1.0f, 26.0D, 3, 4.0D);
         serverLevel.sendParticles(ParticleTypes.EXPLOSION, center.x, center.y + 0.2D, center.z,
@@ -217,7 +217,7 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
                 continue;
             }
 
-            float baseDamage = 100.0f * Math.max(0.0f, 1.0f - (float) distance * (float) falloff);
+            float baseDamage = com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.lunacompositegrenadeentity.base_damage", 100.0F) * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.lunacompositegrenadeentity", distance, falloff);
             if (baseDamage <= 0.0f) {
                 continue;
             }

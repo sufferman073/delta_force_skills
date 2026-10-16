@@ -14,6 +14,9 @@ import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.SynchedEntityData.Builder;
 import net.minecraft.server.level.ServerLevel;
@@ -43,10 +46,11 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
    private static volatile int FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.vyrontigercannonentity.fuse_ticks", 60));
    private static volatile int KNOCKDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("KNOCKDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.vyrontigercannonentity.knockdown_ticks", 100));
    private static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.vyrontigercannonentity.radius", 5.5));
-   private static volatile int MAX_FLOOR_BOUNCES = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_FLOOR_BOUNCES", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.vyron_tiger_cannon_entity.max_floor_bounces", 2));
    private static final int READY_SOUND_ELAPSED_TICKS = Math.max(1, (int)Math.ceil((double)FUSE_TICKS * 0.4));
    private int fuseRemaining = FUSE_TICKS;
    private int floorBounces;
+   private static final EntityDataAccessor<Boolean> STOPPED =
+       SynchedEntityData.defineId(VyronTigerCannonEntity.class, EntityDataSerializers.BOOLEAN);
    private boolean readySoundStarted;
 
    public VyronTigerCannonEntity(EntityType<? extends com.rzy.dealt_force_skills.entity.VyronTigerCannonEntity> type, Level level) {
@@ -63,6 +67,7 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
    }
 
    protected void defineSynchedData(Builder builder) {
+      builder.define(STOPPED, false);
    }
 
    public void tick() {
@@ -74,6 +79,12 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
             this.explode();
             return;
          }
+      }
+
+      if (this.entityData.get(STOPPED)) {
+         this.setDeltaMovement(Vec3.ZERO);
+         this.spawnClientTrail();
+         return;
       }
 
       Vec3 motion = this.getDeltaMovement();
@@ -104,12 +115,14 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
       }
 
       this.floorBounces = tag.getInt("FloorBounces");
+      this.entityData.set(STOPPED, tag.getBoolean("Stopped"));
       this.readySoundStarted = tag.getBoolean("ReadySoundStarted");
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
       tag.putInt("FuseRemaining", this.fuseRemaining);
       tag.putInt("FloorBounces", this.floorBounces);
+      tag.putBoolean("Stopped", this.entityData.get(STOPPED));
       tag.putBoolean("ReadySoundStarted", this.readySoundStarted);
    }
 
@@ -120,10 +133,9 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
       this.setPos(hit.getLocation().x + normal.x * 0.05, hit.getLocation().y + normal.y * 0.05, hit.getLocation().z + normal.z * 0.05);
       if (direction == Direction.UP) {
          this.floorBounces++;
-         if (this.floorBounces > MAX_FLOOR_BOUNCES) {
-            this.setDeltaMovement(new Vec3(motion.x * 0.45, 0.0, motion.z * 0.45));
-            return;
-         }
+         this.entityData.set(STOPPED, true);
+         this.setDeltaMovement(Vec3.ZERO);
+         return;
       }
 
       this.setDeltaMovement(this.bounce(direction, motion));

@@ -528,6 +528,12 @@ public final class HackclawStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, KNIFE_NEXT_RECHARGE, KNIFE_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, FLASH_DRONE_NEXT_RECHARGE, FLASH_DRONE_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 }

@@ -164,7 +164,7 @@ public final class GtiTradingHallManager {
 
     public static void buy(ServerPlayer player, int index, int count) {
         List<Entry> entries = entries();
-        if (player.isCreative() || player.isSpectator() || index < 0 || index >= entries.size()
+        if (player.isSpectator() || index < 0 || index >= entries.size()
                 || count <= 0 || count > MAX_PURCHASE_COUNT) return;
         Entry entry = entries.get(index);
         long total = safeMultiply(entry.price(), count);
@@ -178,7 +178,7 @@ public final class GtiTradingHallManager {
             int amount = Math.min(remaining, purchased.getMaxStackSize());
             purchased.setCount(amount);
             remaining -= amount;
-            if (!player.getInventory().add(purchased) && !purchased.isEmpty()) player.drop(purchased, false);
+            net.neoforged.neoforge.items.ItemHandlerHelper.giveItemToPlayer(player, purchased);
         }
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.dealt_force_skills.transaction.success"), true);
         open(player);

@@ -6,8 +6,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.rzy.dealt_force_skills.item.DfsItemQuality;
 import mccfk.DeltaForce.java.DeltaForce;
 import mccfk.DeltaForce.java.client.CustomDropConfig;
-import mccfk.DeltaForce.java.client.screen.LayoutDataManager;
-import mccfk.DeltaForce.java.client.screen.LayoutEntry;
 import mccfk.DeltaForce.java.entity.GroundItemEntity;
 import mccfk.DeltaForce.java.item.DeltaForceItems;
 import net.minecraft.client.DeltaTracker;
@@ -110,28 +108,9 @@ public class GroundItemOverlay {
             description = getDescription(entity);
         }
 
-        // 从布局配置读取地面物品信息面板位置/缩放叠加
-        LayoutEntry le = LayoutDataManager.loadElement(
-                "deltaforce", "ground_item_hud", "custom_box_ground_item_panel",
-                0.72f, 0.11f, 0.18f, 0.15f);
-
-        // 直接用布局配置位置作为基础偏移
-        int baseX = (int) (le.relX() * guiGraphics.guiWidth());
-        int baseY = (int) (le.relY() * guiGraphics.guiHeight());
-        // 叠加CustomDropConfig的微调偏移
-        int xOffset = baseX - (guiGraphics.guiWidth() - 170) + CustomDropConfig.hudXOffset();
-        int baseY60 = guiGraphics.guiHeight() * 60 / 360;
-        int yOffset = baseY - baseY60 + CustomDropConfig.hudYOffset();
-        // XY独立缩放
-        float scaleX = le.scaleX;
-        float scaleY = le.scaleY;
-        float baseHudScale = CustomDropConfig.hudScale();
-
         renderItemHud(guiGraphics, mc, itemStack, quality, itemName, qualityLine, description,
-                alpha,
-                (1.0f + baseHudScale) * scaleX - 1.0f,
-                (1.0f + baseHudScale) * scaleY - 1.0f,
-                xOffset, yOffset,
+                alpha, CustomDropConfig.hudScale(), CustomDropConfig.hudScale(),
+                CustomDropConfig.hudXOffset(), CustomDropConfig.hudYOffset(),
                 simpleMode, hotkeyPressed);
 
         poseStack.popPose();

@@ -695,7 +695,14 @@ public final class StingerStateManager {
       if (!persistent.contains("dealt_force_skills.stinger", 10)) {
          persistent.put("dealt_force_skills.stinger", new CompoundTag());
       }
-
-      return persistent.getCompound("dealt_force_skills.stinger");
+      CompoundTag tag = persistent.getCompound("dealt_force_skills.stinger");
+      if (player instanceof ServerPlayer) {
+          SkillCooldownHelper.clampCooldown(player, tag, SMOKE_COOLDOWN_UNTIL, SMOKE_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, DRONE_COOLDOWN_UNTIL, DRONE_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, STIM_NEXT_RECHARGE, STIM_RECHARGE_TICKS);
+          SkillCooldownHelper.clampDeadline(tag, RESCUE_COOLDOWN_UNTIL, SkillCooldownHelper.now(player), DOWNED_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampDeadline(tag, DOWNED_COOLDOWN_UNTIL, SkillCooldownHelper.now(player), DOWNED_COOLDOWN_TICKS);
+      }
+      return tag;
    }
 }

@@ -1891,7 +1891,14 @@ public final class ManbaStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, ELBOW_NEXT_RECHARGE, ELBOW_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampDeadline(tag, STEEL_COOLDOWN_UNTIL, SkillCooldownHelper.now(player), Math.max(STEEL_BODY_MIN_COOLDOWN_TICKS, Math.max(1200, SkillCooldownHelper.ticks(player, 1200))));
+            SkillCooldownHelper.clampCooldown(player, tag, INDESTRUCTIBLE_COOLDOWN_UNTIL, 120 * 20);
+        }
+        return tag;
     }
 
     private record ControlAffectionKey(UUID owner, UUID target) {

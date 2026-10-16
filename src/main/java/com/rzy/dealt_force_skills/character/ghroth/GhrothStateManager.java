@@ -417,13 +417,15 @@ public final class GhrothStateManager {
             return;
         }
         if (player.isShiftKeyDown()) {
-            if (tryConsumeTacticalStamina(player)) {
+            if (com.rzy.dealt_force_skills.stamina.StaminaFeature.GHROTH_ROLL.enabled(player)
+                    && tryConsumeTacticalStamina(player)) {
                 startTacticalBoost(player, 1.175D, TACTICAL_MODE_ROLL);
             }
             return;
         }
         if (!player.onGround() && player.getDeltaMovement().y > -0.08D) {
-            if (tryConsumeTacticalStamina(player)) {
+            if (com.rzy.dealt_force_skills.stamina.StaminaFeature.GHROTH_LUNGE.enabled(player)
+                    && tryConsumeTacticalStamina(player)) {
                 startTacticalBoost(player, 0.775D, TACTICAL_MODE_LUNGE);
             }
         }
@@ -431,7 +433,7 @@ public final class GhrothStateManager {
 
     private static boolean tryConsumeTacticalStamina(ServerPlayer player) {
         StaminaManager.ConsumeResult result = StaminaManager.consume(player,
-                com.rzy.dealt_force_skills.stamina.StaminaRules.GHROTH_TACTICAL_COST);
+                com.rzy.dealt_force_skills.stamina.StaminaSettings.tacticalCost());
         if (result == StaminaManager.ConsumeResult.NOT_ENOUGH) {
             return false;
         }
@@ -675,7 +677,14 @@ public final class GhrothStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, STARS_COOLDOWN_UNTIL, STARS_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, JUSTICE_COOLDOWN_UNTIL, JUSTICE_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, NOON_COOLDOWN_UNTIL, NOON_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampDeadline(tag, TACTICAL_COOLDOWN_UNTIL, SkillCooldownHelper.now(player), TACTICAL_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 
     private static final class FrozenEntityState {

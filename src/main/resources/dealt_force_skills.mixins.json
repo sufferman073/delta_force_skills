@@ -5,6 +5,9 @@
   "compatibilityLevel": "JAVA_21",
   "minVersion": "0.8",
   "mixins": [
+    "ChamberWeaponDropMixin",
+    "ChamberWeaponContainerMixin",
+    "HvkZiplinePlayerMixin",
     "HearingSoundBroadcastMixin",
     "ServerPlayerSelfSkillDamageMixin",
     "LivingEntityUseItemAccessor",
@@ -19,7 +22,6 @@
     "client.HearingSoundEngineMixin",
     "client.AbstractClientPlayerSkinMixin",
     "client.HookAuthorChargeSoundPitchMixin",
-    "client.HvkClimbableMixin",
     "client.MinecraftSpectatorOutlineMixin",
     "client.PlayerRendererSkinMixin",
     "client.ScreenBackgroundBlurMixin",

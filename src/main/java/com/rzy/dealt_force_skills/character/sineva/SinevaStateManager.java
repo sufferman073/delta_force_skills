@@ -634,7 +634,14 @@ public final class SinevaStateManager {
       if (!persistent.contains("dealt_force_skills.sineva", 10)) {
          persistent.put("dealt_force_skills.sineva", new CompoundTag());
       }
-
-      return persistent.getCompound("dealt_force_skills.sineva");
+      CompoundTag tag = persistent.getCompound("dealt_force_skills.sineva");
+      if (player instanceof ServerPlayer) {
+          SkillCooldownHelper.clampCooldown(player, tag, BLADE_WIRE_NEXT_RECHARGE, BLADE_WIRE_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, GRAPPLE_COOLDOWN_UNTIL, GRAPPLE_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, BOMB_SUIT_COOLDOWN_UNTIL, BOMB_SUIT_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, BASH_COOLDOWN_UNTIL, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.bash_cooldown_ticks", 10));
+          SkillCooldownHelper.clampCooldown(player, tag, CHARGE_COOLDOWN_UNTIL, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.sineva.sineva_skills.charge_cooldown_ticks", 10));
+      }
+      return tag;
    }
 }

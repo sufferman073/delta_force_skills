@@ -300,6 +300,8 @@ public final class ClientHudLayout {
         intValue("global.y_offset", 0);
         floatValue("global.button_scale", 0.8F);
         ensureStaminaDefaults("global");
+        staminaFeatureMask();
+        staminaFeatureEnabled("stamina_features.show_bar");
         String characterId = ClientCharacterSelectionState.selectedCharacterId();
         if (!characterId.isEmpty()) {
             intValue("hud." + characterId + ".x_offset", 0);
@@ -315,6 +317,24 @@ public final class ClientHudLayout {
                 }
             }
         }
+    }
+
+    public static synchronized boolean staminaFeatureEnabled(String path) {
+        ensureFresh();
+        Object value = config.get(path);
+        if (value instanceof Boolean enabled) return enabled;
+        config.set(path, true);
+        config.save();
+        updateObservedModifiedTime();
+        return true;
+    }
+
+    public static int staminaFeatureMask() {
+        int mask = 0;
+        for (var feature : com.rzy.dealt_force_skills.stamina.StaminaFeature.values()) {
+            if (staminaFeatureEnabled(feature.path())) mask |= feature.bit();
+        }
+        return mask;
     }
 
     private static void ensureStaminaDefaults(String prefix) {

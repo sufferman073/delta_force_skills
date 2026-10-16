@@ -267,6 +267,12 @@ public final class UluruStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, INCENDIARY_NEXT_RECHARGE, INCENDIARY_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, COVER_NEXT_RECHARGE, COVER_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, MISSILE_COOLDOWN_UNTIL, MISSILE_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 }

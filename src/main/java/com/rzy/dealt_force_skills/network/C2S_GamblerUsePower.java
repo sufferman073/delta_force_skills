@@ -37,6 +37,7 @@ public class C2S_GamblerUsePower implements CustomPacketPayload {
     public static void handle(C2S_GamblerUsePower msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (ctx.player() instanceof ServerPlayer player && !player.isSpectator()) {
+                if (com.rzy.dealt_force_skills.climb.HvkZiplineManager.blocksSkills(player)) return;
                 GamblerStateManager.useStoredPower(player, msg.powerOrdinal);
             }
         });

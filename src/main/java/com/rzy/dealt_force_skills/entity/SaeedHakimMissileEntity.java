@@ -206,7 +206,8 @@ public class SaeedHakimMissileEntity extends Projectile implements ItemSupplier 
             if (distance > EXPLOSION_RADIUS || !UluruExplosionHelper.hasExplosionLineOfSight(level, center, target)) {
                 continue;
             }
-            float damage = EXPLOSION_DAMAGE * Math.max(0.0F, 1.0F - (float) distance * 0.25F);
+            float damage = EXPLOSION_DAMAGE * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.saeedhakimmissileentity", distance,
+                    com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.saeedhakimmissileentity", 0.25D));
             if (damage <= 0.0F) {
                 continue;
             }

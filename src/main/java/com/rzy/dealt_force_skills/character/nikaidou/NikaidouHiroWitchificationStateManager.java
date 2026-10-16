@@ -1213,7 +1213,15 @@ public final class NikaidouHiroWitchificationStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, ACTIVE1_COOLDOWN_UNTIL, REWIND_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, ACTIVE2_COOLDOWN_UNTIL, ERROR_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampDeadline(tag, REWIND_RECHARGE_AT, SkillCooldownHelper.now(player), Math.max(1, REWIND_RECHARGE_TICKS));
+            SkillCooldownHelper.clampCooldown(player, tag, ATTACK_COOLDOWN_UNTIL, RITUAL_SWORD_ATTACK_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 
     private static CompoundTag targetData(LivingEntity entity) {

@@ -453,7 +453,8 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
                if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) continue;
                double distance = target.position().add(0.0, (double)target.getBbHeight() * 0.5, 0.0).distanceTo(center);
                if (!(distance > EXPLOSION_RADIUS) && UluruExplosionHelper.hasExplosionLineOfSight(serverLevel, center, target)) {
-                  float amount = EXPLOSION_DAMAGE * Math.max(0.0F, 1.0F - (float)distance * 0.15F);
+                  float amount = EXPLOSION_DAMAGE * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.uluruloiteringmissileentity", distance,
+                    com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.uluruloiteringmissileentity", 0.15D));
                   if (target instanceof Player) {
                      float sourceScale = owner == null ? 1.0F : SkillDamageHelper.scale(owner, 1.0F);
                      amount = Math.min(amount, PLAYER_EXPLOSION_DAMAGE_CAP / Math.max(0.01F, sourceScale));

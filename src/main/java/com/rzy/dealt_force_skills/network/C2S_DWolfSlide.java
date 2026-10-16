@@ -42,6 +42,7 @@ public class C2S_DWolfSlide implements CustomPacketPayload {
     public static void handle(C2S_DWolfSlide msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) ctx.player();
+            if (com.rzy.dealt_force_skills.climb.HvkZiplineManager.blocksSkills(player)) return;
             if (player == null || player.isSpectator() || UluruLoiteringMissileEntity.isPlayerControlling(player)) {
                 return;
             }

@@ -566,6 +566,7 @@ public final class SkillDispatcher {
     }
 
     public static boolean useInheritedSkill(ServerPlayer player, String characterId, SkillSlot slot, boolean alternate) {
+        if (com.rzy.dealt_force_skills.climb.HvkZiplineManager.blocksSkills(player)) return false;
         Optional<CharacterDefinition> source = ModCharacters.get(characterId);
         if (source.isEmpty()
                 || source.get().role() == com.rzy.dealt_force_skills.character.CharacterRole.BOSS
@@ -782,6 +783,7 @@ public final class SkillDispatcher {
     }
 
     public static boolean passesInputGuards(ServerPlayer player, SkillSlot slot) {
+        if (com.rzy.dealt_force_skills.climb.HvkZiplineManager.blocksSkills(player)) return false;
         if (player == null || player.isSpectator() || slot == null) {
             return false;
         }

@@ -140,11 +140,13 @@ public final class SinevaShieldInputHandler {
     }
 
     private static void triggerBash() {
+        if (!com.rzy.dealt_force_skills.client.ClientHudLayout.staminaFeatureEnabled(
+                com.rzy.dealt_force_skills.stamina.StaminaFeature.SINEVA_BASH.path())) return;
         if (ClientSinevaHudState.bashCooldownTicks() > 0) {
             return;
         }
         Player player = Minecraft.getInstance().player;
-        if (!consumeStamina(player, StaminaRules.SINEVA_BASH_COST)) {
+        if (!consumeStamina(player, com.rzy.dealt_force_skills.stamina.StaminaSettings.bashCost())) {
             return;
         }
 
@@ -154,6 +156,8 @@ public final class SinevaShieldInputHandler {
     }
 
     private static void triggerCharge() {
+        if (!com.rzy.dealt_force_skills.client.ClientHudLayout.staminaFeatureEnabled(
+                com.rzy.dealt_force_skills.stamina.StaminaFeature.SINEVA_CHARGE.path())) return;
         if (ClientSinevaHudState.chargeCooldownTicks() > 0) {
             return;
         }
@@ -161,7 +165,7 @@ public final class SinevaShieldInputHandler {
         if (player == null || !hasHorizontalLook(player)) {
             return;
         }
-        if (!consumeStamina(player, StaminaRules.SINEVA_CHARGE_COST)) {
+        if (!consumeStamina(player, com.rzy.dealt_force_skills.stamina.StaminaSettings.chargeCost())) {
             return;
         }
 

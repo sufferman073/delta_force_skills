@@ -1347,7 +1347,20 @@ public final class UndeadStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampDeadline(tag, HUNTER_RELOAD_READY_AT, SkillCooldownHelper.now(player), 2 * 20);
+            SkillCooldownHelper.clampDeadline(tag, ROGUE_PASSIVE_READY_AT, SkillCooldownHelper.now(player), 10 * 20);
+            SkillCooldownHelper.clampDeadline(tag, coreCooldownKey(UndeadProfession.KNIGHT),
+                    SkillCooldownHelper.now(player), Math.max(1, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.cooldown.0.cooldown_ticks", 1800)));
+            SkillCooldownHelper.clampDeadline(tag, coreCooldownKey(UndeadProfession.WARRIOR),
+                    SkillCooldownHelper.now(player), Math.max(1, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.cooldown.1.cooldown_ticks", 1200)));
+            SkillCooldownHelper.clampDeadline(tag, coreCooldownKey(UndeadProfession.EXPLORER),
+                    SkillCooldownHelper.now(player), Math.max(1, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.cooldown.2.cooldown_ticks", 1)));
+            SkillCooldownHelper.clampDeadline(tag, coreCooldownKey(UndeadProfession.ROGUE),
+                    SkillCooldownHelper.now(player), Math.max(1, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.cooldown.3.cooldown_ticks", 800)));
+        }
+        return tag;
     }
 
     static CompoundTag rootData(Player player) {

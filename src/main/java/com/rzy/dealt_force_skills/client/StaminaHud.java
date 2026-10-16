@@ -22,6 +22,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 @EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class StaminaHud {
     private static boolean jumpWasDown;
+    private static net.minecraft.client.player.LocalPlayer lastFeaturePlayer;
+    private static int lastFeatureMask = -1;
 
     private StaminaHud() { }
 
@@ -36,12 +38,25 @@ public final class StaminaHud {
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.screen != null) {
+        if (mc.player == null) {
+            lastFeaturePlayer = null;
+            lastFeatureMask = -1;
+            jumpWasDown = true;
+            return;
+        }
+        int mask = ClientHudLayout.staminaFeatureMask();
+        if (mc.player != lastFeaturePlayer || mask != lastFeatureMask) {
+            com.rzy.dealt_force_skills.stamina.StaminaFeature.apply(mc.player, mask);
+            NetworkHandler.sendToServer(new com.rzy.dealt_force_skills.network.C2S_StaminaPreferences(mask));
+            lastFeaturePlayer = mc.player;
+            lastFeatureMask = mask;
+        }
+        if (mc.screen != null) {
             jumpWasDown = true;
             return;
         }
         boolean down = mc.options.keyJump.isDown();
-        if (down && !jumpWasDown) NetworkHandler.sendToServer(new C2S_StaminaVault());
+        if (down && !jumpWasDown && com.rzy.dealt_force_skills.stamina.StaminaFeature.VAULT.enabled(mask)) NetworkHandler.sendToServer(new C2S_StaminaVault());
         jumpWasDown = down;
     }
 
@@ -68,6 +83,7 @@ public final class StaminaHud {
     private static void renderBar(GuiGraphics graphics) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui || mc.player.isSpectator() || mc.player.getAbilities().instabuild) return;
+        if (!ClientHudLayout.staminaFeatureEnabled("stamina_features.show_bar")) return;
         int right = graphics.guiWidth() / 2 + 91;
         int y = graphics.guiHeight() - 48;
         // Reserve the vanilla air and passenger rows before applying the user's offsets.

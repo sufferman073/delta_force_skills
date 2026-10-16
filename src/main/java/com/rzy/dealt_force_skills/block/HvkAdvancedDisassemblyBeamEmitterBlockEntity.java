@@ -576,6 +576,11 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
             for (SyntheticRecipe recipe : syntheticRecipes(level)) {
                 addIndexedRecipe(recipe.id(), recipe.recipe(), seen, recipes, byId);
             }
+            for (var entry : com.rzy.dealt_force_skills.compat.HvkJeiRecipeCatalog.entries(level)) {
+                List<RecipeInput> inputs = entry.inputs().stream()
+                        .map(input -> new RecipeInput(Ingredient.of(input.choices().stream()), input.count())).toList();
+                addIndexedRecipe(entry.id(), new DisassemblyRecipe(entry.output(), inputs), seen, recipes, byId);
+            }
             recipes.sort(Comparator
                     .comparing((IndexedRecipe recipe) -> itemKey(recipe.view().result().getItem()))
                     .thenComparing(recipe -> recipe.view().id().toString()));
@@ -1021,8 +1026,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
 
     private static ItemStack ingredientChoiceStack(RecipeInput input, ItemStack choice, int batches) {
         ItemStack output = choice.copy();
-        output.setCount(saturatedMultiply(Math.max(1, choice.getCount()),
-                saturatedMultiply(input.count(), Math.max(1, batches))));
+        output.setCount(saturatedMultiply(input.count(), Math.max(1, batches)));
         return output;
     }
 
@@ -1036,7 +1040,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         for (ItemStack choice : input.ingredient().getItems()) {
             if (!choice.isEmpty() && seen.add(choice.getItem())) {
                 ItemStack copy = choice.copy();
-                copy.setCount(saturatedMultiply(Math.max(1, choice.getCount()), countMultiplier));
+                copy.setCount(countMultiplier);
                 choices.add(copy);
                 if (choices.size() >= MAX_RECIPE_TREE_ALTERNATIVES) {
                     break;
@@ -1071,7 +1075,9 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
 
     private record RecipeInput(Ingredient ingredient, int count) {
         private RecipeInput {
-            ingredient = ingredient == null ? Ingredient.EMPTY : ingredient;
+            ingredient = ingredient == null ? Ingredient.EMPTY : Ingredient.of(
+                    java.util.Arrays.stream(ingredient.getItems()).filter(stack -> !stack.isEmpty())
+                            .map(stack -> { ItemStack copy = stack.copy(); copy.setCount(1); return copy; }));
             count = Math.max(1, count);
         }
     }

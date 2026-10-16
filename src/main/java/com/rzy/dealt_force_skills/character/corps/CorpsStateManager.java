@@ -1044,7 +1044,13 @@ public final class CorpsStateManager {
         if (!persistentData.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistentData.put(ROOT_TAG, new CompoundTag());
         }
-        return persistentData.getCompound(ROOT_TAG);
+        CompoundTag tag = persistentData.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, ACTIVE_1_COOLDOWN_UNTIL, ACTIVE_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, ACTIVE_2_COOLDOWN_UNTIL, ACTIVE_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 
     private record DuelRuntime(

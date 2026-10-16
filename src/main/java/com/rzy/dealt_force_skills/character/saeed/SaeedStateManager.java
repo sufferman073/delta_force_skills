@@ -1245,6 +1245,15 @@ public final class SaeedStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, ROLL_COOLDOWN_UNTIL, ROLL_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampDeadline(tag, FIRE_NEXT_RECHARGE, SkillCooldownHelper.now(player), FIRE_RECHARGE_TICKS);
+            // The core cooldown starts after the boost; retain its valid remaining phase.
+            long activeAllowance = Math.min(Math.max(0, CORE_DURATION_TICKS),
+                    SkillCooldownHelper.remainingTicks(tag.getLong(CORE_ACTIVE_UNTIL), SkillCooldownHelper.now(player)));
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS, activeAllowance);
+        }
+        return tag;
     }
 }

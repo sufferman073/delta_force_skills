@@ -12,6 +12,9 @@ import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.network.syncher.SynchedEntityData.Builder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,7 +44,8 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
    private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.dwolfhandcannongrenadeentity.bounce_factor", 0.62));
    private static final double GROUND_REST_OFFSET = 0.24;
    private int fuseRemaining = FUSE_TICKS;
-   private boolean stopped;
+   private static final EntityDataAccessor<Boolean> STOPPED =
+       SynchedEntityData.defineId(DWolfHandCannonGrenadeEntity.class, EntityDataSerializers.BOOLEAN);
    private int lastImpactTick = -1000;
 
    public DWolfHandCannonGrenadeEntity(EntityType<? extends com.rzy.dealt_force_skills.entity.DWolfHandCannonGrenadeEntity> type, Level level) {
@@ -60,6 +64,7 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
    }
 
    protected void defineSynchedData(Builder builder) {
+      builder.define(STOPPED, false);
    }
 
    public void tick() {
@@ -72,7 +77,8 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
          }
       }
 
-      if (this.stopped) {
+      if (this.entityData.get(STOPPED)) {
+         this.setDeltaMovement(Vec3.ZERO);
          this.spawnClientTrail();
       } else {
          Vec3 motion = this.getDeltaMovement();
@@ -103,26 +109,27 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
          this.fuseRemaining = FUSE_TICKS;
       }
 
-      this.stopped = tag.getBoolean("Stopped");
+      this.entityData.set(STOPPED, tag.getBoolean("Stopped"));
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
       tag.putInt("FuseRemaining", this.fuseRemaining);
-      tag.putBoolean("Stopped", this.stopped);
+      tag.putBoolean("Stopped", this.entityData.get(STOPPED));
    }
 
    private void handleBlockHit(BlockHitResult hit) {
       this.lastImpactTick = this.tickCount;
       Direction direction = hit.getDirection();
-      Vec3 normal = Vec3.atLowerCornerOf(direction.getNormal());
-      Vec3 bounced = this.bounce(direction, this.getDeltaMovement());
-      this.setPos(hit.getLocation().x + normal.x * 0.04, hit.getLocation().y + normal.y * 0.04, hit.getLocation().z + normal.z * 0.04);
-      this.setDeltaMovement(bounced);
-      if (direction == Direction.UP && bounced.lengthSqr() < 0.006) {
-         double groundY = (double)hit.getBlockPos().getY() + 1.0 + 0.24;
-         this.setPos(hit.getLocation().x, groundY, hit.getLocation().z);
-         this.stopped = true;
+      if (direction == Direction.UP) {
+         this.setPos(hit.getLocation().x, hit.getLocation().y + GROUND_REST_OFFSET, hit.getLocation().z);
+         this.entityData.set(STOPPED, true);
          this.setDeltaMovement(Vec3.ZERO);
+      } else {
+         Vec3 normal = Vec3.atLowerCornerOf(direction.getNormal());
+         this.setPos(hit.getLocation().x + normal.x * 0.04D,
+            hit.getLocation().y + normal.y * 0.04D,
+            hit.getLocation().z + normal.z * 0.04D);
+         this.setDeltaMovement(this.bounce(direction, this.getDeltaMovement()));
       }
 
       if (this.level() instanceof ServerLevel serverLevel) {
@@ -148,7 +155,7 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
          LivingEntity owner = this.getOwner() instanceof LivingEntity living ? living : null;
          Player ownerPlayer = owner instanceof Player player ? player : null;
          double radius = CommanderStateManager.skillRadius(ownerPlayer, RADIUS);
-         double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, 0.1D);
+         double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.dwolfhandcannongrenadeentity", 0.1D));
          RangedSoundHelper.stop(serverLevel, center, (SoundEvent)ModSounds.D_WOLF_HAND_CANNON_FUSE.get(), SoundSource.PLAYERS, 48.0);
          serverLevel.playSound(null, center.x, center.y, center.z, (SoundEvent)ModSounds.D_WOLF_HAND_CANNON_EXPLODE.get(), SoundSource.PLAYERS, 1.3F, 1.0F);
          serverLevel.sendParticles(ParticleTypes.EXPLOSION, center.x, center.y + 0.2, center.z, 8, 0.45, 0.25, 0.45, 0.02);
@@ -160,8 +167,10 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
          )) {
             double distance = target.position().add(0.0, (double)target.getBbHeight() * 0.5, 0.0).distanceTo(center);
             if (!(distance > radius)) {
-               float baseDamage = target instanceof Player ? 12.0F : 24.0F;
-               float amount = baseDamage * Math.max(0.0F, 1.0F - (float)distance * (float)falloff);
+               float baseDamage = target instanceof Player
+                    ? com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.dwolfhandcannongrenadeentity.player_damage", 12.0F)
+                    : com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.dwolfhandcannongrenadeentity.non_player_damage", 24.0F);
+               float amount = baseDamage * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.dwolfhandcannongrenadeentity", distance, falloff);
                if (!(amount <= 0.0F)) {
                   Vec3 before = target.getDeltaMovement();
                   target.invulnerableTime = 0;
@@ -186,7 +195,7 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
    }
 
    public boolean isStoppedForRender() {
-      return this.stopped;
+      return this.entityData.get(STOPPED);
    }
 
    public float impactAnimationSeconds(float partialTick) {

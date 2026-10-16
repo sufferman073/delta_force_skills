@@ -343,11 +343,12 @@ public final class DWolfInputHandler {
     }
 
     private static boolean hasSlideStamina(Player player) {
+        if (!com.rzy.dealt_force_skills.stamina.StaminaFeature.DWOLF_SLIDE.enabled(player)) return false;
         if (ClientCommanderState.isPassiveEnabled(ModCharacters.D_WOLF_ID)
                 && ClientCommanderState.ownsBranchUpgrade(CommanderBranchUpgrade.DWOLF_EFFICIENT_STAMINA)) {
             return true;
         }
-        StaminaManager.ConsumeResult result = StaminaManager.canConsume(player, com.rzy.dealt_force_skills.stamina.StaminaRules.DWOLF_SLIDE_COST * (ClientCommanderState.shouldRender() ? 0.5D : 1.0D));
+        StaminaManager.ConsumeResult result = StaminaManager.canConsume(player, com.rzy.dealt_force_skills.stamina.StaminaSettings.slideCost() * (ClientCommanderState.shouldRender() ? 0.5D : 1.0D));
         if (result == StaminaManager.ConsumeResult.SUCCESS) {
             return true;
         }

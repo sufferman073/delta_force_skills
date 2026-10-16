@@ -143,7 +143,15 @@ public final class DealtForcePlayerConfig {
     private static synchronized void ensureDefaultValue(String path, double defaultValue, ResourceLocation id) {
         CommentedFileConfig current = config();
         Object configured = current.get(path);
-        if (configured == null) {
+        boolean stepHeight = id.getNamespace().equals("minecraft")
+                && id.getPath().equals("generic.step_height");
+        if (stepHeight) {
+            // NeoForge exposes total step height; retain Minecraft's native baseline.
+            defaultValue = 0.6D;
+        }
+        // Repair the old zero value while preserving nonzero custom settings.
+        if (configured == null || (stepHeight && configured instanceof Number number
+                && number.doubleValue() == 0.0D)) {
             current.set(path, defaultValue);
             dirty = true;
         }
@@ -183,7 +191,7 @@ public final class DealtForcePlayerConfig {
             return;
         }
         current.setComment(path, "Base value for player attribute " + id
-                + ". Default captured from the current player attribute: " + defaultValue
+                + ". Default base value: " + defaultValue
                 + ". Applies on login, respawn, dimension change, and /reload.");
         dirty = true;
     }

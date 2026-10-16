@@ -20,11 +20,13 @@ public class NetworkHandler {
 
     @SubscribeEvent
     public static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(DealtForceSkillsMod.MODID).versioned("58");
+        PayloadRegistrar registrar = event.registrar(DealtForceSkillsMod.MODID).versioned("63");
         registrar.playToServer(C2S_FoxMusicAction.TYPE, C2S_FoxMusicAction.STREAM_CODEC, C2S_FoxMusicAction::handle);
         registrar.playToClient(S2C_FoxMusicSnapshot.TYPE, S2C_FoxMusicSnapshot.STREAM_CODEC, S2C_FoxMusicSnapshot::handle);
         registrar.playToClient(S2C_FoxMusicPlayback.TYPE, S2C_FoxMusicPlayback.STREAM_CODEC, S2C_FoxMusicPlayback::handle);
         registrar.playToClient(S2C_VaultMotion.TYPE, S2C_VaultMotion.STREAM_CODEC, S2C_VaultMotion::handle);
+        registrar.playToServer(C2S_HvkZiplineRide.TYPE, C2S_HvkZiplineRide.STREAM_CODEC, C2S_HvkZiplineRide::handle);
+        registrar.playToServer(C2S_StaminaPreferences.TYPE, C2S_StaminaPreferences.STREAM_CODEC, C2S_StaminaPreferences::handle);
         registrar.playToServer(C2S_StaminaVault.TYPE, C2S_StaminaVault.STREAM_CODEC, C2S_StaminaVault::handle);
         registrar.playToClient(S2C_StaminaState.TYPE, S2C_StaminaState.STREAM_CODEC, S2C_StaminaState::handle);
         registrar.playToServer(C2S_RoverAction.TYPE, C2S_RoverAction.STREAM_CODEC, C2S_RoverAction::handle);

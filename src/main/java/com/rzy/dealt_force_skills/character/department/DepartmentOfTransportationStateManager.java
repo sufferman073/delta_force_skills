@@ -1039,7 +1039,16 @@ public final class DepartmentOfTransportationStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, LASER_COOLDOWN_UNTIL, LASER_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, TRAP_COOLDOWN_UNTIL, TRAP_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+            for (int slot = 0; slot < TRAP_MAX_CHARGES; slot++) {
+                SkillCooldownHelper.clampCooldown(player, tag, trapChargeKey(slot), TRAP_COOLDOWN_TICKS);
+            }
+        }
+        return tag;
     }
 
     private record CoreVictim(long explodeTick, UUID ownerId) {

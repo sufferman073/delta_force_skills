@@ -685,7 +685,8 @@ public final class ConfigLabelHelper {
             lines.add(preferChinese() ? "关联技能: " + skillHint : "Skill: " + skillHint);
         }
         if (entry.comment() != null && !entry.comment().isBlank()
-                && !entry.comment().startsWith("Controls ")) {
+                && !entry.comment().startsWith("Controls ")
+                && (!preferChinese() || entry.comment().codePoints().anyMatch(c -> c >= 0x4E00 && c <= 0x9FFF))) {
             lines.add(entry.comment());
         }
         return Component.literal(String.join("\n", lines));
@@ -710,32 +711,43 @@ public final class ConfigLabelHelper {
         }
         String leaf = parts[parts.length - 1];
         String leafZh = translateLeaf(leaf);
-        // Prefer short readable: 角色中文名 · 参数中文
         String context;
-        if (parts.length >= 2 && "characters".equals(parts[0])) {
-            String charName = resolveCharacterDisplayName(parts[1]);
-            context = charName != null ? charName : translateSegment(parts[1]);
-            String skill = skillNameHint(path);
-            if (skill != null) {
-                context = context + " · " + skill;
-            } else if (parts.length >= 3) {
-                context = context + " · " + shortenModule(parts[2]);
+        String owner = entry.file() == ConfigFileId.GAMEPLAY
+                ? com.rzy.dealt_force_skills.config.CharacterConfigGrouping.owner(path) : "";
+        if (!owner.isEmpty()) {
+            String charName = resolveCharacterDisplayName("characters".equals(parts[0]) ? parts[1] : owner);
+            context = charName != null ? charName : translateSegment(owner);
+            if (!"characters".equals(parts[0])) {
+                context += " · " + translateSegment(parts[1]);
+            } else {
+                String skill = skillNameHint(path);
+                if (skill != null) context += " · " + skill;
+                else if (parts.length >= 4) context += " · " + shortenModule(parts[2]);
+                for (int i = 3; i < parts.length - 1; i++) {
+                    if ("effect".equals(parts[i]) || "effects".equals(parts[i]) || "skill_hurt".equals(parts[i])) break;
+                    String detail = translateSegment(parts[i]);
+                    if (!context.contains(detail)) context += " · " + detail;
+                }
             }
         } else if (entry.file() == ConfigFileId.BOSSES) {
-            context = "信标".equals(translateSegment(parts[0])) || "beacon".equalsIgnoreCase(parts[0])
-                    ? "信标Boss"
-                    : translateSegment(parts[0]);
+            context = translateSegment(parts[0]);
+            for (int i = 1; i < parts.length - 1; i++) context += " · " + translateSegment(parts[i]);
         } else if (parts.length >= 2 && ("consumables".equals(parts[0]) || "items".equals(parts[0])
                 || "equipment".equals(parts[0]))) {
             String itemKey = "item.dealt_force_skills." + parts[1];
             context = I18n.exists(itemKey) ? I18n.get(itemKey) : translateSegment(parts[1]);
         } else if (parts.length >= 2) {
             context = translateSegment(parts[0]);
-            if (parts.length >= 3 && !parts[1].equals(leaf)) {
-                context = context + " · " + translateSegment(parts[1]);
-            }
+            for (int i = 1; i < parts.length - 1; i++) context += " · " + translateSegment(parts[i]);
         } else {
             context = "";
+        }
+        // Do not collapse different effect/amplifier or damage occurrences into identical rows.
+        for (int i = 2; i < parts.length - 1; i++) {
+            if ("effect".equals(parts[i]) || "effects".equals(parts[i]) || "skill_hurt".equals(parts[i])) {
+                for (int j = i; j < parts.length - 1; j++) context += " · " + translateSegment(parts[j]);
+                break;
+            }
         }
         if (context.isEmpty()) {
             return leafZh;
@@ -744,6 +756,9 @@ public final class ConfigLabelHelper {
     }
 
     private static String buildPurpose(ConfigEntryData entry) {
+        String descriptionKey = "config.dealt_force_skills.description."
+                + entry.file().name().toLowerCase(Locale.ROOT) + "." + entry.path().replace('.', '_');
+        if (I18n.exists(descriptionKey)) return I18n.get(descriptionKey);
         if (!preferChinese()) {
             return "Controls " + entry.path().replace('.', ' ');
         }
@@ -770,7 +785,7 @@ public final class ConfigLabelHelper {
         }
         String purpose = purposeForLeaf(leaf);
         StringBuilder sb = new StringBuilder();
-        sb.append("参数作用: ");
+        sb.append("参数作用: 调整「").append(entryLabel(entry).getString()).append("」。 ");
         if (!who.isEmpty()) {
             sb.append("调整").append(who).append("的");
         } else {
@@ -785,7 +800,9 @@ public final class ConfigLabelHelper {
         if (itemDescription != null) {
             sb.append(" 物品说明: ").append(itemDescription);
         }
-        sb.append(" 生效方式: 保存后立即应用；也可用 /dealtreload 从磁盘重读。");
+        sb.append(entry.file().clientLocal()
+                ? " 生效方式: 本地实时预览，保存后保留；取消则恢复原值。"
+                : " 生效方式: 保存后应用；也可用 /dealtreload 从磁盘重读。已生成实体的初始属性可能需要重新召唤。");
         return sb.toString();
     }
 
@@ -906,6 +923,17 @@ public final class ConfigLabelHelper {
         if (parts.length < 2 || !"characters".equals(parts[0])) {
             return null;
         }
+        if (parts.length > 3 && "skills".equals(parts[2])) {
+            try {
+                var slot = com.rzy.dealt_force_skills.character.SkillSlot.valueOf(parts[3].toUpperCase(Locale.ROOT));
+                for (var definition : com.rzy.dealt_force_skills.character.ModCharacters.all()) {
+                    String id = definition.id().substring(definition.id().lastIndexOf('/') + 1);
+                    if (!normalizeCharacterId(id).equals(normalizeCharacterId(parts[1]))) continue;
+                    var skill = definition.skill(slot).orElse(null);
+                    if (skill != null) return new SkillReference(skill.displayName().getString(), skill.displayDescription().getString());
+                }
+            } catch (IllegalArgumentException ignored) { }
+        }
         String characterId = normalizeCharacterId(parts[1]);
         if (lowerPath.contains("witchification")) {
             characterId = "nikaidou_hiro_witchification";
@@ -982,8 +1010,8 @@ public final class ConfigLabelHelper {
             default -> {
             }
         }
-        if (ZH.containsKey(lower)) {
-            return ZH.get(lower);
+        if (I18n.exists("config.dealt_force_skills.leaf." + lower)) {
+            return I18n.get("config.dealt_force_skills.leaf." + lower);
         }
         if (lower.endsWith("_cooldown_ticks") || lower.equals("cooldown_ticks")) {
             return "冷却时间";
@@ -1065,7 +1093,7 @@ public final class ConfigLabelHelper {
             }
             return "";
         }
-        if (lower.endsWith("_ticks")) return "单位: tick（20 tick = 1 秒）";
+        if (lower.endsWith("_ticks")) return "单位: 游戏刻（20 刻 = 1 秒）";
         if (lower.endsWith("_seconds")) return "单位: 秒";
         if (lower.endsWith("_fraction")) return "单位: 比例（1.0 = 100%）";
         if (lower.endsWith("_percent")) return "单位: 百分比（100 = 100%）";
@@ -1212,11 +1240,11 @@ public final class ConfigLabelHelper {
 
     private static String kindChinese(String kind) {
         return switch (kind) {
-            case "BOOLEAN" -> "开关(true/false)";
+            case "BOOLEAN" -> "开关";
             case "INTEGER" -> "整数";
             case "LONG" -> "长整数";
-            case "FLOAT" -> "小数(float)";
-            case "DOUBLE" -> "小数(double)";
+            case "FLOAT" -> "小数";
+            case "DOUBLE" -> "小数";
             case "STRING" -> "文本";
             default -> kind;
         };
@@ -1241,6 +1269,7 @@ public final class ConfigLabelHelper {
             case "lexninjia" -> "lex_ninjia";
             case "n_two" -> "ntwo"; // lang key is ntwo, not n_two
             case "nikaidou" -> "nikaidou_hiro";
+            case "department_of_transportation" -> "department";
             default -> lower;
         };
     }

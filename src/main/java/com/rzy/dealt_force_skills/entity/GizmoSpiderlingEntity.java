@@ -260,7 +260,9 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
          if (TargetingUtil.isHostileLivingFor(owner, target) && this.isInsideExplosion(target)) {
             Vec3 before = target.getDeltaMovement();
             target.invulnerableTime = 0;
-            float baseDamage = target instanceof Player ? 10.0F : 40.0F;
+            float baseDamage = target instanceof Player
+                    ? com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.gizmospiderlingentity.player_damage", 10.0F)
+                    : com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.gizmospiderlingentity.non_player_damage", 40.0F);
             this.addCorrosion(target);
             SkillDamageHelper.hurt(target, SkillDamageHelper.gizmoSpiderling(level, this, owner), owner, baseDamage);
             hitTargets.add(target.getUUID());

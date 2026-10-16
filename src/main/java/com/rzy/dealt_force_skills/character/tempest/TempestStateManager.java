@@ -996,6 +996,12 @@ public final class TempestStateManager {
         if (!persistent.contains(ROOT_TAG, Tag.TAG_COMPOUND)) {
             persistent.put(ROOT_TAG, new CompoundTag());
         }
-        return persistent.getCompound(ROOT_TAG);
+        CompoundTag tag = persistent.getCompound(ROOT_TAG);
+        if (player instanceof ServerPlayer) {
+            SkillCooldownHelper.clampCooldown(player, tag, WALL_NEXT_RECHARGE, WALL_RECHARGE_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, ROLL_COOLDOWN_UNTIL, ROLL_COOLDOWN_TICKS);
+            SkillCooldownHelper.clampCooldown(player, tag, CORE_COOLDOWN_UNTIL, CORE_COOLDOWN_TICKS);
+        }
+        return tag;
     }
 }

@@ -800,8 +800,13 @@ public final class RaptorStateManager {
       if (!persistent.contains("dealt_force_skills.raptor", 10)) {
          persistent.put("dealt_force_skills.raptor", new CompoundTag());
       }
-
-      return persistent.getCompound("dealt_force_skills.raptor");
+      CompoundTag tag = persistent.getCompound("dealt_force_skills.raptor");
+      if (player instanceof ServerPlayer) {
+          SkillCooldownHelper.clampCooldown(player, tag, FALCON_COOLDOWN_UNTIL, FALCON_COOLDOWN_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, PULSE_NEXT_RECHARGE, PULSE_RECHARGE_TICKS);
+          SkillCooldownHelper.clampCooldown(player, tag, HUMMINGBIRD_COOLDOWN_UNTIL, HUMMINGBIRD_COOLDOWN_TICKS);
+      }
+      return tag;
    }
 
    private static record EntityLookup(Entity entity) {
