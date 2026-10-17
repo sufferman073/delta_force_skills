@@ -1009,6 +1009,7 @@ DealtForceConfig.intValue("characters.department.department_of_transportation_st
         DealtForceConfig.intValue("items.hvk_universal_glue.max_chain_blocks", 4096);
         DealtForceConfig.intValue("items.hvk_universal_glue.zipline_max_travel_blocks", 512);
         DealtForceConfig.doubleValue("items.hvk_universal_glue.zipline_speed", 2.15D);
+        DealtForceConfig.doubleValue("items.hvk_universal_glue.zipline_hang_drop", 1.9D);
         DealtForceConfig.intValue("items.rainbow_injection_item.effect.custom.0.amplifier", 3);
         DealtForceConfig.intValue("items.rainbow_injection_item.effect.custom.0.duration_ticks", 360 * 20);
         DealtForceConfig.intValue("items.repair_kit_item.base_cost", 100);

@@ -82,11 +82,6 @@ public class ModEntities {
     public static final DeferredRegister<EntityType<?>> ENTITIES =
             DeferredRegister.create(Registries.ENTITY_TYPE, DealtForceSkillsMod.MODID);
 
-    public static final DeferredHolder<EntityType<?>, EntityType<com.rzy.dealt_force_skills.entity.HvkZiplineSeatEntity>> HVK_ZIPLINE_SEAT =
-            ENTITIES.register("hvk_zipline_seat", () -> EntityType.Builder.<com.rzy.dealt_force_skills.entity.HvkZiplineSeatEntity>of(
-                    com.rzy.dealt_force_skills.entity.HvkZiplineSeatEntity::new, MobCategory.MISC)
-                    .sized(0.01F, 0.01F).noSave().clientTrackingRange(64).updateInterval(1).build("hvk_zipline_seat"));
-
     public static final DeferredHolder<EntityType<?>, EntityType<com.rzy.dealt_force_skills.entity.RoverProjectileEntity>> ROVER_PROJECTILE =
             ENTITIES.register("rover_projectile", () -> EntityType.Builder.<com.rzy.dealt_force_skills.entity.RoverProjectileEntity>of(
                     com.rzy.dealt_force_skills.entity.RoverProjectileEntity::new, MobCategory.MISC)

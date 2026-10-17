@@ -8,6 +8,8 @@
     "ChamberWeaponDropMixin",
     "ChamberWeaponContainerMixin",
     "HvkZiplinePlayerMixin",
+    "HvkZiplineConnectionMixin",
+    "HvkZiplineConnectionAccess",
     "HearingSoundBroadcastMixin",
     "ServerPlayerSelfSkillDamageMixin",
     "LivingEntityUseItemAccessor",
