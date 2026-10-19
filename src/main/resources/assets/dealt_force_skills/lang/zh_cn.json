@@ -4130,7 +4130,6 @@
   "config.dealt_force_skills.leaf.world_height": "世界高度",
   "config.dealt_force_skills.leaf.world_width": "世界宽度",
   "config.dealt_force_skills.leaf.wound_probability_multiplier": "创伤概率倍率",
-  "config.dealt_force_skills.leaf.zipline_hang_drop": "滑索悬挂高度差（脚离索线距离）",
   "config.dealt_force_skills.leaf.zipline_max_travel_blocks": "滑索最大飞行路程方块",
   "config.dealt_force_skills.leaf.zipline_speed": "滑索速度",
   "config.dealt_force_skills.segment.0": "第1项",
@@ -6045,5 +6044,5 @@
   "message.dealt_force_skills.hvk_universal_glue.start": "已标记起点；右键另一端创建普通滑索，潜行右键另一端创建淡灰红色禁技能滑索；再次点击此点取消。",
   "message.dealt_force_skills.hvk_universal_glue.cancelled": "已取消起点标记，未消耗胶水。",
   "message.dealt_force_skills.hvk_universal_glue.link_failed": "无法连接：端点须同维度、已加载、未被占用，且距离不超过滑行上限（最多 512 格）。",
-  "message.dealt_force_skills.hvk_universal_glue.zipline_start": "已挂上滑索，可自由转动视角，潜行即可脱离。"
+  "entity.dealt_force_skills.hvk_zipline_seat": "胶水滑索"
 }

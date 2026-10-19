@@ -1,6 +1,6 @@
 package com.rzy.dealt_force_skills.mixin;
 
-import com.rzy.dealt_force_skills.climb.HvkZiplineManager;
+import com.rzy.dealt_force_skills.entity.HvkZiplineSeatEntity;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.player.Player;
@@ -9,19 +9,21 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * The zipline drags the player through blocks without riding anything, so {@code noPhysics} can no
- * longer be relied on: {@code Player#tick} resets it to {@code isSpectator()} on every tick. Vanilla
- * applies {@code inWall} damage from {@code LivingEntity#baseTick} once per tick, which would kill the
- * rider within a second while clipping through terrain, so the in-wall damage is suppressed while the
- * player is attached to a zipline.
- */
 @Mixin(Player.class)
 public abstract class HvkZiplinePlayerMixin {
+    @Inject(method = "wantsToStopRiding", at = @At("HEAD"), cancellable = true)
+    private void dfs$keepInitialSneakRide(CallbackInfoReturnable<Boolean> callback) {
+        Player player = (Player) (Object) this;
+        // The carrier handles sneak after resolving a safe exit on the server.
+        if (player.getVehicle() instanceof HvkZiplineSeatEntity) {
+            callback.setReturnValue(false);
+        }
+    }
+
     @Inject(method = "isInvulnerableTo", at = @At("HEAD"), cancellable = true)
-    private void dfs$ziplineInWallImmunity(DamageSource source, CallbackInfoReturnable<Boolean> cir) {
-        if (source.is(DamageTypes.IN_WALL) && HvkZiplineManager.isRiding((Player) (Object) this)) {
-            cir.setReturnValue(true);
+    private void dfs$allowZiplineClipping(DamageSource source, CallbackInfoReturnable<Boolean> callback) {
+        if (((Player) (Object) this).getVehicle() instanceof HvkZiplineSeatEntity && source.is(DamageTypes.IN_WALL)) {
+            callback.setReturnValue(true);
         }
     }
 }

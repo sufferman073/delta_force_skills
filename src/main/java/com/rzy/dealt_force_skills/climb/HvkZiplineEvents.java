@@ -6,9 +6,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -44,42 +41,5 @@ public final class HvkZiplineEvents {
         HvkZiplineManager.beginRide(serverPlayer, serverLevel, pos);
         event.setCanceled(true);
         event.setCancellationResult(InteractionResult.SUCCESS);
-    }
-
-    /**
-     * Drives active traversals. This replaces the old carrier entity's {@code tick()}: the movement state
-     * machine now runs against the player itself, on the server, once per tick.
-     */
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-        if (event.player instanceof ServerPlayer serverPlayer) {
-            HvkZiplineManager.tick(serverPlayer);
-        }
-    }
-
-    /** Logging out mid-ride must restore gravity/physics flags on the stored player instance. */
-    @SubscribeEvent
-    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (event.getEntity() instanceof ServerPlayer serverPlayer) {
-            HvkZiplineManager.abort(serverPlayer);
-        }
-    }
-
-    @SubscribeEvent
-    public static void onPlayerClone(PlayerEvent.Clone event) {
-        if (event.getOriginal() instanceof ServerPlayer player) HvkZiplineManager.abort(player);
-    }
-
-    @SubscribeEvent
-    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) HvkZiplineManager.abort(player);
-    }
-
-    @SubscribeEvent
-    public static void onPlayerDeath(LivingDeathEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) HvkZiplineManager.abort(player);
     }
 }

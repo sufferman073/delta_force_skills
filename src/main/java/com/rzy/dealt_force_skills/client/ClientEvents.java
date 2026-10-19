@@ -1136,6 +1136,7 @@ public class ClientEvents {
 
         @SubscribeEvent
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers e) {
+            e.registerEntityRenderer(ModEntities.HVK_ZIPLINE_SEAT.get(), net.minecraft.client.renderer.entity.NoopRenderer::new);
             e.registerBlockEntityRenderer(ModBlockEntities.BLADE_WIRE.get(), BladeWireBlockEntityRenderer::new);
             e.registerEntityRenderer(ModEntities.GRAPPLE_HOOK.get(), GrappleHookRenderer::new);
             e.registerEntityRenderer(ModEntities.BLADE_WIRE_PROJECTILE.get(), ctx -> new BlockbenchProjectileRenderer<>(

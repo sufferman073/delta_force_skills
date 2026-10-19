@@ -20,7 +20,7 @@ import java.lang.reflect.Modifier;
 import java.util.function.Supplier;
 
 public class NetworkHandler {
-    private static final String PROTOCOL = "77";
+    private static final String PROTOCOL = "76";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(DealtForceSkillsMod.MODID, "main"),
@@ -46,9 +46,6 @@ public class NetworkHandler {
             CHANNEL.messageBuilder(S2C_VaultMotion.class, 240, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                     .encoder(S2C_VaultMotion::encode).decoder(S2C_VaultMotion::decode)
                     .consumerMainThread(S2C_VaultMotion::handle).add();
-            CHANNEL.messageBuilder(S2C_HvkZiplineMotion.class, 246, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
-                    .encoder(S2C_HvkZiplineMotion::encode).decoder(S2C_HvkZiplineMotion::decode)
-                    .consumerMainThread(S2C_HvkZiplineMotion::handle).add();
             CHANNEL.messageBuilder(C2S_StaminaPreferences.class, 244, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                     .encoder(C2S_StaminaPreferences::encode).decoder(C2S_StaminaPreferences::decode)
                     .consumerMainThread(C2S_StaminaPreferences::handle).add();
