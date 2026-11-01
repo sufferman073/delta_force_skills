@@ -133,11 +133,20 @@ public class DFCommand {
             .requires(DFCommand::isDfPermitted)
             .executes(ctx -> {
                 DFClientConfig cfg = DFClientConfig.getInstance();
+                // 注意：指令在服务端执行，不能引用客户端 Minecraft 类，因此这里只报配置值与模式，
+                // 真正生效的倍数由客户端界面在 init() 里按当前界面尺寸解析。
+                String modeText = cfg.isUiScaleAuto()
+                        ? "§7自动（界面尺寸>=3 用 1.0，<3 用 1.5）"
+                        : "§7手动";
                 ctx.getSource().sendSuccess(() ->
                     Component.literal("§e=== 顶栏偏移配置 ===\n" +
                         "§6/df config x <值> (设置X偏移)\n" +
                         "§6/df config y <值> (设置Y偏移)\n" +
-                        "§7当前 X偏移: " + cfg.getTabXOffset() + "  Y偏移: " + cfg.getTabYOffset()), false);
+                        "§6/df config scale <值> (界面放大倍数 " +
+                        DFClientConfig.MIN_UI_SCALE + "~" + DFClientConfig.MAX_UI_SCALE + ")\n" +
+                        "§6/df config scale auto (恢复自动：按界面尺寸自动选倍数)\n" +
+                        "§7当前 X偏移: " + cfg.getTabXOffset() + "  Y偏移: " + cfg.getTabYOffset() +
+                        "  界面放大: " + String.format("%.2f", cfg.getUiScale()) + " " + modeText), false);
                 return 1;
             })
             .then(Commands.literal("x")
@@ -162,6 +171,40 @@ public class DFCommand {
                         cfg.save();
                         ctx.getSource().sendSuccess(() ->
                             Component.literal("§a顶栏Y偏移已设置为: " + value + "（重新打开界面生效）"), true);
+                        return 1;
+                    })
+                )
+            )
+            .then(Commands.literal("scale")
+                .executes(ctx -> {
+                    // /df config scale 不带值时只打印当前配置值与模式，避免误操作
+                    DFClientConfig cfg = DFClientConfig.getInstance();
+                    ctx.getSource().sendSuccess(() ->
+                        Component.literal("§e界面放大倍数: " + String.format("%.2f", cfg.getUiScale()) +
+                                (cfg.isUiScaleAuto() ? "（自动模式：界面尺寸>=3 用 1.0，<3 用 1.5）" : "（手动）") +
+                                "\n§7用 /df config scale <值> 手动设置，/df config scale auto 恢复自动"), false);
+                    return 1;
+                })
+                .then(Commands.literal("auto")
+                    .executes(ctx -> {
+                        DFClientConfig cfg = DFClientConfig.getInstance();
+                        cfg.setUiScaleAuto();
+                        cfg.save();
+                        ctx.getSource().sendSuccess(() ->
+                            Component.literal("§a已恢复自动模式：界面尺寸>=3 用 1.0，<3 用 1.5（重新打开界面生效）"), true);
+                        return 1;
+                    })
+                )
+                .then(Commands.argument("value", DoubleArgumentType.doubleArg(
+                        DFClientConfig.MIN_UI_SCALE, DFClientConfig.MAX_UI_SCALE))
+                    .executes(ctx -> {
+                        double value = DoubleArgumentType.getDouble(ctx, "value");
+                        DFClientConfig cfg = DFClientConfig.getInstance();
+                        cfg.setUiScale(value);
+                        cfg.save();
+                        ctx.getSource().sendSuccess(() ->
+                            Component.literal("§a界面放大倍数已设置为: " + String.format("%.2f", cfg.getUiScale())
+                                    + "（重新打开界面生效）"), true);
                         return 1;
                     })
                 )

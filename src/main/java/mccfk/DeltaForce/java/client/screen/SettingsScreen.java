@@ -233,13 +233,18 @@ public class SettingsScreen extends Screen {
     protected void init() {
         super.init();
         active = this;
-        this.uiScale = Math.min(this.width / REFERENCE_WIDTH, this.height / REFERENCE_HEIGHT);
-        this.offsetX = (int)((this.width - REFERENCE_WIDTH * this.uiScale) / 2);
-        this.offsetY = (int)((this.height - REFERENCE_HEIGHT * this.uiScale) / 2);
-        this.refW = (int)REFERENCE_WIDTH;
-        this.refH = (int)REFERENCE_HEIGHT;
-        // 根据屏幕大小计算位置（按比例，不额外缩放）
+        // 参考画布按放大倍数缩小（960/倍数 x 540/倍数）再等比塞进 GUI 空间，
+        // 这样界面尺寸 2 下字与控件等比放大，且画布不会超出屏幕（详见 UiCanvasScaleMath）。
+        // 倍数来源：玩家没手动设置过时按当前界面尺寸自动选（>= 3 → 1.0，< 3 → 1.5），
+        // 手动设置过则一直用玩家的值。
         DFClientConfig cfg = DFClientConfig.getInstance();
+        double multiplier = cfg.resolveUiScale(Minecraft.getInstance().getWindow().getGuiScale());
+        this.refW = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_WIDTH, multiplier);
+        this.refH = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_HEIGHT, multiplier);
+        this.uiScale = UiCanvasScaleMath.fitScale(this.width, this.height, this.refW, this.refH);
+        this.offsetX = UiCanvasScaleMath.canvasOffset(this.width, this.refW, this.uiScale);
+        this.offsetY = UiCanvasScaleMath.canvasOffset(this.height, this.refH, this.uiScale);
+        // 根据屏幕大小计算位置（按比例，不额外缩放）
         this.tabWidth = (int) (TAB_BASE_WIDTH * UI_SCALE);
         this.tabHeight = (int) (TAB_BASE_HEIGHT * UI_SCALE);
         this.tabStartX = (int)(REFERENCE_WIDTH * TAB_START_X_RATIO / 100) + cfg.getTabXOffset();
@@ -1751,9 +1756,18 @@ public class SettingsScreen extends Screen {
 
     // ======================== 设置界面配置浮层 ========================
 
+    /** 设置浮层尺寸（渲染与命中判定共用，改一处即可，避免滑块点击区错位）。 */
+    private static final int SETTINGS_OVERLAY_W = 220;
+    /** 高度按内容算：28（首行）+ 34（行距）+ 10（滑块）+ 2（手柄）+ 10（底边距）= 84。 */
+    private static final int SETTINGS_OVERLAY_H = 84;
+    /** 浮层内滑块的行间距（每个滑块占一行）。 */
+    private static final int SETTINGS_OVERLAY_ROW_GAP = 34;
+    /** 第一个滑块的纵坐标偏移（标题占 6~15，标签画在滑块上方 10 像素，28 起不压标题）。 */
+    private static final int SETTINGS_OVERLAY_SLIDER_TOP = 28;
+
     private void renderSettingsOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        int overlayW = 220;
-        int overlayH = 80;
+        int overlayW = SETTINGS_OVERLAY_W;
+        int overlayH = SETTINGS_OVERLAY_H;
         int overlayX = (refW - overlayW) / 2;
         int overlayY = (refH - overlayH) / 2;
 
@@ -1765,13 +1779,21 @@ public class SettingsScreen extends Screen {
         int titleW = this.font.width(title);
         guiGraphics.drawString(this.font, title, overlayX + (overlayW - titleW) / 2, overlayY + 6, 0xFFFFFFFF, false);
 
-        int sliderStartY = overlayY + 24;
+        int sliderStartY = overlayY + SETTINGS_OVERLAY_SLIDER_TOP;
         int sliderLeft = overlayX + 16;
         int sliderW = overlayW - 48;
         int sliderH = 10;
 
         renderOverlaySlider(guiGraphics, mouseX, mouseY, overlayX, sliderStartY, sliderLeft, sliderW, sliderH,
                 Component.translatable("screen.deltaforce.settings.row_height"), entryRowHeight, 20, 40, 1, "rowHeight");
+
+        // 滑块显示「当前真正生效」的倍数：自动模式下随界面尺寸变化（>= 3 → 1.0，< 3 → 1.5），
+        // 拖一下即切到手动模式并记住玩家的选择。
+        renderOverlaySlider(guiGraphics, mouseX, mouseY, overlayX, sliderStartY + SETTINGS_OVERLAY_ROW_GAP,
+                sliderLeft, sliderW, sliderH,
+                Component.translatable("screen.deltaforce.settings.ui_scale"),
+                (float) DFClientConfig.getInstance().resolveUiScale(Minecraft.getInstance().getWindow().getGuiScale()),
+                (float) DFClientConfig.MIN_UI_SCALE, (float) DFClientConfig.MAX_UI_SCALE, 0.1F, "uiScale");
 
         // 关闭按钮
         int closeBtnW = 40;
@@ -1802,8 +1824,8 @@ public class SettingsScreen extends Screen {
     }
 
     private boolean handleSettingsOverlayClick(double mouseX, double mouseY) {
-        int overlayW = 220;
-        int overlayH = 80;
+        int overlayW = SETTINGS_OVERLAY_W;
+        int overlayH = SETTINGS_OVERLAY_H;
         int overlayX = (refW - overlayW) / 2;
         int overlayY = (refH - overlayH) / 2;
 
@@ -1824,12 +1846,14 @@ public class SettingsScreen extends Screen {
         }
 
         // 滑块点击处理
-        int sliderStartY = overlayY + 24;
+        int sliderStartY = overlayY + SETTINGS_OVERLAY_SLIDER_TOP;
         int sliderLeft = overlayX + 16;
         int sliderW = overlayW - 48;
         int sliderH = 10;
 
         if (handleOverlaySliderDrag(mouseX, mouseY, sliderStartY, sliderLeft, sliderW, sliderH, 20, 40, 1, "rowHeight")) return true;
+        if (handleOverlaySliderDrag(mouseX, mouseY, sliderStartY + SETTINGS_OVERLAY_ROW_GAP, sliderLeft, sliderW, sliderH,
+                (float) DFClientConfig.MIN_UI_SCALE, (float) DFClientConfig.MAX_UI_SCALE, 0.1F, "uiScale")) return true;
 
         return false;
     }
@@ -1844,6 +1868,37 @@ public class SettingsScreen extends Screen {
 
             switch (id) {
                 case "rowHeight" -> entryRowHeight = Math.round(value);
+                case "uiScale" -> {
+                    DFClientConfig cfg = DFClientConfig.getInstance();
+                    // 拖动过程中每帧都会进这里，只在数值真的变了才写盘，避免频繁 IO
+                    boolean changed = Math.abs(cfg.getUiScale() - value) > 1.0E-6D || cfg.isUiScaleAuto();
+                    if (!changed) {
+                        return true;
+                    }
+                    cfg.setUiScale(value);
+                    cfg.save();
+                    // 立即按新倍数重算画布与适配系数，松手即可看到放大效果
+                    double multiplier = cfg.resolveUiScale(Minecraft.getInstance().getWindow().getGuiScale());
+                    this.refW = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_WIDTH, multiplier);
+                    this.refH = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_HEIGHT, multiplier);
+                    this.uiScale = UiCanvasScaleMath.fitScale(this.width, this.height, this.refW, this.refH);
+                    this.offsetX = UiCanvasScaleMath.canvasOffset(this.width, this.refW, this.uiScale);
+                    this.offsetY = UiCanvasScaleMath.canvasOffset(this.height, this.refH, this.uiScale);
+                    // 画布尺寸变了，依赖 refW/refH 的布局都要重算（X 与 Y 都要，否则底栏按钮会飘）
+                    this.contentBottom = this.refH - BOTTOM_BAR_HEIGHT - 4;
+                    int barY = this.refH - BOTTOM_BAR_HEIGHT;
+                    int btnW = 60;
+                    int btnH = BOTTOM_BAR_HEIGHT;
+                    int rightMargin = this.refW * BOTTOM_BTN_MARGIN_RATIO / 100;
+                    exitBtnX = this.refW - rightMargin - btnW; exitBtnY = barY; exitBtnW = btnW; exitBtnH = btnH;
+                    cancelBtnX = exitBtnX - 6 - btnW; cancelBtnY = barY; cancelBtnW = btnW; cancelBtnH = btnH;
+                    saveBtnX = cancelBtnX - 6 - btnW; saveBtnY = barY; saveBtnW = btnW; saveBtnH = btnH;
+                    int smallBtnW = 24;
+                    redoBtnX = saveBtnX - 4 - smallBtnW; redoBtnY = barY; redoBtnW = smallBtnW; redoBtnH = btnH;
+                    undoBtnX = redoBtnX - 2 - smallBtnW; undoBtnY = barY; undoBtnW = smallBtnW; undoBtnH = btnH;
+                    previewBtnW = 50; previewBtnH = btnH;
+                    previewBtnX = undoBtnX - 6 - previewBtnW; previewBtnY = barY;
+                }
             }
             return true;
         }

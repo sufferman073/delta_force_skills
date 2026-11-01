@@ -130,6 +130,7 @@
   "screen.deltaforce.settings.search_local": "Category Search...",
   "screen.deltaforce.settings.display_config": "Display Settings",
   "screen.deltaforce.settings.row_height": "Row Spacing",
+  "screen.deltaforce.settings.ui_scale": "UI Scale",
   "screen.deltaforce.settings.button_scale": "Button Scale",
   "screen.deltaforce.settings.text_scale": "Text Scale",
   "screen.deltaforce.settings.close": "Close",

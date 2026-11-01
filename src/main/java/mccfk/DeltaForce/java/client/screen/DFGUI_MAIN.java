@@ -196,14 +196,20 @@ public class DFGUI_MAIN extends Screen {
     @Override
     protected void init() {
         super.init();
-        // 参考分辨率计算缩放及偏移（与1.21.1主版本一致）
-        this.refW = (int)REFERENCE_WIDTH;
-        this.refH = (int)REFERENCE_HEIGHT;
-        this.uiScale = Math.min(this.width / REFERENCE_WIDTH, this.height / REFERENCE_HEIGHT);
-        this.offsetX = (int)((this.width - REFERENCE_WIDTH * this.uiScale) / 2);
-        this.offsetY = (int)((this.height - REFERENCE_HEIGHT * this.uiScale) / 2);
-        // 以 4x GUI 参考画布计算固定布局。
+        // 参考画布按放大倍数缩小（960/倍数 x 540/倍数），再等比塞进 GUI 空间：
+        // 画布变小 → 适配系数变大 → 同样的屏幕面积里排更少的画布单位，字与控件等比放大。
+        // 注意不能反过来「保留 960x540 画布再把适配系数乘 1.5」，那样画布会超出屏幕，
+        // 顶部 7 个标签与底栏会被居中裁掉。
+        // 倍数来源：玩家没手动设置过时按当前界面尺寸自动选（>= 3 → 1.0 保持原样，
+        // < 3 → 1.5 放大），手动设置过则一直用玩家的值（见 DFClientConfig#resolveUiScale）。
         DFClientConfig cfg = DFClientConfig.getInstance();
+        double multiplier = cfg.resolveUiScale(Minecraft.getInstance().getWindow().getGuiScale());
+        this.refW = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_WIDTH, multiplier);
+        this.refH = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_HEIGHT, multiplier);
+        this.uiScale = UiCanvasScaleMath.fitScale(this.width, this.height, this.refW, this.refH);
+        this.offsetX = UiCanvasScaleMath.canvasOffset(this.width, this.refW, this.uiScale);
+        this.offsetY = UiCanvasScaleMath.canvasOffset(this.height, this.refH, this.uiScale);
+        // 以 4x GUI 参考画布计算固定布局。
         this.tabWidth = (int) (TAB_BASE_WIDTH * UI_SCALE);
         this.tabHeight = (int) (TAB_BASE_HEIGHT * UI_SCALE);
         this.tabStartX = (int)(REFERENCE_WIDTH * TAB_START_X_RATIO / 100) + cfg.getTabXOffset();

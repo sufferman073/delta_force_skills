@@ -143,6 +143,7 @@
   "screen.deltaforce.settings.search_local": "分类搜索...",
   "screen.deltaforce.settings.display_config": "界面显示配置",
   "screen.deltaforce.settings.row_height": "配置行间距",
+  "screen.deltaforce.settings.ui_scale": "界面放大倍数",
   "screen.deltaforce.settings.button_scale": "按钮缩放",
   "screen.deltaforce.settings.text_scale": "文本缩放",
   "screen.deltaforce.settings.close": "关闭",
