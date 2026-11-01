@@ -41,8 +41,6 @@ public final class SpecialOperationsBaseScreen extends Screen {
     private EditBox haffExchangeBox;
     private EditBox specialExchangeBox;
     private int scrollRow;
-    // 界面尺寸补偿系数：独立打开时按界面尺寸把面板整体放大；嵌入模式由宿主缩放，恒为 1.0
-    private float scaleFactor = 1.0F;
     // 特勤处内部仓库已删除，移除 draggingWarehouseScrollbar 字段
 
     private enum Tab {
@@ -97,8 +95,6 @@ public final class SpecialOperationsBaseScreen extends Screen {
 
     @Override
     protected void init() {
-        // 独立打开时按界面尺寸补偿（界面尺寸 2 → 1.5 倍），嵌入模式由宿主统一缩放，恒为 1.0
-        scaleFactor = ScreenScale.factor(embedded);
         refreshWidgets();
     }
 
@@ -244,13 +240,8 @@ public final class SpecialOperationsBaseScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!embedded) {
-            // 全屏遮罩必须在缩放之外绘制：GuiGraphics#fill 走 pose，但遮罩需要铺满真实屏幕
             graphics.fill(0, 0, width, height, 0xAA000000);
         }
-        float factor = scaleFactor;
-        ScreenScale.push(graphics, factor);
-        int localMouseX = ScreenScale.toLocal(mouseX, factor);
-        int localMouseY = ScreenScale.toLocal(mouseY, factor);
         int left = panelLeft();
         int top = panelTop();
         graphics.fill(left, top, left + panelWidth(), top + panelHeight(), 0xEE10171C);
@@ -261,18 +252,17 @@ public final class SpecialOperationsBaseScreen extends Screen {
                 compactLayout() ? top + 20 : top + 11, 0xFFE2B84B);
         switch (tab) {
             case FACILITIES -> renderFacilities(graphics);
-            case SELL -> renderSell(graphics, localMouseX, localMouseY);
-            case BUYBACK -> renderBuyback(graphics, localMouseX, localMouseY);
+            case SELL -> renderSell(graphics, mouseX, mouseY);
+            case BUYBACK -> renderBuyback(graphics, mouseX, mouseY);
             case EXCHANGE -> renderExchange(graphics);
         }
-        super.render(graphics, localMouseX, localMouseY, partialTick);
+        super.render(graphics, mouseX, mouseY, partialTick);
         if (tab == Tab.BUYBACK && buybackSearchBox != null && buybackSearchBox.getValue().isEmpty()
                 && !buybackSearchBox.isFocused()) {
             graphics.drawString(font, Component.translatable("screen.dealt_force_skills.base.search"),
                     buybackSearchBox.getX() + 4, buybackSearchBox.getY() + 6, 0xFF777777);
         }
-        renderItemTooltip(graphics, localMouseX, localMouseY);
-        ScreenScale.pop(graphics);
+        renderItemTooltip(graphics, mouseX, mouseY);
     }
 
     private void renderFacilities(GuiGraphics graphics) {
@@ -392,12 +382,10 @@ public final class SpecialOperationsBaseScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        double localX = ScreenScale.toLocalCoordinate(mouseX, scaleFactor);
-        double localY = ScreenScale.toLocalCoordinate(mouseY, scaleFactor);
         if (tab == Tab.SELL) {
             int cols = Math.max(1, (panelWidth() - 28) / SLOT);
             List<ItemStack> stacks = sellStacks();
-            int index = gridIndex(localX, localY, panelLeft() + 14, panelTop() + 88, cols,
+            int index = gridIndex(mouseX, mouseY, panelLeft() + 14, panelTop() + 88, cols,
                     Math.max(1, (panelHeight() - 105) / SLOT), scrollRow, stacks.size());
             if (index >= 0 && !stacks.get(index).isEmpty()) {
                 // 特勤处内部仓库已删除，WAREHOUSE 源不再支持
@@ -407,13 +395,13 @@ public final class SpecialOperationsBaseScreen extends Screen {
             }
         } else if (tab == Tab.BUYBACK) {
             if (button == 0) {
-                int row = (int) (localY - (panelTop() + 84)) / BUYBACK_ROW_HEIGHT;
+                int row = (int) (mouseY - (panelTop() + 84)) / BUYBACK_ROW_HEIGHT;
                 List<S2C_SpecialOperationsBaseSnapshot.BuybackView> buyback = filteredBuyback();
                 int index = row + scrollRow;
                 int buttonX = panelLeft() + panelWidth() - 88;
                 if (ModGameRules.isRebuyEnabled(Minecraft.getInstance().level)
                         && row >= 0 && row < visibleBuybackRows() && index >= 0 && index < buyback.size()
-                        && inside(localX, localY, buttonX,
+                        && inside(mouseX, mouseY, buttonX,
                         panelTop() + 84 + row * BUYBACK_ROW_HEIGHT + 2, 74, 20)) {
                     int count = parseRedeemCount();
                     if (count > 0) {
@@ -424,7 +412,7 @@ public final class SpecialOperationsBaseScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(localX, localY, button);
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
@@ -447,31 +435,26 @@ public final class SpecialOperationsBaseScreen extends Screen {
             }
             return true;
         }
-        return super.mouseScrolled(ScreenScale.toLocalCoordinate(mouseX, scaleFactor),
-                ScreenScale.toLocalCoordinate(mouseY, scaleFactor), delta);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         // 特勤处内部仓库已删除，移除 draggingWarehouseScrollbar 逻辑
-        return super.mouseDragged(ScreenScale.toLocalCoordinate(mouseX, scaleFactor),
-                ScreenScale.toLocalCoordinate(mouseY, scaleFactor), button,
-                ScreenScale.toLocalDelta(dragX, scaleFactor), ScreenScale.toLocalDelta(dragY, scaleFactor));
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         // 特勤处内部仓库已删除，移除 draggingWarehouseScrollbar 逻辑
-        return super.mouseReleased(ScreenScale.toLocalCoordinate(mouseX, scaleFactor),
-                ScreenScale.toLocalCoordinate(mouseY, scaleFactor), button);
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     private void renderItemTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         if (tab == Tab.FACILITIES) {
             S2C_SpecialOperationsBaseSnapshot.FacilityView facility = facilityConditionAt(mouseX, mouseY);
             if (facility != null && hasMissingConditions(facility)) {
-                ScreenScale.renderTextTooltip(graphics, font, facilityConditionTooltip(facility),
-                        mouseX, mouseY, localWidth(), localHeight());
+                graphics.renderComponentTooltip(font, facilityConditionTooltip(facility), mouseX, mouseY);
                 return;
             }
             int y = panelTop() + 64;
@@ -481,9 +464,8 @@ public final class SpecialOperationsBaseScreen extends Screen {
                 if ("training_center".equals(hovered.id())
                         && inside(mouseX, mouseY, panelLeft() + 14, y, Math.max(1, panelWidth() - 112), 38)) {
                     int level = hovered.level() >= hovered.maxLevel() ? hovered.level() : hovered.nextLevel();
-                    ScreenScale.renderTooltipLines(graphics, font,
-                            font.split(facilityEffect(hovered.id(), level), Math.max(1, Math.min(300, localWidth() - 24))),
-                            mouseX, mouseY, localWidth(), localHeight());
+                    graphics.renderTooltip(font, font.split(facilityEffect(hovered.id(), level),
+                            Math.max(1, Math.min(300, width - 24))), mouseX, mouseY);
                     return;
                 }
             }
@@ -493,8 +475,7 @@ public final class SpecialOperationsBaseScreen extends Screen {
             int index = gridIndex(mouseX, mouseY, panelLeft() + 14, panelTop() + 88, cols,
                     Math.max(1, (panelHeight() - 105) / SLOT), scrollRow, stacks.size());
             if (index >= 0 && !stacks.get(index).isEmpty()) {
-                ScreenScale.renderItemTooltip(graphics, font, stacks.get(index), mouseX, mouseY,
-                        localWidth(), localHeight());
+                graphics.renderTooltip(font, stacks.get(index), mouseX, mouseY);
             }
         } else if (tab == Tab.BUYBACK) {
             int row = (mouseY - (panelTop() + 84)) / BUYBACK_ROW_HEIGHT;
@@ -505,8 +486,7 @@ public final class SpecialOperationsBaseScreen extends Screen {
                     panelTop() + 84 + row * BUYBACK_ROW_HEIGHT + 3, 18, 18)) {
                 ItemStack hovered = buyback.get(index).stack();
                 if (!hovered.isEmpty()) {
-                    ScreenScale.renderItemTooltip(graphics, font, hovered, mouseX, mouseY,
-                            localWidth(), localHeight());
+                    graphics.renderTooltip(font, hovered, mouseX, mouseY);
                 }
             }
         }
@@ -672,31 +652,21 @@ public final class SpecialOperationsBaseScreen extends Screen {
     }
 
     private int panelWidth() {
-        return Math.max(1, Math.min(720, localWidth() - 20));
+        return Math.max(1, Math.min(720, width - 20));
     }
 
     private int panelHeight() {
         // 嵌入模式：面板避开主机面顶部标签栏与底部底栏
-        return embedded ? Math.max(1, Math.min(430, localHeight() - 68))
-                        : Math.max(1, Math.min(430, localHeight() - 20));
+        return embedded ? Math.max(1, Math.min(430, height - 68))
+                        : Math.max(1, Math.min(430, height - 20));
     }
 
     private int panelLeft() {
-        return (localWidth() - panelWidth()) / 2;
+        return (width - panelWidth()) / 2;
     }
 
     private int panelTop() {
-        return embedded ? 42 : (localHeight() - panelHeight()) / 2;
-    }
-
-    /** 虚拟布局宽度：独立打开时为真实 GUI 宽 / 缩放系数，嵌入模式等于真实 GUI 宽 */
-    private int localWidth() {
-        return ScreenScale.localWidth(width, scaleFactor);
-    }
-
-    /** 虚拟布局高度：独立打开时为真实 GUI 高 / 缩放系数，嵌入模式等于真实 GUI 高 */
-    private int localHeight() {
-        return ScreenScale.localHeight(height, scaleFactor);
+        return embedded ? 42 : (height - panelHeight()) / 2;
     }
 
     private boolean compactLayout() {
