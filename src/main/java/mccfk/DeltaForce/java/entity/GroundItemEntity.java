@@ -39,6 +39,14 @@ public class GroundItemEntity extends Entity {
         this.setItem(stack);
     }
 
+    private CompoundTag vanillaItem=new CompoundTag();
+    public void setVanillaItem(ItemEntity item){vanillaItem=item.saveWithoutId(new CompoundTag());}
+    private boolean restoreVanilla() {
+        var item=new ItemEntity(level(),getX(),getY(),getZ(),getItem().copy());
+        if(!vanillaItem.isEmpty())item.load(vanillaItem.copy());
+        item.setItem(getItem().copy());item.setPos(position());item.setDeltaMovement(getDeltaMovement());
+        if(level().addFreshEntity(item)){setItem(ItemStack.EMPTY);discard();return true;}return false;
+    }
     private double initialY = 0;
 
     @Override
@@ -51,6 +59,7 @@ public class GroundItemEntity extends Entity {
         super.tick();
 
         if (!this.level().isClientSide()) {
+            if(!com.rzy.dealt_force_skills.config.DealtBaseConfig.customDropsEnabled()) {restoreVanilla();return;}
             if (this.getItem().isEmpty()) {
                 this.discard();
                 return;
@@ -122,10 +131,12 @@ public class GroundItemEntity extends Entity {
             tag.put("Item", itemStack.save(new CompoundTag()));
         }
         tag.putDouble("InitialY", this.initialY);
+        tag.put("VanillaItem",vanillaItem.copy());
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        vanillaItem=tag.getCompound("VanillaItem").copy();
         if (tag.contains("Item")) {
             setItem(ItemStack.of(tag.getCompound("Item")));
         }

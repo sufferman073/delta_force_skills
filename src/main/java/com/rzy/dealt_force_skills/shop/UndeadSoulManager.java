@@ -43,12 +43,12 @@ public final class UndeadSoulManager {
         long base = victim instanceof Player
                 ? PLAYER_KILL_AWARD
                 : Math.max(1L, Math.round(victim.getMaxHealth() * MOB_KILL_HEALTH_MULTIPLIER));
-        add(killer, explorerAdjusted(killer, base));
+        earned(killer, explorerAdjusted(killer, base));
     }
 
     public static void awardDeath(ServerPlayer player) {
         if (UndeadStateManager.isUndead(player)) {
-            add(player, explorerAdjusted(player, PLAYER_DEATH_AWARD));
+            earned(player, explorerAdjusted(player, PLAYER_DEATH_AWARD));
         }
     }
 
@@ -69,7 +69,12 @@ public final class UndeadSoulManager {
         }
         long intervals = Math.max(1L, (now - last) / SURVIVAL_AWARD_INTERVAL_TICKS);
         tag.putLong(LAST_SURVIVAL_AWARD_TICK, last + intervals * SURVIVAL_AWARD_INTERVAL_TICKS);
-        add(player, explorerAdjusted(player, SURVIVAL_AWARD * intervals));
+        earned(player, explorerAdjusted(player, SURVIVAL_AWARD * intervals));
+    }
+
+    private static void earned(ServerPlayer player,long amount) {
+        long before=get(player);add(player,amount);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.souls",get(player)-before);
     }
 
     public static void add(ServerPlayer player, long amount) {

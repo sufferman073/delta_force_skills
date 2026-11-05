@@ -95,6 +95,7 @@ public final class ModItemEffectHelper {
     }
 
     public static void tickItemEffects(ServerPlayer player) {
+        com.rzy.dealt_force_skills.department.DepartmentConsumables.tick(player);
         tickPainRelief(player);
         if (player.hasEffect(ModEffects.SEDATION.get())) {
             removeActiveNonInjuryHarmfulEffects(player);
@@ -115,7 +116,7 @@ public final class ModItemEffectHelper {
             CompoundTag tag = list.getCompound(i);
             MobEffect effect = effectFromTag(tag);
             int duration = tag.getInt(DURATION);
-            if (effect != null && duration > 0) {
+            if (effect != null && (duration == -1 || duration > 0)) {
                 player.addEffect(new MobEffectInstance(effect, duration, tag.getInt(AMPLIFIER),
                         tag.getBoolean(AMBIENT), tag.getBoolean(VISIBLE), tag.getBoolean(SHOW_ICON)));
             }
@@ -328,6 +329,7 @@ public final class ModItemEffectHelper {
             }
         }
         com.rzy.dealt_force_skills.character.rover.RoverStateManager.refreshSkills(player, fillRoverCharges);
+        com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.refreshSkills(player, fillRoverCharges);
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                 "message.dealt_force_skills.item.skill_cooldowns_refreshed"), true);
     }
@@ -482,7 +484,7 @@ public final class ModItemEffectHelper {
             if (effect != null
                     && effect.getCategory() == MobEffectCategory.HARMFUL
                     && tag.getInt(AMPLIFIER) <= maxAmplifierInclusive
-                    && tag.getInt(DURATION) > 0) {
+                    && (tag.getInt(DURATION) == -1 || tag.getInt(DURATION) > 0)) {
                 candidates.add(HarmfulRef.suppressed(effect, tag.getInt(AMPLIFIER), tag.getInt(DURATION)));
             }
         }

@@ -397,7 +397,7 @@ public final class SpecialOperationsBaseManager {
         if (!extracted.isEmpty()) {
             ItemStack remainder = insertWarehouse(player, extracted);
             if (!remainder.isEmpty()) {
-                player.drop(remainder, false);
+                com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, remainder);
             }
         }
         return original.getCount() != extracted.getCount();
@@ -557,7 +557,7 @@ public final class SpecialOperationsBaseManager {
             stack.setCount(Math.min(remaining, stack.getMaxStackSize()));
             remaining -= stack.getCount();
             if (!player.getInventory().add(stack) && !stack.isEmpty()) {
-                player.drop(stack, false);
+                com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, stack);
             }
         }
         return true;

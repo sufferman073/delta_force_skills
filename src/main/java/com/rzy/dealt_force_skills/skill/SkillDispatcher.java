@@ -608,6 +608,11 @@ public final class SkillDispatcher {
             return finishSkillUse(player, character.id(), slot, alternate, handled);
         }
 
+        if (ModCharacters.WILDFIRE_ID.equals(character.id())) {
+            boolean handled = com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.useSkill(player, slot, alternate);
+            return finishSkillUse(player, character.id(), slot, alternate, handled);
+        }
+
         if (ModCharacters.TEMPEST_ID.equals(character.id())) {
             boolean handled = TempestSkills.useSkill(player, slot, alternate);
             TempestStateManager.syncToClient(player);

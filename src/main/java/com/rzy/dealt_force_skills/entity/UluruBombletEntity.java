@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.entity;
 
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
+
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper;
 import com.rzy.dealt_force_skills.registry.ModSounds;
@@ -27,7 +30,9 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class UluruBombletEntity extends Projectile implements ItemSupplier {
+public class UluruBombletEntity extends Projectile implements ItemSupplier, OperativeAreaSource {
+    private final OperativeAllegiance nativeAllegiance = new OperativeAllegiance();
+    @Override public OperativeAllegiance operativeAllegiance() { return nativeAllegiance; }
     private static volatile double EXPLOSION_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("EXPLOSION_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.ulurubombletentity.explosion_radius", 4.6));
     private static volatile int ARMING_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("ARMING_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.ulurubombletentity.arming_ticks", 40));
     private static volatile int ARMED_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("ARMED_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.ulurubombletentity.armed_fuse_ticks", 12));
@@ -42,6 +47,7 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
     public UluruBombletEntity(EntityType<? extends UluruBombletEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
+        nativeAllegiance.capture(owner);
         if (owner != null) {
             ownerId = owner.getUUID();
         }
@@ -59,6 +65,9 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && nativeAllegiance.active() && tickCount > ARMING_TICKS + ARMED_FUSE_TICKS) {
+            explode(position()); return;
+        }
         Vec3 motion = getDeltaMovement();
 
         if (landed) {
@@ -99,6 +108,9 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int nativeAge = nativeAllegiance.load(tag, ARMING_TICKS + ARMED_FUSE_TICKS);
+        if (nativeAllegiance.active()) tickCount = nativeAge;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         exploded = tag.getBoolean("Exploded");
         landed = tag.getBoolean("Landed");
@@ -106,6 +118,8 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        nativeAllegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -117,6 +131,11 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
     public Packet<ClientGamePacketListener> getAddEntityPacket() {
         return NetworkHooks.getEntitySpawningPacket(this);
     }
+
+    public static int nativeArmingTicks() { return Math.max(0, ARMING_TICKS); }
+    public static int nativeFlightLimit() { return Math.max(0, ARMING_TICKS + ARMED_FUSE_TICKS) + 1; }
+    public static double nativeRadius() { return Math.max(0, EXPLOSION_RADIUS); }
+    public static double nativeRadius(Entity owner) { return com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.damageRadius(owner, nativeRadius(), "summons.ulurubombletentity"); }
 
     private BlockHitResult findBlockHit(Vec3 motion) {
         Vec3 from = position();
@@ -149,7 +168,7 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier {
                 SoundSource.PLAYERS, 1.0f, 1.25f);
         serverLevel.sendParticles(ParticleTypes.EXPLOSION, center.x, center.y, center.z,
                 6, 0.65, 0.45, 0.65, 0.0);
-        UluruExplosionHelper.damageRadiusBlockedByWalls(serverLevel, center, this, owner, EXPLOSION_RADIUS,
+        UluruExplosionHelper.damageRadiusBlockedByWalls(serverLevel, center, this, owner, nativeRadius(owner),
                 com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.ulurubombletentity.player_damage", 50.0F),
                 com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.ulurubombletentity.non_player_damage", 125.0F), true, false, 0, true);
         if (owner instanceof ServerPlayer player && hasBombletTarget(serverLevel, center)) {

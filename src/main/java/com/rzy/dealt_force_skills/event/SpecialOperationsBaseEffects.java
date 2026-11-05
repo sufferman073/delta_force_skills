@@ -35,8 +35,6 @@ public final class SpecialOperationsBaseEffects {
     private static final UUID MOVEMENT_ID = UUID.fromString("bf07bea6-93d3-49b2-9563-2c621b6e2741");
     private static final UUID SWIM_ID = UUID.fromString("0cd21a56-ab87-4779-93db-440ade722768");
     private static final String LAST_AIR = DealtForceSkillsMod.MODID + ".base.last_air";
-    private static final ThreadLocal<Boolean> RESCALING_EFFECT = ThreadLocal.withInitial(() -> false);
-    private static final Map<UUID, Map<MobEffect, Entity>> PENDING_EFFECTS = new HashMap<>();
 
     private SpecialOperationsBaseEffects() {
     }
@@ -95,71 +93,34 @@ public final class SpecialOperationsBaseEffects {
         if (!player.level().isClientSide) {
             ServerPlayer serverPlayer = (ServerPlayer) player;
             tickAttributesAndAir(serverPlayer);
-            applyPendingEffects(serverPlayer);
 
 
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onEffectAdded(MobEffectEvent.Added event) {
-        if (RESCALING_EFFECT.get() || !(event.getEntity() instanceof ServerPlayer player)) {
-            return;
-        }
-        MobEffectInstance original = event.getEffectInstance();
+    /** Called after Added listeners, before vanilla merges the incoming effect. */
+    public static boolean prepareIncomingEffect(net.minecraft.world.entity.LivingEntity target, MobEffectInstance original) {
+        if (!(target instanceof ServerPlayer player) || target.getEffect(original.getEffect()) == original) return true;
         MobEffect effect = original.getEffect();
-        if (effect.isInstantenous() || effect.getCategory() == MobEffectCategory.NEUTRAL) {
-            return;
-        }
+        if (effect.isInstantenous() || effect.getCategory() == MobEffectCategory.NEUTRAL) return true;
         int level = SpecialOperationsBaseManager.effectiveLevel(player,
                 SpecialOperationsBaseManager.Facility.DECONTAMINATION_ROOM);
-        if (level > 0) {
-            PENDING_EFFECTS.computeIfAbsent(player.getUUID(), ignored -> new HashMap<>())
-                    .put(effect, event.getEffectSource());
-        }
-    }
-
-    private static void applyPendingEffects(ServerPlayer player) {
-        Map<MobEffect, Entity> pending = PENDING_EFFECTS.remove(player.getUUID());
-        if (pending == null || pending.isEmpty()) {
-            return;
-        }
-        int level = SpecialOperationsBaseManager.effectiveLevel(player,
-                SpecialOperationsBaseManager.Facility.DECONTAMINATION_ROOM);
-        if (level <= 0) {
-            return;
-        }
-        for (Map.Entry<MobEffect, Entity> entry : pending.entrySet()) {
-            MobEffect effect = entry.getKey();
-            MobEffectInstance original = player.getEffect(effect);
-            if (original == null) {
-                continue;
-            }
-            rescaleEffect(player, original, entry.getValue(), level);
-        }
-    }
-
-    private static void rescaleEffect(ServerPlayer player, MobEffectInstance original, Entity source, int level) {
-        MobEffect effect = original.getEffect();
-        int duration;
+        if (level <= 0) return true;
         int amplifier;
+        int duration;
         if (effect.getCategory() == MobEffectCategory.HARMFUL) {
-            duration = scaleDuration(original.getDuration(), Math.max(0.25F, 1.0F - level * 0.25F));
             amplifier = original.getAmplifier() - level;
+            // The room cleanses the incoming effect; it must not erase a stronger active instance.
+            if (amplifier < 0) return false;
+            duration = scaleDuration(original.getDuration(), Math.max(0.25F, 1.0F - level * 0.25F));
         } else {
+            amplifier = (int) Math.min(Integer.MAX_VALUE, (long) original.getAmplifier() + (level >= 3 ? 1 : 0));
             duration = scaleDuration(original.getDuration(), 1.0F + level * 0.3F);
-            amplifier = original.getAmplifier() + (level >= 3 ? 1 : 0);
         }
-        RESCALING_EFFECT.set(true);
-        try {
-            player.removeEffect(effect);
-            if (amplifier >= 0) {
-                player.addEffect(new MobEffectInstance(effect, duration, amplifier, original.isAmbient(),
-                        original.isVisible(), original.showIcon()), source);
-            }
-        } finally {
-            RESCALING_EFFECT.set(false);
-        }
+        var mutable = (com.rzy.dealt_force_skills.mixin.OperativeEffectAccessor) original;
+        mutable.dealt_force_skills$setDuration(duration);
+        mutable.dealt_force_skills$setAmplifier(amplifier);
+        return true;
     }
 
     private static int scaleDuration(int duration, float multiplier) {
@@ -185,23 +146,6 @@ public final class SpecialOperationsBaseEffects {
             currentAir = player.getAirSupply();
         }
         player.getPersistentData().putInt(LAST_AIR, currentAir);
-    }
-
-    @SubscribeEvent
-    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        clearPlayerRuntime(event.getEntity().getUUID());
-    }
-
-    @SubscribeEvent
-    public static void onServerStopping(ServerStoppingEvent event) {
-        PENDING_EFFECTS.clear();
-
-        RESCALING_EFFECT.remove();
-    }
-
-    private static void clearPlayerRuntime(UUID playerId) {
-        PENDING_EFFECTS.remove(playerId);
-
     }
 
     private static void applyModifier(AttributeInstance attribute, UUID id, String name, double amount) {

@@ -25,6 +25,7 @@ import net.minecraftforge.network.NetworkHooks;
 import java.util.UUID;
 
 public class StingerSmokeGrenadeEntity extends Projectile implements ItemSupplier {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
     private static volatile int MAX_FLIGHT_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_FLIGHT_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.stingersmokegrenadeentity.max_flight_ticks", 80));
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.stingersmokegrenadeentity.bounce_factor", 0.7));
     private UUID ownerId;
@@ -36,6 +37,7 @@ public class StingerSmokeGrenadeEntity extends Projectile implements ItemSupplie
     public StingerSmokeGrenadeEntity(EntityType<? extends StingerSmokeGrenadeEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
+        allegiance.capture(owner);
         ownerId = owner.getUUID();
     }
 
@@ -51,6 +53,9 @@ public class StingerSmokeGrenadeEntity extends Projectile implements ItemSupplie
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount > Math.max(1, MAX_FLIGHT_TICKS)) {
+            burst(position()); return;
+        }
 
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);
@@ -76,11 +81,16 @@ public class StingerSmokeGrenadeEntity extends Projectile implements ItemSupplie
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int age = allegiance.load(tag, MAX_FLIGHT_TICKS);
+        if (allegiance.active()) tickCount = age;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -126,6 +136,7 @@ public class StingerSmokeGrenadeEntity extends Projectile implements ItemSupplie
                 StingerSmokeCloudEntity.GRENADE_LIFE_TICKS,
                 false
         );
+        cloud.setOperativeSource(allegiance);
         cloud.setPos(center.x, center.y, center.z);
         serverLevel.addFreshEntity(cloud);
         discard();

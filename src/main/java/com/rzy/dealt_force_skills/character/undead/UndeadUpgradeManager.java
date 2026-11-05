@@ -19,8 +19,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.ForgeMod;
 
 import java.util.UUID;
-import java.util.HashSet;
-import java.util.Set;
 
 public final class UndeadUpgradeManager {
     public static volatile int BASE_MAX_TALENT_POINTS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BASE_MAX_TALENT_POINTS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_upgrade_manager.base_max_talent_points", 27));
@@ -29,7 +27,6 @@ public final class UndeadUpgradeManager {
     private static final String EQUIPPED = "EquippedBracelets";
     private static final String PINK_COOLDOWN_UNTIL = "PinkBraceletCooldownUntil";
     private static final String PINK_INVULNERABLE_UNTIL = "PinkBraceletInvulnerableUntil";
-    private static final Set<UUID> EFFECT_RESCALE_GUARD = new HashSet<>();
 
     private static final UUID MAX_HEALTH_UUID = UUID.fromString("79e2d1e2-114c-4ce0-8790-c43c6a63c4b5");
     private static final UUID MOVEMENT_UUID = UUID.fromString("00b0d606-f67d-405f-95c2-bb5cf402c0d1");
@@ -239,7 +236,8 @@ public final class UndeadUpgradeManager {
             MobEffectInstance added,
             Entity effectSource
     ) {
-        if (target.level().isClientSide || added == null || EFFECT_RESCALE_GUARD.contains(target.getUUID())) {
+        if (target.level().isClientSide || added == null || added.isInfiniteDuration()
+                || target.getEffect(added.getEffect()) == added) {
             return false;
         }
         double multiplier = 1.0D;
@@ -259,25 +257,14 @@ public final class UndeadUpgradeManager {
                 multiplier *= 2.0D;
             }
         }
-        int duration = Math.max(1, (int) Math.round(added.getDuration() * multiplier));
+        int duration = (int) Math.max(1L, Math.min(Integer.MAX_VALUE, Math.round(added.getDuration() * multiplier)));
         if (duration == added.getDuration()) {
             return false;
         }
-        MobEffectInstance scaled = new MobEffectInstance(
-                added.getEffect(),
-                duration,
-                added.getAmplifier(),
-                added.isAmbient(),
-                added.isVisible(),
-                added.showIcon()
-        );
-        EFFECT_RESCALE_GUARD.add(target.getUUID());
-        try {
-            target.removeEffect(added.getEffect());
-            return target.addEffect(scaled, effectSource);
-        } finally {
-            EFFECT_RESCALE_GUARD.remove(target.getUUID());
-        }
+        // Added fires before vanilla inserts/merges. Never remove/re-add the stored instance here.
+        ((com.rzy.dealt_force_skills.mixin.OperativeEffectAccessor) added)
+                .dealt_force_skills$setDuration(duration);
+        return true;
     }
 
     public static void applyAttributes(Player player) {

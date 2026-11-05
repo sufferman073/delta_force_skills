@@ -13,19 +13,29 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class ClientTempestRollVisuals {
-    private static final int CAMERA_DIP_TICKS = 9;
+    private static int cameraDipTotal = 9;
     private static int cameraDipTicks;
 
     private ClientTempestRollVisuals() {
     }
 
-    public static void startRoll() {
+    public static void startRoll() { startRoll(9); }
+
+    public static void startRoll(int ticks) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
         }
-        cameraDipTicks = CAMERA_DIP_TICKS;
+        cameraDipTotal = Math.max(1, ticks);
+        cameraDipTicks = cameraDipTotal;
         player.setForcedPose(net.minecraft.world.entity.Pose.SWIMMING);
+    }
+
+    public static void stopRoll() {
+        LocalPlayer p = Minecraft.getInstance().player;
+        if (cameraDipTicks > 0 && p != null && p.getForcedPose() == net.minecraft.world.entity.Pose.SWIMMING)
+            p.setForcedPose(null);
+        cameraDipTicks = 0;
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -39,10 +49,12 @@ public final class ClientTempestRollVisuals {
             return;
         }
 
+        if (!Minecraft.getInstance().options.getCameraType().isFirstPerson()
+                || Minecraft.getInstance().getCameraEntity() != player) return;
         float partialTick = (float) event.getPartialTick();
-        float elapsed = Mth.clamp(CAMERA_DIP_TICKS - cameraDipTicks + partialTick, 0.0F, (float) CAMERA_DIP_TICKS);
-        float progress = elapsed / (float) CAMERA_DIP_TICKS;
-        float dip = Mth.sin(progress * (float) Math.PI) * 10.0F;
+        float elapsed = Mth.clamp(cameraDipTotal - cameraDipTicks + partialTick, 0.0F, (float) cameraDipTotal);
+        float progress = elapsed / (float) cameraDipTotal;
+        float dip = Mth.sin(progress * (float) Math.PI) * 3.0F;
         event.setYaw(player.getViewYRot(partialTick));
         event.setPitch(Mth.clamp(player.getViewXRot(partialTick) + dip, -89.9F, 89.9F));
         event.setRoll(0.0F);

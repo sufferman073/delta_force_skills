@@ -15,12 +15,12 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.phys.Vec3;
 
 public final class HackclawSkills {
-    private static volatile double QUICK_THROW_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("QUICK_THROW_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.quick_throw_speed", 1.85));
-    private static volatile double QUICK_THROW_LIFT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("QUICK_THROW_LIFT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.quick_throw_lift", 0.08));
+    public static volatile double QUICK_THROW_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("QUICK_THROW_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.quick_throw_speed", 1.85));
+    public static volatile double QUICK_THROW_LIFT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("QUICK_THROW_LIFT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.quick_throw_lift", 0.08));
     private static volatile double HELD_KNIFE_THROW_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("HELD_KNIFE_THROW_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.held_knife_throw_speed", 1.55));
     private static volatile double HELD_KNIFE_THROW_LIFT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("HELD_KNIFE_THROW_LIFT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.held_knife_throw_lift", 0.3));
-    private static volatile double FLASH_DRONE_THROW_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_DRONE_THROW_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.flash_drone_throw_speed", 1.35));
-    private static volatile double FLASH_DRONE_THROW_LIFT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_DRONE_THROW_LIFT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.flash_drone_throw_lift", 0.05));
+    public static volatile double FLASH_DRONE_THROW_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_DRONE_THROW_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.flash_drone_throw_speed", 1.35));
+    public static volatile double FLASH_DRONE_THROW_LIFT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_DRONE_THROW_LIFT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_skills.flash_drone_throw_lift", 0.05));
     private static volatile double HELD_FLASH_DRONE_THROW_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("HELD_FLASH_DRONE_THROW_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
       "characters.hackclaw.hackclaw_skills.held_flash_drone_throw_speed", 1.45
    ));
@@ -106,7 +106,7 @@ public final class HackclawSkills {
                 .add(0.0D, heldThrow ? HELD_KNIFE_THROW_LIFT : QUICK_THROW_LIFT, 0.0D));
         knife.setYRot(player.getYRot());
         knife.setXRot(player.getXRot());
-        level.addFreshEntity(knife);
+        if (level.addFreshEntity(knife)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"hackclaw.knife");
         HackclawStateManager.stowTool(player);
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.HACKCLAW_KNIFE_THROW.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f, 16.0D, 5, 3.0D);
@@ -131,7 +131,7 @@ public final class HackclawSkills {
         drone.setGuidedTargetId(guidedTargetId);
         drone.setYRot(player.getYRot());
         drone.setXRot(player.getXRot());
-        level.addFreshEntity(drone);
+        if (level.addFreshEntity(drone)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"hackclaw.flash_drone");
         HackclawStateManager.stowTool(player);
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.HACKCLAW_FLASH_DRONE_THROW.get(),
                 SoundSource.PLAYERS, 0.85f, 1.0f, 18.0D, 5, 3.0D);

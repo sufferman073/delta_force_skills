@@ -70,6 +70,27 @@ public final class UluruSkills {
             Direction coverFacing,
             ServerPlayer owner
     ) {
+        return deployQuickCover(level, basePos, hitDirection, coverFacing, owner.getUUID(), owner, false);
+    }
+
+    public static boolean deployNativeQuickCover(ServerLevel level, BlockPos basePos, Direction hitDirection,
+                                                  Direction coverFacing, java.util.UUID owner) {
+        return deployQuickCover(level, basePos, hitDirection, coverFacing, owner, null, true);
+    }
+
+    public static boolean deployNativeQuickCover(ServerLevel level, BlockPos basePos, Direction hitDirection,
+            Direction coverFacing, com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance) {
+        return deployQuickCover(level, basePos, hitDirection, coverFacing, allegiance.caster(), null, true, allegiance);
+    }
+
+    private static boolean deployQuickCover(ServerLevel level, BlockPos basePos, Direction hitDirection,
+                                            Direction coverFacing, java.util.UUID ownerId, ServerPlayer owner, boolean nativeSource) {
+        return deployQuickCover(level, basePos, hitDirection, coverFacing, ownerId, owner, nativeSource, null);
+    }
+
+    private static boolean deployQuickCover(ServerLevel level, BlockPos basePos, Direction hitDirection,
+            Direction coverFacing, java.util.UUID ownerId, ServerPlayer owner, boolean nativeSource,
+            com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance) {
         if (!hasDeploymentSupport(level, basePos, hitDirection)) {
             return false;
         }
@@ -85,16 +106,16 @@ public final class UluruSkills {
                 int maxY = minY + 2;
                 for (int dy = minY; dy <= maxY; dy++) {
                     BlockPos pos = columnBase.above(dy);
-                    if (canPlaceCover(level, pos, false)) {
+                    if (canPlaceCover(level, pos, false, nativeSource)) {
                         pieces.add(new CoverPiece(pos.immutable(), false));
                     }
                 }
             } else {
-                if (canPlaceCover(level, columnBase, false)) {
+                if (canPlaceCover(level, columnBase, false, nativeSource)) {
                     pieces.add(new CoverPiece(columnBase.immutable(), false));
                 }
                 BlockPos halfTop = columnBase.above();
-                if (canPlaceCover(level, halfTop, true)) {
+                if (canPlaceCover(level, halfTop, true, nativeSource)) {
                     pieces.add(new CoverPiece(halfTop.immutable(), true));
                 }
             }
@@ -116,13 +137,14 @@ public final class UluruSkills {
         for (CoverPiece piece : pieces) {
             if (level.getBlockEntity(piece.pos()) instanceof QuickCoverBlockEntity cover) {
                 if (piece.pos().equals(rootPos)) {
-                    cover.configureRoot(rootPos, expireAt, owner.getUUID());
+                    cover.configureRoot(rootPos, expireAt, ownerId);
                 } else {
-                    cover.configurePart(rootPos, expireAt, owner.getUUID());
+                    cover.configurePart(rootPos, expireAt, ownerId);
                 }
+                if (allegiance != null) cover.configureOperative(allegiance);
             }
         }
-        UluruStateManager.registerProtectedCover(owner, rootPos);
+        if (owner != null) UluruStateManager.registerProtectedCover(owner, rootPos);
 
         level.playSound(null, rootPos, ModSounds.QUICK_COVER_DEPLOY.get(), SoundSource.BLOCKS, 1.0f, 1.0f);
         return true;
@@ -186,7 +208,8 @@ public final class UluruSkills {
         grenade.setDeltaMovement(look.scale(2.25).add(0.0, 0.14, 0.0));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        level.addFreshEntity(grenade);
+        if (level.addFreshEntity(grenade))
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         level.playSound(null, player.blockPosition(), ModSounds.INCENDIARY_THROW.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
         UluruStateManager.setEquippedTool(player, UluruTool.NONE);
         return true;
@@ -238,10 +261,12 @@ public final class UluruSkills {
         return true;
     }
 
-    private static boolean canPlaceCover(ServerLevel level, BlockPos pos, boolean half) {
+    private static boolean canPlaceCover(ServerLevel level, BlockPos pos, boolean half, boolean nativeSource) {
         BlockState state = ModBlocks.QUICK_COVER.get()
                 .defaultBlockState()
                 .setValue(QuickCoverBlock.HALF, half);
+        if (nativeSource && !level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,
+                new net.minecraft.world.phys.AABB(pos).setMaxY(pos.getY() + (half ? 0.5D : 1D)), net.minecraft.world.entity.LivingEntity::isAlive).isEmpty()) return false;
         return level.getBlockState(pos).canBeReplaced()
                 && level.isUnobstructed(state, pos, net.minecraft.world.phys.shapes.CollisionContext.empty());
     }

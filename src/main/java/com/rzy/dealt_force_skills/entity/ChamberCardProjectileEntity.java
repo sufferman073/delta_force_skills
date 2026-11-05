@@ -27,8 +27,10 @@ import net.minecraftforge.network.NetworkHooks;
 import java.util.Optional;
 import java.util.UUID;
 
-public class ChamberCardProjectileEntity extends Projectile implements ItemSupplier {
+public class ChamberCardProjectileEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
     private static final int MAX_LIFE_TICKS = 80;
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
     private UUID ownerId;
     private ChamberMarkerType markerType = ChamberMarkerType.TELEPORT_ANCHOR;
 
@@ -40,12 +42,13 @@ public class ChamberCardProjectileEntity extends Projectile implements ItemSuppl
     public ChamberCardProjectileEntity(
             EntityType<? extends ChamberCardProjectileEntity> type,
             Level level,
-            ServerPlayer owner,
+            net.minecraft.world.entity.LivingEntity owner,
             ChamberMarkerType markerType
     ) {
         this(type, level);
         setOwner(owner);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
         this.markerType = markerType;
     }
 
@@ -61,6 +64,9 @@ public class ChamberCardProjectileEntity extends Projectile implements ItemSuppl
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount > MAX_LIFE_TICKS) {
+            com.rzy.dealt_force_skills.ai.operative.NativeChamberSkills.endDevice(this, allegiance); return;
+        }
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);
         HitResult hit = level().clip(new ClipContext(position(), next, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
@@ -83,6 +89,8 @@ public class ChamberCardProjectileEntity extends Projectile implements ItemSuppl
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        int age = allegiance.load(tag, 80);
+        if (allegiance.active()) tickCount = age;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         try {
             markerType = ChamberMarkerType.valueOf(tag.getString("MarkerType"));
@@ -93,6 +101,7 @@ public class ChamberCardProjectileEntity extends Projectile implements ItemSuppl
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -107,6 +116,10 @@ public class ChamberCardProjectileEntity extends Projectile implements ItemSuppl
     private void placeMarker(BlockHitResult hit) {
         if (!(level() instanceof ServerLevel level)) {
             discard();
+            return;
+        }
+        if (allegiance.active()) {
+            com.rzy.dealt_force_skills.ai.operative.NativeChamberSkills.landCard(this, allegiance, markerType, findStandablePlacement(level, hit).orElse(null));
             return;
         }
         ServerPlayer owner = ownerId == null ? null : level.getServer().getPlayerList().getPlayer(ownerId);

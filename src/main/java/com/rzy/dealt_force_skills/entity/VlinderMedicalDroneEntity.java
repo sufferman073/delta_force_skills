@@ -27,6 +27,8 @@ import net.minecraftforge.network.NetworkHooks;
 import org.joml.Vector3f;
 
 import java.util.UUID;
+import com.rzy.dealt_force_skills.ai.operative.*;
+import com.rzy.dealt_force_skills.character.SkillSlot;
 
 public class VlinderMedicalDroneEntity extends Entity implements ItemSupplier {
     private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.vlindermedicaldroneentity.life_ticks", 200));
@@ -36,6 +38,9 @@ public class VlinderMedicalDroneEntity extends Entity implements ItemSupplier {
     private static final DustParticleOptions HEAL_DUST = new DustParticleOptions(new Vector3f(0.45f, 1.0f, 0.68f), 1.0f);
     private static final DustParticleOptions WASTE_DUST = new DustParticleOptions(new Vector3f(0.55f, 0.35f, 1.0f), 1.0f);
 
+
+    private final OperativeAllegiance allegiance = new OperativeAllegiance();
+    private int missingTicks;
     private UUID ownerId;
     private UUID targetId;
     private VlinderDroneMode mode = VlinderDroneMode.HEAL;
@@ -57,6 +62,43 @@ public class VlinderMedicalDroneEntity extends Entity implements ItemSupplier {
         ownerId = owner.getUUID();
         targetId = target.getUUID();
         this.mode = mode;
+        allegiance.capture(owner);
+    }
+
+
+    public VlinderMedicalDroneEntity(EntityType<? extends VlinderMedicalDroneEntity> type, Level level,
+            LivingEntity owner, LivingEntity target, VlinderDroneMode mode) {
+        this(type, level);
+        ownerId = owner.getUUID(); targetId = target.getUUID(); this.mode = mode;
+        allegiance.capture(owner);
+    }
+    public boolean isNativeFor(LivingEntity owner, LivingEntity target) {
+        return isAlive() && allegiance.active() && owner.getUUID().equals(ownerId) && target.getUUID().equals(targetId);
+    }
+    private void tickNative(ServerLevel level) {
+        LivingEntity owner = owner(level);
+        Entity found = targetId == null ? null : level.getEntity(targetId);
+        if (tickCount > LIFE_TICKS || health <= 0) { discard(); return; }
+        if (owner == null || found == null) { if (++missingTicks > 40) discard(); return; }
+        missingTicks = 0;
+        if (!(found instanceof LivingEntity target) || !TargetingUtil.isTargetableLiving(target)
+                || !NativeVlinderSkills.deviceAvailable(owner, SkillSlot.ACTIVE_1, target.position())
+                || owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE
+                || (mode == VlinderDroneMode.HEAL ? !OperativeSupport.ally(owner, target) || OperativeSupport.downed(target)
+                    : !allegiance.isEnemy(level, target)) || !owner.hasLineOfSight(target)) { discard(); return; }
+        Vec3 destination = target.position().add(0, target.getBbHeight() * 0.58, 0);
+        Vec3 delta = destination.subtract(position());
+        if (delta.lengthSqr() <= HIT_DISTANCE * HIT_DISTANCE) {
+            if (mode == VlinderDroneMode.HEAL) VlinderStateManager.applyHealingDust(owner, target);
+            else VlinderStateManager.applyMedicalWaste(owner, target);
+            level.playSound(null, target.blockPosition(), ModSounds.VLINDER_MEDICAL_DRONE_HIT.get(), SoundSource.PLAYERS, 0.75F, 1);
+            discard(); return;
+        }
+        Vec3 motion = delta.normalize().scale(Math.min(Math.max(0.01, SPEED), delta.length()));
+        if (level.clip(new net.minecraft.world.level.ClipContext(position(), position().add(motion),
+                net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, this)).getType()
+                != net.minecraft.world.phys.HitResult.Type.MISS) { discard(); return; }
+        setDeltaMovement(motion); move(MoverType.SELF, motion);
     }
 
     @Override
@@ -79,6 +121,7 @@ public class VlinderMedicalDroneEntity extends Entity implements ItemSupplier {
             discard();
             return;
         }
+        if (allegiance.active()) { tickNative(level); return; }
         LivingEntity owner = owner(level);
         ServerPlayer target = target(level);
         if (owner == null || target == null || tickCount > LIFE_TICKS
@@ -113,15 +156,20 @@ public class VlinderMedicalDroneEntity extends Entity implements ItemSupplier {
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        int nativeAge = allegiance.load(tag, LIFE_TICKS);
+        if (allegiance.active()) tickCount = nativeAge;
+        missingTicks = 0;
         targetId = tag.hasUUID("Target") ? tag.getUUID("Target") : null;
         int ordinal = tag.getInt("Mode");
         VlinderDroneMode[] modes = VlinderDroneMode.values();
         mode = ordinal >= 0 && ordinal < modes.length ? modes[ordinal] : VlinderDroneMode.HEAL;
         health = tag.contains("Health") ? tag.getFloat("Health") : 6.0F;
+        if (allegiance.active()) health = Float.isFinite(health) ? Math.max(0, Math.min(6, health)) : 0;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -147,6 +195,8 @@ public class VlinderMedicalDroneEntity extends Entity implements ItemSupplier {
         if (level().isClientSide || amount <= 0.0F) {
             return true;
         }
+        if (allegiance.active() && level() instanceof ServerLevel level
+                && allegiance.isAlly(level, source.getEntity())) return false;
         health -= amount;
         if (health <= 0.0F) {
             destroyByInterference();

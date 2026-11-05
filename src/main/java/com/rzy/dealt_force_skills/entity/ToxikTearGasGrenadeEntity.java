@@ -24,7 +24,9 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class ToxikTearGasGrenadeEntity extends Projectile implements ItemSupplier {
+public class ToxikTearGasGrenadeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
     private static volatile int MAX_FLIGHT_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_FLIGHT_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.toxikteargasgrenadeentity.max_flight_ticks", 80));
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.toxikteargasgrenadeentity.bounce_factor", 0.7));
     private UUID ownerId;
@@ -36,6 +38,7 @@ public class ToxikTearGasGrenadeEntity extends Projectile implements ItemSupplie
     public ToxikTearGasGrenadeEntity(EntityType<? extends ToxikTearGasGrenadeEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
+        allegiance.capture(owner);
         ownerId = owner.getUUID();
     }
 
@@ -51,6 +54,7 @@ public class ToxikTearGasGrenadeEntity extends Projectile implements ItemSupplie
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount > MAX_FLIGHT_TICKS) { burst(position()); return; }
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);
         HitResult hit = level().clip(new ClipContext(position(), next, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
@@ -75,11 +79,16 @@ public class ToxikTearGasGrenadeEntity extends Projectile implements ItemSupplie
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int age = allegiance.load(tag, MAX_FLIGHT_TICKS);
+        if (allegiance.active()) tickCount = age;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -119,6 +128,7 @@ public class ToxikTearGasGrenadeEntity extends Projectile implements ItemSupplie
         ToxikTearGasCloudEntity cloud = new ToxikTearGasCloudEntity(
                 ModEntities.TOXIK_TEAR_GAS_CLOUD.get(), serverLevel, ownerId, ToxikTearGasCloudEntity.LIFE_TICKS);
         cloud.setPos(center.x, center.y, center.z);
+        cloud.setOperativeSource(allegiance);
         serverLevel.addFreshEntity(cloud);
         discard();
     }

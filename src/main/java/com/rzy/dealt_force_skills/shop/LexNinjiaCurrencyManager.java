@@ -105,7 +105,10 @@ public final class LexNinjiaCurrencyManager {
     }
 
     public static long set(ServerPlayer player, long amount) {
+        long previous = get(player);
         player.getPersistentData().putLong(LOTUS_BOXES, Math.max(0L, amount));
+        if (get(player) > previous && LexNinjiaStateManager.isLexNinjia(player))
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "lex.currency", get(player));
         sync(player);
         return get(player);
     }

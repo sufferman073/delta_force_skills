@@ -352,6 +352,7 @@ public final class ManbaStateManager {
         tag.putInt(LENS, lensOrdinal);
         writeOrdinals(tag, BATTERIES, batteries);
         tag.putBoolean(CONFIGURED, true);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"manba.talents.confirm_four");
         tag.putInt(FLASHLIGHT_DURABILITY,
                 Math.min(tag.getInt(FLASHLIGHT_DURABILITY), flashlightStats(player).maxDurabilityScaled()));
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.manba.loadout_saved"), true);
@@ -451,7 +452,9 @@ public final class ManbaStateManager {
                     player,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.manba.manba_state_manager.skill_hurt.0.damage", 2.4f));
             StunEffect.allowHorizontalMovement(target, ELBOW_KNOCKBACK_STUN_GRACE_TICKS);
-            target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.0.duration_ticks", 48), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.0.amplifier", 0), false, true, true), player);
+            MobEffectInstance silence=new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.0.duration_ticks", 48), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.manba.manba_state_manager.effect.stun.0.amplifier", 0), false, true, true);
+            ((com.rzy.dealt_force_skills.department.DepartmentEffectSource)silence).dfs$silence(new com.rzy.dealt_force_skills.department.DepartmentManba.Silence(player));
+            target.addEffect(silence,player);
             SinevaKnockdownState.apply(player, target, 48);
             applyElbowKnockback(player, target, forward);
             player.level().playSound(null, target.blockPosition(), ModSounds.MANBA_ELBOW_HIT.get(),
@@ -681,6 +684,7 @@ public final class ManbaStateManager {
             tag.putBoolean(GOOD_REWARD_ACTIVE, false);
             player.setHealth(Math.max(1.0f, player.getMaxHealth() * 0.5f));
             DfsAchievements.recordFatalAvoidance(player);
+            if(isDuelActive(player))com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"manba.duel.death_prevented");
             syncToClient(player);
             return true;
         }
@@ -690,6 +694,7 @@ public final class ManbaStateManager {
                 tag.putLong(INDESTRUCTIBLE_COOLDOWN_UNTIL, SkillCooldownHelper.until(player, now, 120 * 20));
                 player.setHealth(player.getMaxHealth());
                 DfsAchievements.recordFatalAvoidance(player);
+            if(isDuelActive(player))com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"manba.duel.death_prevented");
                 player.level().playSound(null, player.blockPosition(), ModSounds.MANBA_DUEL_REVIVE.get(),
                         SoundSource.PLAYERS, 0.85f, 1.15f);
                 syncToClient(player);
@@ -1098,8 +1103,9 @@ public final class ManbaStateManager {
 
     private static void applyFlashlightBlind(ServerPlayer player, LivingEntity target, ManbaFlashlightStats stats) {
         int amplifier = hasTalent(player, ManbaTalent.LIGHT_WARRIOR) ? 1 : 0;
-        target.addEffect(new MobEffectInstance(ModEffects.MANBA_BLINDED.get(),
-                stats.blindTicks(), amplifier, false, true, true), player);
+        if(target.addEffect(new MobEffectInstance(ModEffects.MANBA_BLINDED.get(),
+                stats.blindTicks(), amplifier, false, true, true), player))
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"manba.flashlight.blinded");
         if (!stats.noBlindCost()) {
             CompoundTag tag = data(player);
             tag.putInt(FLASHLIGHT_DURABILITY, Math.max(0, tag.getInt(FLASHLIGHT_DURABILITY) - FLASHLIGHT_BLIND_COST));
@@ -1173,7 +1179,8 @@ public final class ManbaStateManager {
         UUID targetId = tag.hasUUID(DUEL_TARGET) ? tag.getUUID(DUEL_TARGET) : null;
         LivingEntity target = targetId == null ? null : duelTarget(player, targetId);
         int affection = tag.getInt(DUEL_AFFECTION);
-        boolean shouldExecute = affection > 100;
+        boolean shouldExecute = executeIfWon && affection > 100 && player.isAlive()
+                && target != null && target.isAlive();
         stopDuelBgm(player, target, targetId);
         if (targetId != null) {
             DUEL_TARGET_TO_OWNER.remove(targetId);
@@ -1267,6 +1274,7 @@ public final class ManbaStateManager {
     }
 
     private static void executeDuelTarget(ServerPlayer player, LivingEntity target) {
+        if(!player.isAlive()||!target.isAlive()||target.isRemoved())return;
         if (!com.rzy.dealt_force_skills.boss.BossCombatRules.canInstantKill(target)) {
             player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                     "message.dealt_force_skills.beacon_boss.immune_execute"), true);
@@ -1282,6 +1290,7 @@ public final class ManbaStateManager {
             if (isStillAliveAfterDuelExecute(target)) {
                 forceDuelExecuteDeath(source, target);
             }
+            if(!target.isAlive())com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"manba.duel.finish.kill");
         } finally {
             EXECUTING_DUEL_TARGETS.remove(target.getUUID());
         }
@@ -1323,6 +1332,7 @@ public final class ManbaStateManager {
         tag.putInt(DUEL_REVIVES_USED, used + 1);
         player.setHealth(player.getMaxHealth());
         DfsAchievements.recordFatalAvoidance(player);
+            if(isDuelActive(player))com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"manba.duel.death_prevented");
         if (used == 1) {
             DfsAchievements.recordManbaFavorSecondDeathSave(player, tag.getInt(DUEL_AFFECTION));
         }

@@ -1,9 +1,6 @@
 package com.rzy.dealt_force_skills.character.vyron;
 
 import com.rzy.dealt_force_skills.character.SkillSlot;
-import com.rzy.dealt_force_skills.entity.VyronMagneticBombEntity;
-import com.rzy.dealt_force_skills.entity.VyronTigerCannonEntity;
-import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.network.chat.Component;
@@ -102,16 +99,10 @@ public final class VyronSkills {
         }
 
         ServerLevel level = player.serverLevel();
-        VyronMagneticBombEntity bomb = new VyronMagneticBombEntity(ModEntities.VYRON_MAGNETIC_BOMB.get(), level, player);
-        Vec3 look = player.getLookAngle().normalize();
-        Vec3 start = player.getEyePosition().add(look.scale(0.62D));
-        double speed = highThrow ? 1.75D : 1.08D;
-        double lift = highThrow ? 0.32D : 0.06D;
-        bomb.setPos(start.x, start.y - 0.1D, start.z);
-        bomb.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
-        bomb.setYRot(player.getYRot());
-        bomb.setXRot(player.getXRot());
-        level.addFreshEntity(bomb);
+        if (VyronProjectiles.throwMagneticBomb(level, player, highThrow)) {
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"vyron.magnetic_bomb");
+        }
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.VYRON_MAGNETIC_BOMB_THROW.get(),
                 SoundSource.PLAYERS, 1.2f, highThrow ? 0.95f : 1.08f, 20.0D, 5, 3.0D);
         VyronStateManager.grantPowered(player, false);
@@ -150,14 +141,7 @@ public final class VyronSkills {
         }
 
         ServerLevel level = player.serverLevel();
-        VyronTigerCannonEntity shell = new VyronTigerCannonEntity(ModEntities.VYRON_TIGER_CANNON.get(), level, player);
-        Vec3 look = player.getLookAngle().normalize();
-        Vec3 start = player.getEyePosition().add(look.scale(0.8D));
-        shell.setPos(start.x, start.y - 0.08D, start.z);
-        shell.setDeltaMovement(look.scale(1.9D).add(0.0D, 0.08D, 0.0D));
-        shell.setYRot(player.getYRot());
-        shell.setXRot(player.getXRot());
-        level.addFreshEntity(shell);
+        VyronProjectiles.fireTigerCannon(level, player);
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.VYRON_TIGER_CANNON_FIRE.get(),
                 SoundSource.PLAYERS, 1.0f, 1.0f, 18.0D, 4, 3.0D);
         VyronStateManager.setCoreCooldown(player);

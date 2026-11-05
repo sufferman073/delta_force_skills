@@ -11,11 +11,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class S2C_RaptorRevealEntities {
+public class S2C_RaptorRevealEntities implements com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     private final List<RaptorRevealMarker> markers;
 
     public S2C_RaptorRevealEntities(List<RaptorRevealMarker> markers) {
         this.markers = List.copyOf(markers);
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(var marker:markers) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,marker.entityId(),marker.ticks());
     }
 
     public static void encode(S2C_RaptorRevealEntities msg, FriendlyByteBuf buf) {

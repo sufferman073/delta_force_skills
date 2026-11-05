@@ -1,5 +1,13 @@
 package com.rzy.dealt_force_skills.entity;
 
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeHost;
+import com.rzy.dealt_force_skills.ai.operative.OperativeRecon;
+import com.rzy.dealt_force_skills.ai.operative.NativeMorseSkills;
+import com.rzy.dealt_force_skills.ai.operative.OperativeElectronics;
+import com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource;
+import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.registry.ModSounds;
@@ -41,9 +49,13 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
     private static volatile int MAX_FLASH_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_FLASH_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.morseflashgrenadeentity.max_flash_ticks", 240));
     private static volatile int MIN_FLASH_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MIN_FLASH_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.morseflashgrenadeentity.min_flash_ticks", 8));
     private static volatile double MAX_FLASH_ANGLE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_FLASH_ANGLE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.morse_flash_grenade_entity.max_flash_angle", 90.0));
+    private final OperativeAllegiance nativeAllegiance = new OperativeAllegiance();
     private UUID ownerId;
     private int fuseRemaining = DEFAULT_FUSE_TICKS;
     private boolean bounced;
+    public void setNativeFuse(int ticks) {
+        if (nativeAllegiance.active()) fuseRemaining = Math.max(2, Math.min(DEFAULT_FUSE_TICKS, ticks));
+    }
 
     public MorseFlashGrenadeEntity(EntityType<? extends MorseFlashGrenadeEntity> type, Level level) {
         super(type, level);
@@ -53,6 +65,7 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
         super(type, level);
         setOwner(owner);
         ownerId = owner.getUUID();
+        nativeAllegiance.capture(owner);
     }
 
     @Override
@@ -67,6 +80,7 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
     @Override
     public void tick() {
         super.tick();
+        if (nativeAllegiance.active() && level() instanceof ServerLevel level && fuseRemaining <= 3) NativeMorseSkills.turnAwayFromFlash(owner(level), position());
         if (!level().isClientSide && --fuseRemaining <= 0) {
             explode(position());
             return;
@@ -94,9 +108,13 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int nativeAge = nativeAllegiance.load(tag, 201);
+        if (nativeAllegiance.active()) tickCount = nativeAge;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         fuseRemaining = tag.getInt("FuseRemaining");
-        if (fuseRemaining <= 0) {
+        if (nativeAllegiance.active()) fuseRemaining = Mth.clamp(fuseRemaining, 1, Math.max(1, DEFAULT_FUSE_TICKS));
+        else if (fuseRemaining <= 0) {
             fuseRemaining = DEFAULT_FUSE_TICKS;
         }
         bounced = tag.getBoolean("Bounced");
@@ -104,6 +122,8 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        nativeAllegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -155,7 +175,7 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
         int flashedTargets = 0;
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
             // Self-harm skill: flash can hit thrower; teammates skipped.
-            if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+            if (!(nativeAllegiance.active() ? nativeAllegiance.isCaster(target) || nativeAllegiance.isEnemy(level, target) : TargetingUtil.isSelfOrHostileLivingFor(owner, target))) {
                 continue;
             }
             int flashTicks = flashDuration(center, target);
@@ -167,12 +187,13 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
             SkillDamageHelper.hurtUnscaled(target, SkillDamageHelper.trueDamage(level, this, owner), 1.0F);
             target.setDeltaMovement(before);
             target.hurtMarked = true;
-            target.addEffect(new MobEffectInstance(ModEffects.MORSE_FLASH_BLIND.get(),
+            boolean questApplied = target.addEffect(new MobEffectInstance(ModEffects.MORSE_FLASH_BLIND.get(),
                     flashTicks, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.morse_flash_grenade_entity.effect.morse_flash_blind.0.amplifier", 0), false, false, true), owner);
             target.level().playSound(null, target.blockPosition(), ModSounds.MORSE_FLASH_HIT.get(),
                     SoundSource.PLAYERS, 0.7f, 1.0f);
             target.level().playSound(null, target.blockPosition(), ModSounds.MORSE_TINNITUS.get(),
                     SoundSource.PLAYERS, 0.55f, 1.0f);
+            if (questApplied) com.rzy.dealt_force_skills.department.DepartmentRecon.morseAffected(owner,target,bounced,true);
             flashedTargets++;
         }
         if (owner instanceof ServerPlayer ownerPlayer) {
@@ -218,5 +239,27 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
         if (level().isClientSide && tickCount % 2 == 0) {
             level().addParticle(ParticleTypes.END_ROD, getX(), getY() + 0.05D, getZ(), 0.0D, 0.01D, 0.0D);
         }
+    }
+
+    public static double nativeRadius() { return Math.max(0, RADIUS); }
+    /** Same discrete fuse, face reflection and drag as tick; no world entities are created. */
+    public static Vec3 nativeImpact(ServerLevel level, Vec3 position, Vec3 motion) {
+        int fuse = Math.max(1, DEFAULT_FUSE_TICKS);
+        for (int age = 0; age <= Math.max(1, DEFAULT_FUSE_TICKS); age++) {
+            if (--fuse <= 0) return position;
+            if (!level.hasChunkAt(net.minecraft.core.BlockPos.containing(position))) return null;
+            var hit = level.clip(new ClipContext(position, position.add(motion), ClipContext.Block.COLLIDER,
+                    ClipContext.Fluid.NONE, (Entity) null));
+            if (hit.getType() == HitResult.Type.BLOCK) {
+                Vec3 normal = Vec3.atLowerCornerOf(hit.getDirection().getNormal());
+                position = hit.getLocation().add(normal.scale(0.04D));
+                motion = com.rzy.dealt_force_skills.util.ProjectileBouncePhysics.reflect(hit.getDirection(), motion, BOUNCE_FACTOR, 0.45D, 0.80D);
+                fuse = Math.min(fuse, Math.max(1, BOUNCE_FUSE_TICKS));
+            } else {
+                position = position.add(motion);
+                motion = motion.add(0, -0.045D, 0).scale(0.985D);
+            }
+        }
+        return null;
     }
 }

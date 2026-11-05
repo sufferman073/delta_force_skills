@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.UUID;
 
 public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplier {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
     private static volatile double MAX_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.departmentoverheatlaserentity.max_distance", 15.0));
     private static volatile int MAX_LIFETIME_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_LIFETIME_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.departmentoverheatlaserentity.max_lifetime_ticks", 20));
     private static volatile double HIT_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("HIT_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.departmentoverheatlaserentity.hit_radius", 0.55));
@@ -53,6 +54,7 @@ public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplie
     public DepartmentOverheatLaserEntity(EntityType<? extends DepartmentOverheatLaserEntity> type, Level level, LivingEntity owner) {
         this(type, level);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
     }
 
     @Override
@@ -76,7 +78,8 @@ public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplie
             discard();
             return;
         }
-        if (tickCount > MAX_LIFETIME_TICKS || startPosition().distanceTo(position()) > MAX_DISTANCE + 0.5D) {
+        if (tickCount > MAX_LIFETIME_TICKS || startPosition().distanceTo(position()) > MAX_DISTANCE + 0.5D
+                || allegiance.active() && !allegiance.withinOrders(level, position())) {
             discard();
             return;
         }
@@ -114,6 +117,14 @@ public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplie
         startX = tag.getDouble("StartX");
         startY = tag.getDouble("StartY");
         startZ = tag.getDouble("StartZ");
+        int age = allegiance.load(tag, MAX_LIFETIME_TICKS);
+        if (allegiance.active()) {
+            tickCount = age;
+            if (!Double.isFinite(startX) || !Double.isFinite(startY) || !Double.isFinite(startZ)) tickCount = MAX_LIFETIME_TICKS + 1;
+            hitEntities.clear();
+            var hits = tag.getList("NativeHits", 10);
+            for (int i = 0; i < Math.min(128, hits.size()); i++) if (hits.getCompound(i).hasUUID("Id")) hitEntities.add(hits.getCompound(i).getUUID("Id"));
+        }
     }
 
     @Override
@@ -125,6 +136,12 @@ public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplie
         tag.putDouble("StartX", startX);
         tag.putDouble("StartY", startY);
         tag.putDouble("StartZ", startZ);
+        allegiance.save(tag, tickCount);
+        if (allegiance.active()) {
+            var hits = new net.minecraft.nbt.ListTag();
+            for (UUID id : hitEntities) { var hit = new CompoundTag(); hit.putUUID("Id", id); hits.add(hit); }
+            tag.put("NativeHits", hits);
+        }
     }
 
     @Override
@@ -138,18 +155,27 @@ public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplie
         DamageSource source = SkillDamageHelper.departmentLaser(level, this, owner);
         LivingEntity ownerLiving = owner instanceof LivingEntity living ? living : null;
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isHostileLivingFor(owner, target) || !hitEntities.add(target.getUUID())) {
+            if (allegiance.active() ? !allegiance.isEnemy(level, target) || hitEntities.contains(target.getUUID()) || hitEntities.size() >= 128
+                    : !TargetingUtil.isHostileLivingFor(owner, target) || !hitEntities.add(target.getUUID())) {
                 continue;
             }
             if (!intersectsBeam(target, from, to)) {
                 continue;
             }
+            if (allegiance.active()) hitEntities.add(target.getUUID());
             Vec3 before = target.getDeltaMovement();
             target.invulnerableTime = 0;
             SkillDamageHelper.hurt(target, source, ownerLiving, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.department_overheat_laser_entity.skill_hurt.0.damage", 1.6F));
             target.setDeltaMovement(before);
             target.hurtMarked = true;
+            var previousCalibration=target.getEffect(com.rzy.dealt_force_skills.registry.ModEffects.DEPARTMENT_CALIBRATION.get());
+            int previousLevel=previousCalibration==null?-1:previousCalibration.getAmplifier();
+            int previousDuration=previousCalibration==null?0:previousCalibration.getDuration();
             DepartmentOfTransportationStateManager.addCalibration(target, ownerLiving);
+            var appliedCalibration=target.getEffect(com.rzy.dealt_force_skills.registry.ModEffects.DEPARTMENT_CALIBRATION.get());
+            if(appliedCalibration!=null&&(previousCalibration==null||appliedCalibration.getAmplifier()>previousLevel
+                    ||previousDuration!=-1&&(appliedCalibration.isInfiniteDuration()||appliedCalibration.getDuration()>previousDuration)))
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(ownerLiving,"transport.laser.calibrated");
             RangedSoundHelper.playTrapSoundThrottled(level, target.position(), ModSounds.DEPARTMENT_LASER_HIT.get(),
                     0.65F, 1.0F, 5, 2.0D);
         }

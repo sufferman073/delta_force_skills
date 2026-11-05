@@ -1,5 +1,13 @@
 package com.rzy.dealt_force_skills.entity;
 
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeHost;
+import com.rzy.dealt_force_skills.ai.operative.OperativeRecon;
+import com.rzy.dealt_force_skills.ai.operative.NativeMorseSkills;
+import com.rzy.dealt_force_skills.ai.operative.OperativeElectronics;
+import com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource;
+import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
@@ -42,6 +50,7 @@ public class MorseShockOrbEntity extends Projectile implements ItemSupplier {
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.morse_shock_orb_entity.bounce_factor", 0.72));
     private static final DustParticleOptions SHOCK_DUST = new DustParticleOptions(new Vector3f(1.0f, 0.78f, 0.24f), 1.2f);
 
+    private final OperativeAllegiance nativeAllegiance = new OperativeAllegiance();
     private UUID ownerId;
     private boolean masterBall;
     private boolean bounced;
@@ -55,8 +64,8 @@ public class MorseShockOrbEntity extends Projectile implements ItemSupplier {
         super(type, level);
         setOwner(owner);
         ownerId = owner.getUUID();
-        masterBall = owner instanceof ServerPlayer player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.MORSE_MASTER_BALL);
+        nativeAllegiance.capture(owner);
+        masterBall = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.MORSE_MASTER_BALL);
     }
 
     @Override
@@ -71,6 +80,7 @@ public class MorseShockOrbEntity extends Projectile implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && nativeAllegiance.active() && tickCount > 200) { discard(); return; }
 
         if (!level().isClientSide && explodeInTicks >= 0) {
             explodeInTicks--;
@@ -118,14 +128,20 @@ public class MorseShockOrbEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int nativeAge = nativeAllegiance.load(tag, 201);
+        if (nativeAllegiance.active()) tickCount = nativeAge;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         masterBall = tag.getBoolean("MasterBall");
         bounced = tag.getBoolean("Bounced");
         explodeInTicks = tag.contains("ExplodeIn") ? tag.getInt("ExplodeIn") : -1;
+        if (nativeAllegiance.active()) explodeInTicks = Math.max(-1, Math.min(Math.max(1, POST_BOUNCE_EXPLODE_TICKS), explodeInTicks));
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        nativeAllegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -169,7 +185,7 @@ public class MorseShockOrbEntity extends Projectile implements ItemSupplier {
     private LivingEntity firstEntityHit(Vec3 motion) {
         AABB box = getBoundingBox().expandTowards(motion).inflate(0.35D);
         return level().getEntitiesOfClass(LivingEntity.class, box,
-                        target -> TargetingUtil.isHostileLivingFor(getOwner(), target))
+                        target -> nativeAllegiance.active() ? nativeAllegiance.isEnemy((ServerLevel) level(), target) : TargetingUtil.isHostileLivingFor(getOwner(), target))
                 .stream()
                 .findFirst()
                 .orElse(null);
@@ -203,19 +219,20 @@ public class MorseShockOrbEntity extends Projectile implements ItemSupplier {
         AABB box = new AABB(center, center).inflate(effectiveRadius);
         int shockedTargets = 0;
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isHostileLivingFor(owner, target) || (owner != null && target.getUUID().equals(owner.getUUID()))) {
+            if (!(nativeAllegiance.active() ? nativeAllegiance.isEnemy(level, target) : TargetingUtil.isHostileLivingFor(owner, target)) || (owner != null && target.getUUID().equals(owner.getUUID()))) {
                 continue;
             }
             Vec3 targetCenter = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
             if (targetCenter.distanceTo(center) > effectiveRadius) {
                 continue;
             }
-            target.addEffect(new MobEffectInstance(ModEffects.MORSE_STRONG_SHOCK.get(),
+            boolean questApplied = target.addEffect(new MobEffectInstance(ModEffects.MORSE_STRONG_SHOCK.get(),
                     effectiveShockTicks, effectiveShockAmplifier, false, true, true), owner);
             level.playSound(null, target.blockPosition(), target instanceof net.minecraft.world.entity.player.Player
                             ? ModSounds.MORSE_DEAFENED.get()
                             : ModSounds.MORSE_AI_DISABLED.get(),
                     SoundSource.PLAYERS, 0.65f, 1.0f);
+            if (questApplied) com.rzy.dealt_force_skills.department.DepartmentRecon.morseAffected(owner,target,bounced,false);
             shockedTargets++;
         }
         if (owner instanceof ServerPlayer ownerPlayer) {
@@ -231,4 +248,6 @@ public class MorseShockOrbEntity extends Projectile implements ItemSupplier {
         Entity owner = ownerId == null ? null : level.getEntity(ownerId);
         return owner instanceof LivingEntity living ? living : null;
     }
+
+    public static double nativeRadius() { return Math.max(0, RADIUS); }
 }

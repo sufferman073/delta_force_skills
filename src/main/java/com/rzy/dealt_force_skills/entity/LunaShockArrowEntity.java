@@ -40,7 +40,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class LunaShockArrowEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider {
+public class LunaShockArrowEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider , com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private java.util.UUID operativeOwner;
+    private boolean operativeSource;
+    @Override public java.util.UUID operativeOwnerUUID() { return operativeOwner; }
+
     private static final EntityDataAccessor<Float> DATA_FORWARD_X =
             SynchedEntityData.defineId(LunaShockArrowEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_FORWARD_Y =
@@ -67,9 +71,16 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
     public LunaShockArrowEntity(EntityType<? extends LunaShockArrowEntity> type, Level level, LivingEntity owner, boolean bounceEnabled) {
         super(type, level);
         setOwner(owner);
+        operativeSource = owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost;
+        if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost
+                && owner instanceof net.minecraft.world.entity.OwnableEntity owned) operativeOwner = owned.getOwnerUUID();
         this.bounceEnabled = bounceEnabled;
-        highPressureArrow = owner instanceof ServerPlayer player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.LUNA_HIGH_PRESSURE_ARROW);
+        highPressureArrow = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.LUNA_HIGH_PRESSURE_ARROW);
+    }
+
+    private boolean isOperativeSource() {
+        return operativeSource || operativeOwner != null
+                || getOwner() instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost;
     }
 
     @Override
@@ -87,6 +98,10 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && !stuck && isOperativeSource() && tickCount > 160) {
+            discard();
+            return;
+        }
 
         if (stuck) {
             tickStuck();
@@ -127,11 +142,18 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
 
     @Override
     protected boolean canHitEntity(Entity target) {
-        return super.canHitEntity(target) && target != getOwner();
+        return super.canHitEntity(target) && target != getOwner()
+                && (!(getOwner() instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost)
+                && operativeOwner == null || !(target instanceof LivingEntity living)
+                || TargetingUtil.isHostileLivingFor(getOwner() != null ? getOwner() : this, living));
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        operativeOwner = tag.hasUUID("OperativeOwner") ? tag.getUUID("OperativeOwner") : null;
+        operativeSource = tag.contains("OperativeAge") || operativeOwner != null;
+        if (tag.contains("OperativeAge")) tickCount = Math.max(0, Math.min(160, tag.getInt("OperativeAge")));
         bounceEnabled = tag.getBoolean("BounceEnabled");
         highPressureArrow = tag.getBoolean("HighPressureArrow");
         bounced = tag.getBoolean("Bounced");
@@ -152,6 +174,10 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        if (operativeOwner != null) tag.putUUID("OperativeOwner", operativeOwner);
+        if (isOperativeSource())
+            tag.putInt("OperativeAge", tickCount);
         tag.putBoolean("BounceEnabled", bounceEnabled);
         tag.putBoolean("HighPressureArrow", highPressureArrow);
         tag.putBoolean("Bounced", bounced);
@@ -231,8 +257,11 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
             stuckEntityId = living.getUUID();
             if (level() instanceof ServerLevel serverLevel) {
                 living.invulnerableTime = 0;
+                float beforeQuestDamage = living.getHealth() + living.getAbsorptionAmount();
                 SkillDamageHelper.hurt(living, SkillDamageHelper.lunaShockArrow(serverLevel, this, getOwner()), getOwner() instanceof LivingEntity owner ? owner : null, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.luna_shock_arrow_entity.skill_hurt.0.damage", 10.0f));
                 if (getOwner() instanceof ServerPlayer owner) {
+                    if (bounced && living.getHealth() + living.getAbsorptionAmount() < beforeQuestDamage)
+                        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"luna.arrow.bounce_hit");
                     DfsAchievements.recordLunaShockFixedKill(owner, living, bounced, true);
                 }
                 RangedSoundHelper.playThrottled(serverLevel, living.position(), ModSounds.LUNA_SHOCK_ARROW_PULSE.get(),
@@ -293,7 +322,7 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
                 Math.max(0.55D, effectiveRadius * 0.35D), 0.03D);
         AABB box = new AABB(center, center).inflate(effectiveRadius);
         for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, box,
-                entity -> TargetingUtil.isSelfOrHostileLivingFor(owner, entity)
+                entity -> TargetingUtil.isSelfOrHostileLivingFor(owner != null ? owner : this, entity)
                         && entity.distanceToSqr(center) <= effectiveRadius * effectiveRadius)) {
             if (!highPressureArrow && !hasLineOfSight(center, target)) {
                 continue;

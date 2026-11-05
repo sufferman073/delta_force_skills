@@ -52,8 +52,8 @@ public class RandomEffectConsumableItem extends DfsUseItem {
             if (effect == null) {
                 continue;
             }
-            player.addEffect(new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier(),
-                    false, true, true), player);
+            com.rzy.dealt_force_skills.department.DepartmentConsumables.addEffect(player,new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier(),
+                    false, true, true));
         }
         return true;
     }
@@ -64,5 +64,15 @@ public class RandomEffectConsumableItem extends DfsUseItem {
         }
         RandomSource safeRandom = random == null ? RandomSource.create() : random;
         return outcomes.get(safeRandom.nextInt(outcomes.size()));
+    }
+
+    @Override public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        if (outcomes.isEmpty()) return false;
+        for (var entry : blessingPreviewOutcome(target.getRandom())) if (entry.effect().get() != null) {
+            var effect = entry.effect().get();
+            if (effect.isInstantenous()) effect.applyInstantenousEffect(target, target, target, entry.amplifier(), 1);
+            else target.addEffect(new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier()), target);
+        }
+        return true;
     }
 }

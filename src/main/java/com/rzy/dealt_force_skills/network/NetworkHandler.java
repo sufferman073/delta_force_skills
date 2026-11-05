@@ -20,7 +20,7 @@ import java.lang.reflect.Modifier;
 import java.util.function.Supplier;
 
 public class NetworkHandler {
-    private static final String PROTOCOL = "77";
+    private static final String PROTOCOL = "88";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(DealtForceSkillsMod.MODID, "main"),
@@ -31,6 +31,40 @@ public class NetworkHandler {
 
     public static void onCommonSetup(FMLCommonSetupEvent e) {
         e.enqueueWork(() -> {
+            CHANNEL.messageBuilder(C2S_HomeAction.class, 235, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_HomeAction::encode).decoder(C2S_HomeAction::decode).consumerMainThread(C2S_HomeAction::handle).add();
+            CHANNEL.messageBuilder(S2C_HomeSnapshot.class, 236, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_HomeSnapshot::encode).decoder(S2C_HomeSnapshot::decode).consumerMainThread(S2C_HomeSnapshot::handle).add();
+            CHANNEL.messageBuilder(S2C_HomeDimension.class, 237, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_HomeDimension::encode).decoder(S2C_HomeDimension::decode).consumerMainThread(S2C_HomeDimension::handle).add();
+
+            // Forge IndexedMessageCodec writes an unsigned byte, NOT a VarInt.
+            // IDs 256/257 alias stamina IDs 0/1 on the wire, including on character exit.
+            CHANNEL.messageBuilder(C2S_WildfireAction.class, 238, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_WildfireAction::encode).decoder(C2S_WildfireAction::decode).consumerMainThread(C2S_WildfireAction::handle).add();
+            CHANNEL.messageBuilder(S2C_WildfireState.class, 239, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_WildfireState::encode).decoder(S2C_WildfireState::decode).consumerMainThread(NetworkHandler::handleClientPacket).add();
+            CHANNEL.messageBuilder(C2S_WorkbenchAction.class, 254, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_WorkbenchAction::encode).decoder(C2S_WorkbenchAction::decode).consumerMainThread(C2S_WorkbenchAction::handle).add();
+            CHANNEL.messageBuilder(S2C_WorkbenchSnapshot.class, 255, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_WorkbenchSnapshot::encode).decoder(S2C_WorkbenchSnapshot::decode).consumerMainThread(S2C_WorkbenchSnapshot::handle).add();
+            CHANNEL.messageBuilder(C2S_DepartmentAction.class, 252, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_DepartmentAction::encode).decoder(C2S_DepartmentAction::decode).consumerMainThread(C2S_DepartmentAction::handle).add();
+            CHANNEL.messageBuilder(S2C_DepartmentSnapshot.class, 253, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_DepartmentSnapshot::encode).decoder(S2C_DepartmentSnapshot::decode).consumerMainThread(S2C_DepartmentSnapshot::handle).add();
+            CHANNEL.messageBuilder(C2S_MailboxAction.class, 250, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_MailboxAction::encode).decoder(C2S_MailboxAction::decode).consumerMainThread(C2S_MailboxAction::handle).add();
+            CHANNEL.messageBuilder(S2C_MailboxSnapshot.class, 251, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_MailboxSnapshot::encode).decoder(S2C_MailboxSnapshot::decode).consumerMainThread(S2C_MailboxSnapshot::handle).add();
+            CHANNEL.messageBuilder(C2S_SelectMaidCharacter.class, 248, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_SelectMaidCharacter::encode).decoder(C2S_SelectMaidCharacter::decode)
+                    .consumerMainThread(C2S_SelectMaidCharacter::handle).add();
+            CHANNEL.messageBuilder(S2C_OpenMaidSelection.class, 249, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_OpenMaidSelection::encode).decoder(S2C_OpenMaidSelection::decode)
+                    .consumerMainThread(S2C_OpenMaidSelection::handle).add();
+            CHANNEL.messageBuilder(C2S_TacticalInput.class, 247, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_TacticalInput::encode).decoder(C2S_TacticalInput::decode)
+                    .consumerMainThread(C2S_TacticalInput::handle).add();
             CHANNEL.messageBuilder(C2S_HvkZiplineRide.class, 245, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                     .encoder(C2S_HvkZiplineRide::encode).decoder(C2S_HvkZiplineRide::decode)
                     .consumerMainThread(C2S_HvkZiplineRide::handle).add();
@@ -927,9 +961,16 @@ public class NetworkHandler {
             CHANNEL.messageBuilder(C2S_RoverAction.class, id++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                     .encoder(C2S_RoverAction::encode).decoder(C2S_RoverAction::decode)
                     .consumerMainThread(C2S_RoverAction::handle).add();
+            CHANNEL.messageBuilder(S2C_TacticalMotion.class, id++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_TacticalMotion::encode).decoder(S2C_TacticalMotion::decode)
+                    .consumerMainThread(NetworkHandler::handleClientPacket).add();
             CHANNEL.messageBuilder(S2C_RoverState.class, id++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                     .encoder(S2C_RoverState::encode).decoder(S2C_RoverState::decode)
                     .consumerMainThread(NetworkHandler::handleClientPacket).add();
+            if (id > 235) {
+                throw new IllegalStateException("Sequential network IDs overlap reserved IDs 235..255");
+            }
+            com.mojang.logging.LogUtils.getLogger().info("Network protocol {}: Wildfire action=238, state=239; stamina vault=0, state=1", PROTOCOL);
         });
     }
 
@@ -976,6 +1017,7 @@ public class NetworkHandler {
     }
 
     public static void sendToPlayer(Object msg, ServerPlayer player) {
+        if (msg instanceof com.rzy.dealt_force_skills.department.DepartmentRecon.Packet reveal) reveal.recordDepartmentReveal(player);
         if (!isSkillHudStatePacket(msg)) {
             sendDirectlyToPlayer(msg, player);
             return;

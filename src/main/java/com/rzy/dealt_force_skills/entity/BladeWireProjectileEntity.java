@@ -24,6 +24,8 @@ import net.minecraftforge.network.NetworkHooks;
 
 public class BladeWireProjectileEntity extends Projectile implements ItemSupplier {
     private int bounces;
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance =
+            new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
 
     public BladeWireProjectileEntity(EntityType<? extends BladeWireProjectileEntity> type, Level level) {
         super(type, level);
@@ -32,6 +34,7 @@ public class BladeWireProjectileEntity extends Projectile implements ItemSupplie
     public BladeWireProjectileEntity(EntityType<? extends BladeWireProjectileEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
+        allegiance.capture(owner);
     }
 
     @Override
@@ -47,6 +50,10 @@ public class BladeWireProjectileEntity extends Projectile implements ItemSupplie
     public void tick() {
         super.tick();
 
+        if (!level().isClientSide && allegiance.active() && tickCount > 80) {
+            deploy(blockPosition());
+            return;
+        }
         Vec3 motion = getDeltaMovement();
         if (!level().isClientSide) {
             HitResult hit = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity);
@@ -72,11 +79,16 @@ public class BladeWireProjectileEntity extends Projectile implements ItemSupplie
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
-        bounces = tag.getInt("Bounces");
+        super.readAdditionalSaveData(tag);
+        bounces = Math.max(0, Math.min(3, tag.getInt("Bounces")));
+        int age = allegiance.load(tag, 80);
+        if (allegiance.active()) tickCount = age;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
         tag.putInt("Bounces", bounces);
     }
 
@@ -116,7 +128,10 @@ public class BladeWireProjectileEntity extends Projectile implements ItemSupplie
             discard();
             return;
         }
-        if (getOwner() instanceof ServerPlayer owner) {
+        if (allegiance.active()) {
+            SinevaSkills.deployBladeWire(serverLevel, preferredPos,
+                    getOwner() instanceof LivingEntity living ? living : null, allegiance);
+        } else if (getOwner() instanceof ServerPlayer owner) {
             SinevaSkills.deployBladeWire(serverLevel, preferredPos, owner);
         }
         discard();

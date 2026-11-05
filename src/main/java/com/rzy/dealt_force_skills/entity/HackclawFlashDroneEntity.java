@@ -35,7 +35,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier {
+public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
     private static volatile int MAX_LIFETIME_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_LIFETIME_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.hackclawflashdroneentity.max_lifetime_ticks", 240));
     private static volatile int FAST_FLIGHT_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FAST_FLIGHT_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.hackclawflashdroneentity.fast_flight_ticks", 8));
     private static volatile int LOOK_REQUIRED_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LOOK_REQUIRED_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.hackclawflashdroneentity.look_required_ticks", 10));
@@ -56,6 +58,7 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
     private int health = MAX_HEALTH;
     private int flashesUsed;
     private int guidedTargetId = -1;
+    private UUID guidedTargetUUID;
 
     public HackclawFlashDroneEntity(EntityType<? extends HackclawFlashDroneEntity> type, Level level) {
         super(type, level);
@@ -64,6 +67,7 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
     public HackclawFlashDroneEntity(EntityType<? extends HackclawFlashDroneEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
+        allegiance.capture(owner);
         ownerId = owner.getUUID();
     }
 
@@ -74,6 +78,8 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
 
     public void setGuidedTargetId(int guidedTargetId) {
         this.guidedTargetId = guidedTargetId;
+        Entity target = level().getEntity(guidedTargetId);
+        guidedTargetUUID = allegiance.active() && target != null ? target.getUUID() : null;
     }
 
     @Override
@@ -83,6 +89,7 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount >= MAX_LIFETIME_TICKS) { discard(); return; }
 
         Vec3 motion = adjustedMotion();
         moveWithCollision(motion);
@@ -97,7 +104,8 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
             return;
         }
 
-        detectWatchingPlayers();
+        if (allegiance.active()) detectWatchingMobs();
+        else detectWatchingPlayers();
     }
 
     @Override
@@ -134,17 +142,24 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int nativeAge = allegiance.load(tag, MAX_LIFETIME_TICKS);
+        if (allegiance.active()) tickCount = nativeAge;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
-        health = Math.max(1, tag.getInt("Health"));
+        health = Math.max(1, Math.min(Math.max(1, MAX_HEALTH), tag.getInt("Health")));
+        guidedTargetUUID = tag.hasUUID("OperativeGuidedTarget") ? tag.getUUID("OperativeGuidedTarget") : null;
         flashesUsed = tag.getInt("FlashesUsed");
         guidedTargetId = tag.contains("GuidedTargetId") ? tag.getInt("GuidedTargetId") : -1;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
+        if (guidedTargetUUID != null) tag.putUUID("OperativeGuidedTarget", guidedTargetUUID);
         tag.putInt("Health", health);
         tag.putInt("FlashesUsed", flashesUsed);
         tag.putInt("GuidedTargetId", guidedTargetId);
@@ -168,13 +183,20 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
     }
 
     private Vec3 guidedMotion() {
-        if (tickCount < FAST_FLIGHT_TICKS || guidedTargetId < 0 || level().isClientSide) {
+        if (tickCount < FAST_FLIGHT_TICKS || guidedTargetId < 0 && guidedTargetUUID == null || level().isClientSide) {
             return null;
         }
-        Entity target = level().getEntity(guidedTargetId);
-        if (!(target instanceof LivingEntity living) || !living.isAlive()) {
+        Entity target = allegiance.active() && guidedTargetUUID != null && level() instanceof ServerLevel server
+                ? server.getEntity(guidedTargetUUID) : level().getEntity(guidedTargetId);
+        if (!(target instanceof LivingEntity living) || !living.isAlive() || allegiance.active() && allegiance.isAlly(this, living)) {
+            guidedTargetUUID = null;
             guidedTargetId = -1;
             return null;
+        }
+        if (allegiance.active()) {
+            Vec3 point = com.rzy.dealt_force_skills.ai.operative.OperativeFlashTactics.front(living);
+            Vec3 delta = point.subtract(position());
+            return delta.lengthSqr() < 0.16D ? Vec3.ZERO : delta.normalize().scale(Math.min(0.75D, delta.length()));
         }
         Vec3 targetPoint = living.position().add(0.0D, living.getBbHeight() * 0.55D, 0.0D);
         Vec3 offset = targetPoint.subtract(position());
@@ -237,6 +259,25 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
         };
     }
 
+    private void detectWatchingMobs() {
+        if (!(level() instanceof ServerLevel server)) return;
+        lookTicks.keySet().removeIf(id -> !(server.getEntity(id) instanceof LivingEntity living)
+                || !living.isAlive() || living.distanceToSqr(this) > LOOK_RADIUS * LOOK_RADIUS || allegiance.isAlly(this, living));
+        for (LivingEntity target : server.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(LOOK_RADIUS),
+                living -> living.isAlive() && !living.isSpectator() && !allegiance.isAlly(this, living))) {
+            if (flashesUsed >= MAX_FLASHES) break;
+            UUID id = target.getUUID();
+            if (target.distanceToSqr(this) > LOOK_RADIUS * LOOK_RADIUS || !isLookingAtDrone(target)) {
+                int remaining = lookTicks.getOrDefault(id, 0) - 1;
+                if (remaining <= 0) lookTicks.remove(id); else lookTicks.put(id, remaining);
+                continue;
+            }
+            int ticks = lookTicks.getOrDefault(id, 0) + 1;
+            if (ticks >= Math.max(1, LOOK_REQUIRED_TICKS)) { flash(server, target); lookTicks.put(id, 0); }
+            else lookTicks.put(id, ticks);
+        }
+    }
+
     private void detectWatchingPlayers() {
         if (!(level() instanceof ServerLevel level)) {
             return;
@@ -280,7 +321,7 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
         }
     }
 
-    private boolean isLookingAtDrone(ServerPlayer player) {
+    private boolean isLookingAtDrone(LivingEntity player) {
         Vec3 eyes = player.getEyePosition(1.0F);
         Vec3 target = position().add(0.0D, getBbHeight() * 0.5D, 0.0D);
         Vec3 toDrone = target.subtract(eyes);
@@ -298,9 +339,9 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
         return result.getType() == HitResult.Type.MISS || result.getLocation().distanceToSqr(target) < 0.35D;
     }
 
-    private void flash(ServerLevel level, ServerPlayer target) {
+    private void flash(ServerLevel level, LivingEntity target) {
         LivingEntity flashOwner = owner(level);
-        if (TargetingUtil.shouldSkipFriendlyControl(flashOwner, target)) {
+        if (allegiance.isAlly(this, target) || TargetingUtil.shouldSkipFriendlyControl(flashOwner, target)) {
             return;
         }
         target.addEffect(new MobEffectInstance(ModEffects.HACKCLAW_FLASH_BLIND.get(),
@@ -309,10 +350,10 @@ public class HackclawFlashDroneEntity extends Projectile implements ItemSupplier
                 SoundSource.PLAYERS, 0.9f, 1.0f, 18.0D, 3, 3.0D);
         level.sendParticles(ParticleTypes.FLASH, getX(), getY() + 0.25D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
         flashesUsed++;
-        if (flashOwner instanceof ServerPlayer ownerPlayer) {
+        if (flashOwner instanceof ServerPlayer ownerPlayer && target instanceof ServerPlayer) {
             DfsAchievements.recordHackclawFlashDroneTargets(ownerPlayer, flashesUsed);
             if (guidedTargetId == target.getId()) {
-                DfsAchievements.recordHackclawAdvancedPathFlash(ownerPlayer, target);
+                DfsAchievements.recordHackclawAdvancedPathFlash(ownerPlayer, (ServerPlayer) target);
             }
         }
     }

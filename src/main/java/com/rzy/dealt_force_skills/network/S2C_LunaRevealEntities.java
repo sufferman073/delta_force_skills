@@ -9,13 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class S2C_LunaRevealEntities {
+public class S2C_LunaRevealEntities implements com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     private final List<Integer> entityIds;
     private final int ticks;
 
     public S2C_LunaRevealEntities(List<Integer> entityIds, int ticks) {
         this.entityIds = List.copyOf(entityIds);
         this.ticks = ticks;
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(int id:entityIds) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,id,ticks);
     }
 
     public static void encode(S2C_LunaRevealEntities msg, FriendlyByteBuf buf) {

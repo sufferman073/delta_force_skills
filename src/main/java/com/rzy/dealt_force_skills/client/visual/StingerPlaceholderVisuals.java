@@ -28,7 +28,7 @@ public final class StingerPlaceholderVisuals {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderHand(RenderHandEvent event) {
         ClientToolReleaseAction.Action action = activeAction();
-        if (!ClientStingerHudState.hasEquippedTool() && com.rzy.dealt_force_skills.client.RoverClient.tool() == 0 && action == null) {
+        if (!ClientStingerHudState.hasEquippedTool() && com.rzy.dealt_force_skills.client.RoverClient.tool() == 0 && com.rzy.dealt_force_skills.client.WildfireClient.tool() != 1 && action == null) {
             return;
         }
         event.setCanceled(true);
@@ -43,7 +43,7 @@ public final class StingerPlaceholderVisuals {
                 : action == ClientToolReleaseAction.Action.STINGER_STIM_PRIME
                 || action == ClientToolReleaseAction.Action.STINGER_STIM_FIRE
                 ? StingerTool.STIM_GUN
-                : com.rzy.dealt_force_skills.client.RoverClient.tool() == 1 ? StingerTool.SMOKE_GRENADE
+                : com.rzy.dealt_force_skills.client.WildfireClient.tool() == 1 || com.rzy.dealt_force_skills.client.RoverClient.tool() == 1 ? StingerTool.SMOKE_GRENADE
                 : com.rzy.dealt_force_skills.client.RoverClient.tool() == 2 ? StingerTool.STIM_GUN : ClientStingerHudState.equippedTool();
         if (tool == StingerTool.STIM_GUN) {
             poseStack.translate(0.32D, -0.20D, -0.82D);
@@ -74,7 +74,7 @@ public final class StingerPlaceholderVisuals {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderArm(RenderArmEvent event) {
-        if (ClientStingerHudState.hasEquippedTool() || com.rzy.dealt_force_skills.client.RoverClient.tool() > 0 || activeAction() != null) {
+        if (ClientStingerHudState.hasEquippedTool() || com.rzy.dealt_force_skills.client.RoverClient.tool() > 0 || com.rzy.dealt_force_skills.client.WildfireClient.tool() == 1 || activeAction() != null) {
             event.setCanceled(true);
         }
     }

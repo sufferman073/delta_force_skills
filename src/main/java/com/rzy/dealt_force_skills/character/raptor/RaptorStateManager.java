@@ -173,6 +173,11 @@ public final class RaptorStateManager {
         if (!(marked.level() instanceof ServerLevel level)) {
             return;
         }
+        var nativeOwner = RaptorHummingbirdMarkedEffect.nativeOwner(level, marked).orElse(null);
+        if (nativeOwner != null) {
+            com.rzy.dealt_force_skills.ai.operative.NativeRaptorSkills.revealFromHummingbird(nativeOwner, marked);
+            return;
+        }
         ServerPlayer owner = RaptorHummingbirdMarkedEffect.owner(level, marked).orElse(null);
         if (owner == null || !owner.isAlive()) {
             return;
@@ -420,9 +425,10 @@ public final class RaptorStateManager {
             return;
         }
         RaptorHummingbirdMarkedEffect.setOwner(target, player);
-        target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_HUMMINGBIRD_MARKED.get(),
+        boolean questAttached = target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_HUMMINGBIRD_MARKED.get(),
                 CommanderStateManager.skillDuration(player, HUMMINGBIRD_DURATION_TICKS),
                 hummingbirdAmplifier(player), false, true, true), player);
+        if (questAttached) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"raptor.hummingbird.observed_target");
         ACTIVE_HUMMINGBIRD_TARGETS.put(player.getUUID(), target.getId());
         if (ReconRevealThrottle.tryStart(target, HUMMINGBIRD_REVEAL_TICKS)) {
             NetworkHandler.sendToPlayer(new S2C_RaptorRevealEntities(List.of(
@@ -804,4 +810,28 @@ public final class RaptorStateManager {
 
     private record EntityLookup(net.minecraft.world.entity.Entity entity) {
     }
+
+    public record NativeFootprint(int id, java.util.UUID owner, Vec3 position) { }
+    public static double nativeFootprintRevealRange() { return FOOTPRINT_READ_REVEAL_RANGE; }
+    public static int nativeFootprintRevealTicks() { return FOOTPRINT_READ_REVEAL_TICKS; }
+
+    /** Read the same finite moving-player records as the player passive. */
+    public static Optional<NativeFootprint> nativeFootprint(com.rzy.dealt_force_skills.ai.operative.OperativeHost host) {
+        long now = SkillCooldownHelper.now(host.body());
+        return FOOTPRINTS.getOrDefault(host.body().level().dimension(), List.of()).stream()
+                .filter(f -> now >= f.gameTime && now - f.gameTime <= FOOTPRINT_LIFE_TICKS)
+                .filter(f -> f.position.distanceToSqr(host.body().position()) <= FOOTPRINT_READ_RANGE * FOOTPRINT_READ_RANGE
+                        && host.withinOrders(f.position))
+                .filter(f -> {
+                    try {
+                        return host.serverLevel().getEntity(java.util.UUID.fromString(f.ownerUuid)) instanceof LivingEntity target
+                                && host.isEnemy(target) && host.withinOrders(target.position());
+                    } catch (IllegalArgumentException ignored) { return false; }
+                })
+                .filter(f -> host.serverLevel().clip(new ClipContext(host.body().getEyePosition(), f.position.add(0, 0.1D, 0),
+                        ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, host.body())).getType() == HitResult.Type.MISS)
+                .min(Comparator.comparingDouble(f -> f.position.distanceToSqr(host.body().position())))
+                .map(f -> new NativeFootprint(f.id, java.util.UUID.fromString(f.ownerUuid), f.position));
+    }
+
 }

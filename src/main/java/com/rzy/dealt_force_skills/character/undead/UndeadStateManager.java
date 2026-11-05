@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.undead;
 
+import com.rzy.dealt_force_skills.motion.TacticalMotion;
+import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
+
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
@@ -237,6 +240,8 @@ public final class UndeadStateManager {
             return;
         }
         tag.putInt(PROFESSION, next.ordinal());
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.class_changed");
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.combo.class_changed");
         DfsAchievements.recordUndeadLowHealthSwitch(player, next);
         tag.putLong(DISORIENTED_UNTIL, SkillCooldownHelper.now(player) + 2L * 20L);
         player.displayClientMessage(Component.translatable(
@@ -303,11 +308,17 @@ public final class UndeadStateManager {
     public static void startKnightCharge(ServerPlayer player) {
         data(player).putInt(KNIGHT_CHARGE_TARGET, -1);
         data(player).putLong(KNIGHT_CHARGE_UNTIL, SkillCooldownHelper.now(player) + 12L);
+        TacticalMotionSync.start(player, TacticalMotion.CHARGE, 12, player.getLookAngle(),
+                p -> isUndead(p) && profession(p) == UndeadProfession.KNIGHT
+                        && SkillCooldownHelper.now(p) < data(p).getLong(KNIGHT_CHARGE_UNTIL));
     }
 
     public static void startKnightCharge(ServerPlayer player, LivingEntity target) {
         data(player).putInt(KNIGHT_CHARGE_TARGET, target.getId());
         data(player).putLong(KNIGHT_CHARGE_UNTIL, SkillCooldownHelper.now(player) + 30L);
+        TacticalMotionSync.start(player, TacticalMotion.CHARGE, 30, player.getLookAngle(),
+                p -> isUndead(p) && profession(p) == UndeadProfession.KNIGHT
+                        && SkillCooldownHelper.now(p) < data(p).getLong(KNIGHT_CHARGE_UNTIL));
     }
 
     public static void startKnightParry(ServerPlayer player) {
@@ -325,6 +336,14 @@ public final class UndeadStateManager {
         tag.putBoolean(WARRIOR_MIGHT, !tag.getBoolean(WARRIOR_MIGHT));
     }
 
+    public static boolean knightCharging(Player player) {
+        return isUndead(player)&&profession(player)==UndeadProfession.KNIGHT
+                &&SkillCooldownHelper.now(player)<data(player).getLong(KNIGHT_CHARGE_UNTIL);
+    }
+    public static boolean warriorBloodlustActive(Player player) {
+        return isUndead(player)&&profession(player)==UndeadProfession.WARRIOR
+                &&SkillCooldownHelper.now(player)<data(player).getLong(WARRIOR_BLOODLUST_UNTIL);
+    }
     public static boolean warriorMightActive(Player player) {
         return data(player).getBoolean(WARRIOR_MIGHT);
     }
@@ -385,6 +404,7 @@ public final class UndeadStateManager {
         tag.putLong(ROGUE_INVISIBLE_UNTIL, until);
         tag.putLong(ROGUE_INVULNERABLE_UNTIL, until);
         tag.putLong(ROGUE_SPEED_UNTIL, until);
+        com.rzy.dealt_force_skills.department.DepartmentUndead.stealth(player,until);
         player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
                 duration,
                 com.rzy.dealt_force_skills.config.DealtForceConfig.intValue(
@@ -419,6 +439,7 @@ public final class UndeadStateManager {
             return false;
         }
         records.putInt(id, current + 1);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.scholar.record.species",1,id);
         return true;
     }
 
@@ -480,7 +501,9 @@ public final class UndeadStateManager {
     public static void useHunterReload(ServerPlayer player) {
         data(player).putLong(HUNTER_RELOAD_READY_AT, SkillCooldownHelper.now(player)
                 + UndeadUpgradeManager.cooldownTicks(player, 2 * 20));
+        float questBefore=energy(player);
         addEnergy(player, 50.0F);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.hunter.reload.energy",Math.max(0,energy(player)-questBefore));
     }
 
     public static void toggleHunterScatter(ServerPlayer player) {
@@ -629,8 +652,9 @@ public final class UndeadStateManager {
             player.serverLevel().playSound(null, player.blockPosition(),
                     SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0F, 0.65F);
             if (source.getEntity() instanceof LivingEntity attacker) {
-                attacker.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.duration_ticks", 3 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.amplifier", 0),
+                boolean appliedControl=attacker.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.duration_ticks", 3 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.amplifier", 0),
                         false, true, true), player);
+                if(appliedControl)com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.knight.parry.silenced");
                 player.serverLevel().sendParticles(ParticleTypes.CRIT,
                         attacker.getX(), attacker.getY() + attacker.getBbHeight() * 0.5D, attacker.getZ(),
                         18, 0.35D, 0.35D, 0.35D, 0.08D);
@@ -639,6 +663,7 @@ public final class UndeadStateManager {
         }
 
         if (tag.getFloat(KNIGHT_SHIELD) > 0.0F && now < tag.getLong(KNIGHT_SHIELD_UNTIL)) {
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.knight.wall.absorbed",amount);
             float remaining = Math.max(0.0F, tag.getFloat(KNIGHT_SHIELD) - amount);
             tag.putFloat(KNIGHT_SHIELD, remaining);
             player.serverLevel().sendParticles(ParticleTypes.ENCHANTED_HIT,
@@ -656,14 +681,18 @@ public final class UndeadStateManager {
         }
 
         if (profession == UndeadProfession.KNIGHT) {
+            float questBefore=amount;
             amount = Math.min(amount * 0.7F, player.getMaxHealth() * 0.45F);
             if (UndeadUpgradeManager.has(
                     player, com.rzy.dealt_force_skills.shop.UndeadShopEntry.KNIGHT_INDESTRUCTIBLE)) {
                 float missingRatio = 1.0F - player.getHealth() / Math.max(1.0F, player.getMaxHealth());
                 amount *= 1.0F - 0.15F * missingRatio;
             }
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.knight.reduced",Math.max(0,questBefore-amount));
         } else if (profession == UndeadProfession.SCHOLAR) {
+            float questBefore=amount;
             amount *= isScholarExceptionalDamage(source) ? 2.0F : 0.5F;
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.scholar.passive.damage_changed",Math.abs(questBefore-amount));
         } else if (profession == UndeadProfession.HUNTER && source.is(DamageTypes.FALL)) {
             amount = 0.0F;
         } else if (profession == UndeadProfession.ROGUE
@@ -672,6 +701,7 @@ public final class UndeadStateManager {
                     player, com.rzy.dealt_force_skills.shop.UndeadShopEntry.ROGUE_SILENT) ? 60L : 30L;
             tag.putLong(ROGUE_INVISIBLE_UNTIL, now + duration);
             tag.putLong(ROGUE_PASSIVE_READY_AT, now + 10L * 20L);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.thief.passive.invisible");
             player.serverLevel().sendParticles(ParticleTypes.POOF,
                     player.getX(), player.getY() + 0.9D, player.getZ(),
                     18, 0.55D, 0.7D, 0.55D, 0.04D);
@@ -679,7 +709,9 @@ public final class UndeadStateManager {
         if (source.getEntity() instanceof LivingEntity attacker) {
             int records = scholarRecordCount(player, attacker);
             float reduction = attacker instanceof Player ? 0.15F : 0.49F;
+            float questBefore=amount;
             amount *= Math.max(0.0F, 1.0F - reduction * records);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.scholar.record.reduced",Math.max(0,questBefore-amount));
         }
         amount *= UndeadUpgradeManager.incomingDamageMultiplier(player, source);
         if (UndeadUpgradeManager.tryPinkBraceletFatalGuard(player, amount)) {
@@ -711,7 +743,7 @@ public final class UndeadStateManager {
                         player, com.rzy.dealt_force_skills.shop.UndeadShopEntry.WARRIOR_INNER_POTENTIAL);
                 adjusted *= potential ? 2.0F : 1.4F;
             }
-            player.heal(adjusted * (bloodlust ? 0.30F : 0.10F));
+            com.rzy.dealt_force_skills.department.DepartmentUndead.heal(player,player,adjusted * (bloodlust ? 0.30F : 0.10F),"undead.warrior.passive.healed");
             if (UndeadUpgradeManager.has(
                     player, com.rzy.dealt_force_skills.shop.UndeadShopEntry.WARRIOR_FROZEN_BLADE)
                     && source.getDirectEntity() == player) {
@@ -758,6 +790,7 @@ public final class UndeadStateManager {
                 : 4L * 20L + 1L;
         target.getPersistentData().putLong(RUPTURE_UNTIL, now + duration);
         target.getPersistentData().putLong(RUPTURE_NEXT, now + 20L);
+        com.rzy.dealt_force_skills.department.DepartmentUndead.rupture(owner,target);
     }
 
     public static void tickExternalEffects(LivingEntity entity) {
@@ -771,13 +804,10 @@ public final class UndeadStateManager {
             if (now >= ruptureUntil) {
                 tag.remove(RUPTURE_UNTIL);
                 tag.remove(RUPTURE_NEXT);
+                com.rzy.dealt_force_skills.department.DepartmentUndead.ruptureExpired(entity);
             } else if (now >= tag.getLong(RUPTURE_NEXT)) {
                 tag.putLong(RUPTURE_NEXT, now + 20L);
-                if (now < tag.getLong(RITUAL_DANCE_UNTIL)) {
-                    entity.heal(entity.getMaxHealth() * 0.06F);
-                } else {
-                    entity.hurt(entity.damageSources().magic(), entity.getMaxHealth() * 0.20F);
-                }
+                com.rzy.dealt_force_skills.department.DepartmentUndead.ruptureTick(entity,now < tag.getLong(RITUAL_DANCE_UNTIL));
             }
         }
         long burnUntil = tag.getLong(OPAL_BURN_UNTIL);
@@ -862,7 +892,10 @@ public final class UndeadStateManager {
                     player, com.rzy.dealt_force_skills.shop.UndeadShopEntry.KNIGHT_FANATIC_CHARGE)
                     ? 8.4F
                     : 6.0F;
+            float questBefore=target.getHealth()+target.getAbsorptionAmount();
             SkillDamageHelper.hurt(target, player.damageSources().playerAttack(player), player, damage);
+            if(target==chargeTarget&&questBefore>target.getHealth()+target.getAbsorptionAmount())
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.knight.charge.locked_hit");
             target.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.3.duration_ticks", 30), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.3.amplifier", 0),
                     false, true, true), player);
             player.serverLevel().sendParticles(ParticleTypes.CRIT,
@@ -916,7 +949,7 @@ public final class UndeadStateManager {
         }
         if (now < tag.getLong(EXPLORER_MEDITATING_UNTIL)) {
             player.setDeltaMovement(Vec3.ZERO);
-            player.heal(player.getMaxHealth() * 0.05F / 20.0F);
+            com.rzy.dealt_force_skills.department.DepartmentUndead.heal(player,player,player.getMaxHealth() * 0.05F / 20.0F,"undead.explorer.meditation.healed");
             addEnergy(player, 10.0F / 20.0F);
             if (player.tickCount % 5 == 0) {
                 player.serverLevel().sendParticles(ParticleTypes.ENCHANT,
@@ -960,6 +993,7 @@ public final class UndeadStateManager {
             return;
         }
         player.getPersistentData().putLong(RITUAL_DANCE_UNTIL, now + 10L);
+        com.rzy.dealt_force_skills.department.DepartmentHealing.source(player,"undead.ritual",player);
         if (player.tickCount % 5 != 0) {
             return;
         }
@@ -980,6 +1014,7 @@ public final class UndeadStateManager {
                 target.hurtMarked = true;
             }
             target.getPersistentData().putLong(RITUAL_DANCE_UNTIL, now + 10L);
+            com.rzy.dealt_force_skills.department.DepartmentHealing.source(target,"undead.ritual",player);
             target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE.get(),
                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.raptor_electromagnetic_interference.5.duration_ticks", 12), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.raptor_electromagnetic_interference.5.amplifier", 0), false, true, true), player);
             if (player.tickCount % 20 == 0) {
@@ -1009,6 +1044,8 @@ public final class UndeadStateManager {
 
         Vec3 movement = player.getDeltaMovement();
         Vec3 trackedMovement = trackHunterMovement(player, tag);
+        if(!player.isPassenger()&&Math.abs(trackedMovement.y)<64)
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.hunter.vertical_distance",Math.abs(trackedMovement.y));
         boolean movingVertically = !player.onGround() && Math.abs(trackedMovement.y) > 0.05D;
         boolean movingHorizontally = trackedMovement.x * trackedMovement.x
                 + trackedMovement.z * trackedMovement.z > HUNTER_MOVEMENT_THRESHOLD_SQR;
@@ -1048,7 +1085,8 @@ public final class UndeadStateManager {
                             player, com.rzy.dealt_force_skills.shop.UndeadShopEntry.HUNTER_HIGH_ENERGY_POWDER)
                             ? 4.0F
                             : 2.0F;
-                    SkillDamageHelper.hurt(target, player.damageSources().playerAttack(player), player, damage);
+                    com.rzy.dealt_force_skills.department.DepartmentUndead.damaged(player,target,
+                            ()->SkillDamageHelper.hurt(target, player.damageSources().playerAttack(player), player, damage),"undead.hunter.assault.damage");
                     DfsAchievements.recordUndeadHunterScatterHit(player, target);
                 }
             }
@@ -1068,6 +1106,7 @@ public final class UndeadStateManager {
             }
             target.setDeltaMovement(target.getDeltaMovement().add(away.normalize().scale(2.2D)).add(0.0D, 0.8D, 0.0D));
             target.hurtMarked = true;
+            if(target==player)com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.hunter.retreat");
         }
     }
 

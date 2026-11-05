@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.tempest;
 
+import com.rzy.dealt_force_skills.motion.TacticalMotion;
+import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
+
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
@@ -14,7 +17,6 @@ import com.rzy.dealt_force_skills.entity.TempestRecallAnchorEntity;
 import com.rzy.dealt_force_skills.entity.UluruLoiteringMissileEntity;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_SyncTempestState;
-import com.rzy.dealt_force_skills.network.S2C_TempestStartRoll;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
@@ -179,7 +181,6 @@ public final class TempestStateManager {
         tag.putLong(ROLL_COOLDOWN_UNTIL, SkillCooldownHelper.until(player, now, ROLL_COOLDOWN_TICKS));
         player.clearFire();
         if (player.onGround()) {
-            startClientRoll(player);
             startRollBoost(player);
             tag.putInt(FALL_PROTECTION_TICKS, 8);
         } else {
@@ -218,7 +219,6 @@ public final class TempestStateManager {
         tag.putInt(FALL_PROTECTION_TICKS, 8);
         player.fallDistance = 0.0F;
         player.clearFire();
-        startClientRoll(player);
         startRollBoost(player);
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.TEMPEST_TACTICAL_ROLL_START.get(),
                 SoundSource.PLAYERS, 0.85F, 1.0F, 32.0D);
@@ -247,6 +247,8 @@ public final class TempestStateManager {
     public static int wallRechargeRemainingTicks(Player player) {
         return wallCharges(player) >= wallCapacity(player) ? 0 : remainingTicks(player, WALL_NEXT_RECHARGE);
     }
+
+    public static boolean isRolling(Player player) { return isTempest(player) && data(player).getInt(ROLL_BOOST_TICKS) > 0; }
 
     public static int rollCooldownRemainingTicks(Player player) {
         return remainingTicks(player, ROLL_COOLDOWN_UNTIL);
@@ -349,6 +351,7 @@ public final class TempestStateManager {
                 ? EXPLOSIVE_SPINE_TICKS * 3 : EXPLOSIVE_SPINE_TICKS;
         player.addEffect(new MobEffectInstance(ModEffects.TEMPEST_EXPLOSIVE_SPINE.get(),
                 duration, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.tempest.tempest_state_manager.effect.tempest_explosive_spine.0.amplifier", 0), false, true, true));
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"tempest.passive");
         if (refresh) {
             DfsAchievements.recordTempestSpineRefresh(player);
         }
@@ -362,6 +365,17 @@ public final class TempestStateManager {
     }
 
     public static void triggerExplosionSpineForNearby(ServerLevel level, Vec3 center, Iterable<Entity> affectedEntities) {
+        java.util.Set<Entity> affectedNative = new java.util.HashSet<>();
+        for (Entity entity : affectedEntities) affectedNative.add(entity);
+        for (com.rzy.dealt_force_skills.entity.OperativeEntity operative : level.getEntitiesOfClass(
+                com.rzy.dealt_force_skills.entity.OperativeEntity.class, new AABB(center, center).inflate(8))) {
+            if (operative.isAlive() && operative.position().distanceToSqr(center) <= 64) affectedNative.add(operative);
+        }
+        for (Entity entity : affectedNative) {
+            if (entity instanceof com.rzy.dealt_force_skills.entity.OperativeEntity operative && operative.isAlive()
+                    && operative.level() == level && com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(operative.skills(), com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills tempest)
+                tempest.triggerSpine(operative);
+        }
         for (ServerPlayer player : level.players()) {
             if (!isTempest(player)) {
                 continue;
@@ -409,24 +423,16 @@ public final class TempestStateManager {
         ), player);
     }
 
-    private static void startClientRoll(ServerPlayer player) {
-        NetworkHandler.sendToPlayer(new S2C_TempestStartRoll(), player);
-    }
-
     private static void startRollBoost(ServerPlayer player) {
-        Vec3 look = player.getLookAngle();
-        Vec3 horizontal = new Vec3(look.x, 0.0D, look.z);
-        if (horizontal.lengthSqr() < 0.0001D) {
-            horizontal = new Vec3(player.getDeltaMovement().x, 0.0D, player.getDeltaMovement().z);
-        }
-        if (horizontal.lengthSqr() < 0.0001D) {
-            horizontal = new Vec3(0.0D, 0.0D, 1.0D);
-        }
-        Vec3 direction = horizontal.normalize();
+        com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        Vec3 direction = com.rzy.dealt_force_skills.motion.TacticalMovementInput.rollDirection(player);
         CompoundTag tag = data(player);
         tag.putInt(ROLL_BOOST_TICKS, ROLL_BOOST_TICKS_TOTAL);
         tag.putDouble(ROLL_BOOST_DIR_X, direction.x);
         tag.putDouble(ROLL_BOOST_DIR_Z, direction.z);
+        TacticalMotionSync.start(player, TacticalMotion.ROLL, tag.getInt(ROLL_BOOST_TICKS), direction,
+                p -> isTempest(p) && data(p).getInt(ROLL_BOOST_TICKS) > 0, 0,
+                p -> isTempest(p) && !isRecalling(p) && !isDowned(p));
     }
 
     private static void tickRollBoost(ServerPlayer player) {
@@ -905,7 +911,7 @@ public final class TempestStateManager {
         }
     }
 
-    private static boolean isDangerousIncomingEntity(Entity entity) {
+    public static boolean isDangerousIncomingEntity(Entity entity) {
         if (!entity.isAlive()) {
             return false;
         }
@@ -926,7 +932,7 @@ public final class TempestStateManager {
                 || name.contains("cannon");
     }
 
-    private static double distancePointToSegment(Vec3 point, Vec3 start, Vec3 end) {
+    public static double distancePointToSegment(Vec3 point, Vec3 start, Vec3 end) {
         Vec3 line = end.subtract(start);
         double lengthSqr = line.lengthSqr();
         if (lengthSqr < 1.0E-6D) {

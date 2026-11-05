@@ -95,6 +95,13 @@ public final class SuperbWarfareCompat {
     public static void damageVehicles(ServerLevel level, Vec3 center, double radius, DamageSource source,
                                       Entity excludedEntity, float magneticBombEquivalents,
                                       boolean requireLineOfSight) {
+        damageVehicles(level, center, radius, source, excludedEntity, magneticBombEquivalents,
+                requireLineOfSight, entity -> true);
+    }
+
+    public static void damageVehicles(ServerLevel level, Vec3 center, double radius, DamageSource source,
+                                      Entity excludedEntity, float magneticBombEquivalents,
+                                      boolean requireLineOfSight, java.util.function.Predicate<Entity> areaFilter) {
         if (level == null || center == null || source == null || radius <= 0.0D
                 || magneticBombEquivalents <= 0.0F || !isLoaded()) {
             return;
@@ -102,7 +109,7 @@ public final class SuperbWarfareCompat {
 
         AABB searchBox = new AABB(center, center).inflate(radius);
         for (Entity entity : level.getEntities((Entity) null, searchBox,
-                entity -> entity != excludedEntity && isVehicle(entity) && !entity.isRemoved())) {
+                entity -> entity != excludedEntity && isVehicle(entity) && !entity.isRemoved() && areaFilter.test(entity))) {
             AABB bounds = entity.getBoundingBox();
             Vec3 hitPoint = closestPoint(center, bounds);
             double distance = hitPoint.distanceTo(center);

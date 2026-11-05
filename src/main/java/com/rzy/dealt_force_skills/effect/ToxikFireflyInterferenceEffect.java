@@ -113,6 +113,7 @@ public class ToxikFireflyInterferenceEffect extends MobEffect {
                 -newReduced,
                 AttributeModifier.Operation.ADDITION));
         tag.putDouble(REDUCED_HEALTH_TAG, newReduced);
+        owner(level, entity).ifPresent(player -> com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"toxik.firefly.max_health_reduced",delta));
         owner(level, entity).ifPresent(owner ->
                 DfsAchievements.recordToxikFireflyMaxHealthLoss(owner, entity, newReduced / baseMaxHealth));
 

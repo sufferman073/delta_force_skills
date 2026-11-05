@@ -34,11 +34,17 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class StingerStimProjectileEntity extends Projectile implements ItemSupplier {
+public class StingerStimProjectileEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
     private static volatile int MAX_LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.stingerstimprojectileentity.max_life_ticks", 120));
     private static volatile double SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.stingerstimprojectileentity.speed", 2.25));
     private UUID targetId;
     private StingerStimMode mode = StingerStimMode.HEAL;
+
+    public boolean healingTarget(LivingEntity target) {
+        return mode == StingerStimMode.HEAL && target != null && target.getUUID().equals(targetId);
+    }
 
     public StingerStimProjectileEntity(EntityType<? extends StingerStimProjectileEntity> type, Level level) {
         super(type, level);
@@ -48,6 +54,7 @@ public class StingerStimProjectileEntity extends Projectile implements ItemSuppl
                                        UUID targetId, StingerStimMode mode) {
         super(type, level);
         setOwner(owner);
+        allegiance.capture(owner);
         this.targetId = targetId;
         this.mode = mode;
     }
@@ -64,6 +71,9 @@ public class StingerStimProjectileEntity extends Projectile implements ItemSuppl
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount > Math.max(1, MAX_LIFE_TICKS)) {
+            discard(); return;
+        }
         if (!level().isClientSide && level() instanceof ServerLevel serverLevel) {
             StingerSmokeCloudEntity.enhanceSmokeNear(serverLevel, position());
             updateHoming(serverLevel);
@@ -108,6 +118,9 @@ public class StingerStimProjectileEntity extends Projectile implements ItemSuppl
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int age = allegiance.load(tag, MAX_LIFE_TICKS);
+        if (allegiance.active()) tickCount = age;
         targetId = tag.hasUUID("Target") ? tag.getUUID("Target") : null;
         int ordinal = tag.getInt("Mode");
         StingerStimMode[] modes = StingerStimMode.values();
@@ -116,6 +129,8 @@ public class StingerStimProjectileEntity extends Projectile implements ItemSuppl
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
         if (targetId != null) {
             tag.putUUID("Target", targetId);
         }
@@ -155,6 +170,12 @@ public class StingerStimProjectileEntity extends Projectile implements ItemSuppl
         }
 
         LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
+        if (allegiance.active()) {
+            boolean allied = allegiance.isCaster(target) || com.rzy.dealt_force_skills.ai.operative.OperativeSupport.ally(this, target);
+            if (mode == StingerStimMode.HEAL ? !allied : allied || !TargetingUtil.isHostileLivingFor(this, target)) {
+                discard(); return;
+            }
+        }
         if (mode == StingerStimMode.SUPPRESS && !TargetingUtil.isHostileLivingFor(owner, target)) {
             discard();
             return;
@@ -169,14 +190,13 @@ public class StingerStimProjectileEntity extends Projectile implements ItemSuppl
                 return;
             }
         }
-        boolean mixedAmmo = owner instanceof ServerPlayer ownerPlayer
-                && CommanderStateManager.hasBranchUpgrade(ownerPlayer, CommanderBranchUpgrade.STINGER_MIXED_AMMO);
+        boolean mixedAmmo = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.STINGER_MIXED_AMMO);
         if (mode == StingerStimMode.HEAL) {
-            StingerStateManager.applyStimHeal(target, mixedAmmo);
+            StingerStateManager.applyStimHeal(owner, target, mixedAmmo);
         } else {
             target.invulnerableTime = 0;
             SkillDamageHelper.hurt(target, SkillDamageHelper.trueDamage(serverLevel, this, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.stinger_stim_projectile_entity.skill_hurt.0.damage", 20.0f));
-            StingerStateManager.applyStimSuppression(target, mixedAmmo);
+            StingerStateManager.applyStimSuppression(owner, target, mixedAmmo);
         }
         RangedSoundHelper.playThrottled(serverLevel, target.position(), ModSounds.STINGER_STIM_HIT.get(),
                 SoundSource.PLAYERS, 0.75f, mode == StingerStimMode.HEAL ? 1.18f : 0.82f, 14.0D, 4, 3.0D);

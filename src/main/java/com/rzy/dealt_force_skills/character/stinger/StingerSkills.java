@@ -120,7 +120,8 @@ public final class StingerSkills {
         smoke.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         smoke.setYRot(player.getYRot());
         smoke.setXRot(player.getXRot());
-        level.addFreshEntity(smoke);
+        if (level.addFreshEntity(smoke))
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         level.playSound(null, player.blockPosition(), ModSounds.STINGER_SMOKE_THROW.get(),
                 SoundSource.PLAYERS, 0.95f, highThrow ? 0.95f : 1.1f);
         StingerStateManager.setEquippedTool(player, StingerTool.NONE);
@@ -171,7 +172,7 @@ public final class StingerSkills {
         Vec3 look = player.getLookAngle().normalize();
         Vec3 start = player.getEyePosition().add(look.scale(0.8D));
         drone.setPos(start.x, start.y - 0.1D, start.z);
-        level.addFreshEntity(drone);
+        if(level.addFreshEntity(drone)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         level.playSound(null, player.blockPosition(), ModSounds.STINGER_DRONE_LAUNCH.get(),
                 SoundSource.PLAYERS, 0.9f, guided ? 0.95f : 1.05f);
         StingerStateManager.setEquippedTool(player, StingerTool.NONE);
@@ -198,7 +199,10 @@ public final class StingerSkills {
             com.rzy.dealt_force_skills.skill.SkillCooldownHelper.notifyCooldown(player, Component.translatable("message.dealt_force_skills.stinger.stim_empty"));
             return true;
         }
+        float departmentHealth=player.getHealth();
         StingerStateManager.applyStimHeal(player);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        if(player.getHealth()>departmentHealth) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"stinger.gun.self_heal");
         player.level().playSound(null, player.blockPosition(), ModSounds.STINGER_STIM_FIRE.get(),
                 SoundSource.PLAYERS, 0.85f, 1.08f);
         player.level().playSound(null, player.blockPosition(), ModSounds.STINGER_STIM_HIT.get(),
@@ -272,7 +276,7 @@ public final class StingerSkills {
         projectile.setDeltaMovement(direction.scale(STIM_PROJECTILE_SPEED));
         projectile.setYRot(player.getYRot());
         projectile.setXRot(player.getXRot());
-        level.addFreshEntity(projectile);
+        if(level.addFreshEntity(projectile)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         level.playSound(null, player.blockPosition(), ModSounds.STINGER_STIM_FIRE.get(),
                 SoundSource.PLAYERS, 0.85f, mode == StingerStimMode.HEAL ? 1.12f : 0.88f);
     }

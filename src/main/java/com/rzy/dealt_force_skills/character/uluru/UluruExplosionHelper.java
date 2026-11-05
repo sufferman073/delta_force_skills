@@ -134,7 +134,7 @@ public final class UluruExplosionHelper {
     ) {
         AABB box = new AABB(center, center).inflate(radius);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+            if (!canDamage(direct, owner, target)) {
                 continue;
             }
             double distance = target.position().add(0.0, target.getBbHeight() * 0.5, 0.0).distanceTo(center);
@@ -147,7 +147,7 @@ public final class UluruExplosionHelper {
 
             float baseDamage = target instanceof Player ? playerDamage : nonPlayerDamage;
             float amount = falloff ? baseDamage * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.ulurubombletentity", distance,
-                    com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.ulurubombletentity", 0.1D)) : baseDamage;
+                    com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.falloff(owner, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.ulurubombletentity", 0.1D))) : baseDamage;
             if (amount <= 0.0f) {
                 continue;
             }
@@ -157,7 +157,9 @@ public final class UluruExplosionHelper {
                 target.invulnerableTime = 0;
             }
             Vec3 beforeDamageMovement = target.getDeltaMovement();
+            boolean questWasAlive = target.isAlive();
             SkillDamageHelper.hurt(target, source(level, direct, owner), owner, amount);
+            if (questWasAlive && !target.isAlive()) com.rzy.dealt_force_skills.department.DepartmentCombat.incendiaryKill(direct,owner,target);
             if (preserveInvulnerabilityAfterDamage) {
                 target.invulnerableTime = invulnerableTimeBeforeDamage;
             }
@@ -169,6 +171,16 @@ public final class UluruExplosionHelper {
                 target.setSecondsOnFire(fireSeconds);
             }
         }
+    }
+
+    public static boolean canDamage(Entity direct, LivingEntity owner, LivingEntity target) {
+        if (direct instanceof com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource source
+                && source.operativeAllegiance().active()) {
+            var allegiance = source.operativeAllegiance();
+            return TargetingUtil.isTargetableLiving(target)
+                    && (allegiance.isCaster(target) || !allegiance.isAlly(direct, target));
+        }
+        return TargetingUtil.isSelfOrHostileLivingFor(owner, target);
     }
 
     public static boolean hasExplosionLineOfSight(ServerLevel level, Vec3 center, LivingEntity target) {
@@ -184,6 +196,11 @@ public final class UluruExplosionHelper {
     }
 
     public static void destroyQuickCovers(ServerLevel level, Vec3 center, double radius) {
+        destroyQuickCovers(level, center, radius, null);
+    }
+
+    public static void destroyQuickCovers(ServerLevel level, Vec3 center, double radius,
+            com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance) {
         if (!ModGameRules.areSkillBlockBreaksEnabled(level)) {
             return;
         }
@@ -196,7 +213,9 @@ public final class UluruExplosionHelper {
 
         for (BlockPos pos : BlockPos.betweenClosed(minX, minY, minZ, maxX, maxY, maxZ)) {
             if (level.getBlockState(pos).is(ModBlocks.QUICK_COVER.get())
-                    && Vec3.atCenterOf(pos).distanceTo(center) <= radius + 1.0) {
+                    && Vec3.atCenterOf(pos).distanceTo(center) <= radius + 1.0
+                    && (allegiance == null || !allegiance.active()
+                    || !(level.getBlockEntity(pos) instanceof QuickCoverBlockEntity cover) || !cover.isAlliedTo(level, allegiance))) {
                 QuickCoverBlockEntity.destroyCoverAt(level, pos);
             }
         }

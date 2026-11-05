@@ -184,6 +184,22 @@ public class HarmfulCleanerItem extends DfsUseItem {
         return id == null ? null : ForgeRegistries.MOB_EFFECTS.getValue(id);
     }
 
+    @Override public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        MobEffect selected = selectable ? selectedEffect(stack) : null;
+        var choices = target.getActiveEffects().stream()
+                .filter(e -> e.getEffect().getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL
+                        && (maxAmplifierInclusive < 0 || e.getAmplifier() <= maxAmplifierInclusive)
+                        && (!woundsOnly || InjuryManager.isWound(e.getEffect()))
+                        && (selected == null || e.getEffect() == selected))
+                .sorted(java.util.Comparator.comparingInt((net.minecraft.world.effect.MobEffectInstance e) ->
+                        InjuryManager.isWound(e.getEffect()) ? 1 : 0)
+                        .thenComparingInt(e -> strongest ? -e.getAmplifier() : e.getAmplifier())).toList();
+        if (choices.isEmpty()) return false;
+        boolean removed = target.removeEffect(choices.get(target.getRandom().nextInt(woundsOnly ? choices.size() : 1)).getEffect());
+        if (removed && selected != null) clearSelectedEffect(stack);
+        return removed;
+    }
+
     private static void setSelectedEffect(ItemStack stack, MobEffect effect) {
         ResourceLocation id = ForgeRegistries.MOB_EFFECTS.getKey(effect);
         if (id == null) {

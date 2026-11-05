@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.vyron;
 
+import com.rzy.dealt_force_skills.motion.TacticalMotion;
+import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
+
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
@@ -57,6 +60,10 @@ public final class VyronStateManager {
     private static final int FALLING_SOUND_REPLAY_TICKS = 140;
 
     private VyronStateManager() {
+    }
+
+    public static double dashSpeed() {
+        return DASH_SPEED;
     }
 
     public static boolean isVyron(Player player) {
@@ -145,10 +152,14 @@ public final class VyronStateManager {
         Vec3 normalized = horizontal.normalize();
         long now = SkillCooldownHelper.now(player);
         boolean poweredBeforeDash = isPowered(player);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"vyron.thrust");
+        if(tag.getInt(DASH_TICKS)>0) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"vyron.thrust.chained");
         tag.putInt(DASH_TICKS, CommanderStateManager.skillDuration(player, DASH_DURATION_TICKS));
         tag.putDouble(DASH_DIR_X, normalized.x);
         tag.putDouble(DASH_DIR_Z, normalized.z);
         tag.putLong(DASH_COOLDOWN_UNTIL, SkillCooldownHelper.until(player, now, DASH_COOLDOWN_TICKS));
+        TacticalMotionSync.start(player, TacticalMotion.JET, tag.getInt(DASH_TICKS), normalized,
+                p -> isVyron(p) && dashTicks(p) > 0);
         grantPowered(player, false);
         if (poweredBeforeDash) {
             DfsAchievements.recordVyronDashWhilePowered(player);
@@ -223,6 +234,7 @@ public final class VyronStateManager {
         int amplifier = CommanderStateManager.skillEffectAmplifier(player,
                 com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vyron.vyron_state_manager.effect.vyron_powered.0.amplifier", 0));
         data(player).putLong(POWERED_UNTIL, SkillCooldownHelper.now(player) + duration);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"vyron.passive");
         player.addEffect(new MobEffectInstance(ModEffects.VYRON_POWERED.get(), duration, amplifier, false, true, true));
         RangedSoundHelper.playFollowingPlayer(player,
                 landing ? ModSounds.VYRON_POWERED_LAND.get() : ModSounds.VYRON_POWERED_ACTIVATE.get(),

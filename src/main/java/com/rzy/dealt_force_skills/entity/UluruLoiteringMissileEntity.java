@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.entity;
 
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
+
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
@@ -62,7 +65,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 
-public class UluruLoiteringMissileEntity extends Projectile implements ItemSupplier {
+public class UluruLoiteringMissileEntity extends Projectile implements ItemSupplier, OperativeAreaSource {
+    private final OperativeAllegiance nativeAllegiance = new OperativeAllegiance();
+    @Override public OperativeAllegiance operativeAllegiance() { return nativeAllegiance; }
     private static volatile double DIRECT_MAX_SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DIRECT_MAX_SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.uluruloiteringmissileentity.direct_max_speed", 2.25));
     private static volatile double DIRECT_ACCELERATION = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DIRECT_ACCELERATION", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.uluru_loitering_missile_entity.direct_acceleration", 0.075));
     private static volatile double DIRECT_GRAVITY = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DIRECT_GRAVITY", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.uluru_loitering_missile_entity.direct_gravity", 0.018));
@@ -149,9 +154,9 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
     public UluruLoiteringMissileEntity(EntityType<? extends UluruLoiteringMissileEntity> type, Level level, LivingEntity owner, boolean guided) {
         super(type, level);
         setOwner(owner);
+        nativeAllegiance.capture(owner);
         this.guided = guided;
-        patrolEnabled = owner instanceof ServerPlayer player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.ULURU_PATROL_MISSILE);
+        patrolEnabled = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.ULURU_PATROL_MISSILE);
     }
 
     @Override
@@ -327,6 +332,9 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int nativeAge = nativeAllegiance.load(tag, DIRECT_MAX_TICKS_X2 / 2);
+        if (nativeAllegiance.active()) tickCount = nativeAge;
         guided = tag.getBoolean("Guided");
         boosting = tag.getBoolean("Boosting");
         speed = tag.getDouble("Speed");
@@ -334,10 +342,16 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
         flightCostX2 = tag.getInt("FlightCostX2");
         patrolEnabled = tag.getBoolean("PatrolEnabled");
         patrolChild = tag.getBoolean("PatrolChild");
+        if (nativeAllegiance.active()) {
+            guided = false; boosting = false; patrolEnabled = false; patrolChild = false;
+            flightCostX2 = Math.max(0, Math.min(Math.max(1, DIRECT_MAX_TICKS_X2), flightCostX2));
+        }
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        nativeAllegiance.save(tag, tickCount);
         tag.putBoolean("Guided", guided);
         tag.putBoolean("Boosting", boosting);
         tag.putDouble("Speed", speed);
@@ -433,24 +447,31 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
                     80, EXPLOSION_RADIUS * 0.5, 0.5, EXPLOSION_RADIUS * 0.5, 0.05);
 
             LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
+            double radius = nativeRadius(owner);
             ServerPlayer ownerPlayer = owner instanceof ServerPlayer player ? player : null;
             boolean damagedTarget = false;
-            AABB box = new AABB(center, center).inflate(EXPLOSION_RADIUS);
+            AABB box = new AABB(center, center).inflate(radius);
             for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-                if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) continue;
+                if (!UluruExplosionHelper.canDamage(this, owner, target)) continue;
                 double distance = target.position().add(0, target.getBbHeight() * 0.5, 0).distanceTo(center);
-                if (distance > EXPLOSION_RADIUS) continue;
+                if (distance > radius) continue;
                 if (!UluruExplosionHelper.hasExplosionLineOfSight(serverLevel, center, target)) continue;
                 float amount = EXPLOSION_DAMAGE * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.uluruloiteringmissileentity", distance,
-                    com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.uluruloiteringmissileentity", 0.15D));
+                    com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.falloff(owner, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.uluruloiteringmissileentity", 0.15D)));
                 if (target instanceof Player) {
                     float sourceScale = owner == null ? 1.0f : SkillDamageHelper.scale(owner, 1.0f);
                     amount = Math.min(amount, PLAYER_EXPLOSION_DAMAGE_CAP / Math.max(0.01f, sourceScale));
                 }
                 if (amount <= 0) continue;
                 target.invulnerableTime = 0;
+                float questBefore = target.getHealth() + target.getAbsorptionAmount();
                 if (SkillDamageHelper.hurt(target, SkillDamageHelper.uluruMissile(serverLevel, this, owner), owner, amount)) {
                     damagedTarget = true;
+                    if (target.getHealth()+target.getAbsorptionAmount()<questBefore && ownerPlayer!=null) {
+                        if(guided && target==ownerPlayer) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(ownerPlayer,"uluru.missile.manual_self_hit");
+                        if(boosting && target!=ownerPlayer && ownerPlayer.distanceToSqr(target)>=125.0D*125.0D)
+                            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(ownerPlayer,"uluru.missile.accelerated_125_hit");
+                    }
                 }
                 target.hurtMarked = true;
             }
@@ -711,6 +732,7 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
             double angle = Math.PI * 2.0 * i / 6.0;
             Vec3 direction = new Vec3(Math.cos(angle), 0.18, Math.sin(angle)).normalize();
             UluruBombletEntity bomblet = new UluruBombletEntity(ModEntities.ULURU_BOMBLET.get(), level, owner);
+            bomblet.operativeAllegiance().copyFrom(nativeAllegiance);
             bomblet.setPos(center.x, center.y + 0.2, center.z);
             bomblet.setDeltaMovement(direction.scale(0.72));
             level.addFreshEntity(bomblet);
@@ -719,7 +741,7 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
 
     private void firePatrolMissile(ServerLevel level) {
         if (!patrolEnabled || patrolChild || tickCount % PATROL_SHOT_INTERVAL_TICKS != 0
-                || !(getOwner() instanceof ServerPlayer owner)) {
+                || !(getOwner() instanceof LivingEntity owner)) {
             return;
         }
         LivingEntity target = level.getEntitiesOfClass(LivingEntity.class,
@@ -952,4 +974,56 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
         }
     }
 
+
+    public static double nativeRadius() { return Math.max(0, EXPLOSION_RADIUS); }
+    public static double nativeRadius(Entity owner) { return com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.damageRadius(owner, nativeRadius(), "summons.uluruloiteringmissileentity"); }
+
+    /** Solve accelerated direct flight, then validate against the actual missile collision code. */
+    public static com.rzy.dealt_force_skills.ai.operative.OperativeBallistics.Shot nativeShot(
+            com.rzy.dealt_force_skills.ai.operative.OperativeHost host, LivingEntity target) {
+        Vec3 eye = host.body().getEyePosition();
+        Vec3 offset = target.position().add(0, target.getBbHeight() * 0.5D, 0).subtract(eye);
+        double distance = offset.horizontalDistance();
+        if (distance < 1D || DIRECT_MAX_SPEED <= 0 || DIRECT_ACCELERATION <= 0) return null;
+        double low = Math.toRadians(-80), high = Math.toRadians(45);
+        if (nativeHeightAt(distance, high) < offset.y) return null;
+        for (int i = 0; i < 20; i++) {
+            double angle = (low + high) * 0.5D;
+            if (nativeHeightAt(distance, angle) < offset.y) low = angle; else high = angle;
+        }
+        double angle = (low + high) * 0.5D;
+        Vec3 direction = new Vec3(offset.x / distance * Math.cos(angle), Math.sin(angle), offset.z / distance * Math.cos(angle));
+        var probe = new UluruLoiteringMissileEntity(ModEntities.ULURU_LOITERING_MISSILE.get(), host.serverLevel(), host.body(), false);
+        probe.setPos(eye.add(direction.scale(0.9D)).add(0, -0.1D, 0));
+        probe.setYRot((float) (Math.toDegrees(Math.atan2(direction.z, direction.x)) - 90));
+        probe.setXRot((float) -Math.toDegrees(Math.atan2(direction.y, direction.horizontalDistance())));
+        for (int tick = 1; tick * 2 < Math.max(1, DIRECT_MAX_TICKS_X2); tick++) {
+            if (!host.serverLevel().noCollision(probe, probe.getBoundingBox().deflate(0.01D))) return null;
+            probe.updateMotion();
+            HitResult hit = probe.findCollision(probe.getDeltaMovement());
+            if (hit instanceof EntityHitResult entityHit) {
+                if (!(entityHit.getEntity() instanceof LivingEntity living) || !host.isEnemy(living)) return null;
+            }
+            if (hit.getType() != HitResult.Type.MISS) {
+                return hit.getLocation().distanceToSqr(target.position()) <= nativeRadius() * nativeRadius()
+                        ? new com.rzy.dealt_force_skills.ai.operative.OperativeBallistics.Shot(direction, hit.getLocation(), tick) : null;
+            }
+            probe.setPos(probe.position().add(probe.getDeltaMovement()));
+            if (!host.serverLevel().noCollision(probe, probe.getBoundingBox().deflate(0.01D))) return null;
+        }
+        return null;
+    }
+
+    private static double nativeHeightAt(double distance, double angle) {
+        double x = Math.cos(angle) * 0.9D, y = Math.sin(angle) * 0.9D - 0.1D;
+        double velocity = 0, drop = 0;
+        for (int tick = 1; tick * 2 < Math.max(1, DIRECT_MAX_TICKS_X2); tick++) {
+            velocity = Math.min(DIRECT_MAX_SPEED, velocity + DIRECT_ACCELERATION);
+            double vx = Math.cos(angle) * velocity, vy = Math.sin(angle) * velocity + drop;
+            if (x + vx >= distance) return y + vy * (distance - x) / vx;
+            x += vx; y += vy;
+            drop = Math.max(DIRECT_TERMINAL_DROP, drop - DIRECT_GRAVITY);
+        }
+        return Double.NEGATIVE_INFINITY;
+    }
 }

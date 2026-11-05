@@ -43,7 +43,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-public class TempestWallDrillStingerEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider {
+public class TempestWallDrillStingerEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    private int nativeAge;
+    private UUID attachedEntityUuid;
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
     private static final EntityDataAccessor<Boolean> ATTACHED =
             SynchedEntityData.defineId(TempestWallDrillStingerEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> DATA_ATTACHED_FACE =
@@ -76,6 +80,7 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
         super(type, level);
         setOwner(owner);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
     }
 
     @Override
@@ -96,6 +101,9 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
     @Override
     public void tick() {
         super.tick();
+        if (allegiance.active() && level() instanceof ServerLevel level
+                && (++nativeAge > 160 + Math.max(1, CHARGE_TICKS)
+                || !isAttached() && nativeAge > 160 || !allegiance.withinOrders(level, position()))) { discard(); return; }
         if (isAttached()) {
             tickAttached();
             return;
@@ -118,12 +126,16 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        nativeAge = allegiance.load(tag, 160 + Math.max(1, CHARGE_TICKS));
+        attachedEntityUuid = tag.hasUUID("OperativeAttachedEntity") ? tag.getUUID("OperativeAttachedEntity") : null;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         attachedFace = Direction.from3DDataValue(tag.getInt("AttachedFace"));
         releaseDirection = new Vec3(tag.getDouble("DirX"), tag.getDouble("DirY"), tag.getDouble("DirZ"));
         attachedEntityId = tag.getInt("AttachedEntityId");
         attachedEntityOffsetY = tag.getDouble("AttachedEntityOffsetY");
         chargeTicks = tag.getInt("ChargeTicks");
+        if (allegiance.active()) chargeTicks = Math.max(0, Math.min(Math.max(1, CHARGE_TICKS), chargeTicks));
         setAttached(tag.getBoolean("Attached"));
         syncPoseData();
         noPhysics = isAttached();
@@ -131,6 +143,9 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, nativeAge);
+        if (attachedEntityUuid != null) tag.putUUID("OperativeAttachedEntity", attachedEntityUuid);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -189,6 +204,20 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
             return entityData.get(DATA_CHARGE_TICKS) / 20.0F;
         }
         return ageSeconds;
+    }
+
+
+    @Override protected boolean canHitEntity(Entity target) {
+        if (allegiance.active() && (!(target instanceof LivingEntity living)
+                || !(level() instanceof ServerLevel level) || !nativeCanAffect(level, living))) return false;
+        return super.canHitEntity(target);
+    }
+    private boolean nativeCanAffect(ServerLevel level, LivingEntity target) {
+        return allegiance.isCaster(target) || allegiance.isEnemy(level, target);
+    }
+    private Entity attachedTarget(ServerLevel level) {
+        return allegiance.active() ? (attachedEntityUuid == null ? null : level.getEntity(attachedEntityUuid))
+                : level.getEntity(attachedEntityId);
     }
 
     private void tickFlight() {
@@ -259,12 +288,14 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
     }
 
     private void attach(LivingEntity target, Vec3 hitLocation, Vec3 motion) {
-        if (!TargetingUtil.isSelfOrHostileLivingFor(getOwner(), target)) {
+        if (allegiance.active() ? !(level() instanceof ServerLevel level) || !nativeCanAffect(level, target)
+                : !TargetingUtil.isSelfOrHostileLivingFor(getOwner(), target)) {
             discard();
             return;
         }
         attachedFace = Direction.UP;
         attachedEntityId = target.getId();
+        attachedEntityUuid = target.getUUID();
         attachedEntityOffsetY = headAnchorOffset(target);
         releaseDirection = motion.lengthSqr() > 1.0E-6D ? motion.normalize() : target.getLookAngle().normalize();
         setPos(target.getX(), target.getY() + attachedEntityOffsetY, target.getZ());
@@ -291,8 +322,9 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
             return;
         }
         if (attachedEntityId >= 0) {
-            Entity entity = level().getEntity(attachedEntityId);
-            if (!(entity instanceof LivingEntity target) || !target.isAlive()) {
+            Entity entity = attachedTarget((ServerLevel) level());
+            if (!(entity instanceof LivingEntity target) || !target.isAlive()
+                    || allegiance.active() && !nativeCanAffect((ServerLevel) level(), target)) {
                 discard();
                 return;
             }
@@ -328,14 +360,13 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
 
         Set<Integer> disarmed = new HashSet<>();
         if (attachedEntityId >= 0) {
-            Entity entity = level.getEntity(attachedEntityId);
+            Entity entity = attachedTarget(level);
             if (entity instanceof LivingEntity attachedTarget && attachedTarget.isAlive()) {
                 applyDisarm(level, attachedTarget, owner, disarmed);
             }
         }
 
-        boolean instantTrigger = owner instanceof ServerPlayer player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
+        boolean instantTrigger = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
         AABB box = instantTrigger
                 ? new AABB(origin, origin).inflate(10.0D)
                 : new AABB(origin, origin.add(direction.scale(RELEASE_RANGE))).inflate(RELEASE_HALF_WIDTH + 1.0D);
@@ -363,8 +394,7 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
     }
 
     private boolean hasInstantTriggerUpgrade(ServerLevel level) {
-        return owner(level) instanceof ServerPlayer player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
+        return com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner(level), CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
     }
 
     private static double headAnchorOffset(LivingEntity target) {
@@ -373,8 +403,9 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
         return Math.max(0.35D, Math.min(max, preferred));
     }
 
-    private static boolean applyDisarm(ServerLevel level, LivingEntity target, Entity owner, Set<Integer> disarmed) {
-        if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target) || !disarmed.add(target.getId())) {
+    private boolean applyDisarm(ServerLevel level, LivingEntity target, Entity owner, Set<Integer> disarmed) {
+        if ((allegiance.active() ? !nativeCanAffect(level, target)
+                : !TargetingUtil.isSelfOrHostileLivingFor(owner, target)) || !disarmed.add(target.getId())) {
             return false;
         }
         target.addEffect(new MobEffectInstance(ModEffects.TEMPEST_DISARMED.get(),

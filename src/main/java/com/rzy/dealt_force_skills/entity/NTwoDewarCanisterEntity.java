@@ -28,8 +28,12 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class NTwoDewarCanisterEntity extends Projectile implements ItemSupplier {
+public class NTwoDewarCanisterEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
     private UUID ownerId;
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public boolean isNativeOwnedBy(LivingEntity source) { return allegiance.active() && allegiance.isCaster(source); }
+
 
     public NTwoDewarCanisterEntity(EntityType<? extends NTwoDewarCanisterEntity> type, Level level) {
         super(type, level);
@@ -39,6 +43,7 @@ public class NTwoDewarCanisterEntity extends Projectile implements ItemSupplier 
         this(type, level);
         setOwner(owner);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
     }
 
     @Override
@@ -52,6 +57,7 @@ public class NTwoDewarCanisterEntity extends Projectile implements ItemSupplier 
 
     @Override
     public void tick() {
+        if (!level().isClientSide && allegiance.active() && tickCount >= 240) { discard(); return; }
         super.tick();
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);
@@ -72,11 +78,13 @@ public class NTwoDewarCanisterEntity extends Projectile implements ItemSupplier 
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        tickCount = allegiance.load(tag, 240);
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -92,11 +100,11 @@ public class NTwoDewarCanisterEntity extends Projectile implements ItemSupplier 
             discard();
             return;
         }
+        if (allegiance.active()) com.rzy.dealt_force_skills.ai.operative.NativeNTwoEffects.field(this, allegiance, center, false);
         LivingEntity owner = ownerId != null && level.getEntity(ownerId) instanceof LivingEntity living
                 ? living : null;
-        if (owner != null) {
-            boolean overpressure = owner instanceof ServerPlayer player
-                    && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.NTWO_OVERPRESSURE_CANISTER);
+        if (owner != null && !allegiance.active()) {
+            boolean overpressure = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.NTWO_OVERPRESSURE_CANISTER);
             NTwoIceFieldEntity field = new NTwoIceFieldEntity(ModEntities.N_TWO_ICE_FIELD.get(), level, owner,
                     overpressure ? 18.0D : 6.0D, 16 * 20, 10, overpressure ? 30 : 10, 2.0F);
             field.setIgnoreLineOfSight(overpressure);
@@ -107,11 +115,9 @@ public class NTwoDewarCanisterEntity extends Projectile implements ItemSupplier 
         level.playSound(null, center.x, center.y, center.z, ModSounds.N_TWO_DEWAR_FIELD.get(),
                 SoundSource.PLAYERS, 1.0f, 1.0f);
         level.sendParticles(ParticleTypes.SNOWFLAKE, center.x, center.y + 0.2D, center.z,
-                90, owner instanceof ServerPlayer player
-                        && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.NTWO_OVERPRESSURE_CANISTER)
+                90, com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.NTWO_OVERPRESSURE_CANISTER)
                         ? 6.0D : 2.0D, 0.5D,
-                owner instanceof ServerPlayer player
-                        && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.NTWO_OVERPRESSURE_CANISTER)
+                com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.NTWO_OVERPRESSURE_CANISTER)
                         ? 6.0D : 2.0D, 0.05D);
         discard();
     }

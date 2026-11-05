@@ -201,7 +201,10 @@ public final class RoverStateManager {
         Vec3 look = player.getLookAngle();
         projectile.setPos(player.getEyePosition().add(look.scale(0.35)).add(0, -0.1, 0));
         projectile.setDeltaMovement(look.scale(Math.max(0.1, speed)).add(0, lift, 0));
-        player.serverLevel().addFreshEntity(projectile);
+        if (player.serverLevel().addFreshEntity(projectile)) {
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        }
     }
 
     public static RoverWolfEntity dog(ServerPlayer player) {
@@ -217,6 +220,7 @@ public final class RoverStateManager {
             if (recall) {
                 data(player).remove("Waypoint");
                 sound(player, RoverSounds.DOG_RECALL);
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"rover.dog.command");
             } else {
                 Vec3 from = player.getEyePosition();
                 Vec3 end = from.add(player.getLookAngle().scale(Math.max(1, COMMAND_RANGE)));
@@ -226,6 +230,7 @@ public final class RoverStateManager {
                 waypoint.putDouble("X", point.x); waypoint.putDouble("Y", point.y); waypoint.putDouble("Z", point.z);
                 data(player).put("Waypoint", waypoint);
                 sound(player, RoverSounds.DOG_COMMAND);
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"rover.dog.command");
             }
             return;
         }
@@ -243,6 +248,7 @@ public final class RoverStateManager {
         wolf.setHealth(wolf.getMaxHealth());
         wolf.getPersistentData().putLong("RoverExpires", SkillCooldownHelper.now(player) + Math.max(1, CORE_DURATION));
         if (player.serverLevel().addFreshEntity(wolf)) {
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"rover.dog.summoned");
             data(player).putUUID("Dog", wolf.getUUID());
             data(player).putBoolean("DogActive", true);
             data(player).putLong("DogUntil", wolf.getPersistentData().getLong("RoverExpires"));
@@ -283,20 +289,27 @@ public final class RoverStateManager {
     }
 
     public static void applyAerosol(ServerPlayer owner, LivingEntity target, boolean pulse) {
-        if (DealtTeamManager.isSelfOrTeammate(owner, target)) {
+        applyAerosol(owner, target, pulse, DealtTeamManager.isSelfOrTeammate(owner, target), TargetingUtil.isHostileLivingFor(owner, target));
+    }
+
+    /** Native snapshot supplies allegiance even while the original caster is unloaded. */
+    public static void applyAerosol(LivingEntity owner, LivingEntity target, boolean pulse, boolean ally, boolean enemy) {
+        if (ally) {
             int cleansed = 0;
             for (MobEffectInstance effect : new ArrayList<>(target.getActiveEffects())) {
-                if (effect.getEffect().getCategory() == MobEffectCategory.HARMFUL && target.removeEffect(effect.getEffect())) cleansed++;
+                if (effect.getEffect().getCategory() == MobEffectCategory.HARMFUL && !isProtectedEffect(effect.getEffect()) && target.removeEffect(effect.getEffect())) cleansed++;
             }
             if (cleansed > 0) {
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"rover.spray.cleansed",cleansed);
                 if (target instanceof ServerPlayer listener) sound(listener, RoverSounds.CLEANSE);
                 MobEffectInstance old = target.getEffect(ModEffects.ROVER_SECOND_CHANCE.get());
                 int stacks = Math.min(255, cleansed + (old == null ? 0 : old.getAmplifier() + 1));
-                target.addEffect(new MobEffectInstance(ModEffects.ROVER_SECOND_CHANCE.get(), Math.max(1, PROTECTION_DURATION),
+                boolean questProtected = target.addEffect(new MobEffectInstance(ModEffects.ROVER_SECOND_CHANCE.get(), Math.max(1, PROTECTION_DURATION),
                         stacks - 1, false, true, true), owner);
+                if (questProtected) com.rzy.dealt_force_skills.department.DepartmentHealing.source(target,"rover",owner);
             }
             target.addEffect(new MobEffectInstance(ModEffects.ROVER_PURIFIED.get(), 3, 0, false, true, true), owner);
-        } else if (TargetingUtil.isHostileLivingFor(owner, target)) {
+        } else if (enemy) {
             int duration = Math.max(2, INJECTOR_RESTORE_DELAY + 1);
             target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, duration, Math.max(0, INJECTOR_SLOW_AMPLIFIER)), owner);
             target.addEffect(new MobEffectInstance(MobEffects.WITHER, duration, Math.max(0, WITHER_AMPLIFIER)), owner);
@@ -305,7 +318,7 @@ public final class RoverStateManager {
             data(target).putLong("RestoreAt", SkillCooldownHelper.now(target) + Math.max(1, INJECTOR_RESTORE_DELAY));
             if (pulse) {
                 reduceHealth(target, INJECTOR_TICK_REDUCTION);
-                damageFeedback(owner);
+                if (owner instanceof ServerPlayer player) damageFeedback(player);
             }
         }
     }
@@ -349,6 +362,7 @@ public final class RoverStateManager {
         if (executingDeath(entity) || source.is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL)) return false;
         MobEffectInstance protection = entity.getEffect(ModEffects.ROVER_SECOND_CHANCE.get());
         if (!isDowned(entity) && protection != null) {
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(com.rzy.dealt_force_skills.department.DepartmentHealing.owner(entity,"rover"),"rover.spray.death_prevented");
             int remaining = protection.getAmplifier();
             int duration = protection.getDuration();
             entity.removeEffect(ModEffects.ROVER_SECOND_CHANCE.get());
@@ -360,6 +374,8 @@ public final class RoverStateManager {
             entity.level().broadcastEntityEvent(entity, (byte) 35);
             return true;
         }
+        if (entity instanceof com.rzy.dealt_force_skills.entity.OperativeEntity bot && !isDowned(bot)
+                && hasProtection(bot) && bot.medical().downRover(bot)) return true;
         if (entity instanceof ServerPlayer player && !isDowned(player) && hasProtection(player)) {
             data(player).putLong("DownedUntil", SkillCooldownHelper.now(player) + Math.max(1, DOWNED_DURATION));
             data(player).putInt("Tool", 0);

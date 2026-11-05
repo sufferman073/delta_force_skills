@@ -236,7 +236,7 @@ public class CharacterSelectionScreen extends Screen {
         Optional<String> blockedMessageKey = ClientCharacterSelectionState.selectionBlockedMessageKey(character);
         if (blockedMessageKey.isPresent()) {
             graphics.drawString(font,
-                    Component.translatable(blockedMessageKey.get()),
+                    ClientCharacterSelectionState.blockedDescription(character),
                     left + 10, top + 94, 0xFF6A6A);
         }
     }

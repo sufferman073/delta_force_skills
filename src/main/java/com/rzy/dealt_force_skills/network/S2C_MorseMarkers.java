@@ -12,11 +12,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class S2C_MorseMarkers {
+public class S2C_MorseMarkers implements com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     private final List<MorseWorldMarker> markers;
 
     public S2C_MorseMarkers(List<MorseWorldMarker> markers) {
         this.markers = List.copyOf(markers);
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(var marker:markers) if(marker.type()==MorseMarkerType.SONAR_REVEAL) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,marker.entityId(),marker.ticks());
     }
 
     public static void encode(S2C_MorseMarkers msg, FriendlyByteBuf buf) {

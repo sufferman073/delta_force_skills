@@ -466,7 +466,7 @@ public final class DepartmentOfTransportationStateManager {
                 ? 0
                 : Math.min(MAX_CALIBRATION_AMPLIFIER, current.getAmplifier() + 1);
         target.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_CALIBRATION.get(),
-                CALIBRATION_DURATION_TICKS, nextAmplifier, false, true, true), owner);
+                current != null && current.isInfiniteDuration() ? -1 : CALIBRATION_DURATION_TICKS, nextAmplifier, false, true, true), owner);
         if (target instanceof ServerPlayer serverTarget) {
             if (current == null) {
                 resetCalibrationAttempt(serverTarget);
@@ -549,7 +549,9 @@ public final class DepartmentOfTransportationStateManager {
         }
         tag.putBoolean(BABY_ZOMBIE_SPAWNED, true);
         UUID ownerId = tag.hasUUID(SUMMON_OWNER) ? tag.getUUID(SUMMON_OWNER) : null;
-        spawnBabyZombie(level, creeper.position(), ownerId);
+        if (com.rzy.dealt_force_skills.ai.operative.NativeDepartmentSkills.nativeSummon(creeper))
+            com.rzy.dealt_force_skills.ai.operative.NativeDepartmentSkills.spawnBaby(level, creeper);
+        else spawnBabyZombie(level, creeper.position(), ownerId);
     }
 
     public static void triggerChargedCreeperDeathExplosion(ServerLevel level, Entity creeper) {
@@ -769,6 +771,7 @@ public final class DepartmentOfTransportationStateManager {
     }
 
     private static void applyConcealmentRuntime(ServerPlayer player) {
+        if(!player.hasEffect(ModEffects.DEPARTMENT_CONCEALMENT.get()))com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"transport.passive.concealment");
         player.setInvisible(true);
         player.setSilent(true);
         player.addEffect(new MobEffectInstance(ModEffects.DEPARTMENT_CONCEALMENT.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.department_concealment.4.duration_ticks", 40), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.department_concealment.4.amplifier", 0), false, false, false));
@@ -815,7 +818,7 @@ public final class DepartmentOfTransportationStateManager {
 
     private static void reduceCalibrationStack(ServerPlayer player, MobEffectInstance calibration) {
         int nextAmplifier = calibration.getAmplifier() - 1;
-        int duration = Math.max(20, calibration.getDuration());
+        int duration = calibration.isInfiniteDuration() ? -1 : Math.max(20, calibration.getDuration());
         player.removeEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
         if (nextAmplifier < 0) {
             return;
@@ -824,7 +827,7 @@ public final class DepartmentOfTransportationStateManager {
                 duration, nextAmplifier, false, true, true));
     }
 
-    private static boolean applyCoreExecution(
+    public static boolean applyCoreExecution(
             ServerLevel level,
             LivingEntity target,
             Entity owner,
@@ -847,7 +850,9 @@ public final class DepartmentOfTransportationStateManager {
                 && !target.isRemoved()) {
             target.remove(Entity.RemovalReason.KILLED);
         }
-        return wasAlive && (!target.isAlive() || target.isRemoved());
+        boolean executed=wasAlive && (!target.isAlive() || target.isRemoved());
+        if(executed&&owner!=target)com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"transport.execution");
+        return executed;
     }
 
     private static void resetCalibrationAttempt(ServerPlayer player) {

@@ -243,6 +243,11 @@ public final class CommanderStateManager {
             case STRENGTH -> data(player).putInt(STRENGTH_LEVEL, level + 1);
             case GENE -> data(player).putInt(GENE_LEVEL, level + 1);
         }
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,switch(upgrade) {
+            case EFFICIENCY -> "commander.buy.efficiency";
+            case STRENGTH -> "commander.buy.strength";
+            case GENE -> "commander.buy.gene";
+        });
         if (upgrade == CommanderUpgrade.GENE && geneLevel(player) >= CommanderUpgrade.GENE.maxLevel()) {
             initializeEnabledPassives(data(player));
         }
@@ -380,7 +385,13 @@ public final class CommanderStateManager {
                 return false;
             }
         }
+        boolean questChanged=!selectedSource(player,choice).filter(characterId::equals).isPresent();
         putChoice(data(player), choice, characterId);
+        if(questChanged)com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,switch(choice.skillSlot()) {
+            case PASSIVE -> "commander.change.passive";
+            case CORE -> "commander.change.core";
+            default -> "commander.change.active";
+        });
         syncToClient(player);
         return true;
     }
@@ -436,6 +447,7 @@ public final class CommanderStateManager {
                     : passives.remove(characterId);
             if (changed) {
                 putEnabledPassives(tag, passives);
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"commander.change.passive");
             }
             syncToClient(player);
             return true;
@@ -445,6 +457,7 @@ public final class CommanderStateManager {
             if (selectedSource(player, choice).filter(characterId::equals).isPresent()) {
                 if (!enabled) {
                     putChoice(data(player), choice, "");
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"commander.change.passive");
                     syncToClient(player);
                 }
                 return true;
@@ -457,6 +470,7 @@ public final class CommanderStateManager {
         for (CommanderSkillChoice choice : passiveChoices) {
             if (selectedSource(player, choice).isEmpty()) {
                 putChoice(data(player), choice, characterId);
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"commander.change.passive");
                 syncToClient(player);
                 return true;
             }

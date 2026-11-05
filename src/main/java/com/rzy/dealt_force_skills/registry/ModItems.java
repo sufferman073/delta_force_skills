@@ -49,6 +49,16 @@ public class ModItems {
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(ForgeRegistries.ITEMS, DealtForceSkillsMod.MODID);
 
+    public static final java.util.Map<String, java.util.function.Supplier<? extends Item>> OPERATIVE_SPAWN_EGGS = registerOperativeEggs();
+
+    private static java.util.Map<String, java.util.function.Supplier<? extends Item>> registerOperativeEggs() {
+        var eggs = new java.util.LinkedHashMap<String, java.util.function.Supplier<? extends Item>>();
+        com.rzy.dealt_force_skills.ai.operative.NativeOperativeSkills.characterIds().stream().sorted().forEach(id ->
+                eggs.put(id, ITEMS.register("operative_" + id.substring(id.lastIndexOf('/') + 1) + "_spawn_egg",
+                        () -> new com.rzy.dealt_force_skills.item.OperativeSpawnEggItem(id, new Item.Properties()))));
+        return java.util.Collections.unmodifiableMap(eggs);
+    }
+
     public static final RegistryObject<Item> AUTO_SELL_UPGRADE = ITEMS.register("auto_sell_upgrade",
             com.rzy.dealt_force_skills.compat.SophisticatedBackpackCompat::createUpgrade);
 

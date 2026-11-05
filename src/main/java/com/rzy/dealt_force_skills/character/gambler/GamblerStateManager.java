@@ -346,6 +346,7 @@ public final class GamblerStateManager {
         powers[power.ordinal()]--;
         data(player).putIntArray(POWERS, powers);
         applyPower(player, power, target);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"gambler.power");
         playPowerSound(player, power);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.gambler.power_used",
                 Component.translatable(power.nameKey())).withStyle(ChatFormatting.LIGHT_PURPLE), true);
@@ -354,12 +355,17 @@ public final class GamblerStateManager {
     }
 
     public static float handleIncomingHurt(ServerPlayer player, DamageSource source, float amount) {
-        if (!isGambler(player) || amount <= 0.0F) {
+        if (!isGambler(player) || !Float.isFinite(amount) || amount <= 0.0F) {
             return amount;
         }
         initializeIfNeeded(player);
         long now = SkillCooldownHelper.now(player);
-        if (isFullyInvulnerable(player) || isCoveredByOrangeShield(player)) {
+        if (isFullyInvulnerable(player)) {
+            if (isSuperShieldActive(player))
+                com.rzy.dealt_force_skills.department.DepartmentGambler.shieldBlocked(player);
+            return 0.0F;
+        }
+        if (isCoveredByOrangeShield(player)) {
             return 0.0F;
         }
         CompoundTag tag = data(player);
@@ -391,6 +397,7 @@ public final class GamblerStateManager {
             tag.putBoolean(CLEAR_SHIELD_AFTER_INVULN, true);
             addRandomPower(player);
             playShieldSound(player);
+            com.rzy.dealt_force_skills.department.DepartmentGambler.shieldBlocked(player);
             syncToClient(player);
             return 0.0F;
         }
@@ -473,6 +480,11 @@ public final class GamblerStateManager {
                 && isGambler(player)
                 && isJackpotActive(serverPlayer)
                 && effect.getCategory() == MobEffectCategory.HARMFUL;
+    }
+
+    public static boolean isSuperShieldActive(ServerPlayer player) {
+        long until = data(player).getLong(INVULNERABLE_UNTIL);
+        return isGambler(player) && until > 0L && SkillCooldownHelper.now(player) <= until;
     }
 
     public static boolean isFullyInvulnerable(Player player) {
@@ -726,6 +738,7 @@ public final class GamblerStateManager {
         }
         tag.putLong(ACTIVE2_EXPIRES, now + ACTIVE2_IDLE_TICKS);
         applyDrawEffect(player, effect, depth);
+        if (effect.isHakko())com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"gambler.card.hakko");
         playDrawSound(player);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.gambler.draw_result_detailed",
                 Component.translatable(effect.nameKey()), cost, chips(player)).withStyle(ChatFormatting.GOLD), false);
@@ -856,6 +869,7 @@ public final class GamblerStateManager {
         player.setHealth(player.getMaxHealth());
         player.addEffect(new MobEffectInstance(MobEffects.LUCK, JACKPOT_LUCK_TICKS, 9, false, true, true));
         applyJackpotSpeed(player);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"gambler.jackpot");
         playArenaBgm(player, tag, now);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.gambler.jackpot")
                 .withStyle(ChatFormatting.GOLD), true);

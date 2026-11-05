@@ -279,7 +279,8 @@ public class ClientEvents {
         double ghrothBolt = ghrothClientBoltMultiplier(player);
         return new TaczSpeedMultipliers(
                 adrenalineFireRate * equipment * ghrothFireRate * ModItemEffectHelper.medicineTaczFireRateMultiplier(player),
-                adrenaline * ghrothReload * ModItemEffectHelper.medicineTaczReloadMultiplier(player),
+                adrenaline * ghrothReload * ModItemEffectHelper.medicineTaczReloadMultiplier(player)
+                        * com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.reloadMultiplier(player),
                 adrenaline * equipment * ghrothAim * ModItemEffectHelper.medicineTaczAimSpeedMultiplier(player),
                 adrenaline * ghrothBolt,
                 ModItemEffectHelper.medicineTaczAimPenaltyMultiplier(player)
@@ -489,6 +490,8 @@ public class ClientEvents {
     public static void onClientTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
+        ClientTacticalInput.sync(mc);
+        WildfireClient.tick(mc);
         if (mc.player == null || mc.level == null) {
             localDeathInputOverride = true;
             forcedCharacterSpinActive = false;
@@ -621,7 +624,7 @@ public class ClientEvents {
             drainKey(mc.options.keySwapOffhand);
         }
 
-        while (!UndeadInputHandler.ownsSkillKeys()
+        while (!WildfireClient.selected() && !UndeadInputHandler.ownsSkillKeys()
                 && !LexNinjiaInputHandler.ownsSkillKeys()
                 && !GamblerInputHandler.ownsSkillKeys()
                 && KeybindRegister.ACTIVE_SKILL_1 != null
@@ -638,7 +641,7 @@ public class ClientEvents {
             }
         }
 
-        while (!UndeadInputHandler.ownsSkillKeys()
+        while (!WildfireClient.selected() && !UndeadInputHandler.ownsSkillKeys()
                 && !LexNinjiaInputHandler.ownsSkillKeys()
                 && KeybindRegister.ACTIVE_SKILL_2 != null
                 && KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
@@ -657,7 +660,7 @@ public class ClientEvents {
             }
         }
 
-        if (UndeadInputHandler.ownsSkillKeys() || LexNinjiaInputHandler.ownsSkillKeys()
+        if (WildfireClient.selected() || UndeadInputHandler.ownsSkillKeys() || LexNinjiaInputHandler.ownsSkillKeys()
                 || RoverClient.ownsCoreSkill() || DWolfInputHandler.ownsCoreSkill() || StingerInputHandler.ownsCoreSkill()
                 || NoxInputHandler.ownsCoreSkill() || ManbaInputHandler.ownsCoreSkill()
                 || CorpsInputHandler.ownsCoreSkill()
@@ -980,6 +983,7 @@ public class ClientEvents {
     }
 
     private static boolean isAnyClientToolActive() {
+        if (WildfireClient.blocksItems()) return true;
         if (RoverClient.tool() > 0) return true;
         // Sineva: shield deployed or blade wire held
         if ((ClientSinevaHudState.shouldRender() || ClientCommanderState.inherits(ModCharacters.SINEVA_ID))
@@ -1160,6 +1164,7 @@ public class ClientEvents {
             e.registerEntityRenderer(ModEntities.D_WOLF_SMOKE_GRENADE.get(), ctx -> new BlockbenchProjectileRenderer<>(
                     ctx, model("d_wolf_smoke_grenade"), null, "flight", 0.85F,
                     BlockbenchProjectileRenderer.Alignment.NONE));
+            e.registerEntityRenderer(ModEntities.WILDFIRE_DEVICE.get(), com.rzy.dealt_force_skills.client.renderer.WildfireDeviceRenderer::new);
             e.registerEntityRenderer(ModEntities.D_WOLF_SMOKE_CLOUD.get(), ctx -> new SmokeCloudRenderer<>(
                     ctx, model("generic_gray_smoke"), 1.0F));
             e.registerEntityRenderer(ModEntities.GIZMO_SMOKE_TRAP.get(), ctx -> new BlockbenchProjectileRenderer<>(
@@ -1275,7 +1280,9 @@ public class ClientEvents {
             e.registerEntityRenderer(ModEntities.DEPARTMENT_EXPLOSIVE_TRAP.get(), ctx -> new BlockbenchProjectileRenderer<>(
                     ctx, model("department_explosive_trap"), "flip_open", "idle_hold", 1.2F,
                     BlockbenchProjectileRenderer.Alignment.NONE));
+            e.registerEntityRenderer(ModEntities.OPERATIVE.get(), com.rzy.dealt_force_skills.client.renderer.OperativeRenderer::new);
             e.registerEntityRenderer(ModEntities.SAEED_GUARD.get(), SaeedGuardRenderer::new);
+            e.registerEntityRenderer(ModEntities.OPERATIVE_SAEED_GUARD.get(), SaeedGuardRenderer::new);
             e.registerEntityRenderer(ModEntities.ASARA_FLAMETHROWER.get(), SaeedGuardRenderer::new);
             e.registerEntityRenderer(ModEntities.ASARA_MACHINE_GUNNER.get(), SaeedGuardRenderer::new);
             e.registerEntityRenderer(ModEntities.ASARA_SHIELD_TROOPER.get(), SaeedGuardRenderer::new);

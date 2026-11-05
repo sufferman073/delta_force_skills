@@ -79,6 +79,8 @@ public final class ClientCharacterSelectionState {
     }
 
     public static void resetSession() {
+        com.rzy.dealt_force_skills.client.ClientMailboxState.clear();
+        com.rzy.dealt_force_skills.client.WildfireClient.reset();
         freeReselection = false;
         com.rzy.dealt_force_skills.client.RoverClient.reset();
         selectedCharacterId = null;
@@ -302,6 +304,12 @@ public final class ClientCharacterSelectionState {
         return selectionBlockedMessageKey(character).isEmpty();
     }
 
+    public static net.minecraft.network.chat.Component blockedDescription(CharacterDefinition character) {
+        var reason=selectionBlockedMessageKey(character).orElse("");
+        if(reason.startsWith("task_locked|"))return net.minecraft.network.chat.Component.translatable(
+                "message.dealt_force_skills.selection.task_required",reason.substring("task_locked|".length()));
+        return net.minecraft.network.chat.Component.translatable(reason);
+    }
     public static Optional<String> selectionBlockedMessageKey(CharacterDefinition character) {
         if (character == null) {
             return Optional.empty();
@@ -386,6 +394,7 @@ public final class ClientCharacterSelectionState {
             openSelectionScreen();
             return;
         }
+        com.rzy.dealt_force_skills.client.ClientTacticalInput.sync(Minecraft.getInstance());
         NetworkHandler.sendToServer(new C2S_UseCharacterSkill(slot, alternate));
     }
 

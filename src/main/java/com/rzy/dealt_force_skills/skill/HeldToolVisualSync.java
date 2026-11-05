@@ -56,6 +56,8 @@ public final class HeldToolVisualSync {
     }
 
     private static HeldToolVisual current(ServerPlayer player) {
+        if (com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.isWildfire(player))
+            return com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.heldVisual(player);
         if (com.rzy.dealt_force_skills.character.rover.RoverStateManager.isRover(player)
                 && com.rzy.dealt_force_skills.character.rover.RoverStateManager.data(player).getInt("Tool") > 0) {
             return switch (com.rzy.dealt_force_skills.character.rover.RoverStateManager.data(player).getInt("Tool")) {

@@ -5571,4 +5571,22 @@
       }
     ]
   }
+,
+  "wildfire_core_loop": {"sounds": [{"name": "dealt_force_skills:wildfire_core_loop", "stream": true}]},
+  "wildfire.core_accelerate": {"sounds": [{"name": "dealt_force_skills:wildfire/core_accelerate"}]},
+  "wildfire.core_leap": {"sounds": [{"name": "dealt_force_skills:wildfire/core_leap"}]},
+  "wildfire.core_explode": {"sounds": [{"name": "dealt_force_skills:wildfire/core_explode"}]},
+  "wildfire.core_land": {"sounds": [{"name": "dealt_force_skills:wildfire/core_land"}]},
+  "wildfire.grenade_equip": {"sounds": [{"name": "dealt_force_skills:wildfire/grenade_equip"}]},
+  "wildfire.core_start": {"sounds": [{"name": "dealt_force_skills:wildfire/core_start"}]},
+  "wildfire.grenade_throw": {"sounds": [{"name": "dealt_force_skills:wildfire/grenade_throw"}]},
+  "wildfire.grenade_stow": {"sounds": [{"name": "dealt_force_skills:wildfire/grenade_stow"}]},
+  "wildfire.smoke_bounce": {"sounds": [{"name": "dealt_force_skills:wildfire/smoke_bounce"}]},
+  "wildfire.smoke_trigger": {"sounds": [{"name": "dealt_force_skills:wildfire/smoke_trigger"}]},
+  "wildfire.core_sustain": {"sounds": [{"name": "dealt_force_skills:wildfire/core_sustain"}]},
+  "wildfire.smoke_ring": {"sounds": [{"name": "dealt_force_skills:wildfire/smoke_ring"}]},
+  "wildfire.smoke_equip": {"sounds": [{"name": "dealt_force_skills:wildfire/smoke_equip"}]},
+  "wildfire.smoke_throw": {"sounds": [{"name": "dealt_force_skills:wildfire/smoke_throw"}]},
+  "wildfire.grenade_countdown": {"sounds": [{"name": "dealt_force_skills:wildfire/grenade_countdown"}]},
+  "wildfire.grenade_explode": {"sounds": [{"name": "dealt_force_skills:wildfire/grenade_explode"}]}
 }

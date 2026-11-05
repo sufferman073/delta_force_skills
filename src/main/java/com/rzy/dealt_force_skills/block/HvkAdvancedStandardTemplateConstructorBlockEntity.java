@@ -358,6 +358,10 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
 
     private void deliverResult(Player player, ItemStack result, int crafts) {
         int remaining = Math.max(0, result.getCount() * crafts);
+        if(remaining>0) {
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"workblock.construct_or_disassemble");
+            com.rzy.dealt_force_skills.department.DepartmentCrafting.crafted(player,result.copyWithCount(remaining));
+        }
         while (remaining > 0) {
             ItemStack stack = result.copy();
             stack.setCount(Math.min(stack.getMaxStackSize(), remaining));
@@ -1475,7 +1479,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
     private static void giveOrDrop(Player player, ItemStack stack) {
         boolean added = player.getInventory().add(stack);
         if ((!added || !stack.isEmpty()) && !stack.isEmpty()) {
-            player.drop(stack, false);
+            com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, stack);
         }
     }
 

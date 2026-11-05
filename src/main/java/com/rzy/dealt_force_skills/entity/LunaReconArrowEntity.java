@@ -36,7 +36,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class LunaReconArrowEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider {
+public class LunaReconArrowEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider , com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private java.util.UUID operativeOwner;
+    private boolean operativeSource;
+    @Override public java.util.UUID operativeOwnerUUID() { return operativeOwner; }
+
     private static volatile int MAX_BOUNCES = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_BOUNCES", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.luna_recon_arrow_entity.max_bounces", 8));
     private static volatile int MAX_LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.lunareconarrowentity.max_life_ticks", 400));
     private static volatile int MOVE_SCAN_DELAY_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MOVE_SCAN_DELAY_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.lunareconarrowentity.move_scan_delay_ticks", 40));
@@ -56,12 +60,16 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
     public LunaReconArrowEntity(EntityType<? extends LunaReconArrowEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
-        if (owner instanceof ServerPlayer player) {
-            ultimateRecon = CommanderStateManager.hasBranchUpgrade(
-                    player, CommanderBranchUpgrade.LUNA_ULTIMATE_RECON);
-            weakPoint = CommanderStateManager.hasBranchUpgrade(
-                    player, CommanderBranchUpgrade.LUNA_WEAK_POINT);
-        }
+        operativeSource = owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost;
+        if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost
+                && owner instanceof net.minecraft.world.entity.OwnableEntity owned) operativeOwner = owned.getOwnerUUID();
+        ultimateRecon = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.LUNA_ULTIMATE_RECON);
+        weakPoint = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.LUNA_WEAK_POINT);
+    }
+
+    private boolean isOperativeSource() {
+        return operativeSource || operativeOwner != null
+                || getOwner() instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost;
     }
 
     @Override
@@ -76,8 +84,13 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && isOperativeSource() && tickCount > MAX_LIFE_TICKS) {
+            discard();
+            return;
+        }
 
         if (!level().isClientSide) {
+            scanNative();
             scanNearby();
             tickMoveScans();
             if (tickCount % 8 == 0 && level() instanceof ServerLevel serverLevel) {
@@ -111,6 +124,10 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        operativeOwner = tag.hasUUID("OperativeOwner") ? tag.getUUID("OperativeOwner") : null;
+        operativeSource = tag.contains("OperativeAge") || operativeOwner != null;
+        if (tag.contains("OperativeAge")) tickCount = Math.max(0, Math.min(Math.max(1, MAX_LIFE_TICKS), tag.getInt("OperativeAge")));
         bounces = tag.getInt("Bounces");
         ultimateRecon = tag.getBoolean("UltimateRecon");
         weakPoint = tag.getBoolean("WeakPoint");
@@ -122,6 +139,10 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        if (operativeOwner != null) tag.putUUID("OperativeOwner", operativeOwner);
+        if (isOperativeSource())
+            tag.putInt("OperativeAge", tickCount);
         tag.putInt("Bounces", bounces);
         tag.putBoolean("UltimateRecon", ultimateRecon);
         tag.putBoolean("WeakPoint", weakPoint);
@@ -173,6 +194,32 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
     private void rememberForward(Vec3 direction) {
         if (direction.lengthSqr() >= 0.0001D) {
             lastForward = direction.normalize();
+        }
+    }
+
+    private void scanNative() {
+        if (!(getOwner() instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host)
+                || !(level() instanceof ServerLevel serverLevel)) return;
+        Vec3 center = position();
+        for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class,
+                new AABB(center, center).inflate(SCAN_RADIUS), entity -> host.isEnemy(entity)
+                        && entity.distanceToSqr(center) <= SCAN_RADIUS * SCAN_RADIUS)) {
+            if (scanned.contains(target.getUUID()) || !hasLineOfSight(center, target)) continue;
+            scanned.add(target.getUUID());
+            pendingMoveScans.put(target.getUUID(), new PendingScan(target.position(), MOVE_SCAN_DELAY_TICKS));
+            com.rzy.dealt_force_skills.ai.operative.OperativeRecon.reveal(host, target, LunaStateManager.RECON_REVEAL_TICKS);
+        }
+        var iterator = pendingMoveScans.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            PendingScan pending = entry.getValue();
+            if (--pending.remainingTicks > 0) continue;
+            Entity entity = serverLevel.getEntity(entry.getKey());
+            if (entity instanceof LivingEntity target && host.isEnemy(target)
+                    && target.position().distanceToSqr(pending.position) >= MOVE_THRESHOLD_SQR
+                    && hasLineOfSight(position(), target))
+                com.rzy.dealt_force_skills.ai.operative.OperativeRecon.reveal(host, target, LunaStateManager.RECON_REVEAL_TICKS);
+            iterator.remove();
         }
     }
 

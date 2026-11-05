@@ -60,8 +60,10 @@ public final class GhrothTaczEnhancement {
         return stack;
     }
 
-    public static void tickEnhancedGunRuntime(ServerPlayer player) {
-        if (!GhrothStateManager.isGhroth(player)) {
+    public static void tickEnhancedGunRuntime(LivingEntity player) {
+        if (!(player instanceof ServerPlayer serverPlayer && GhrothStateManager.isGhroth(serverPlayer))
+                && !(player instanceof com.rzy.dealt_force_skills.entity.OperativeEntity bot
+                && bot.skills() instanceof com.rzy.dealt_force_skills.ai.operative.NativeGhrothSkills)) {
             return;
         }
         ItemStack gun = player.getMainHandItem();
@@ -367,7 +369,7 @@ public final class GhrothTaczEnhancement {
         return 0;
     }
 
-    private static void refreshEnhancedCache(ServerPlayer player, ItemStack gun, CompoundTag tag) {
+    private static void refreshEnhancedCache(LivingEntity player, ItemStack gun, CompoundTag tag) {
         long now = SkillCooldownHelper.now(player);
         long last = tag.getLong(LAST_CACHE_REFRESH_TAG);
         if (last > 0L && now - last < CACHE_REFRESH_INTERVAL_TICKS) {

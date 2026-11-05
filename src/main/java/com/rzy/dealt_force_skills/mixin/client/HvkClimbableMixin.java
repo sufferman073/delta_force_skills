@@ -13,9 +13,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.gen.Invoker;
 
 /**
  * 客户端攀爬加速，适用于被HVK万能胶水粘合的方块。仅注册客户端侧。
@@ -33,14 +32,11 @@ public abstract class HvkClimbableMixin {
         }
     }
 
-    @Invoker(value = "handleOnClimbable")
-    abstract Vec3 dealt_force_skills$invokeHandleOnClimbable(Vec3 vec3);
-
-    @Redirect(method = "handleRelativeFrictionAndCalculateMovement",
+    @ModifyExpressionValue(method = "handleRelativeFrictionAndCalculateMovement",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/LivingEntity;handleOnClimbable(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"))
-    private Vec3 dealt_force_skills$rescaleClimbShimmy(LivingEntity self, Vec3 deltaMovement) {
-        Vec3 result = this.dealt_force_skills$invokeHandleOnClimbable(deltaMovement);
+    private Vec3 dealt_force_skills$rescaleClimbShimmy(Vec3 result) {
+        LivingEntity self = (LivingEntity) (Object) this;
         if (!dealt_force_skills$isNearGluedPosition(self)) {
             return result;
         }

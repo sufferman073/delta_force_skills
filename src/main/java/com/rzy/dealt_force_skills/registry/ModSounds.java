@@ -21,6 +21,23 @@ public class ModSounds {
     public static final Map<String, RegistryObject<SoundEvent>> LEX_NINJIA_SOUNDS = registerLexNinjiaSounds();
     public static final Map<String, RegistryObject<SoundEvent>> GAMBLER_POWER_SOUNDS = registerGamblerPowerSounds();
 
+    public static final RegistryObject<SoundEvent> WILDFIRE_CORE_ACCELERATE = reg("wildfire.core_accelerate");
+    public static final RegistryObject<SoundEvent> WILDFIRE_CORE_LEAP = reg("wildfire.core_leap");
+    public static final RegistryObject<SoundEvent> WILDFIRE_CORE_EXPLODE = reg("wildfire.core_explode");
+    public static final RegistryObject<SoundEvent> WILDFIRE_CORE_LAND = reg("wildfire.core_land");
+    public static final RegistryObject<SoundEvent> WILDFIRE_GRENADE_EQUIP = reg("wildfire.grenade_equip");
+    public static final RegistryObject<SoundEvent> WILDFIRE_CORE_START = reg("wildfire.core_start");
+    public static final RegistryObject<SoundEvent> WILDFIRE_GRENADE_THROW = reg("wildfire.grenade_throw");
+    public static final RegistryObject<SoundEvent> WILDFIRE_GRENADE_STOW = reg("wildfire.grenade_stow");
+    public static final RegistryObject<SoundEvent> WILDFIRE_SMOKE_BOUNCE = reg("wildfire.smoke_bounce");
+    public static final RegistryObject<SoundEvent> WILDFIRE_SMOKE_TRIGGER = reg("wildfire.smoke_trigger");
+    public static final RegistryObject<SoundEvent> WILDFIRE_CORE_SUSTAIN = reg("wildfire.core_sustain");
+    public static final RegistryObject<SoundEvent> WILDFIRE_SMOKE_RING = reg("wildfire.smoke_ring");
+    public static final RegistryObject<SoundEvent> WILDFIRE_SMOKE_EQUIP = reg("wildfire.smoke_equip");
+    public static final RegistryObject<SoundEvent> WILDFIRE_SMOKE_THROW = reg("wildfire.smoke_throw");
+    public static final RegistryObject<SoundEvent> WILDFIRE_GRENADE_COUNTDOWN = reg("wildfire.grenade_countdown");
+    public static final RegistryObject<SoundEvent> WILDFIRE_GRENADE_EXPLODE = reg("wildfire.grenade_explode");
+
     public static final RegistryObject<SoundEvent> ROVER_SMOKE_EQUIP = reg("rover.smoke_equip");
     public static final RegistryObject<SoundEvent> ROVER_SMOKE_STOW = reg("rover.smoke_stow");
     public static final RegistryObject<SoundEvent> ROVER_SMOKE_THROW = reg("rover.smoke_throw");

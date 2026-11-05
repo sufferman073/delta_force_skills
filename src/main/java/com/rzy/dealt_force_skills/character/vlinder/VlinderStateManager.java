@@ -272,6 +272,22 @@ public final class VlinderStateManager {
         }
     }
 
+
+    /** Native support uses base skill values; player casters retain their upgrades. */
+    public static void applyHealingDust(LivingEntity owner, LivingEntity target) {
+        if (owner instanceof ServerPlayer player) { applyHealingDust(player, target); return; }
+        int duration = Math.max(1, HEALING_DUST_TICKS);
+        target.getPersistentData().putUUID(HEALING_DUST_OWNER, owner.getUUID());
+        target.addEffect(new MobEffectInstance(ModEffects.VLINDER_HEALING_DUST.get(), duration,
+                com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vlinder.vlinder_state_manager.effect.vlinder_healing_dust.3.amplifier", 0), false, true, true), owner);
+        target.addEffect(new MobEffectInstance(MobEffects.REGENERATION, duration,
+                com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.vlinder.vlinder_state_manager.effect.regeneration.4.amplifier", 2), false, true, true), owner);
+        for (MobEffectInstance effect : new ArrayList<>(target.getActiveEffects()))
+            if (effect.getEffect().getCategory() == MobEffectCategory.HARMFUL) target.removeEffect(effect.getEffect());
+        if (target instanceof Player player) markVlinderSuppliedBuff(player, duration);
+        if (target instanceof com.rzy.dealt_force_skills.entity.OperativeEntity bot) bot.medical().protectVlinder(duration);
+    }
+
     public static void applyHealingDust(ServerPlayer owner, LivingEntity target) {
         int duration = CommanderStateManager.skillDuration(owner, HEALING_DUST_TICKS);
         int healingAmplifier = CommanderStateManager.skillEffectAmplifier(owner,
@@ -293,6 +309,7 @@ public final class VlinderStateManager {
         if (target instanceof Player player) {
             markVlinderSuppliedBuff(player, duration, owner);
         }
+        if (target instanceof com.rzy.dealt_force_skills.entity.OperativeEntity bot) bot.medical().protectVlinder(duration);
     }
 
     public static ServerPlayer healingDustOwner(LivingEntity target) {

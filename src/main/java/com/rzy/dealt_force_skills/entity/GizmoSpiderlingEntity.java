@@ -8,6 +8,8 @@ import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -40,7 +42,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider {
+public class GizmoSpiderlingEntity extends Entity implements OperativeAreaSource, ItemSupplier, BlockbenchModelPoseProvider {
     private static final EntityDataAccessor<Float> DATA_DIR_X =
             SynchedEntityData.defineId(GizmoSpiderlingEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_DIR_Z =
@@ -53,6 +55,9 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
     private static volatile double WALL_CLIMB_MAX_HEIGHT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WALL_CLIMB_MAX_HEIGHT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmo_spiderling.wall_climb_max_height", 7.5));
     private static final DustParticleOptions RED_MARKER = new DustParticleOptions(new Vector3f(1.0f, 0.05f, 0.02f), 1.0f);
 
+    private final OperativeAllegiance allegiance = new OperativeAllegiance();
+    @Override public OperativeAllegiance operativeAllegiance() { return allegiance; }
+    public static int nativeLifetime() { return Math.max(1, LIFE_TICKS); }
     private UUID ownerId;
     private float health = 4.0f;
     private double dirX;
@@ -96,7 +101,7 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
         if (!(level() instanceof ServerLevel serverLevel)) {
             return;
         }
-        if (tickCount >= LIFE_TICKS) {
+        if (tickCount >= LIFE_TICKS || (allegiance.active() && !allegiance.withinOrders(serverLevel, position()))) {
             discard();
             return;
         }
@@ -132,15 +137,18 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        if (tag.getBoolean("OperativeSource")) tickCount = allegiance.load(tag, nativeLifetime());
         health = tag.contains("Health") ? tag.getFloat("Health") : 4.0f;
         dirX = tag.getDouble("DirX");
         dirZ = tag.contains("DirZ") ? tag.getDouble("DirZ") : 1.0D;
         smartSpider = tag.getBoolean("SmartSpider");
+        if (allegiance.active()) smartSpider = false;
         syncDirection();
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -225,6 +233,9 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
     }
 
     private Optional<LivingEntity> findNearestTarget(ServerLevel level) {
+        if (allegiance.active()) return level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(PLAYER_TARGET_RADIUS),
+            target -> allegiance.isEnemy(level, target) && target.distanceToSqr(this) <= PLAYER_TARGET_RADIUS * PLAYER_TARGET_RADIUS)
+            .stream().min(Comparator.comparingDouble(target -> target.distanceToSqr(this)));
         Entity owner = ownerId == null ? null : level.getEntity(ownerId);
         double radius = smartSpider ? 50.0D : PLAYER_TARGET_RADIUS;
         AABB box = new AABB(position(), position()).inflate(radius);
@@ -247,7 +258,7 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
         Entity owner = ownerId == null ? null : level.getEntity(ownerId);
         AABB box = getBoundingBox().inflate(0.28D);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isHostileLivingFor(owner, target)) {
+            if (!(allegiance.active() ? allegiance.isEnemy(level, target) : TargetingUtil.isHostileLivingFor(owner, target))) {
                 continue;
             }
             return target;
@@ -266,7 +277,7 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
 
         AABB box = new AABB(position(), position()).inflate(EXPLOSION_RADIUS);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isHostileLivingFor(owner, target)) {
+            if (!(allegiance.active() ? allegiance.isEnemy(level, target) : TargetingUtil.isHostileLivingFor(owner, target))) {
                 continue;
             }
             if (!isInsideExplosion(target)) {
@@ -278,6 +289,9 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
                     ? com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.gizmospiderlingentity.player_damage", 10.0F)
                     : com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.gizmospiderlingentity.non_player_damage", 40.0F);
             addCorrosion(target);
+            var questCorrosion = target.getEffect(ModEffects.CORROSION.get());
+            if (ownerPlayer != null && questCorrosion != null)
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(ownerPlayer,"gizmo.corrosion.level",questCorrosion.getAmplifier()+1);
             SkillDamageHelper.hurt(target, SkillDamageHelper.gizmoSpiderling(level, this, owner), owner, baseDamage);
             hitTargets.add(target.getUUID());
             if (ownerPlayer != null) {
@@ -289,7 +303,7 @@ public class GizmoSpiderlingEntity extends Entity implements ItemSupplier, Block
         if (ownerPlayer != null && !hitTargets.isEmpty()) {
             DfsAchievements.recordGizmoSpiderNestHits(ownerPlayer, hitTargets);
         }
-        SuperbWarfareCompat.damageVehicles(level, position(), EXPLOSION_RADIUS,
+        if (!allegiance.active()) SuperbWarfareCompat.damageVehicles(level, position(), EXPLOSION_RADIUS,
                 SkillDamageHelper.gizmoSpiderling(level, this, owner), this, 0.4F, false);
         discard();
     }

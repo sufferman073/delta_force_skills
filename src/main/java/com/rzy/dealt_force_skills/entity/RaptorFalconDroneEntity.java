@@ -8,6 +8,7 @@ import com.rzy.dealt_force_skills.compat.SuperbWarfareCompat;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_RaptorFalconCamera;
 import com.rzy.dealt_force_skills.registry.ModEntities;
+import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
@@ -59,7 +60,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
 
-public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider {
+public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
+    private UUID nativeTarget, nativeSonicUuid;
     private static final EntityDataAccessor<Float> DATA_DIRECTION_X =
             SynchedEntityData.defineId(RaptorFalconDroneEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_DIRECTION_Y =
@@ -163,6 +167,7 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
         if (!(level() instanceof ServerLevel level)) {
             return;
         }
+        if (allegiance.active()) { tickNative(level); return; }
         ServerPlayer owner = owner(level);
         if (owner == null || !owner.isAlive() || batteryUsedTicks >= LIFE_TICKS) {
             discardAttachedModules(level);
@@ -204,6 +209,9 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        tickCount = allegiance.load(tag, Math.max(1, LIFE_TICKS));
+        nativeTarget = tag.hasUUID("OperativeTarget") ? tag.getUUID("OperativeTarget") : null;
+        nativeSonicUuid = tag.hasUUID("OperativeSonicModule") ? tag.getUUID("OperativeSonicModule") : null;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         directionX = tag.getDouble("DirectionX");
         directionY = tag.getDouble("DirectionY");
@@ -219,10 +227,19 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
         spiderNestModuleId = tag.contains("SpiderNestModuleId") ? tag.getInt("SpiderNestModuleId") : -1;
         attachedModulesTriggered = tag.getBoolean("AttachedModulesTriggered");
         batteryUsedTicks = tag.contains("BatteryUsedTicks") ? tag.getInt("BatteryUsedTicks") : Math.min(tickCount, LIFE_TICKS);
+        if (allegiance.active()) {
+            batteryUsedTicks = Math.max(0, Math.min(Math.max(1, LIFE_TICKS), batteryUsedTicks));
+            health = Float.isFinite(health) ? Mth.clamp(health, 0, 12) : 0;
+            if (!Double.isFinite(directionX) || !Double.isFinite(directionY) || !Double.isFinite(directionZ)) rememberDirection(new Vec3(0, 0, 1));
+            sonicModuleId = -1; spiderNestModuleId = -1;
+        }
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
+        if (nativeTarget != null) tag.putUUID("OperativeTarget", nativeTarget);
+        if (nativeSonicUuid != null) tag.putUUID("OperativeSonicModule", nativeSonicUuid);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -467,6 +484,17 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
             discard();
             return true;
         }
+        if (allegiance.active()) {
+            if (source.getEntity() != null && allegiance.isAlly(level, source.getEntity())) return false;
+            health -= amount;
+            if (health <= 0) {
+                LivingEntity caster = ownerId != null && level.getEntity(ownerId) instanceof LivingEntity living ? living : null;
+                LivingEntity target = nativeTarget != null && level.getEntity(nativeTarget) instanceof LivingEntity living ? living : null;
+                if (selfDestructing && caster != null) explodeNative(level, caster, target);
+                else { triggerAttachedModules(level, storedDirection()); discard(); }
+            }
+            return true;
+        }
         ServerPlayer owner = owner(level);
         health -= amount;
         if (health <= 0.0F) {
@@ -509,10 +537,10 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
         if (!level().isClientSide && level() instanceof ServerLevel level) {
             RangedSoundHelper.stop(level, position(), ModSounds.RAPTOR_FALCON_FLY.get(),
                     SoundSource.PLAYERS, 48.0D);
-            discardAttachedModules(level);
+            if (!allegiance.active() || reason.shouldDestroy()) discardAttachedModules(level);
         }
         releaseForcedChunks();
-        clearControlledCamera();
+        if (!allegiance.active()) clearControlledCamera();
         super.remove(reason);
     }
 
@@ -531,6 +559,14 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
     }
 
     private void triggerAttachedModules(ServerLevel level, Vec3 releaseDirection) {
+        if (allegiance.active()) {
+            if (attachedModulesTriggered) return;
+            attachedModulesTriggered = true;
+            var sonic = nativeSonic(level);
+            if (sonic != null) sonic.triggerManual();
+            nativeSonicUuid = null; sonicModuleId = -1; spiderNestModuleId = -1;
+            return;
+        }
         if (attachedModulesTriggered) {
             return;
         }
@@ -546,10 +582,10 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
     }
 
 
-    private void damageSelfDestructTargets(ServerLevel level, ServerPlayer owner) {
+    private void damageSelfDestructTargets(ServerLevel level, LivingEntity owner) {
         AABB box = new AABB(position(), position()).inflate(SELF_DESTRUCT_DAMAGE_RADIUS);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isTargetableLiving(target)) {
+            if (allegiance.active() ? !allegiance.isEnemy(level, target) : !TargetingUtil.isTargetableLiving(target)) {
                 continue;
             }
             if (owner != null && target.getUUID().equals(owner.getUUID())) {
@@ -573,6 +609,12 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
     }
 
     private void discardAttachedModules(ServerLevel level) {
+        if (allegiance.active()) {
+            var sonic = nativeSonic(level);
+            if (sonic != null) sonic.destroyByInterference();
+            nativeSonicUuid = null; sonicModuleId = -1; spiderNestModuleId = -1;
+            return;
+        }
         if (sonicModuleId >= 0 && level.getEntity(sonicModuleId) instanceof ShepherdSonicTrapEntity sonic) {
             sonic.destroyByInterference();
         }
@@ -875,4 +917,106 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
             return new ControlAnchor(player.getX(), player.getY(), player.getZ());
         }
     }
+
+    public RaptorFalconDroneEntity(EntityType<? extends RaptorFalconDroneEntity> type, Level level, LivingEntity owner, LivingEntity target) {
+        this(type, level);
+        ownerId = owner.getUUID(); allegiance.capture(owner);
+        hummingbirdFalcon = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.RAPTOR_HUMMINGBIRD_FALCON);
+        nativeTarget = target.getUUID(); rememberDirection(owner.getLookAngle());
+    }
+    public boolean isNativeOwnedBy(LivingEntity owner) {
+        return allegiance.active() && owner != null && owner.getUUID().equals(ownerId);
+    }
+    private ShepherdSonicTrapEntity nativeSonic(ServerLevel level) {
+        return nativeSonicUuid != null && level.getEntity(nativeSonicUuid) instanceof ShepherdSonicTrapEntity sonic
+                && sonic.isOwnedBy(ownerId) && sonic.isAttachedTo(this) ? sonic : null;
+    }
+    private void ensureNativeModule(ServerLevel level, LivingEntity owner) {
+        ShepherdSonicTrapEntity sonic = nativeSonic(level);
+        if (sonic != null) {
+            sonic.attachToCarrier(this, new Vec3(0.62D, -0.48D, -1.15D)); sonicModuleId = sonic.getId(); return;
+        }
+        if (falconModulesSpawned || attachedModulesTriggered) return;
+        sonic = new ShepherdSonicTrapEntity(ModEntities.SHEPHERD_SONIC_TRAP.get(), level, owner, Direction.UP);
+        sonic.attachToCarrier(this, new Vec3(0.62D, -0.48D, -1.15D));
+        if (level.addFreshEntity(sonic)) { nativeSonicUuid = sonic.getUUID(); sonicModuleId = sonic.getId(); falconModulesSpawned = true; }
+    }
+    private LivingEntity nativeTarget(ServerLevel level, com.rzy.dealt_force_skills.ai.operative.OperativeHost host) {
+        LivingEntity target = nativeTarget != null && level.getEntity(nativeTarget) instanceof LivingEntity living ? living : null;
+        if (target != null && host.isEnemy(target) && host.withinOrders(target.position()) && host.body().distanceToSqr(target) <= 80 * 80) return target;
+        target = level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(REVEAL_RADIUS),
+                candidate -> host.isEnemy(candidate) && host.withinOrders(candidate.position())
+                        && distanceToSqr(candidate) <= REVEAL_RADIUS * REVEAL_RADIUS).stream()
+                .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+        nativeTarget = target == null ? null : target.getUUID(); return target;
+    }
+    private void tickNative(ServerLevel level) {
+        if (!(ownerId != null && level.getEntity(ownerId) instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost owner)
+                || !(com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(owner.skills(), com.rzy.dealt_force_skills.ai.operative.NativeRaptorSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeRaptorSkills)
+                || !com.rzy.dealt_force_skills.ai.operative.NativeRaptorSkills.available(owner)
+                || !owner.withinOrders(position()) || batteryUsedTicks >= Math.max(1, LIFE_TICKS) || health <= 0
+                || com.rzy.dealt_force_skills.ai.operative.OperativeElectronics.blocked(owner,
+                com.rzy.dealt_force_skills.character.ModCharacters.RAPTOR_ID, com.rzy.dealt_force_skills.character.SkillSlot.ACTIVE_1)) {
+            discard(); return;
+        }
+        batteryUsedTicks += selfDestructing ? 2 : 1;
+        ensureNativeModule(level, owner.body());
+        LivingEntity target = nativeTarget(level, owner);
+        if (target == null) { discard(); return; }
+        if (tickCount % 40 == 1) {
+            level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(REVEAL_RADIUS),
+                    candidate -> owner.isEnemy(candidate) && owner.withinOrders(candidate.position())
+                            && distanceToSqr(candidate) <= REVEAL_RADIUS * REVEAL_RADIUS).stream()
+                    .sorted(Comparator.comparingDouble(this::distanceToSqr)).limit(8)
+                    .forEach(candidate -> {
+                        com.rzy.dealt_force_skills.ai.operative.OperativeRecon.reveal(owner, candidate, REVEAL_TICKS);
+                        if (hummingbirdFalcon) candidate.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                                ModEffects.RAPTOR_HUMMINGBIRD_MARKED.get(), 2400, 0), owner.body());
+                    });
+        }
+        if (batteryUsedTicks >= 160 && tickCount % 20 == 1 && falconPulseAvailable) nativeThrowPulse(level, owner, target);
+        if (!selfDestructing && (batteryUsedTicks >= 240 || !falconPulseAvailable)
+                && distanceToSqr(target) <= 16 * 16 && owner.canSee(target)) selfDestructFor(null);
+        Vec3 destination = target.getBoundingBox().getCenter();
+        if (!selfDestructing) {
+            double orbit = tickCount * 0.025D;
+            destination = target.getEyePosition().add(Math.cos(orbit) * 7, 5, Math.sin(orbit) * 7);
+        }
+        Vec3 offset = destination.subtract(position());
+        Vec3 motion = offset.lengthSqr() < 0.16D ? Vec3.ZERO : offset.normalize().scale(Math.min(offset.length(), selfDestructing ? SELF_DESTRUCT_SPEED : CONTROLLED_HORIZONTAL_SPEED));
+        if (!selfDestructing) motion = new Vec3(motion.x, Mth.clamp(motion.y, -CONTROLLED_VERTICAL_SPEED, CONTROLLED_VERTICAL_SPEED), motion.z);
+        Vec3 next = position().add(motion);
+        if (!level.hasChunkAt(net.minecraft.core.BlockPos.containing(next)) || !owner.withinOrders(next)) { discard(); return; }
+        if (motion.lengthSqr() > 0.0001D) rememberDirection(motion);
+        setDeltaMovement(motion); move(MoverType.SELF, motion);
+        ensureNativeModule(level, owner.body());
+        if (horizontalCollision || verticalCollision) {
+            if (selfDestructing) explodeNative(level, owner.body(), target); else discard();
+            return;
+        }
+        if (selfDestructing && getBoundingBox().inflate(SELF_DESTRUCT_ENTITY_HIT_RADIUS).intersects(target.getBoundingBox())) {
+            explodeNative(level, owner.body(), target); return;
+        }
+        if (tickCount % 20 == 1) RangedSoundHelper.playThrottled(level, position(), ModSounds.RAPTOR_FALCON_FLY.get(),
+                SoundSource.NEUTRAL, 0.42F, 1, 18, 18, 5);
+    }
+    private void nativeThrowPulse(ServerLevel level, com.rzy.dealt_force_skills.ai.operative.OperativeHost host, LivingEntity target) {
+        if (!falconPulseAvailable || target == null) return;
+        var plan = com.rzy.dealt_force_skills.ai.operative.NativeRaptorSkills.pulsePlan(host, position(), target, 1.15D, 0, 0.45D, 0);
+        if (plan == null) return;
+        var grenade = new RaptorPulseGrenadeEntity(ModEntities.RAPTOR_PULSE_GRENADE.get(), level, host.body());
+        grenade.setPos(plan.start()); grenade.setDeltaMovement(plan.motion());
+        if (level.addFreshEntity(grenade)) {
+            falconPulseAvailable = false;
+            level.playSound(null, blockPosition(), ModSounds.RAPTOR_FALCON_PULSE_THROW.get(), SoundSource.NEUTRAL, 0.75F, 1);
+        }
+    }
+    private void explodeNative(ServerLevel level, LivingEntity owner, LivingEntity target) {
+        triggerAttachedModules(level, storedDirection());
+        if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host) nativeThrowPulse(level, host, target);
+        damageSelfDestructTargets(level, owner);
+        level.playSound(null, blockPosition(), ModSounds.RAPTOR_FALCON_SELF_DESTRUCT_EXPLODE.get(), SoundSource.NEUTRAL, 0.9F, 1);
+        discard();
+    }
+
 }

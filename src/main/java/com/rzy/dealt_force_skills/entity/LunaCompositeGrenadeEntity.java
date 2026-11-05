@@ -38,7 +38,10 @@ import net.minecraftforge.network.NetworkHooks;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LunaCompositeGrenadeEntity extends Projectile implements ItemSupplier {
+public class LunaCompositeGrenadeEntity extends Projectile implements ItemSupplier , com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private java.util.UUID operativeOwner;
+    @Override public java.util.UUID operativeOwnerUUID() { return operativeOwner; }
+
     private static volatile int DEFAULT_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DEFAULT_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.lunacompositegrenadeentity.default_fuse_ticks", 100));
     private static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.lunacompositegrenadeentity.radius", 8.0));
     private static volatile double WALL_BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WALL_BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.lunacompositegrenadeentity.wall_bounce_factor", 0.55));
@@ -49,6 +52,8 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
     private static volatile float ARMOR_DURABILITY_DAMAGE_PER_POINT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("ARMOR_DURABILITY_DAMAGE_PER_POINT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue(
       "summons.lunacompositegrenadeentity.armor_durability_damage_per_point", 10.0F
    ));
+    public static double blastRadius() { return RADIUS; }
+
     private int fuseRemaining = DEFAULT_FUSE_TICKS;
     private int rollingTicks;
     private boolean rolling;
@@ -61,6 +66,8 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
     public LunaCompositeGrenadeEntity(EntityType<? extends LunaCompositeGrenadeEntity> type, Level level, LivingEntity owner, int fuseTicks) {
         super(type, level);
         setOwner(owner);
+        if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost
+                && owner instanceof net.minecraft.world.entity.OwnableEntity owned) operativeOwner = owned.getOwnerUUID();
         fuseRemaining = Math.max(1, fuseTicks);
     }
 
@@ -115,6 +122,8 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        operativeOwner = tag.hasUUID("OperativeOwner") ? tag.getUUID("OperativeOwner") : null;
         fuseRemaining = tag.getInt("FuseRemaining");
         if (fuseRemaining <= 0) {
             fuseRemaining = DEFAULT_FUSE_TICKS;
@@ -126,6 +135,8 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        if (operativeOwner != null) tag.putUUID("OperativeOwner", operativeOwner);
         tag.putInt("FuseRemaining", fuseRemaining);
         tag.putInt("RollingTicks", rollingTicks);
         tag.putBoolean("Rolling", rolling);
@@ -204,8 +215,8 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
 
         LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
         ServerPlayer ownerPlayer = owner instanceof ServerPlayer player ? player : null;
-        double radius = CommanderStateManager.skillRadius(ownerPlayer, RADIUS);
-        double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.lunacompositegrenadeentity", 0.1D));
+        double radius = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.radius(owner, CommanderStateManager.skillRadius(ownerPlayer, RADIUS));
+        double falloff = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.falloff(owner, CommanderStateManager.skillDamageFalloff(ownerPlayer, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.lunacompositegrenadeentity", 0.1D)));
         RangedSoundHelper.playThrottled(serverLevel, center, ModSounds.LUNA_GRENADE_EXPLODE.get(),
                 SoundSource.PLAYERS, 1.25f, 1.0f, 26.0D, 3, 4.0D);
         serverLevel.sendParticles(ParticleTypes.EXPLOSION, center.x, center.y + 0.2D, center.z,
@@ -215,7 +226,7 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
 
         AABB box = new AABB(center, center).inflate(radius);
         for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+            if (!TargetingUtil.isSelfOrHostileLivingFor(owner != null ? owner : this, target)) {
                 continue;
             }
             Vec3 targetCenter = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);

@@ -28,7 +28,7 @@ public final class ShepherdPlaceholderVisuals {
     public static void onRenderHand(RenderHandEvent event) {
         boolean grenadeAction = ClientToolReleaseAction.isActive(
                 ClientToolReleaseAction.Action.SHEPHERD_GRENADE);
-        if (!ClientShepherdHudState.hasEquippedTool() && !grenadeAction) {
+        if (!ClientShepherdHudState.hasEquippedTool() && com.rzy.dealt_force_skills.client.WildfireClient.tool() != 2 && !grenadeAction) {
             return;
         }
         event.setCanceled(true);
@@ -38,7 +38,7 @@ public final class ShepherdPlaceholderVisuals {
 
         PoseStack poseStack = event.getPoseStack();
         poseStack.pushPose();
-        ShepherdTool tool = grenadeAction ? ShepherdTool.FRAG_GRENADE : ClientShepherdHudState.equippedTool();
+        ShepherdTool tool = grenadeAction || com.rzy.dealt_force_skills.client.WildfireClient.tool() == 2 ? ShepherdTool.FRAG_GRENADE : ClientShepherdHudState.equippedTool();
         if (tool == ShepherdTool.SONIC_TRAP) {
             poseStack.translate(0.38D, -0.18D, -0.58D);
             poseStack.mulPose(Axis.YP.rotationDegrees(-18.0F));
@@ -64,7 +64,7 @@ public final class ShepherdPlaceholderVisuals {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderArm(RenderArmEvent event) {
-        if (ClientShepherdHudState.hasEquippedTool()
+        if (ClientShepherdHudState.hasEquippedTool() || com.rzy.dealt_force_skills.client.WildfireClient.tool() == 2
                 || ClientToolReleaseAction.isActive(ClientToolReleaseAction.Action.SHEPHERD_GRENADE)) {
             event.setCanceled(true);
         }

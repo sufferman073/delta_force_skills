@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.entity;
 
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
+
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper;
 import net.minecraft.core.particles.ParticleTypes;
@@ -22,7 +25,9 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class UluruFireFieldEntity extends Entity implements ItemSupplier {
+public class UluruFireFieldEntity extends Entity implements ItemSupplier, OperativeAreaSource {
+    private final OperativeAllegiance nativeAllegiance = new OperativeAllegiance();
+    @Override public OperativeAllegiance operativeAllegiance() { return nativeAllegiance; }
     private static final EntityDataAccessor<Boolean> DATA_EARTH_FIRE =
             SynchedEntityData.defineId(UluruFireFieldEntity.class, EntityDataSerializers.BOOLEAN);
     private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.ulurufirefieldentity.life_ticks", 400));
@@ -37,6 +42,7 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier {
 
     public UluruFireFieldEntity(EntityType<? extends UluruFireFieldEntity> type, Level level, LivingEntity owner) {
         this(type, level);
+        nativeAllegiance.capture(owner);
         if (owner != null) {
             ownerId = owner.getUUID();
         }
@@ -55,6 +61,7 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && nativeAllegiance.active() && tickCount >= LIFE_TICKS) { discard(); return; }
         double radius = effectiveRadius();
         if (level().isClientSide) {
             for (int i = 0; i < 3; i++) {
@@ -88,12 +95,15 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        int nativeAge = nativeAllegiance.load(tag, LIFE_TICKS);
+        if (nativeAllegiance.active()) tickCount = nativeAge;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         entityData.set(DATA_EARTH_FIRE, tag.getBoolean("EarthFire"));
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        nativeAllegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -113,6 +123,8 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier {
     public void setEarthFire(boolean earthFire) {
         entityData.set(DATA_EARTH_FIRE, earthFire);
     }
+
+    public static double nativeRadius() { return Math.max(0, RADIUS); }
 
     private double effectiveRadius() {
         return entityData.get(DATA_EARTH_FIRE) ? RADIUS * 3.0D : RADIUS;

@@ -223,7 +223,7 @@ public class SettingsScreen extends Screen {
         if (provider instanceof DfsConfigProvider dfs) {
             dfs.acceptApplyResult(success, count, code);
         }
-        if (active != null) {
+        if (active != null && success) {
             active.dirtyValues.clear();
             active.invalidateEntriesCache();
         }
@@ -233,13 +233,18 @@ public class SettingsScreen extends Screen {
     protected void init() {
         super.init();
         active = this;
-        this.uiScale = Math.min(this.width / REFERENCE_WIDTH, this.height / REFERENCE_HEIGHT);
-        this.offsetX = (int)((this.width - REFERENCE_WIDTH * this.uiScale) / 2);
-        this.offsetY = (int)((this.height - REFERENCE_HEIGHT * this.uiScale) / 2);
-        this.refW = (int)REFERENCE_WIDTH;
-        this.refH = (int)REFERENCE_HEIGHT;
-        // 根据屏幕大小计算位置（按比例，不额外缩放）
+        // 参考画布按放大倍数缩小（960/倍数 x 540/倍数）再等比塞进 GUI 空间，
+        // 这样界面尺寸 2 下字与控件等比放大，且画布不会超出屏幕（详见 UiCanvasScaleMath）。
+        // 倍数来源：玩家没手动设置过时按当前界面尺寸自动选（>= 3 → 1.0，< 3 → 1.5），
+        // 手动设置过则一直用玩家的值。
         DFClientConfig cfg = DFClientConfig.getInstance();
+        double multiplier = cfg.resolveUiScale(Minecraft.getInstance().getWindow().getGuiScale());
+        this.refW = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_WIDTH, multiplier);
+        this.refH = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_HEIGHT, multiplier);
+        this.uiScale = UiCanvasScaleMath.fitScale(this.width, this.height, this.refW, this.refH);
+        this.offsetX = UiCanvasScaleMath.canvasOffset(this.width, this.refW, this.uiScale);
+        this.offsetY = UiCanvasScaleMath.canvasOffset(this.height, this.refH, this.uiScale);
+        // 根据屏幕大小计算位置（按比例，不额外缩放）
         this.tabWidth = (int) (TAB_BASE_WIDTH * UI_SCALE);
         this.tabHeight = (int) (TAB_BASE_HEIGHT * UI_SCALE);
         this.tabStartX = (int)(REFERENCE_WIDTH * TAB_START_X_RATIO / 100) + cfg.getTabXOffset();
@@ -288,8 +293,7 @@ public class SettingsScreen extends Screen {
 
         showUnsavedDialog = false;
         // 每次进入设置界面清空撤销历史
-        undoStack.clear();
-        redoStack.clear();
+        // Keep edit history when returning from the layout editor or resizing.
 
         // 每次打开设置界面时向服务端请求最新配置权限快照
         // 确保玩家获得/失去OP后立即反映，无需重进服务器
@@ -367,7 +371,7 @@ public class SettingsScreen extends Screen {
         guiGraphics.pose().popPose();
 
         // 预览HUD（在屏幕坐标中渲染，与游戏内HUD一致）
-        if (isPreviewing) {
+        if (isPreviewing && shouldShowPreview()) {
             renderPreviewHud(guiGraphics, mouseX, mouseY);
         }
     }
@@ -1302,7 +1306,7 @@ public class SettingsScreen extends Screen {
         boolean hasChanges = hasUnsavedChanges();
 
         // 预览按钮（自定义掉落物HUD / HUD布局 标签页显示）
-        if ("deltaforce".equals(getCurrentModId()) || "dealt_force_skills".equals(getCurrentModId())) {
+        if (shouldShowPreview()) {
             boolean hoverPreview = mouseX >= previewBtnX && mouseX < previewBtnX + previewBtnW
                     && mouseY >= previewBtnY && mouseY < previewBtnY + previewBtnH;
             int previewBg = isPreviewing ? 0xCC2288FF : hoverPreview ? 0xFF555555 : 0xFF444444;
@@ -1312,6 +1316,11 @@ public class SettingsScreen extends Screen {
             int previewLabelW = this.font.width(previewLabel);
             guiGraphics.drawString(this.font, previewLabel, previewBtnX + (previewBtnW - previewLabelW) / 2,
                     previewBtnY + (previewBtnH - 8) / 2, isPreviewing ? 0xFFFFFFFF : 0xFFCCCCCC);
+        }
+
+        if (isCustomDropHud()) {
+            drawBottomButton(guiGraphics, mouseX, mouseY, previewBtnX - 66, previewBtnY, 60, previewBtnH,
+                    Component.translatable("screen.deltaforce.layout.edit"), true);
         }
 
         drawBottomButton(guiGraphics, mouseX, mouseY, saveBtnX, saveBtnY, saveBtnW, saveBtnH,
@@ -1343,6 +1352,31 @@ public class SettingsScreen extends Screen {
         guiGraphics.drawString(this.font, text, textX, textY, textColor, false);
     }
 
+    private boolean isCustomDropHud() {
+        return "deltaforce".equals(getCurrentModId()) && selectedCat >= 0 && selectedCat < categories.size()
+                && "customdrop".equals(categories.get(selectedCat))
+                && selectedSubcat >= 0 && selectedSubcat < subCategories.size()
+                && "hud".equals(subCategories.get(selectedSubcat));
+    }
+
+    private boolean shouldShowPreview() {
+        return isCustomDropHud() || "dealt_force_skills".equals(getCurrentModId());
+    }
+
+    private void openDropLayout() {
+        Minecraft.getInstance().setScreen(new CustomDropLayoutScreen(this,
+                getEffectiveValue("customdrop.hud.scale"), getEffectiveValue("customdrop.hud.x_offset"),
+                getEffectiveValue("customdrop.hud.y_offset"),
+                "true".equalsIgnoreCase(getEffectiveValue("customdrop.hud.simple_mode")), values -> {
+                    IConfigProvider provider = DeltaForce.getConfigProvider("deltaforce");
+                    for (Map.Entry<String, String> entry : values.entrySet()) {
+                        putDirty(entry.getKey(), entry.getValue());
+                        if (provider != null) provider.setValue(entry.getKey(), entry.getValue());
+                    }
+                    invalidateEntriesCache();
+                }));
+    }
+
     // ======================== 预览HUD ========================
 
     /** 获取当前配置值（优先使用脏值，否则使用已保存值） */
@@ -1355,7 +1389,7 @@ public class SettingsScreen extends Screen {
             return provider.getValue(path);
         }
         return switch (path) {
-            case "customdrop.hud.enabled" -> "true";
+            case "customdrop.hud.enabled" -> "false";
             case "customdrop.hud.scale" -> "0.0";
             case "customdrop.hud.x_offset" -> "0";
             case "customdrop.hud.y_offset" -> "0";
@@ -1447,6 +1481,10 @@ public class SettingsScreen extends Screen {
         try { scale = Float.parseFloat(getEffectiveValue("customdrop.hud.scale")); } catch (NumberFormatException ignored) {}
         try { xOffset = Integer.parseInt(getEffectiveValue("customdrop.hud.x_offset")); } catch (NumberFormatException ignored) {}
         try { yOffset = Integer.parseInt(getEffectiveValue("customdrop.hud.y_offset")); } catch (NumberFormatException ignored) {}
+
+        scale = Float.isFinite(scale) ? Math.max(-0.9F, Math.min(1.0F, scale)) : 0.0F;
+        xOffset = Math.max(-10000, Math.min(10000, xOffset));
+        yOffset = Math.max(-10000, Math.min(10000, yOffset));
 
         // 每秒切换模型
         long modelCycle = (System.currentTimeMillis() - previewStartTime) / 1000;
@@ -1751,9 +1789,18 @@ public class SettingsScreen extends Screen {
 
     // ======================== 设置界面配置浮层 ========================
 
+    /** 设置浮层尺寸（渲染与命中判定共用，改一处即可，避免滑块点击区错位）。 */
+    private static final int SETTINGS_OVERLAY_W = 220;
+    /** 高度按内容算：28（首行）+ 34（行距）+ 10（滑块）+ 2（手柄）+ 10（底边距）= 84。 */
+    private static final int SETTINGS_OVERLAY_H = 84;
+    /** 浮层内滑块的行间距（每个滑块占一行）。 */
+    private static final int SETTINGS_OVERLAY_ROW_GAP = 34;
+    /** 第一个滑块的纵坐标偏移（标题占 6~15，标签画在滑块上方 10 像素，28 起不压标题）。 */
+    private static final int SETTINGS_OVERLAY_SLIDER_TOP = 28;
+
     private void renderSettingsOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        int overlayW = 220;
-        int overlayH = 80;
+        int overlayW = SETTINGS_OVERLAY_W;
+        int overlayH = SETTINGS_OVERLAY_H;
         int overlayX = (refW - overlayW) / 2;
         int overlayY = (refH - overlayH) / 2;
 
@@ -1765,13 +1812,21 @@ public class SettingsScreen extends Screen {
         int titleW = this.font.width(title);
         guiGraphics.drawString(this.font, title, overlayX + (overlayW - titleW) / 2, overlayY + 6, 0xFFFFFFFF, false);
 
-        int sliderStartY = overlayY + 24;
+        int sliderStartY = overlayY + SETTINGS_OVERLAY_SLIDER_TOP;
         int sliderLeft = overlayX + 16;
         int sliderW = overlayW - 48;
         int sliderH = 10;
 
         renderOverlaySlider(guiGraphics, mouseX, mouseY, overlayX, sliderStartY, sliderLeft, sliderW, sliderH,
                 Component.translatable("screen.deltaforce.settings.row_height"), entryRowHeight, 20, 40, 1, "rowHeight");
+
+        // 滑块显示「当前真正生效」的倍数：自动模式下随界面尺寸变化（>= 3 → 1.0，< 3 → 1.5），
+        // 拖一下即切到手动模式并记住玩家的选择。
+        renderOverlaySlider(guiGraphics, mouseX, mouseY, overlayX, sliderStartY + SETTINGS_OVERLAY_ROW_GAP,
+                sliderLeft, sliderW, sliderH,
+                Component.translatable("screen.deltaforce.settings.ui_scale"),
+                (float) DFClientConfig.getInstance().resolveUiScale(Minecraft.getInstance().getWindow().getGuiScale()),
+                (float) DFClientConfig.MIN_UI_SCALE, (float) DFClientConfig.MAX_UI_SCALE, 0.1F, "uiScale");
 
         // 关闭按钮
         int closeBtnW = 40;
@@ -1802,8 +1857,8 @@ public class SettingsScreen extends Screen {
     }
 
     private boolean handleSettingsOverlayClick(double mouseX, double mouseY) {
-        int overlayW = 220;
-        int overlayH = 80;
+        int overlayW = SETTINGS_OVERLAY_W;
+        int overlayH = SETTINGS_OVERLAY_H;
         int overlayX = (refW - overlayW) / 2;
         int overlayY = (refH - overlayH) / 2;
 
@@ -1824,12 +1879,14 @@ public class SettingsScreen extends Screen {
         }
 
         // 滑块点击处理
-        int sliderStartY = overlayY + 24;
+        int sliderStartY = overlayY + SETTINGS_OVERLAY_SLIDER_TOP;
         int sliderLeft = overlayX + 16;
         int sliderW = overlayW - 48;
         int sliderH = 10;
 
         if (handleOverlaySliderDrag(mouseX, mouseY, sliderStartY, sliderLeft, sliderW, sliderH, 20, 40, 1, "rowHeight")) return true;
+        if (handleOverlaySliderDrag(mouseX, mouseY, sliderStartY + SETTINGS_OVERLAY_ROW_GAP, sliderLeft, sliderW, sliderH,
+                (float) DFClientConfig.MIN_UI_SCALE, (float) DFClientConfig.MAX_UI_SCALE, 0.1F, "uiScale")) return true;
 
         return false;
     }
@@ -1844,6 +1901,37 @@ public class SettingsScreen extends Screen {
 
             switch (id) {
                 case "rowHeight" -> entryRowHeight = Math.round(value);
+                case "uiScale" -> {
+                    DFClientConfig cfg = DFClientConfig.getInstance();
+                    // 拖动过程中每帧都会进这里，只在数值真的变了才写盘，避免频繁 IO
+                    boolean changed = Math.abs(cfg.getUiScale() - value) > 1.0E-6D || cfg.isUiScaleAuto();
+                    if (!changed) {
+                        return true;
+                    }
+                    cfg.setUiScale(value);
+                    cfg.save();
+                    // 立即按新倍数重算画布与适配系数，松手即可看到放大效果
+                    double multiplier = cfg.resolveUiScale(Minecraft.getInstance().getWindow().getGuiScale());
+                    this.refW = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_WIDTH, multiplier);
+                    this.refH = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_HEIGHT, multiplier);
+                    this.uiScale = UiCanvasScaleMath.fitScale(this.width, this.height, this.refW, this.refH);
+                    this.offsetX = UiCanvasScaleMath.canvasOffset(this.width, this.refW, this.uiScale);
+                    this.offsetY = UiCanvasScaleMath.canvasOffset(this.height, this.refH, this.uiScale);
+                    // 画布尺寸变了，依赖 refW/refH 的布局都要重算（X 与 Y 都要，否则底栏按钮会飘）
+                    this.contentBottom = this.refH - BOTTOM_BAR_HEIGHT - 4;
+                    int barY = this.refH - BOTTOM_BAR_HEIGHT;
+                    int btnW = 60;
+                    int btnH = BOTTOM_BAR_HEIGHT;
+                    int rightMargin = this.refW * BOTTOM_BTN_MARGIN_RATIO / 100;
+                    exitBtnX = this.refW - rightMargin - btnW; exitBtnY = barY; exitBtnW = btnW; exitBtnH = btnH;
+                    cancelBtnX = exitBtnX - 6 - btnW; cancelBtnY = barY; cancelBtnW = btnW; cancelBtnH = btnH;
+                    saveBtnX = cancelBtnX - 6 - btnW; saveBtnY = barY; saveBtnW = btnW; saveBtnH = btnH;
+                    int smallBtnW = 24;
+                    redoBtnX = saveBtnX - 4 - smallBtnW; redoBtnY = barY; redoBtnW = smallBtnW; redoBtnH = btnH;
+                    undoBtnX = redoBtnX - 2 - smallBtnW; undoBtnY = barY; undoBtnW = smallBtnW; undoBtnH = btnH;
+                    previewBtnW = 50; previewBtnH = btnH;
+                    previewBtnX = undoBtnX - 6 - previewBtnW; previewBtnY = barY;
+                }
             }
             return true;
         }
@@ -2191,7 +2279,7 @@ public class SettingsScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // HUD布局拖拽优先处理（预览模式 + DFS标签页，使用屏幕坐标）
-        if (isPreviewing && button == 0 && "dealt_force_skills".equals(getCurrentModId())) {
+        if (!showUnsavedDialog && !showSettingsOverlay && isPreviewing && button == 0 && "dealt_force_skills".equals(getCurrentModId())) {
             // 检测是否点击了技能按钮区域
             if (mouseX >= hudSkillsVisX && mouseX < hudSkillsVisX + hudSkillsVisW
                     && mouseY >= hudSkillsVisY && mouseY < hudSkillsVisY + hudSkillsVisH) {
@@ -2342,8 +2430,13 @@ public class SettingsScreen extends Screen {
             }
 
             // 底栏
+            if (isCustomDropHud() && mx >= previewBtnX - 66 && mx < previewBtnX - 6
+                    && my >= previewBtnY && my < previewBtnY + previewBtnH) {
+                openDropLayout();
+                return true;
+            }
             // 预览按钮（自定义掉落物HUD / HUD布局 标签页显示，开关模式）
-            if (("deltaforce".equals(getCurrentModId()) || "dealt_force_skills".equals(getCurrentModId()))
+            if (shouldShowPreview()
                     && mx >= previewBtnX && mx < previewBtnX + previewBtnW
                     && my >= previewBtnY && my < previewBtnY + previewBtnH) {
                 isPreviewing = !isPreviewing;
@@ -2357,8 +2450,14 @@ public class SettingsScreen extends Screen {
 
             if (hasUnsavedChanges() && mx >= saveBtnX && mx < saveBtnX + saveBtnW && my >= saveBtnY && my < saveBtnY + saveBtnH) {
                 IConfigProvider provider = getCurrentProvider();
-                if (provider != null) provider.save();
-                dirtyValues.clear();
+                if (provider != null) {
+                    provider.save();
+                    if (!provider.isDirty() && !provider.isBusy()) {
+                        dirtyValues.clear();
+                        undoStack.clear();
+                        redoStack.clear();
+                    }
+                }
                 focusedEditKey = null;
                 invalidateEntriesCache();
                 return true;
@@ -2367,6 +2466,8 @@ public class SettingsScreen extends Screen {
                 IConfigProvider provider = getCurrentProvider();
                 if (provider != null) provider.cancel();
                 dirtyValues.clear();
+                undoStack.clear();
+                redoStack.clear();
                 focusedEditKey = null;
                 invalidateEntriesCache();
                 return true;
@@ -3019,7 +3120,7 @@ public class SettingsScreen extends Screen {
 
     /** 带撤销记录地写入脏值（所有独立配置值修改都应通过此方法） */
     private void putDirty(String path, String newValue) {
-        String oldValue = dirtyValues.get(path);
+        String oldValue = getEffectiveValue(path);
         if (!Objects.equals(oldValue, newValue)) {
             undoStack.push(new ChangeRecord(path, oldValue, newValue));
             redoStack.clear();

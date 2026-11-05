@@ -43,7 +43,7 @@ public class GroundItemEvents {
      * 检查物品是否应该转换为地面物品实体
      */
     private static boolean shouldConvertToGroundItem(ItemStack itemStack) {
-        if (itemStack.isEmpty()) {
+        if (!com.rzy.dealt_force_skills.config.DealtBaseConfig.customDropsEnabled() || itemStack.isEmpty()) {
             return false;
         }
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(itemStack.getItem());
@@ -55,34 +55,6 @@ public class GroundItemEvents {
     }
 
     @SubscribeEvent
-    public static void onItemToss(ItemTossEvent event) {
-        ItemStack itemStack = event.getEntity().getItem();
-        if (shouldConvertToGroundItem(itemStack)) {
-            event.setCanceled(true);
-
-            var level = event.getEntity().level();
-            var entity = event.getEntity();
-            var player = event.getPlayer();
-
-            if (!level.isClientSide()) {
-                double x = player.getX();
-                double y = player.getY();
-                double z = player.getZ();
-
-                GroundItemEntity groundItem = new GroundItemEntity(
-                    level,
-                    x,
-                    y,
-                    z,
-                    itemStack
-                );
-                groundItem.setDeltaMovement(entity.getDeltaMovement());
-                level.addFreshEntity(groundItem);
-            }
-        }
-    }
-
-    @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent event) {
         if (event.getEntity() instanceof ItemEntity itemEntity && !itemEntity.getItem().isEmpty()) {
             ItemStack itemStack = itemEntity.getItem();
@@ -91,8 +63,6 @@ public class GroundItemEvents {
                 Level level = event.getEntity().level();
 
                 if (!level.isClientSide() && level instanceof ServerLevel serverLevel) {
-                    event.setCanceled(true);
-
                     GroundItemEntity groundItem = new GroundItemEntity(
                         serverLevel,
                         itemEntity.getX(),
@@ -100,8 +70,9 @@ public class GroundItemEvents {
                         itemEntity.getZ(),
                         itemStack.copy()
                     );
+                    groundItem.setVanillaItem(itemEntity);
                     groundItem.setDeltaMovement(itemEntity.getDeltaMovement());
-                    serverLevel.addFreshEntity(groundItem);
+                    if(serverLevel.addFreshEntity(groundItem))event.setCanceled(true);
                 }
             }
         }

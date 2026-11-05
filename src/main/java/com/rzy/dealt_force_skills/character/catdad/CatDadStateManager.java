@@ -222,6 +222,14 @@ public final class CatDadStateManager {
         return true;
     }
 
+    public static boolean tryBlockDamage(ServerPlayer player, float amount) {
+        boolean blocked = tryBlockIncoming(player);
+        if (blocked && Float.isFinite(amount) && amount > 0.0F) {
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "catdad.spikes.blocked");
+        }
+        return blocked;
+    }
+
     public static boolean tryBlockIncoming(ServerPlayer player) {
         if (!isCatDad(player) || !blockActive(player)) {
             return false;
@@ -514,6 +522,7 @@ public final class CatDadStateManager {
             float minimumHealth = player.getMaxHealth() * 0.30F;
             float restoredHealth = Math.max(tag.getFloat(SNAPSHOT_HEALTH), minimumHealth);
             player.setHealth(Math.max(1.0F, Math.min(player.getMaxHealth(), restoredHealth)));
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "catdad.revive");
             play(player, ModSounds.CATDAD_SELF_RESCUE_COMPLETE.get(), 0.9F, 1.05F);
         }
     }

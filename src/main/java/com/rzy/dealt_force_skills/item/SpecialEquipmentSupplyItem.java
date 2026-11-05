@@ -20,6 +20,11 @@ public class SpecialEquipmentSupplyItem extends DfsUseItem {
         super(properties, quality, tooltipKey, useTicks, startSound, finishSound, startMessageKey, finishMessageKey);
     }
 
+    @Override public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        target.skills().refresh(target);
+        return true;
+    }
+
     @Override
     protected boolean applyUseEffect(ItemStack stack, Level level, ServerPlayer player) {
         ModItemEffectHelper.refreshSkillCooldowns(player);

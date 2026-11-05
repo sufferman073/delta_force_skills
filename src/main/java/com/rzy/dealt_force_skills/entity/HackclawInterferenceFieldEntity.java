@@ -26,7 +26,11 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class HackclawInterferenceFieldEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider {
+public class HackclawInterferenceFieldEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public void setOperativeAllegiance(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source) { allegiance.copyFrom(source); }
+    public boolean protects(Entity entity) { return allegiance.isAlly(this, entity); }
     private static final EntityDataAccessor<Integer> ATTACHED_FACE =
             SynchedEntityData.defineId(HackclawInterferenceFieldEntity.class, EntityDataSerializers.INT);
     public static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.hackclawinterferencefieldentity.radius", 10.0));
@@ -78,7 +82,7 @@ public class HackclawInterferenceFieldEntity extends Entity implements ItemSuppl
             return;
         }
 
-        if (age % DEVICE_DISRUPT_INTERVAL_TICKS == 0) {
+        if (age % Math.max(1, DEVICE_DISRUPT_INTERVAL_TICKS) == 0) {
             int destroyed = ElectronicInterferenceManager.disruptElectronicDevices(this);
             if (destroyed > 0 && level() instanceof ServerLevel level) {
                 RangedSoundHelper.playThrottled(level, position(),
@@ -90,6 +94,7 @@ public class HackclawInterferenceFieldEntity extends Entity implements ItemSuppl
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        allegiance.load(tag, DURATION_TICKS);
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         age = tag.getInt("Age");
         feedbackTriggered = tag.getBoolean("FeedbackTriggered");
@@ -98,6 +103,7 @@ public class HackclawInterferenceFieldEntity extends Entity implements ItemSuppl
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, age);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }

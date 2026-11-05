@@ -56,6 +56,7 @@ public final class GenericSkillHudOverlay {
                 0xFFFFC857, KeybindRegister.ACTIVE_SKILL_2);
         drawSlotIfPresent(graphics, font, character, SkillSlot.ACTIVE_1, x + (SLOT + GAP) * 2, y,
                 0xFF8EE36A, KeybindRegister.ACTIVE_SKILL_1);
+        if(ModCharacters.WILDFIRE_ID.equals(character.id()))WildfireClient.renderToolHud(graphics);
     }
 
     private static void drawSlotIfPresent(
@@ -75,9 +76,16 @@ public final class GenericSkillHudOverlay {
 
         drawSlot(graphics, font, x, y, accentColor, key,
                 skill.displayName(),
-                Component.translatable(skill.implemented()
+                ModCharacters.WILDFIRE_ID.equals(character.id()) ? WildfireClient.detail(slot) : Component.translatable(skill.implemented()
                         ? "hud.dealt_force_skills.generic.ready"
                         : "hud.dealt_force_skills.generic.placeholder").getString());
+        if(ModCharacters.WILDFIRE_ID.equals(character.id())) {
+            var state=WildfireClient.local();
+            int recharge=slot==SkillSlot.CORE?0:state.getInt(slot==SkillSlot.ACTIVE_1?"SmokeRecharge":"GrenadeRecharge");
+            if(recharge>0)try(var ignored=ClientHudLayout.scaleButton(graphics,x,y,SLOT)) {
+                drawCenteredClipped(graphics,font,(recharge+19)/20+"s",x+SLOT/2,y+SLOT+2,SLOT,0xFFFFE6A6);
+            }
+        }
     }
 
     private static void drawSlot(

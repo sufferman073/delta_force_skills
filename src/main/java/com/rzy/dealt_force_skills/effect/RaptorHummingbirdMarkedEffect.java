@@ -43,4 +43,18 @@ public class RaptorHummingbirdMarkedEffect extends MobEffect {
     public boolean isDurationEffectTick(int duration, int amplifier) {
         return duration % 20 == 0;
     }
+
+    public static void setOwner(LivingEntity target, LivingEntity owner) {
+        if (owner != null) target.getPersistentData().putUUID(OWNER_TAG, owner.getUUID());
+    }
+    public static boolean isOwnedBy(LivingEntity target, LivingEntity owner) {
+        return owner != null && target.getPersistentData().hasUUID(OWNER_TAG)
+                && owner.getUUID().equals(target.getPersistentData().getUUID(OWNER_TAG));
+    }
+    public static Optional<com.rzy.dealt_force_skills.ai.operative.OperativeHost> nativeOwner(ServerLevel level, LivingEntity target) {
+        var tag = target.getPersistentData();
+        return tag.hasUUID(OWNER_TAG) && level.getEntity(tag.getUUID(OWNER_TAG)) instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host
+                ? Optional.of(host) : Optional.empty();
+    }
+
 }

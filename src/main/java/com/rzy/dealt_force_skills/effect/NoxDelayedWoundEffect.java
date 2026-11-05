@@ -36,6 +36,7 @@ public class NoxDelayedWoundEffect extends MobEffect {
         if (entity.level().isClientSide) {
             return;
         }
+        com.rzy.dealt_force_skills.department.DepartmentHealing.source(entity, "nox", null);
         track(entity);
         CompoundTag tag = data(entity);
         float currentHealth = entity.getHealth();
@@ -75,6 +76,7 @@ public class NoxDelayedWoundEffect extends MobEffect {
         float healthCap = tag.contains(HEALTH_CAP) ? tag.getFloat(HEALTH_CAP) : currentHealth;
         healthCap = Math.max(0.0f, Math.min(entity.getMaxHealth(), healthCap));
         if (currentHealth > healthCap) {
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(com.rzy.dealt_force_skills.department.DepartmentHealing.owner(entity,"nox"),"nox.heal_prevented",currentHealth-healthCap);
             entity.setHealth(healthCap);
         } else if (currentHealth < healthCap) {
             tag.putFloat(HEALTH_CAP, currentHealth);
@@ -131,6 +133,7 @@ public class NoxDelayedWoundEffect extends MobEffect {
     }
 
     public static void clearCaps(LivingEntity entity) {
+        com.rzy.dealt_force_skills.department.DepartmentHealing.source(entity, "nox", null);
         entity.getPersistentData().remove(ROOT_TAG);
         untrack(entity);
     }

@@ -76,6 +76,7 @@ public final class DWolfSkills {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.d_wolf.slide_unavailable"), true);
             return false;
         }
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"d_wolf.slide");
         return true;
     }
 
@@ -137,7 +138,10 @@ public final class DWolfSkills {
         smoke.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         smoke.setYRot(player.getYRot());
         smoke.setXRot(player.getXRot());
-        level.addFreshEntity(smoke);
+        if (level.addFreshEntity(smoke)) {
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"d_wolf.smoke");
+        }
         level.playSound(null, player.blockPosition(), ModSounds.D_WOLF_SMOKE_EQUIP.get(),
                 SoundSource.PLAYERS, 0.7f, highThrow ? 0.9f : 1.1f);
         level.playSound(null, player.blockPosition(), ModSounds.D_WOLF_SMOKE_THROW.get(),
@@ -156,6 +160,7 @@ public final class DWolfSkills {
         }
 
         DWolfStateManager.startOverloadStartup(player);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"d_wolf.overload");
         player.level().playSound(null, player.blockPosition(), ModSounds.D_WOLF_OVERLOAD_START.get(),
                 SoundSource.PLAYERS, 1.0f, 1.0f);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.d_wolf.overload_startup"), true);

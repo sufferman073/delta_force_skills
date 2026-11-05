@@ -37,7 +37,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
+public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    private int nativeAge;
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
     private static volatile int DEFAULT_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DEFAULT_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.noxflashgrenadeentity.default_fuse_ticks", 80));
     private static volatile int BOUNCE_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.noxflashgrenadeentity.bounce_fuse_ticks", 12));
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.noxflashgrenadeentity.bounce_factor", 0.66));
@@ -48,6 +51,9 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
     private UUID ownerId;
     private int fuseRemaining = DEFAULT_FUSE_TICKS;
     private boolean bounced;
+    public void setNativeFuse(int ticks) {
+        if (allegiance.active()) fuseRemaining = Math.max(2, Math.min(DEFAULT_FUSE_TICKS, ticks));
+    }
 
     public NoxFlashGrenadeEntity(EntityType<? extends NoxFlashGrenadeEntity> type, Level level) {
         super(type, level);
@@ -57,6 +63,7 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
         super(type, level);
         setOwner(owner);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
     }
 
     @Override
@@ -71,6 +78,11 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+
+        if (allegiance.active() && level() instanceof ServerLevel level
+                && (++nativeAge > DEFAULT_FUSE_TICKS || !allegiance.withinOrders(level, position()))) {
+            discard(); return;
+        }
 
         if (!level().isClientSide && --fuseRemaining <= 0) {
             explode(position());
@@ -99,9 +111,12 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        nativeAge = allegiance.load(tag, DEFAULT_FUSE_TICKS);
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         fuseRemaining = tag.getInt("FuseRemaining");
-        if (fuseRemaining <= 0) {
+        if (allegiance.active()) fuseRemaining = Math.max(0, Math.min(DEFAULT_FUSE_TICKS, fuseRemaining));
+        else if (fuseRemaining <= 0) {
             fuseRemaining = DEFAULT_FUSE_TICKS;
         }
         bounced = tag.getBoolean("Bounced");
@@ -109,6 +124,8 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, nativeAge);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -164,7 +181,8 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
         AABB box = new AABB(center, center).inflate(RADIUS);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
             // Self-harm skill: flash can hit thrower; teammates skipped.
-            if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+            if (allegiance.active() ? !allegiance.isCaster(target) && !allegiance.isEnemy(level, target)
+                    : !TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
                 continue;
             }
             int flashTicks = flashDuration(center, target);

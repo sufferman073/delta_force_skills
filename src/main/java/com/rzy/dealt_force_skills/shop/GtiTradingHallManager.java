@@ -193,7 +193,7 @@ public final class GtiTradingHallManager {
         int rewards = 1 + player.getRandom().nextInt(6);
         for (int i = 0; i < rewards; i++) {
             ItemStack reward = new ItemStack(items.get(player.getRandom().nextInt(items.size())));
-            if (!player.getInventory().add(reward) && !reward.isEmpty()) player.drop(reward, false);
+            if (!player.getInventory().add(reward) && !reward.isEmpty()) com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, reward);
         }
         player.getPersistentData().putInt(RANDOM_REWARDS, claimed + 1);
     }

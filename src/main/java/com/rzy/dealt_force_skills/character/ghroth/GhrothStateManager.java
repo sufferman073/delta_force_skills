@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.ghroth;
 
+import com.rzy.dealt_force_skills.motion.TacticalMotion;
+import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
+
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
@@ -7,7 +10,6 @@ import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.stamina.StaminaManager;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_SyncGhrothState;
-import com.rzy.dealt_force_skills.network.S2C_TempestStartRoll;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
 import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
@@ -124,6 +126,7 @@ public final class GhrothStateManager {
         clearNoonGaze(tag);
         tag.remove(TACTICAL_IMMUNE_UNTIL);
         tag.remove(TACTICAL_MODE);
+        LAST_TACTICAL_STEP.remove(player);
         tag.putInt(TACTICAL_BOOST_TICKS, 0);
         syncToClient(player);
     }
@@ -134,6 +137,7 @@ public final class GhrothStateManager {
 
     public static void clearRuntimeCaches() {
         FROZEN_ENTITIES.clear();
+        LAST_TACTICAL_STEP.clear();
     }
 
     public static void tick(ServerPlayer player) {
@@ -225,6 +229,15 @@ public final class GhrothStateManager {
         return noonActiveRemainingTicks(player) > NOON_OUTPUT_WINDOW_TICKS;
     }
 
+    private static final java.util.Map<ServerPlayer,Long> LAST_TACTICAL_STEP=new java.util.WeakHashMap<>();
+    public static boolean isTacticalMoving(ServerPlayer player) {
+        return isGhroth(player) && (data(player).getInt(TACTICAL_BOOST_TICKS)>0
+                || LAST_TACTICAL_STEP.getOrDefault(player,Long.MIN_VALUE)==SkillCooldownHelper.now(player));
+    }
+    public static boolean isNoonFullyCharged(ServerPlayer player) {
+        return NOON_GAZE_TOTAL_TICKS>0 && noonGazeTicks(player)>=NOON_GAZE_TOTAL_TICKS;
+    }
+
     public static boolean isTacticalImmune(Player player) {
         return isGhroth(player) && data(player).getLong(TACTICAL_IMMUNE_UNTIL) > SkillCooldownHelper.now(player);
     }
@@ -236,7 +249,7 @@ public final class GhrothStateManager {
     }
 
     public static void recordJusticeKill(ServerPlayer killer, LivingEntity victim) {
-        if (!isJusticeActive(killer)) {
+        if (!isGhroth(killer) || !isJusticeActive(killer)) {
             return;
         }
         if (victim instanceof ServerPlayer killedPlayer) {
@@ -252,6 +265,8 @@ public final class GhrothStateManager {
         CompoundTag stacks = data(killer).getCompound(JUSTICE_MOB_STACKS);
         stacks.putInt(key, Mth.clamp(stacks.getInt(key) + 1, 0, JUSTICE_MAX_STACKS));
         data(killer).put(JUSTICE_MOB_STACKS, stacks);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(killer,"ghroth.active2.reduction",
+                1.0D-incomingDamageMultiplier(killer,victim));
         syncToClient(killer);
     }
 
@@ -302,9 +317,8 @@ public final class GhrothStateManager {
             return;
         }
         target.invulnerableTime = 0;
-        boolean damaged = SkillDamageHelper.hurtUnscaled(target,
-                SkillDamageHelper.trueDamage(player.serverLevel(), player, player),
-                damage);
+        boolean damaged = com.rzy.dealt_force_skills.department.DepartmentGhroth.stars(player,target,
+                SkillDamageHelper.trueDamage(player.serverLevel(), player, player),damage);
         if (damaged) {
             DfsAchievements.recordGhrothStarsHit(player);
         }
@@ -412,7 +426,8 @@ public final class GhrothStateManager {
     private static void tickTacticalInput(ServerPlayer player) {
         CompoundTag tag = data(player);
         long now = SkillCooldownHelper.now(player);
-        if (now < tag.getLong(TACTICAL_COOLDOWN_UNTIL) || !player.isSprinting()) {
+        if (now < tag.getLong(TACTICAL_COOLDOWN_UNTIL) || !(player.isSprinting()
+                || player.isShiftKeyDown() && com.rzy.dealt_force_skills.motion.TacticalMovementInput.sprintHeld(player))) {
             return;
         }
         if (player.isShiftKeyDown()) {
@@ -449,18 +464,21 @@ public final class GhrothStateManager {
             horizontal = new Vec3(player.getDeltaMovement().x, 0.0D, player.getDeltaMovement().z);
         }
         if (horizontal.lengthSqr() < 0.001D) {
-            return;
+            if (!TACTICAL_MODE_ROLL.equals(mode)) return;
+            horizontal = Vec3.directionFromRotation(0, player.getYRot());
         }
-        horizontal = horizontal.normalize();
+        horizontal = TACTICAL_MODE_ROLL.equals(mode)
+                ? com.rzy.dealt_force_skills.motion.TacticalMovementInput.rollDirection(player) : horizontal.normalize();
         tag.putLong(TACTICAL_COOLDOWN_UNTIL, now + TACTICAL_COOLDOWN_TICKS);
         tag.putLong(TACTICAL_IMMUNE_UNTIL, now + TACTICAL_IMMUNE_TICKS);
         tag.putInt(TACTICAL_BOOST_TICKS, TACTICAL_BOOST_TOTAL_TICKS);
         tag.putDouble(TACTICAL_DIR_X, horizontal.x * speed);
         tag.putDouble(TACTICAL_DIR_Z, horizontal.z * speed);
         tag.putString(TACTICAL_MODE, mode);
-        if (TACTICAL_MODE_ROLL.equals(mode)) {
-            NetworkHandler.sendToPlayer(new S2C_TempestStartRoll(), player);
-        }
+        TacticalMotionSync.start(player, TACTICAL_MODE_ROLL.equals(mode) ? TacticalMotion.ROLL : TacticalMotion.DIVE,
+                tag.getInt(TACTICAL_BOOST_TICKS), horizontal,
+                p -> isGhroth(p) && (TACTICAL_MODE_LUNGE.equals(mode) || data(p).getInt(TACTICAL_BOOST_TICKS) > 0),
+                0, GhrothStateManager::isGhroth);
     }
 
     private static void tickTacticalBoost(ServerPlayer player) {
@@ -470,6 +488,7 @@ public final class GhrothStateManager {
             tag.remove(TACTICAL_MODE);
             return;
         }
+        LAST_TACTICAL_STEP.put(player,SkillCooldownHelper.now(player));
         tag.putInt(TACTICAL_BOOST_TICKS, ticks - 1);
         Vec3 current = player.getDeltaMovement();
         double scale = ticks / (double) TACTICAL_BOOST_TOTAL_TICKS;

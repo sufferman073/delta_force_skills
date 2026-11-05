@@ -464,10 +464,13 @@ public final class GamblerArenaManager {
     }
 
     private static void settle(ArenaSession session, MinecraftServer server, ArenaSide winner) {
+        if (session.phase != ArenaPhase.FIGHTING || SESSIONS.get(session.id) != session || winner == null)return;
         session.phase = ArenaPhase.SETTLED;
         ServerPlayer gambler = playerById(server, session.gamblerId);
         ArenaSide gamblerBet = session.bets.get(session.gamblerId);
         boolean gamblerCorrect = gamblerBet == winner;
+        if (gambler != null && gamblerCorrect && (session.mode == ArenaMode.SOLO_MOB || session.mode == ArenaMode.DUEL_MOB))
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(gambler,"gambler.arena.correct_bet");
         if (session.mode == ArenaMode.SOLO_MOB && gambler != null) {
             settleSoloMob(session, gambler, gamblerCorrect);
             broadcastResult(session, server, winner);

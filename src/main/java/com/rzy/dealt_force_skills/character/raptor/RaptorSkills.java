@@ -91,7 +91,7 @@ public final class RaptorSkills {
         Vec3 look = player.getLookAngle().normalize();
         Vec3 start = player.getEyePosition().add(look.scale(0.9D));
         drone.setPos(start.x, start.y, start.z);
-        level.addFreshEntity(drone);
+        if (level.addFreshEntity(drone)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"raptor.falcon");
         drone.startControlledCameraIfNeeded();
         level.playSound(null, player.blockPosition(), ModSounds.RAPTOR_FALCON_LAUNCH.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f);
@@ -158,7 +158,10 @@ public final class RaptorSkills {
         grenade.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        level.addFreshEntity(grenade);
+        if (level.addFreshEntity(grenade)) {
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        }
         level.playSound(null, player.blockPosition(), ModSounds.RAPTOR_PULSE_GRENADE_PIN.get(),
                 SoundSource.PLAYERS, 0.72f, 1.0f);
         level.playSound(null, player.blockPosition(), ModSounds.RAPTOR_PULSE_GRENADE_THROW.get(),

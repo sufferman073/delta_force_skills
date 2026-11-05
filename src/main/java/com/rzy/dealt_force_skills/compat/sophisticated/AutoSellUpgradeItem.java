@@ -82,7 +82,8 @@ public final class AutoSellUpgradeItem extends UpgradeItemBase<AutoSellUpgradeIt
             for (int slot = 0; slot < inventory.getSlots(); slot++) {
                 ItemStack stack = inventory.getStackInSlot(slot);
                 if (!stack.isEmpty() && filter.matchesFilter(stack)) {
-                    SpecialOperationsBaseManager.sellFromHandler(owner, inventory, slot, stack.getCount());
+                    if(SpecialOperationsBaseManager.sellFromHandler(owner, inventory, slot, stack.getCount())>0)
+                        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"base.auto_sell");
                 }
             }
         }

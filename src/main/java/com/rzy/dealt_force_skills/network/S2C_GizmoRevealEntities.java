@@ -9,11 +9,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class S2C_GizmoRevealEntities {
+public class S2C_GizmoRevealEntities implements com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     private final List<Integer> entityIds;
 
     public S2C_GizmoRevealEntities(List<Integer> entityIds) {
         this.entityIds = List.copyOf(entityIds);
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(int id:entityIds) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,id,30);
     }
 
     public static void encode(S2C_GizmoRevealEntities msg, FriendlyByteBuf buf) {

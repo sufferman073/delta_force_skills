@@ -21,14 +21,20 @@ public final class SaeedTaczGunBridge {
             return false;
         }
         try {
-            SaeedTaczEquipment.primeForShot(type, gun);
+            boolean nativeGuard = shooter instanceof com.rzy.dealt_force_skills.ai.operative.NativeSaeedGuardEntity;
+            if (!nativeGuard) SaeedTaczEquipment.primeForShot(type, gun);
             prepareOperator(operator, shooter, gun);
             operator.aim(true);
             ShootResult result = operator.shoot(() -> pitch, () -> yaw);
             if (result == ShootResult.SUCCESS) {
                 return true;
             }
+            if (nativeGuard && result == ShootResult.NOT_DRAW) operator.draw(shooter::getMainHandItem);
             if (result == ShootResult.NO_AMMO) {
+                if (nativeGuard) {
+                    if (!operator.getSynReloadState().getStateType().isReloading()) operator.reload();
+                    return false;
+                }
                 SaeedTaczEquipment.primeForShot(type, gun);
                 result = operator.shoot(() -> pitch, () -> yaw);
                 return result == ShootResult.SUCCESS;

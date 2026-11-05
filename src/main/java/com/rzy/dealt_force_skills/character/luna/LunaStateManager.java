@@ -203,7 +203,10 @@ public final class LunaStateManager {
         }
 
         boolean skillDamage = isLunaSkillDamage(event.getSource());
-        revealToOwner(player, event.getEntity(), skillDamage ? SKILL_REVEAL_TICKS : PASSIVE_REVEAL_TICKS, true);
+        if (revealToOwner(player, event.getEntity(), skillDamage ? SKILL_REVEAL_TICKS : PASSIVE_REVEAL_TICKS, true,
+                CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.LUNA_ULTIMATE_RECON),
+                CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.LUNA_WEAK_POINT), true))
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"luna.passive.reveal");
     }
 
     public static void revealToOwner(ServerPlayer owner, LivingEntity target, int ticks, boolean voiceIfPlayer) {
@@ -218,15 +221,15 @@ public final class LunaStateManager {
         revealToOwner(owner, target, ticks, voiceIfPlayer, ultimateRecon, weakPoint, false);
     }
 
-    private static void revealToOwner(ServerPlayer owner, LivingEntity target, int ticks, boolean voiceIfPlayer,
+    private static boolean revealToOwner(ServerPlayer owner, LivingEntity target, int ticks, boolean voiceIfPlayer,
                                       boolean ultimateRecon, boolean weakPoint, boolean requireActiveLuna) {
         if (owner == null || !owner.isAlive() || (requireActiveLuna && !isLuna(owner))
                 || target == owner || ticks <= 0) {
-            return;
+            return false;
         }
         // Recon must not expose teammates (and never self).
         if (!com.rzy.dealt_force_skills.util.PositionRevealHelper.isValidReconTarget(owner, target)) {
-            return;
+            return false;
         }
         boolean alreadyRevealed = ReconRevealThrottle.isActive(target);
         int effectiveTicks = ultimateRecon ? Integer.MAX_VALUE : ticks;
@@ -240,7 +243,7 @@ public final class LunaStateManager {
             targetData.putLong(WEAK_POINT_UNTIL, ReconRevealThrottle.activeUntil(target));
         }
         if (!revealStarted) {
-            return;
+            return false;
         }
 
         // Share position exposure with the caster's teammates.
@@ -254,6 +257,7 @@ public final class LunaStateManager {
                         SoundSource.PLAYERS, 0.8f, 1.0f, 32.0D);
             }
         }
+        return true;
     }
 
     public static float applyWeakPointDamage(LivingEntity target, float amount) {

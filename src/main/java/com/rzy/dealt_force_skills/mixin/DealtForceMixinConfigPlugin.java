@@ -16,10 +16,12 @@ public final class DealtForceMixinConfigPlugin implements IMixinConfigPlugin {
             "com.rzy.dealt_force_skills.mixin.pmmo.CoreObjectModifierMapMixin";
 
     private boolean pmmoLoaded;
+    private boolean maidLoaded;
 
     @Override
     public void onLoad(String mixinPackage) {
         LoadingModList loadingMods = FMLLoader.getLoadingModList();
+        maidLoaded = loadingMods != null && loadingMods.getModFileById("touhou_little_maid") != null;
         pmmoLoaded = loadingMods != null && loadingMods.getModFileById(PMMO_MOD_ID) != null;
     }
 
@@ -30,6 +32,7 @@ public final class DealtForceMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.contains(".TouhouMaid")) return maidLoaded;
         if (!PMMO_MIXIN.equals(mixinClassName)) {
             return true;
         }

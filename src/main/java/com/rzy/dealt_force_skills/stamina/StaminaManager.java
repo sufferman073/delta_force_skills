@@ -77,6 +77,7 @@ public final class StaminaManager {
         if (player == null) return ConsumeResult.UNAVAILABLE;
         if (!StaminaRules.canSpend(currentValue(player), amount, floor, isFree(player)))
             return ConsumeResult.NOT_ENOUGH;
+        com.rzy.dealt_force_skills.department.DepartmentConsumables.spent(player,amount);
         // Clients only preview eligibility. Only server action handlers may change stamina.
         if (!player.level().isClientSide && !isFree(player) && amount > 0.0D) {
             data(player).putDouble("Value", Math.max(0.0D, currentValue(player) - amount));
@@ -118,7 +119,9 @@ public final class StaminaManager {
                 && StaminaRules.canRecover(player.level().getGameTime(), state.getLong("LastSpend"))) {
             int training = SpecialOperationsBaseManager.effectiveLevel(player,
                     SpecialOperationsBaseManager.Facility.TRAINING_CENTER);
+            double questBefore=currentValue(player);
             recover(player, StaminaRules.recoveryPerTick(boostLevel(player), training));
+            com.rzy.dealt_force_skills.department.DepartmentConsumables.recovered(player,currentValue(player)-questBefore);
         }
         if (player.tickCount % 5 == 0) sync(player);
     }

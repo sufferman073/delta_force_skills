@@ -28,6 +28,8 @@ public class DWolfSmokeCloudEntity extends Entity implements ItemSupplier, Smoke
             SynchedEntityData.defineId(DWolfSmokeCloudEntity.class, EntityDataSerializers.INT);
 
     private UUID ownerId;
+    private boolean nativeOperative;
+    public void setOperativeLifetime(boolean value) { nativeOperative = value; }
     private int lifeTicks = LIFE_TICKS;
 
     public DWolfSmokeCloudEntity(EntityType<? extends DWolfSmokeCloudEntity> type, Level level) {
@@ -69,6 +71,10 @@ public class DWolfSmokeCloudEntity extends Entity implements ItemSupplier, Smoke
         }
 
         if (level() instanceof ServerLevel serverLevel) {
+            var link=getPersistentData();
+            if(link.hasUUID("dfs.wildfire.parent")&&(serverLevel.getGameTime()>=link.getLong("dfs.wildfire.expiry")
+                    ||serverLevel.hasChunkAt(net.minecraft.core.BlockPos.of(link.getLong("dfs.wildfire.parentPos")))
+                    &&serverLevel.getEntity(link.getUUID("dfs.wildfire.parent"))==null)) {discard();return;}
             suppressTargetsThroughSmoke(serverLevel);
         }
         if (tickCount >= smokeLifetimeTicks()) {
@@ -78,12 +84,16 @@ public class DWolfSmokeCloudEntity extends Entity implements ItemSupplier, Smoke
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        nativeOperative = tag.getBoolean("NativeOperative");
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         setLifeTicks(tag.contains("LifeTicks") ? tag.getInt("LifeTicks") : LIFE_TICKS);
+        if (nativeOperative) tickCount = Math.max(0, Math.min(smokeLifetimeTicks(), tag.getInt("OperativeAge")));
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        tag.putBoolean("NativeOperative", nativeOperative);
+        if (nativeOperative) tag.putInt("OperativeAge", tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }

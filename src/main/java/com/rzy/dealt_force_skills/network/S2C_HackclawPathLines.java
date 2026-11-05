@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class S2C_HackclawPathLines {
+public class S2C_HackclawPathLines implements com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     public static final int MAX_LINES = 64;
     public static final int MAX_LINE_TICKS = 120;
     private static final int MAX_SERIALIZED_LINES = 256;
@@ -30,6 +30,10 @@ public class S2C_HackclawPathLines {
                     Math.min(MAX_LINE_TICKS, line.ticks())));
         }
         this.lines = List.copyOf(limited);
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(var line:lines) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,line.targetEntityId(),line.ticks());
     }
 
     public static void encode(S2C_HackclawPathLines msg, FriendlyByteBuf buf) {

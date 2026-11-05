@@ -31,6 +31,12 @@ The built mod jar will usually be generated under:
 build/libs/
 ```
 
+Publish only `delta_force_skills-<version>.jar` for each supported loader. The Forge
+release includes its required bundled runtime library; its slim JAR is an internal
+build input under `build/intermediates/slim/` and is not a separate release.
+NeoForge releases are built in `MDK-1.21.1-ModDevGradle-main/build/libs/`.
+Keep all runtime assets and behavior when reducing package size.
+
 ## Configuration
 
 Gameplay values, `/reload` behavior, energy examples, and local HUD positioning/scaling are documented in [docs/CONFIGURATION.md](docs/CONFIGURATION.md).

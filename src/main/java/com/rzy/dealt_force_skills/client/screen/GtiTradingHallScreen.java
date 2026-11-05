@@ -27,6 +27,8 @@ public final class GtiTradingHallScreen extends Screen {
     private int scroll;
     // 嵌入模式：作为主机面内的面板显示，不打开独立界面（不绘制全屏背景）
     private boolean embedded;
+    // 界面尺寸补偿系数：独立打开时按界面尺寸把面板整体放大；嵌入模式由宿主缩放，恒为 1.0
+    private float scaleFactor = 1.0F;
 
     private GtiTradingHallScreen(long coins, List<GtiTradingHallManager.Entry> entries) {
         super(Component.translatable("screen.dealt_force_skills.gti.market"));
@@ -55,7 +57,11 @@ public final class GtiTradingHallScreen extends Screen {
     public void receive(long coins, List<GtiTradingHallManager.Entry> entries) {
         refresh(coins, entries);
     }
-    @Override protected void init() { rebuild(); }
+    @Override protected void init() {
+        // 独立打开时按界面尺寸补偿（界面尺寸 2 → 1.5 倍），嵌入模式由宿主统一缩放，恒为 1.0
+        scaleFactor = ScreenScale.factor(embedded);
+        rebuild();
+    }
     private void rebuild() {
         clearWidgets();
         addCategoryButtons();
@@ -110,8 +116,13 @@ public final class GtiTradingHallScreen extends Screen {
     }
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!embedded) {
+            // 全屏背景必须在缩放之外绘制：renderBackground 按真实 width/height 铺满屏幕
             renderBackground(graphics);
         }
+        float factor = scaleFactor;
+        ScreenScale.push(graphics, factor);
+        int localMouseX = ScreenScale.toLocal(mouseX, factor);
+        int localMouseY = ScreenScale.toLocal(mouseY, factor);
         graphics.fill(left(), top(), left() + panelWidth(), top() + panelHeight(), 0xEE10171C);
         graphics.drawString(font, title, left() + 12, top() + 12, 0xFFFFFF);
         graphics.drawString(font, Component.translatable("screen.dealt_force_skills.gti.coins", coins),
@@ -125,12 +136,26 @@ public final class GtiTradingHallScreen extends Screen {
             graphics.drawString(font, fit(entry.stack().getHoverName(), panelWidth() - 190), left() + 38, y + 6, 0xFFFFFF);
             graphics.drawString(font, Long.toString(entry.price()), left() + 38, y + 17, 0xFFE2B84B);
         }
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.render(graphics, localMouseX, localMouseY, partialTick);
+        ScreenScale.pop(graphics);
     }
     @Override public boolean mouseScrolled(double x, double y, double delta) {
         int max = Math.max(0, visible().size() - visibleRows());
         scroll = Math.max(0, Math.min(max, scroll + (delta < 0 ? 1 : -1)));
         rebuildRows(); return true;
+    }
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return super.mouseClicked(ScreenScale.toLocalCoordinate(mouseX, scaleFactor),
+                ScreenScale.toLocalCoordinate(mouseY, scaleFactor), button);
+    }
+    @Override public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        return super.mouseDragged(ScreenScale.toLocalCoordinate(mouseX, scaleFactor),
+                ScreenScale.toLocalCoordinate(mouseY, scaleFactor), button,
+                ScreenScale.toLocalDelta(dragX, scaleFactor), ScreenScale.toLocalDelta(dragY, scaleFactor));
+    }
+    @Override public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        return super.mouseReleased(ScreenScale.toLocalCoordinate(mouseX, scaleFactor),
+                ScreenScale.toLocalCoordinate(mouseY, scaleFactor), button);
     }
     private List<Indexed> visible() {
         List<Indexed> result = new ArrayList<>();
@@ -150,14 +175,18 @@ public final class GtiTradingHallScreen extends Screen {
     private void clampScroll() { scroll = Math.max(0, Math.min(scroll, Math.max(0, visible().size() - visibleRows()))); }
     private int parseCount() { try { return Math.max(1, Math.min(9999, Integer.parseInt(savedCount))); } catch (NumberFormatException e) { return 1; } }
     private Component fit(Component value, int width) { String s = value.getString(); return font.width(s) <= width ? value : Component.literal(font.plainSubstrByWidth(s, Math.max(8, width - font.width("..."))) + "..."); }
-    private int panelWidth() { return Math.max(240, Math.min(500, width - 24)); }
+    private int panelWidth() { return Math.max(240, Math.min(500, localWidth() - 24)); }
     private int panelHeight() {
         // 嵌入模式：面板避开主机面顶部标签栏与底部底栏
-        return embedded ? Math.max(1, Math.min(360, height - 68))
-                        : Math.max(170, Math.min(360, height - 24));
+        return embedded ? Math.max(1, Math.min(360, localHeight() - 68))
+                        : Math.max(170, Math.min(360, localHeight() - 24));
     }
-    private int left() { return (width - panelWidth()) / 2; }
-    private int top() { return embedded ? 42 : (height - panelHeight()) / 2; }
+    private int left() { return (localWidth() - panelWidth()) / 2; }
+    private int top() { return embedded ? 42 : (localHeight() - panelHeight()) / 2; }
+    /** 虚拟布局宽度：独立打开时为真实 GUI 宽 / 缩放系数，嵌入模式等于真实 GUI 宽 */
+    private int localWidth() { return ScreenScale.localWidth(width, scaleFactor); }
+    /** 虚拟布局高度：独立打开时为真实 GUI 高 / 缩放系数，嵌入模式等于真实 GUI 高 */
+    private int localHeight() { return ScreenScale.localHeight(height, scaleFactor); }
     private int visibleRows() { return Math.max(1, (panelHeight() - 130) / 30); }
     @Override public boolean isPauseScreen() { return false; }
     private record Indexed(int index, GtiTradingHallManager.Entry entry) { }

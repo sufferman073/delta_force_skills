@@ -31,7 +31,11 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, SmokeCloudModelState {
+public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, SmokeCloudModelState, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public void setOperativeSource(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source) { allegiance.copyFrom(source); }
+    public boolean isOwnedBy(UUID caster) { return caster != null && caster.equals(ownerId); }
     public static volatile int GRENADE_LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("GRENADE_LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.stingersmokecloudentity.grenade_life_ticks", 300));
     public static volatile int DRONE_LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DRONE_LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.stingersmokecloudentity.drone_life_ticks", 500));
     public static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.stingersmokecloudentity.radius", 5.5));
@@ -81,6 +85,7 @@ public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, Smo
             spawnSmokeParticles();
             return;
         }
+        if (allegiance.active() && tickCount >= smokeLifetimeTicks()) { discard(); return; }
 
         if (level() instanceof ServerLevel serverLevel) {
             extendStrongSmokeIfNeeded(serverLevel);
@@ -111,10 +116,13 @@ public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, Smo
         entityData.set(DATA_DRONE_SOURCE, tag.getBoolean("DroneSource"));
         falling = tag.getBoolean("Falling");
         strongSmokeExtended = tag.getBoolean("StrongSmokeExtended");
+        int age = allegiance.load(tag, smokeLifetimeTicks());
+        if (allegiance.active()) tickCount = age;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -143,6 +151,8 @@ public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, Smo
         AABB box = new AABB(position, position).inflate(RADIUS);
         for (StingerSmokeCloudEntity cloud : level.getEntitiesOfClass(StingerSmokeCloudEntity.class, box,
                 cloud -> cloud.isAlive() && cloud.position().distanceTo(position) <= RADIUS)) {
+            if(!cloud.isEnhanced()&&cloud.ownerId!=null)
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(level.getServer().getPlayerList().getPlayer(cloud.ownerId),"stinger.smoke.converted");
             cloud.setEnhanced(true);
             if (cloud.droneId != null && level.getEntity(cloud.droneId) instanceof StingerSmokeDroneEntity drone) {
                 drone.setEnhanced(true);
@@ -162,6 +172,15 @@ public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, Smo
     private void applySmokeRegen(ServerLevel level) {
         double radius = smokeRadius();
         AABB box = new AABB(position(), position()).inflate(radius);
+        if (allegiance.active()) {
+            for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box,
+                    target -> target.isAlive() && (allegiance.isCaster(target)
+                            || com.rzy.dealt_force_skills.ai.operative.OperativeSupport.ally(this, target))
+                            && target.position().add(0, target.getBbHeight() * 0.5, 0).distanceTo(position()) <= radius)) {
+                com.rzy.dealt_force_skills.ai.operative.OperativeSupport.smokeRegen(target, isHiveSmoke());
+            }
+            return;
+        }
         ServerPlayer owner = ownerId == null ? null : level.getServer().getPlayerList().getPlayer(ownerId);
         for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, box,
                 player -> player.isAlive()
@@ -172,6 +191,10 @@ public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, Smo
     }
 
     private void suppressTargetsThroughSmoke(ServerLevel level) {
+        if (allegiance.active()) {
+            com.rzy.dealt_force_skills.ai.operative.OperativeSupport.suppressThroughSmoke(this, smokeRadius(), ownerId);
+            return;
+        }
         if (ownerId == null || !(level.getEntity(ownerId) instanceof LivingEntity owner) || !owner.isAlive()) {
             return;
         }
@@ -238,7 +261,7 @@ public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, Smo
         }
     }
 
-    private boolean isEnhanced() {
+    public boolean isEnhanced() {
         return entityData.get(DATA_ENHANCED);
     }
 
@@ -276,8 +299,8 @@ public class StingerSmokeCloudEntity extends Entity implements ItemSupplier, Smo
 
     private void extendStrongSmokeIfNeeded(ServerLevel level) {
         if (strongSmokeExtended || !isHiveSmoke() || ownerId == null
-                || !(level.getEntity(ownerId) instanceof ServerPlayer owner)
-                || !CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.STINGER_STRONG_SMOKE)) {
+                || !(level.getEntity(ownerId) instanceof LivingEntity owner)
+                || !com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.STINGER_STRONG_SMOKE)) {
             return;
         }
         int remaining = Math.max(1, lifeTicks - tickCount);

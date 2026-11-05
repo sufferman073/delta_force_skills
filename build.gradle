@@ -16,6 +16,9 @@ plugins {
 }
 apply plugin: 'org.spongepowered.mixin'
 
+// Bundle the compatible injector so it is available without optional mods.
+jarJar.enable()
+
 mixin {
     add sourceSets.main, "${mod_id}.refmap.json"
     config "${mod_id}.mixins.json"
@@ -92,6 +95,12 @@ repositories {
 
 dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    compileOnly 'io.github.llamalad7:mixinextras-common:0.5.3'
+    annotationProcessor 'io.github.llamalad7:mixinextras-common:0.5.3'
+    runtimeOnly 'io.github.llamalad7:mixinextras-forge:0.5.3'
+    jarJar('io.github.llamalad7:mixinextras-forge:0.5.3') {
+        jarJar.ranged(it, '[0.5.3,)')
+    }
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
     // Optional backpack upgrade API; never bundled or required at runtime.
@@ -160,7 +169,7 @@ tasks.named('jar', Jar).configure {
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
-            artifact jar
+            artifact tasks.named('jarJar')
         }
     }
     repositories {
@@ -173,3 +182,10 @@ publishing {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+// The thin compilation JAR is an internal input; only the bundled release is published.
+tasks.named('jar', Jar).configure {
+    archiveClassifier = 'slim'
+    destinationDirectory = layout.buildDirectory.dir('intermediates/slim')
+}
+tasks.named('jarJar').configure { archiveClassifier = '' }
+reobf { jarJar {} }

@@ -36,15 +36,15 @@ public final class HackclawStateManager {
     public static volatile int FLASH_DRONE_MAX_CHARGES = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_DRONE_MAX_CHARGES", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.flash_drone_max_charges", 2));
     public static volatile int FLASH_DRONE_RECHARGE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FLASH_DRONE_RECHARGE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.flash_drone_recharge_ticks", 800));
     public static volatile int CORE_COOLDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_COOLDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.core_cooldown_ticks", 1200));
-    private static volatile int CORE_CHANNEL_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_CHANNEL_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.core_channel_ticks", 16));
-    private static volatile int CORE_SCAN_ROUNDS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_SCAN_ROUNDS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.core_scan_rounds", 4));
-    private static volatile int CORE_SCAN_INTERVAL_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_SCAN_INTERVAL_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.core_scan_interval_ticks", 80));
-    private static volatile int PATH_LINE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PATH_LINE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.path_line_ticks", CORE_SCAN_INTERVAL_TICKS));
-    private static volatile double CORE_SCAN_RANGE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_SCAN_RANGE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_state_manager.core_scan_range", 60.0));
-    private static volatile double CORE_SCAN_COS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_SCAN_COS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
+    public static volatile int CORE_CHANNEL_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_CHANNEL_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.core_channel_ticks", 16));
+    public static volatile int CORE_SCAN_ROUNDS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_SCAN_ROUNDS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.core_scan_rounds", 4));
+    public static volatile int CORE_SCAN_INTERVAL_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_SCAN_INTERVAL_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.core_scan_interval_ticks", 80));
+    public static volatile int PATH_LINE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PATH_LINE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.hackclaw.hackclaw_state_manager.path_line_ticks", CORE_SCAN_INTERVAL_TICKS));
+    public static volatile double CORE_SCAN_RANGE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_SCAN_RANGE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("characters.hackclaw.hackclaw_state_manager.core_scan_range", 60.0));
+    public static volatile double CORE_SCAN_COS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CORE_SCAN_COS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
       "characters.hackclaw.hackclaw_state_manager.core_scan_cos", Math.cos(Math.toRadians(55.0))
    ));
-    private static volatile double CHANNEL_MOVE_CANCEL_DISTANCE_SQR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CHANNEL_MOVE_CANCEL_DISTANCE_SQR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
+    public static volatile double CHANNEL_MOVE_CANCEL_DISTANCE_SQR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CHANNEL_MOVE_CANCEL_DISTANCE_SQR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
       "characters.hackclaw.hackclaw_state_manager.channel_move_cancel_distance_sqr", 0.08
    ));
     private static final int CORE_PHASE_NONE = 0;
@@ -331,6 +331,7 @@ public final class HackclawStateManager {
     }
 
     private static void beginCoreScan(ServerPlayer player, CompoundTag tag, long now) {
+        com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"hackclaw.hack");
         tag.putInt(CORE_PHASE, CORE_PHASE_SCAN);
         tag.putLong(CORE_NEXT_SCAN, now);
         tag.putInt(CORE_ROUND, 0);

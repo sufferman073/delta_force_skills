@@ -2,7 +2,7 @@ package com.rzy.dealt_force_skills.client.character;
 
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,7 +33,9 @@ public final class ClientSinevaRenderState {
         STATES.clear();
     }
 
-    public static boolean isBombSuitActive(Player player) {
+    public static boolean isSineva(LivingEntity entity) { return entity != null && STATES.containsKey(entity.getId()); }
+
+    public static boolean isBombSuitActive(LivingEntity player) {
         if (isLocalPlayer(player)) {
             return (ClientSinevaHudState.shouldRender() || ClientCommanderState.inherits(ModCharacters.SINEVA_ID))
                     && ClientSinevaHudState.bombSuitActive();
@@ -42,7 +44,7 @@ public final class ClientSinevaRenderState {
         return state != null && state.bombSuitActive();
     }
 
-    public static boolean isShieldDeployed(Player player) {
+    public static boolean isShieldDeployed(LivingEntity player) {
         if (isLocalPlayer(player)) {
             return (ClientSinevaHudState.shouldRender() || ClientCommanderState.inherits(ModCharacters.SINEVA_ID))
                     && ClientSinevaHudState.shieldDeployed();
@@ -51,7 +53,7 @@ public final class ClientSinevaRenderState {
         return state != null && state.shieldDeployed();
     }
 
-    public static boolean isViewportBroken(Player player) {
+    public static boolean isViewportBroken(LivingEntity player) {
         if (isLocalPlayer(player)) {
             return (ClientSinevaHudState.shouldRender() || ClientCommanderState.inherits(ModCharacters.SINEVA_ID))
                     && ClientSinevaHudState.shieldDeployed()
@@ -61,7 +63,7 @@ public final class ClientSinevaRenderState {
         return state != null && state.viewportBroken();
     }
 
-    private static boolean isLocalPlayer(Player player) {
+    private static boolean isLocalPlayer(LivingEntity player) {
         return player != null && player == Minecraft.getInstance().player;
     }
 

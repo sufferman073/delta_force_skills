@@ -39,7 +39,10 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class VyronMagneticBombEntity extends Projectile implements ItemSupplier {
+public class VyronMagneticBombEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private java.util.UUID operativeOwner;
+    @Override public java.util.UUID operativeOwnerUUID() { return operativeOwner; }
+
     private static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.vyronmagneticbombentity.radius", 7.0));
     private static final EntityDataAccessor<Boolean> DATA_STUCK =
             SynchedEntityData.defineId(VyronMagneticBombEntity.class, EntityDataSerializers.BOOLEAN);
@@ -49,6 +52,8 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
             SynchedEntityData.defineId(VyronMagneticBombEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_NORMAL_Z =
             SynchedEntityData.defineId(VyronMagneticBombEntity.class, EntityDataSerializers.FLOAT);
+
+    public static double blastRadius() { return RADIUS; }
 
     private int fuseRemaining = -1;
     private UUID stuckEntityId;
@@ -60,6 +65,7 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
     public VyronMagneticBombEntity(EntityType<? extends VyronMagneticBombEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
+        if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost && owner instanceof net.minecraft.world.entity.OwnableEntity ownable) operativeOwner = ownable.getOwnerUUID();
     }
 
     @Override
@@ -122,6 +128,8 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        operativeOwner = tag.hasUUID("OperativeOwner") ? tag.getUUID("OperativeOwner") : null;
         setStuck(tag.getBoolean("Stuck"));
         setAttachmentNormal(new Vec3(
                 tag.getFloat("AttachmentNormalX"),
@@ -135,6 +143,8 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        if (operativeOwner != null) tag.putUUID("OperativeOwner", operativeOwner);
         tag.putBoolean("Stuck", isStuckForRender());
         Vec3 normal = attachmentNormal();
         tag.putFloat("AttachmentNormalX", (float) normal.x);
@@ -154,9 +164,9 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
     private void stickToEntity(EntityHitResult hit) {
         Entity entity = hit.getEntity();
         if (entity instanceof LivingEntity living
-                && getOwner() instanceof ServerPlayer owner
-                && CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.VYRON_FAST_FUSE)
-                && TargetingUtil.isHostileLivingFor(owner, living)) {
+                && getOwner() instanceof LivingEntity owner
+                && com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.VYRON_FAST_FUSE)
+                && com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.hostile(owner, living)) {
             setPos(hit.getLocation().x, hit.getLocation().y, hit.getLocation().z);
             stuckEntityId = living.getUUID();
             explode();
@@ -229,7 +239,7 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier 
 
         AABB box = new AABB(center, center).inflate(radius);
         for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+            if (!TargetingUtil.isSelfOrHostileLivingFor(owner != null ? owner : this, target)) {
                 continue;
             }
             Vec3 targetCenter = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);

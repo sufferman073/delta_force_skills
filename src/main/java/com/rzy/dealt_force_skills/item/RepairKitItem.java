@@ -69,6 +69,7 @@ public class RepairKitItem extends QualityTooltipItem {
             return InteractionResultHolder.fail(stack);
         }
         player.startUsingItem(hand);
+        if(player instanceof ServerPlayer server)com.rzy.dealt_force_skills.department.DepartmentUseSpeed.repairStarted(server,stack);
         if (!level.isClientSide) {
             CompoundTag tag = stack.getOrCreateTag();
             tag.putDouble(TAG_USE_PROGRESS, 0.0D);
@@ -115,6 +116,7 @@ public class RepairKitItem extends QualityTooltipItem {
         long elapsed = Math.max(0L, now - last);
         double progress = Math.max(0.0D, tag.getDouble(TAG_USE_PROGRESS));
         progress += elapsed * ModItemEffectHelper.medicineUseSpeedMultiplier(entity);
+        com.rzy.dealt_force_skills.department.DepartmentUseSpeed.repairProgress(entity,stack,elapsed);
         tag.putDouble(TAG_USE_PROGRESS, progress);
         tag.putLong(TAG_LAST_PROGRESS_TICK, now);
         return (int) Math.min(Integer.MAX_VALUE, Math.floor(progress));
@@ -140,6 +142,8 @@ public class RepairKitItem extends QualityTooltipItem {
             player.displayClientMessage(Component.translatable(failMessageKey), true);
             return false;
         }
+        ItemStack departmentKit = kit.copy();
+        int departmentDamage = target.getDamageValue();
         int cost = adjustedCost(target);
         int repair = adjustedRepair(target);
         if (!player.getAbilities().instabuild) {
@@ -152,6 +156,9 @@ public class RepairKitItem extends QualityTooltipItem {
             kit.hurtAndBreak(actualCost, player, broken -> broken.broadcastBreakEvent(player.getUsedItemHand()));
         }
         target.setDamageValue(Math.max(0, target.getDamageValue() - repair));
+        com.rzy.dealt_force_skills.department.DepartmentUseSpeed.repaired(player,kit,departmentDamage-target.getDamageValue());
+        com.rzy.dealt_force_skills.department.DepartmentConsumption.repaired(player, departmentKit, target,
+                departmentDamage - target.getDamageValue(), targetSlot);
         player.level().playSound(null, player.blockPosition(), workSound.get(), SoundSource.PLAYERS, 0.65F, 1.0F);
         player.displayClientMessage(Component.translatable(workMessageKey, repair), true);
         return !kit.isEmpty() && target.isDamaged();

@@ -91,7 +91,7 @@ public final class ElectronicInterferenceManager {
             }
             // Own / teammate interference fields do not disable ally electronic skills.
             ServerPlayer fieldOwner = field.ownerPlayer(level);
-            if (fieldOwner != null && DealtTeamManager.isSelfOrTeammate(fieldOwner, player)) {
+            if (field.protects(player) || fieldOwner != null && DealtTeamManager.isSelfOrTeammate(fieldOwner, player)) {
                 continue;
             }
             return field;
@@ -120,7 +120,7 @@ public final class ElectronicInterferenceManager {
         int destroyed = 0;
         boolean destroyedFreshDevice = false;
         for (Entity entity : level.getEntities(field, box, ElectronicInterferenceManager::isDestroyableElectronicDevice)) {
-            if (entity.isRemoved() || isSelfOrAllyElectronicDevice(fieldOwner, entity)) {
+            if (entity.isRemoved() || field.protects(entity) || isSelfOrAllyElectronicDevice(fieldOwner, entity)) {
                 continue;
             }
             destroyedFreshDevice |= entity.tickCount <= 40;
@@ -137,10 +137,15 @@ public final class ElectronicInterferenceManager {
     }
 
     public static int disruptElectronicDevices(ServerLevel level, Vec3 center, double radius) {
+        return disruptElectronicDevices(level, center, radius, entity -> true);
+    }
+
+    public static int disruptElectronicDevices(ServerLevel level, Vec3 center, double radius,
+                                                java.util.function.Predicate<Entity> mayDisrupt) {
         AABB box = new AABB(center, center).inflate(radius);
         int destroyed = 0;
         for (Entity entity : level.getEntities((Entity) null, box, ElectronicInterferenceManager::isDestroyableElectronicDevice)) {
-            if (!entity.isRemoved() && entity.position().distanceTo(center) <= radius) {
+            if (!entity.isRemoved() && entity.position().distanceTo(center) <= radius && mayDisrupt.test(entity)) {
                 discardElectronicDevice(entity);
                 destroyed++;
             }
@@ -244,6 +249,7 @@ public final class ElectronicInterferenceManager {
         if (ModCharacters.NOX_ID.equals(id)) {
             return slot == SkillSlot.ACTIVE_1 || slot == SkillSlot.CORE;
         }
+        if (ModCharacters.WILDFIRE_ID.equals(id)) return false;
         if (ModCharacters.TEMPEST_ID.equals(id)) {
             return slot == SkillSlot.ACTIVE_2 || slot == SkillSlot.CORE;
         }

@@ -19,7 +19,9 @@ public class StaminaCapacityEffect extends MobEffect {
     @Override
     public void applyEffectTick(LivingEntity entity, int amplifier) {
         if (!entity.level().isClientSide && entity instanceof Player player) {
+            double questBefore=StaminaManager.currentValue(player);
             StaminaManager.recoverPercent(player, 5 * (amplifier + 1));
+            com.rzy.dealt_force_skills.department.DepartmentConsumables.capacityRecovered(player,StaminaManager.currentValue(player)-questBefore);
         }
     }
 }

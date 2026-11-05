@@ -36,7 +36,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
-public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSupplier {
+public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
     private static final double HOME_RADIUS = 13.0D;
     private static final double BURST_RADIUS = 2.5D;
     private static final double FLIGHT_SPEED = 0.72D;
@@ -45,6 +45,10 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
     private static final int MAX_LIFE_TICKS = 12 * 20;
     private static final int STUN_DURATION_TICKS = 8 * 20;
     private UUID ownerId;
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public boolean isNativeOwnedBy(LivingEntity source) { return allegiance.active() && allegiance.isCaster(source); }
+
     private Vec3 startPos = Vec3.ZERO;
     private boolean lockSoundPlayed;
 
@@ -57,6 +61,7 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
         this(type, level);
         setOwner(owner);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
     }
 
     @Override
@@ -71,6 +76,7 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount > MAX_LIFE_TICKS) { burst(position()); return; }
         if (tickCount == 1) {
             startPos = position();
         }
@@ -105,6 +111,7 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        tickCount = allegiance.load(tag, 240);
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         startPos = new Vec3(tag.getDouble("StartX"), tag.getDouble("StartY"), tag.getDouble("StartZ"));
         lockSoundPlayed = tag.getBoolean("LockSoundPlayed");
@@ -112,6 +119,7 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -126,7 +134,18 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
         return NetworkHooks.getEntitySpawningPacket(this);
     }
 
+
+    private void homeNative() {
+        if (!(level() instanceof ServerLevel server)) return;
+        LivingEntity target = server.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(HOME_RADIUS), entity -> allegiance.isEnemy(server, entity))
+                .stream().min(Comparator.comparingDouble(entity -> entity.distanceToSqr(this))).orElse(null);
+        if (target == null) return;
+        if (!lockSoundPlayed) { server.playSound(null, blockPosition(), ModSounds.N_TWO_TRACKING_STUN_LOCK.get(), SoundSource.NEUTRAL, 0.85F, 1); lockSoundPlayed = true; }
+        Vec3 toward = target.getEyePosition().subtract(position());
+        if (toward.lengthSqr() > 0.0001) setDeltaMovement(normalizeFlight(getDeltaMovement().scale(1 - HOMING_WEIGHT).add(toward.normalize().scale(FLIGHT_SPEED * HOMING_WEIGHT))));
+    }
     private void homeTowardTarget() {
+        if (allegiance.active()) { homeNative(); return; }
         ServerPlayer owner = owner();
         if (owner == null) {
             return;
@@ -154,6 +173,9 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
     }
 
     private LivingEntity firstEntityHit() {
+        if (allegiance.active() && level() instanceof ServerLevel server) {
+            return server.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(0.35), target -> allegiance.isEnemy(server, target)).stream().findFirst().orElse(null);
+        }
         ServerPlayer owner = owner();
         if (owner == null) {
             return null;
@@ -182,6 +204,14 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
         if (!(level() instanceof ServerLevel level)) {
             discard();
             return;
+        }
+        if (allegiance.active()) {
+            LivingEntity source = allegiance.caster() != null && level.getEntity(allegiance.caster()) instanceof LivingEntity living ? living : null;
+            for (var target : level.getEntitiesOfClass(LivingEntity.class, new AABB(center, center).inflate(BURST_RADIUS), entity -> allegiance.isEnemy(level, entity))) {
+                if (target.getBoundingBox().getCenter().distanceToSqr(center) > BURST_RADIUS * BURST_RADIUS) continue;
+                target.addEffect(new MobEffectInstance(ModEffects.N_TWO_DISRUPTED.get(), STUN_DURATION_TICKS, 0, false, true, true), source);
+                if (source instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() != null) bot.skills().remember(target, STUN_DURATION_TICKS);
+            }
         }
         ServerPlayer owner = owner();
         List<Integer> revealed = new ArrayList<>();

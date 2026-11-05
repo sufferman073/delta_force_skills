@@ -69,6 +69,11 @@ public final class ConfigAccess {
         if (config == null) {
             return false;
         }
+        if (file == ConfigFileId.GAMEPLAY && path.startsWith("operatives.")
+                && (!path.startsWith("operatives.attributes.")
+                || !com.rzy.dealt_force_skills.ai.operative.OperativeSettings.valid(path, parsed))) return false;
+        if (file == ConfigFileId.GAMEPLAY && path.startsWith("home.")
+                && !com.rzy.dealt_force_skills.home.HomeSettings.valid(path, parsed)) return false;
         synchronized (ConfigAccess.class) {
             config.set(path, parsed);
             markDirty(file);
@@ -203,6 +208,8 @@ public final class ConfigAccess {
             return "tamarind";
         }
         String path = entry.path().toLowerCase(Locale.ROOT);
+        if (path.startsWith("home.")) return "home";
+        if (path.startsWith("operatives.")) return "operatives";
         if (!CharacterConfigGrouping.owner(path).isEmpty()) return "characters";
         if (path.startsWith("characters.")) {
             return "characters";

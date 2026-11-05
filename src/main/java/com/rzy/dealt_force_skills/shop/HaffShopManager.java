@@ -72,7 +72,7 @@ public final class HaffShopManager {
         ItemStack purchasedForMessage = purchased.copy();
         boolean inserted = player.getInventory().add(purchased);
         if (!inserted && !purchased.isEmpty()) {
-            player.drop(purchased, false);
+            com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, purchased);
         }
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.shop.purchased",
                 purchasedForMessage.getHoverName(), entry.price()), true);
@@ -95,7 +95,7 @@ public final class HaffShopManager {
             purchasedStacks.add(stack.copy());
             boolean inserted = player.getInventory().add(stack);
             if (!inserted && !stack.isEmpty()) {
-                player.drop(stack, false);
+                com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, stack);
             }
         }
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.shop.loadout_purchased",

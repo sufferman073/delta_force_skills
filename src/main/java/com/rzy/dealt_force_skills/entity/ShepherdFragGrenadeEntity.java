@@ -40,7 +40,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplier {
+public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
     private static final double DENTURES_HOME_RADIUS = 13.0D;
     private static final double DENTURES_HOMING_WEIGHT = 0.20D;
     private static volatile int DEFAULT_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DEFAULT_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherdfraggrenadeentity.default_fuse_ticks", 70));
@@ -59,6 +59,10 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
     private static volatile float ARMOR_DURABILITY_DAMAGE_PER_POINT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("ARMOR_DURABILITY_DAMAGE_PER_POINT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue(
       "summons.shepherdfraggrenadeentity.armor_durability_damage_per_point", 10.0F
    ));
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
+
+    private boolean predicting;
     private int fuseRemaining = DEFAULT_FUSE_TICKS;
     private int audibleBounces;
     private int blockImpacts;
@@ -74,9 +78,9 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
     public ShepherdFragGrenadeEntity(EntityType<? extends ShepherdFragGrenadeEntity> type, Level level, LivingEntity owner, int fuseTicks) {
         super(type, level);
         setOwner(owner);
+        allegiance.capture(owner);
         fuseRemaining = Math.max(1, fuseTicks);
-        myDentures = owner instanceof ServerPlayer player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.SHEPHERD_MY_DENTURES);
+        myDentures = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.SHEPHERD_MY_DENTURES);
     }
 
     @Override
@@ -100,6 +104,11 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
             }
         }
 
+        stepMotion();
+    }
+
+    /** Shared by real flight and the detached, side-effect-free AI preview. */
+    private void stepMotion() {
         if (settled) {
             setDeltaMovement(Vec3.ZERO);
             spawnClientTrail();
@@ -132,7 +141,7 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
 
         setPos(next.x, next.y, next.z);
         setDeltaMovement(motion.add(0.0D, -0.045D, 0.0D).multiply(0.985D, 0.985D, 0.985D));
-        checkInsideBlocks();
+        if (!predicting) checkInsideBlocks();
         spawnClientTrail();
     }
 
@@ -143,10 +152,13 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        allegiance.load(tag, DEFAULT_FUSE_TICKS);
         fuseRemaining = tag.getInt("FuseRemaining");
-        if (fuseRemaining <= 0) {
+        if (!allegiance.active() && fuseRemaining <= 0) {
             fuseRemaining = DEFAULT_FUSE_TICKS;
         }
+        if (allegiance.active()) fuseRemaining = Math.max(0, Math.min(Math.max(1, com.rzy.dealt_force_skills.character.shepherd.ShepherdStateManager.FRAG_GRENADE_FUSE_TICKS), fuseRemaining));
         audibleBounces = tag.getInt("AudibleBounces");
         blockImpacts = tag.getInt("BlockImpacts");
         rollingTicks = tag.getInt("RollingTicks");
@@ -157,6 +169,8 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, 0);
         tag.putInt("FuseRemaining", fuseRemaining);
         tag.putInt("AudibleBounces", audibleBounces);
         tag.putInt("BlockImpacts", blockImpacts);
@@ -169,6 +183,46 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
     @Override
     public Packet<ClientGamePacketListener> getAddEntityPacket() {
         return NetworkHooks.getEntitySpawningPacket(this);
+    }
+
+    public static double nativeRadius() { return RADIUS; }
+
+    /** Never added to the world; preview only reads already loaded collision shapes. */
+    public static Vec3 previewLanding(com.rzy.dealt_force_skills.ai.operative.OperativeHost host, Vec3 direction) {
+        var preview = new ShepherdFragGrenadeEntity(com.rzy.dealt_force_skills.registry.ModEntities.SHEPHERD_FRAG_GRENADE.get(),
+                host.serverLevel(), host.body(), com.rzy.dealt_force_skills.character.shepherd.ShepherdStateManager.FRAG_GRENADE_FUSE_TICKS);
+        preview.predicting = true;
+        preview.setPos(host.body().getEyePosition().add(direction.scale(0.7D)).add(0, -0.12D, 0));
+        preview.setDeltaMovement(direction.scale(1.45D).add(0, 0.18D, 0));
+        for (int i = 1; i < preview.fuseRemaining && !preview.settled && !preview.isRemoved(); i++) {
+            Vec3 next = preview.position().add(preview.getDeltaMovement());
+            if (!host.serverLevel().hasChunkAt(net.minecraft.core.BlockPos.containing(next))) return null;
+            preview.stepMotion();
+        }
+        return preview.position();
+    }
+
+    /** Sample actual bounce/rolling physics at each possible detonation tick, rather than only the full fuse. */
+    public static com.rzy.dealt_force_skills.ai.operative.OperativeBallistics.Shot previewCookedShot(
+            com.rzy.dealt_force_skills.ai.operative.OperativeHost host, Vec3 direction, Vec3 target) {
+        var preview = new ShepherdFragGrenadeEntity(com.rzy.dealt_force_skills.registry.ModEntities.SHEPHERD_FRAG_GRENADE.get(),
+                host.serverLevel(), host.body(), com.rzy.dealt_force_skills.character.shepherd.ShepherdStateManager.FRAG_GRENADE_FUSE_TICKS);
+        preview.predicting = true;
+        preview.setPos(host.body().getEyePosition().add(direction.scale(.7)).add(0, -.12, 0));
+        preview.setDeltaMovement(direction.scale(1.45).add(0, .18, 0));
+        com.rzy.dealt_force_skills.ai.operative.OperativeBallistics.Shot best = null;
+        double error = Math.pow(Math.max(.1, nativeRadius() * .4), 2);
+        for (int tick = 1; tick < preview.fuseRemaining; tick++) {
+            if (!host.serverLevel().hasChunkAt(net.minecraft.core.BlockPos.containing(preview.position().add(preview.getDeltaMovement())))) break;
+            preview.stepMotion();
+            double nextError = preview.position().distanceToSqr(target);
+            if (nextError < error) {
+                error = nextError;
+                best = new com.rzy.dealt_force_skills.ai.operative.OperativeBallistics.Shot(direction, preview.position(), tick + 1);
+            }
+            if (preview.settled || preview.isRemoved()) break;
+        }
+        return best;
     }
 
     private void tickRolling() {
@@ -193,7 +247,7 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
 
         setPos(next.x, next.y, next.z);
         setDeltaMovement(horizontal.scale(0.55D));
-        checkInsideBlocks();
+        if (!predicting) checkInsideBlocks();
     }
 
     private void handleBlockHit(BlockHitResult hit) {
@@ -205,7 +259,7 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
                 hit.getLocation().z + normal.z * 0.04D);
 
         blockImpacts++;
-        if (blockImpacts == 1) {
+        if (!predicting && blockImpacts == 1) {
             playBounceSoundOnce(hit, motion);
         }
         Vec3 bounced = bounce(direction, motion);
@@ -254,6 +308,13 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
     }
 
     private void explode(Vec3 center) {
+        // Commander contact detonation also runs during AI trajectory searches.
+        // Record the predicted impact without damage, sounds or particles.
+        if (predicting) {
+            setPos(center);
+            discard();
+            return;
+        }
         if (!(level() instanceof ServerLevel serverLevel)) {
             discard();
             return;
@@ -273,7 +334,9 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
 
         AABB box = new AABB(center, center).inflate(radius);
         for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+            if (allegiance.active() ? !(allegiance.isCaster(target)
+                    || TargetingUtil.isTargetableLiving(target) && !allegiance.isAlly(this, target))
+                    : !TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
                 continue;
             }
             double distance = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D).distanceTo(center);
@@ -321,7 +384,7 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
                 playHitByBlast(serverLevel, target, owner);
             }
         }
-        SuperbWarfareCompat.damageVehicles(serverLevel, center, RADIUS,
+        if (!allegiance.active()) SuperbWarfareCompat.damageVehicles(serverLevel, center, RADIUS,
                 SkillDamageHelper.shepherdFragGrenade(serverLevel, this, owner), this, 1.0F, false);
         discard();
     }
@@ -488,7 +551,7 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
     }
 
     private void spawnClientTrail() {
-        if (level().isClientSide && tickCount % 2 == 0) {
+        if (!predicting && level().isClientSide && tickCount % 2 == 0) {
             level().addParticle(ParticleTypes.SMOKE, getX(), getY() + 0.04D, getZ(), 0.0D, 0.01D, 0.0D);
         }
     }

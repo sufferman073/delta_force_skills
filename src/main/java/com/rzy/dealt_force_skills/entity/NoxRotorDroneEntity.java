@@ -37,7 +37,10 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
-public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
+public class NoxRotorDroneEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    private int nativeAge;
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
     private static volatile int MAX_LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.noxrotordroneentity.max_life_ticks", 160));
     private static volatile int POST_BOUNCE_EXPLODE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("POST_BOUNCE_EXPLODE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.noxrotordroneentity.post_bounce_explode_ticks", 6));
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.noxrotordroneentity.bounce_factor", 0.82));
@@ -59,6 +62,7 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
         setOwner(owner);
         ownerId = owner.getUUID();
         this.targetId = targetId;
+        allegiance.capture(owner);
     }
 
     @Override
@@ -73,6 +77,11 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+
+        if (allegiance.active() && level() instanceof ServerLevel level
+                && (++nativeAge > MAX_LIFE_TICKS || !allegiance.withinOrders(level, position()))) {
+            stopFlyLoop(level); discard(); return;
+        }
 
         if (!level().isClientSide && level() instanceof ServerLevel serverLevel) {
             startFlyLoop(serverLevel);
@@ -124,6 +133,8 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected boolean canHitEntity(Entity target) {
+        if (allegiance.active() && level() instanceof ServerLevel level)
+            return target instanceof LivingEntity living && allegiance.isEnemy(level, living);
         if (!super.canHitEntity(target)) {
             return false;
         }
@@ -156,14 +167,19 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        nativeAge = allegiance.load(tag, MAX_LIFE_TICKS);
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         targetId = tag.hasUUID("Target") ? tag.getUUID("Target") : null;
         explodeDelay = tag.getInt("ExplodeDelay");
         bounced = tag.getBoolean("Bounced");
+        if (allegiance.active()) explodeDelay = Math.max(-1, Math.min(POST_BOUNCE_EXPLODE_TICKS, explodeDelay));
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, nativeAge);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -184,13 +200,12 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
             return;
         }
         LivingEntity owner = owner(level);
-        if (targetId == null && owner instanceof ServerPlayer player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.NOX_FLASH_ROTOR)) {
+        if (targetId == null && com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.NOX_FLASH_ROTOR)) {
             double closest = 32.0D * 32.0D;
             for (LivingEntity candidate : level.getEntitiesOfClass(LivingEntity.class,
                     getBoundingBox().inflate(32.0D), LivingEntity::isAlive)) {
                 double distance = candidate.distanceToSqr(this);
-                if (distance < closest && TargetingUtil.isHostileLivingFor(player, candidate)) {
+                if (distance < closest && com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.hostile(owner, candidate)) {
                     targetId = candidate.getUUID();
                     closest = distance;
                 }
@@ -200,6 +215,10 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
             return;
         }
         Entity target = level.getEntity(targetId);
+        if (allegiance.active() && (!(target instanceof LivingEntity living)
+                || !allegiance.isEnemy(level, living) || distanceToSqr(living) > 48 * 48)) {
+            targetId = null; return;
+        }
         if (!(target instanceof LivingEntity living) || !TargetingUtil.isTargetableLiving(living)) {
             targetId = null;
             return;
@@ -269,7 +288,8 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
 
         AABB box = new AABB(center, center).inflate(EXPLOSION_RADIUS);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+            if (allegiance.active() ? !allegiance.isCaster(target) && !allegiance.isEnemy(level, target)
+                    : !TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
                 continue;
             }
             Vec3 targetCenter = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
@@ -281,12 +301,16 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier {
             SkillDamageHelper.hurt(target, SkillDamageHelper.noxRotor(level, this, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.nox_rotor_drone_entity.skill_hurt.0.damage", 40.0f));
             target.setDeltaMovement(before);
             target.hurtMarked = true;
-            NoxStateManager.applyCrippled(target, owner);
-            if (owner instanceof ServerPlayer player
-                    && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.NOX_FLASH_ROTOR)
-                    && TargetingUtil.isHostileLivingFor(player, target)) {
+            if (allegiance.active()) {
+                com.rzy.dealt_force_skills.effect.NoxCrippledEffect.setOwner(target, owner);
+                com.rzy.dealt_force_skills.effect.NoxCrippledEffect.setNativeSource(target, allegiance);
+                target.addEffect(new net.minecraft.world.effect.MobEffectInstance(ModEffects.NOX_CRIPPLED.get(),
+                        Math.max(1, NoxStateManager.CRIPPLED_TICKS), 0, false, true, true), owner);
+            } else NoxStateManager.applyCrippled(target, owner);
+            if (com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.NOX_FLASH_ROTOR)
+                    && com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.hostile(owner, target)) {
                 target.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                        ModEffects.NOX_FLASHED.get(), 15 * 20, 0, false, false, true), player);
+                        ModEffects.NOX_FLASHED.get(), 15 * 20, 0, false, false, true), owner);
                 target.level().playSound(null, target.blockPosition(), ModSounds.NOX_FLASH_HIT_FULL.get(),
                         SoundSource.PLAYERS, 0.7F, 1.0F);
             }

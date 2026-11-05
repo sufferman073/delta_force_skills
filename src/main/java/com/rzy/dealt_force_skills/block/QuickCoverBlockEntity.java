@@ -23,6 +23,20 @@ public class QuickCoverBlockEntity extends BlockEntity {
     private static final String EXPIRE_AT = "ExpireAt";
     private static final String OWNER = "Owner";
 
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance =
+            new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+
+    public void configureOperative(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source) {
+        allegiance.copyFrom(source);
+        setChanged();
+    }
+
+    public boolean isAlliedTo(ServerLevel level, com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source) {
+        QuickCoverBlockEntity root = rootEntity();
+        return root != null && (source.isAllyOwner(level, root.ownerId)
+                || root.allegiance.active() && source.isAllyOwner(level, root.allegiance.owner()));
+    }
+
     private boolean root;
     private BlockPos rootPos = BlockPos.ZERO;
     private int health = MAX_HEALTH;
@@ -125,6 +139,7 @@ public class QuickCoverBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
+        allegiance.save(tag, 0);
         tag.putBoolean(ROOT, root);
         tag.putInt(HEALTH, health);
         tag.putLong(EXPIRE_AT, expireAt);
@@ -141,6 +156,7 @@ public class QuickCoverBlockEntity extends BlockEntity {
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
+        allegiance.load(tag, 1);
         root = tag.getBoolean(ROOT);
         health = tag.contains(HEALTH, Tag.TAG_INT) ? tag.getInt(HEALTH) : MAX_HEALTH;
         expireAt = tag.getLong(EXPIRE_AT);

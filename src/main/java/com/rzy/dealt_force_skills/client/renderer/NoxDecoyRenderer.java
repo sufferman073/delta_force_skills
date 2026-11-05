@@ -27,6 +27,8 @@ public class NoxDecoyRenderer extends LivingEntityRenderer<NoxDecoyEntity, Playe
 
     @Override
     public ResourceLocation getTextureLocation(NoxDecoyEntity entity) {
+        if (entity.nativeOwner()) return com.rzy.dealt_force_skills.character.CharacterSkinTextures.skinFor(
+                com.rzy.dealt_force_skills.character.ModCharacters.NOX_ID).orElseGet(() -> DefaultPlayerSkin.getDefaultSkin());
         UUID owner = entity.ownerUuid();
         return owner == null ? DefaultPlayerSkin.getDefaultSkin() : DefaultPlayerSkin.getDefaultSkin(owner);
     }

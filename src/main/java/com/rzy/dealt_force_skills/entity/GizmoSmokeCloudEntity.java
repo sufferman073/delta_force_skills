@@ -5,6 +5,8 @@ import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_GizmoRevealEntities;
 import com.rzy.dealt_force_skills.registry.ModEffects;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -28,11 +30,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class GizmoSmokeCloudEntity extends Entity implements ItemSupplier, SmokeCloudModelState {
+public class GizmoSmokeCloudEntity extends Entity implements OperativeAreaSource, ItemSupplier, SmokeCloudModelState {
     public static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmosmokecloudentity.life_ticks", 300));
     public static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmosmokecloudentity.radius", 4.5));
     private static final int PARTICLE_REFRESH_TICKS = 15;
 
+    private final OperativeAllegiance allegiance = new OperativeAllegiance();
+    @Override public OperativeAllegiance operativeAllegiance() { return allegiance; }
+    public static int nativeLifetime() { return Math.max(1, LIFE_TICKS); }
     private UUID ownerId;
 
     public GizmoSmokeCloudEntity(EntityType<? extends GizmoSmokeCloudEntity> type, Level level) {
@@ -63,6 +68,7 @@ public class GizmoSmokeCloudEntity extends Entity implements ItemSupplier, Smoke
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount >= nativeLifetime()) { discard(); return; }
         if (level().isClientSide) {
             return;
         }
@@ -79,10 +85,12 @@ public class GizmoSmokeCloudEntity extends Entity implements ItemSupplier, Smoke
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        if (tag.getBoolean("OperativeSource")) tickCount = allegiance.load(tag, nativeLifetime());
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -104,7 +112,7 @@ public class GizmoSmokeCloudEntity extends Entity implements ItemSupplier, Smoke
         List<Integer> revealIds = new ArrayList<>();
         Entity smokeOwner = ownerId == null ? null : level.getEntity(ownerId);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isHostileLivingFor(smokeOwner, target)
+            if (!(allegiance.active() ? allegiance.isEnemy(level, target) : TargetingUtil.isHostileLivingFor(smokeOwner, target))
                     || (ownerId != null && target.getUUID().equals(ownerId))) {
                 continue;
             }
@@ -112,16 +120,19 @@ public class GizmoSmokeCloudEntity extends Entity implements ItemSupplier, Smoke
                 continue;
             }
 
-            target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmo_smoke_cloud_entity.effect.movement_slowdown.0.duration_ticks", 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmo_smoke_cloud_entity.effect.movement_slowdown.0.amplifier", 0), false, true, true));
+            boolean smokeApplied = target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmo_smoke_cloud_entity.effect.movement_slowdown.0.duration_ticks", 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmo_smoke_cloud_entity.effect.movement_slowdown.0.amplifier", 0), false, true, true));
             if (ownerId != null && level.getEntity(ownerId) instanceof ServerPlayer owner) {
                 DfsAchievements.recordGizmoComboTarget(owner, target, "smoke");
+                if (smokeApplied) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"gizmo.smoke.affected");
             }
             if (target.hasEffect(ModEffects.CORROSION.get())) {
                 revealIds.add(target.getId());
+                if (allegiance.active() && smokeOwner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() != null) bot.skills().remember(target, 20);
             }
         }
 
         if (!revealIds.isEmpty() && tickCount % 5 == 0 && ownerId != null && level.getEntity(ownerId) instanceof ServerPlayer owner) {
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"gizmo.smoke.corroded_reveal");
             // Corrosion smoke reveal is shared with the caster's teammates.
             com.rzy.dealt_force_skills.util.PositionRevealHelper.sendToCasterAndTeammates(
                     owner, new S2C_GizmoRevealEntities(revealIds));

@@ -46,4 +46,16 @@ public class RainbowInjectionItem extends DfsUseItem {
         var id = BuiltInRegistries.MOB_EFFECT.getKey(effect);
         return id != null && IRONS_ASCENSION_ID.equals(id.toString());
     }
+
+    @Override public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        if (target.getRandom().nextBoolean()) {
+            for (MobEffect effect : BuiltInRegistries.MOB_EFFECT) {
+                if (effect.getCategory() == MobEffectCategory.BENEFICIAL && effect != MobEffects.LEVITATION && !isExcludedModEffect(effect))
+                    target.addEffect(new MobEffectInstance(effect,
+                            com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.rainbow_injection_item.effect.custom.0.duration_ticks", 7200),
+                            com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.rainbow_injection_item.effect.custom.0.amplifier", 3)), target);
+            }
+        } else target.hurt(target.damageSources().genericKill(), Float.MAX_VALUE);
+        return true;
+    }
 }

@@ -49,6 +49,10 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
     private static volatile int MAX_RETURN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_RETURN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.grapplehookentity.max_return_ticks", 60));
     private static volatile double RETURN_SPEED_PER_TICK = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RETURN_SPEED_PER_TICK", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.grapplehookentity.return_speed_per_tick", 1.8));
     private static volatile double RETURN_FINISH_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RETURN_FINISH_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.grapplehookentity.return_finish_distance", 0.55));
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance =
+            new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    private java.util.UUID targetUUID;
+    private long nativeExpiresAt;
     private int targetId = -1;
     private int hookedAtTick = -1;
     private int returnStartedTick = -1;
@@ -62,6 +66,7 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
     public GrappleHookEntity(EntityType<? extends GrappleHookEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         this.setOwner(owner);
+        allegiance.capture(owner);
         this.entityData.set(OWNER_ENTITY_ID, owner.getId());
     }
 
@@ -114,6 +119,18 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
             return;
         }
 
+        if (allegiance.active()) {
+            if (nativeExpiresAt == 0) nativeExpiresAt = level().getGameTime() + 160;
+            if (level().getGameTime() >= nativeExpiresAt || tickCount > 160 || nativeHost() == null) {
+                discard();
+                return;
+            }
+            if (targetUUID != null && level() instanceof net.minecraft.server.level.ServerLevel server) {
+                Entity target = server.getEntity(targetUUID);
+                if (target == null) { beginReturn(); }
+                else targetId = target.getId();
+            }
+        }
         if (isReturning()) {
             tickReturning();
             return;
@@ -155,6 +172,21 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
 
         Entity owner = getOwner();
         Entity target = r.getEntity();
+        if (allegiance.active()) {
+            var host = nativeHost();
+            if (host == null || !(target instanceof LivingEntity living) || !nativeTarget(host, living)) {
+                beginReturn();
+                return;
+            }
+            float damage = com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue(
+                    "summons.grapple_hook_entity.skill_hurt.0.damage", 10.0F);
+            SkillDamageHelper.hurt(living, SkillDamageHelper.sinevaGrapple(host.serverLevel(), this, host.body()), host.body(), damage);
+            targetId = living.getId(); targetUUID = living.getUUID(); hookedAtTick = tickCount;
+            initialPullDistance = host.body().distanceTo(living); dragSoundPlayed = false;
+            setDeltaMovement(Vec3.ZERO);
+            level().playSound(null, blockPosition(), ModSounds.SINEVA_GRAPPLE_HIT.get(), SoundSource.NEUTRAL, 1, 1);
+            return;
+        }
         if (!(owner instanceof net.minecraft.server.level.ServerPlayer sp)) {
             discard();
             return;
@@ -183,6 +215,8 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
             targetId = target.getId();
             hookedAtTick = tickCount;
             initialPullDistance = sp.distanceTo(target);
+            if (getPersistentData().hasUUID("DepartmentLockedTarget") && getPersistentData().getUUID("DepartmentLockedTarget").equals(target.getUUID()))
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(sp,"sineva.grapple.locked_hit");
             dragSoundPlayed = false;
             setDeltaMovement(Vec3.ZERO);
         } else {
@@ -192,7 +226,7 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected boolean canHitEntity(Entity target) {
-        return target != getOwner() && super.canHitEntity(target);
+        return target != getOwner() && (!allegiance.active() || !allegiance.isAlly(this, target)) && super.canHitEntity(target);
     }
 
     @Override
@@ -210,7 +244,12 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
     
     @Override
     protected void readAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
-        targetId = tag.getInt("TargetId");
+        super.readAdditionalSaveData(tag);
+        int age = allegiance.load(tag, 160);
+        if (allegiance.active()) tickCount = age;
+        targetUUID = tag.hasUUID("NativeTarget") ? tag.getUUID("NativeTarget") : null;
+        nativeExpiresAt = tag.getLong("NativeExpiresAt");
+        targetId = tag.contains("TargetId") ? tag.getInt("TargetId") : -1;
         hookedAtTick = tag.getInt("HookedAtTick");
         returnStartedTick = tag.getInt("ReturnStartedTick");
         initialPullDistance = tag.contains("InitialPullDistance") ? tag.getDouble("InitialPullDistance") : -1.0D;
@@ -220,6 +259,10 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void addAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
+        if (targetUUID != null) tag.putUUID("NativeTarget", targetUUID);
+        tag.putLong("NativeExpiresAt", nativeExpiresAt);
         tag.putInt("TargetId", targetId);
         tag.putInt("HookedAtTick", hookedAtTick);
         tag.putInt("ReturnStartedTick", returnStartedTick);
@@ -234,6 +277,7 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
     }
 
     private void tickHookedTarget() {
+        if (allegiance.active()) { tickNativeTarget(); return; }
         Entity owner = getOwner();
         Entity target = level().getEntity(targetId);
         if (!(owner instanceof net.minecraft.server.level.ServerPlayer sp) || !(target instanceof LivingEntity le) || !target.isAlive()) {
@@ -294,6 +338,7 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
                     SoundSource.VOICE, 1.0F, 1.0F, 32.0D);
         }
         targetId = -1;
+        targetUUID = null;
         hookedAtTick = -1;
         initialPullDistance = -1.0D;
         dragSoundPlayed = false;
@@ -323,7 +368,48 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
         checkInsideBlocks();
     }
 
-    private static Vec3 pullAnchor(net.minecraft.server.level.ServerPlayer player) {
+    public boolean isOwnedBy(java.util.UUID caster) { return caster != null && caster.equals(allegiance.caster()); }
+
+    private com.rzy.dealt_force_skills.ai.operative.OperativeHost nativeHost() {
+        Entity owner = getOwner();
+        if (!(owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host)
+                || !host.body().isAlive() || host.body().isRemoved()
+                || !host.withinOrders(host.body().position())) return null;
+        if (!(com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(host.skills(), com.rzy.dealt_force_skills.ai.operative.NativeSinevaSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeSinevaSkills)
+                || !(owner instanceof net.minecraft.world.entity.OwnableEntity ownable)
+                || !java.util.Objects.equals(ownable.getOwnerUUID(), allegiance.owner())) return null;
+        return host;
+    }
+
+    private boolean nativeTarget(com.rzy.dealt_force_skills.ai.operative.OperativeHost host, LivingEntity target) {
+        return target.isAlive() && host.isEnemy(target) && !allegiance.isAlly(this, target)
+                && host.withinOrders(target.position()) && host.canSee(target)
+                && host.body().distanceToSqr(target) <= MAX_DISTANCE_SQR;
+    }
+
+    private void tickNativeTarget() {
+        var host = nativeHost();
+        Entity target = level().getEntity(targetId);
+        if (host == null || !(target instanceof LivingEntity living) || !nativeTarget(host, living)) { beginReturn(); return; }
+        living.addEffect(new MobEffectInstance(ModEffects.STUN.get(),
+                com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.grapple_hook_entity.effect.stun.0.duration_ticks", 5), 0, false, true));
+        StunEffect.allowHorizontalMovement(living, 3);
+        setPos(living.getBoundingBox().getCenter());
+        if (tickCount - hookedAtTick < PULL_DELAY_TICKS) return;
+        Vec3 anchor = pullAnchor(host.body());
+        Vec3 horizontal = anchor.subtract(living.position()).multiply(1, 0, 1);
+        double distance = horizontal.length();
+        if (distance < 1.35D || tickCount - hookedAtTick > MAX_PULL_TICKS || !host.withinOrders(anchor)) { beginReturn(); return; }
+        if (!dragSoundPlayed) {
+            level().playSound(null, living.blockPosition(), ModSounds.SINEVA_GRAPPLE_DRAG.get(), SoundSource.NEUTRAL, 0.85F, 1);
+            dragSoundPlayed = true;
+        }
+        living.move(MoverType.SELF, horizontal.normalize().scale(Math.min(0.95D, 0.22D + distance * 0.055D)));
+        living.setDeltaMovement(Vec3.ZERO); living.hurtMarked = true; living.hasImpulse = true;
+        syncDraggedPlayer(living);
+    }
+
+    private static Vec3 pullAnchor(LivingEntity player) {
         Vec3 look = player.getLookAngle();
         Vec3 horizontal = new Vec3(look.x, 0.0, look.z);
         if (horizontal.lengthSqr() < 0.001) {

@@ -42,14 +42,23 @@ public class EffectConsumableItem extends DfsUseItem {
             if (effect == null) {
                 continue;
             }
-            player.addEffect(new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier(),
-                    false, true, true), player);
+            com.rzy.dealt_force_skills.department.DepartmentConsumables.addEffect(player,new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier(),
+                    false, true, true));
         }
         return true;
     }
 
     public List<EffectEntry> blessingPreviewEffects() {
         return effects;
+    }
+
+    @Override public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        for (EffectEntry entry : effects) if (entry.effect().get() != null) {
+            MobEffect effect = entry.effect().get();
+            if (effect.isInstantenous()) effect.applyInstantenousEffect(target, target, target, entry.amplifier(), 1);
+            else target.addEffect(new MobEffectInstance(effect, entry.durationTicks(), entry.amplifier()), target);
+        }
+        return true;
     }
 
     public record EffectEntry(Supplier<MobEffect> effect, int durationTicks, int amplifier) {

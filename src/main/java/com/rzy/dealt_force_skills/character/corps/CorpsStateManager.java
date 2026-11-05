@@ -189,6 +189,7 @@ public final class CorpsStateManager {
         }
         player.addEffect(new MobEffectInstance(ModEffects.CORPS_FORCEFUL_BATON.get(),
                 ACTIVE_DURATION_TICKS, 0, false, true, true), player);
+        com.rzy.dealt_force_skills.department.DepartmentCorps.batonActivated(player);
         tag.putLong(ACTIVE_2_COOLDOWN_UNTIL,
                 SkillCooldownHelper.until(player, now, ACTIVE_COOLDOWN_TICKS));
         player.level().playSound(null, player.blockPosition(), ModSounds.CORPS_FORCEFUL_BATON.get(),
@@ -308,7 +309,7 @@ public final class CorpsStateManager {
     }
 
     public static void onDamageTaken(ServerPlayer player, float amount) {
-        if (!isCorps(player) || amount <= 0.0F || EXECUTING_LOYALTY_TARGETS.contains(player.getUUID())) {
+        if (!isCorps(player) || !Float.isFinite(amount) || amount <= 0.0F || EXECUTING_LOYALTY_TARGETS.contains(player.getUUID())) {
             return;
         }
         CompoundTag tag = data(player);
@@ -316,7 +317,10 @@ public final class CorpsStateManager {
         MobEffectInstance current = player.getEffect(ModEffects.CORPS_LOYALTY_BOOST.get());
         int nextAmplifier = current == null ? 0 : Math.min(19, current.getAmplifier() + 1);
         player.addEffect(new MobEffectInstance(ModEffects.CORPS_LOYALTY_BOOST.get(),
-                20 * 20, nextAmplifier, false, true, true), player);
+                current != null && current.isInfiniteDuration() ? -1 : 20 * 20, nextAmplifier, false, true, true), player);
+        MobEffectInstance acquired = player.getEffect(ModEffects.CORPS_LOYALTY_BOOST.get());
+        if (acquired != null) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,
+                "corps.loyalty.level", acquired.getAmplifier() + 1);
     }
 
     public static boolean isExecutingLoyaltyTarget(LivingEntity entity) {
@@ -602,6 +606,13 @@ public final class CorpsStateManager {
                     "message.dealt_force_skills.beacon_boss.immune_execute"), true);
             return;
         }
+        DuelRuntime runtime = ACTIVE_DUELS.get(owner.getUUID());
+        boolean taskEligible = isDuelOwner(owner) && owner.isAlive() && target.isAlive() && !target.isRemoved()
+                && runtime != null && runtime.targetId().equals(target.getUUID())
+                && target.getUUID().equals(data(owner).getUUID(DUEL_TARGET))
+                && ALLEY_MAZE_LEVEL.equals(owner.level().dimension())
+                && ALLEY_MAZE_LEVEL.equals(target.level().dimension())
+                && data(owner).getInt(DUEL_LOYALTY_ORANGE) >= LOYALTY_KILL_STACKS && target.getMaxHealth() > 250.0F;
         EXECUTING_LOYALTY_TARGETS.add(target.getUUID());
         boolean dead = false;
         try {
@@ -619,6 +630,8 @@ public final class CorpsStateManager {
             EXECUTING_LOYALTY_TARGETS.remove(target.getUUID());
         }
         if (dead) {
+            if (taskEligible) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,
+                    "corps.duel.250_health_100_loyalty_kill");
             DfsAchievements.recordCorpsLoyaltyExecution(owner, target);
             endDuel(owner, true);
         }
@@ -677,7 +690,8 @@ public final class CorpsStateManager {
         }
         for (MobEffectInstance effect : new ArrayList<>(player.getActiveEffects())) {
             MobEffect type = effect.getEffect();
-            if (!isWarmEnforcementEffect(type)
+            if (!com.rzy.dealt_force_skills.character.rover.RoverStateManager.isProtectedEffect(type)
+                    && !isWarmEnforcementEffect(type)
                     && type != ModEffects.CORPS_DECAYED_SOLDIER.get()) {
                 player.removeEffect(type);
             }

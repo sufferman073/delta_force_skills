@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.dwolf;
 
+import com.rzy.dealt_force_skills.motion.TacticalMotion;
+import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
+
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
@@ -230,6 +233,7 @@ public final class DWolfStateManager {
         long now = SkillCooldownHelper.now(player);
         tag.putInt(CANNON_BURST_SHOTS, CommanderStateManager.skillCount(player, 3));
         tag.putLong(CANNON_BURST_NEXT_SHOT, now);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"d_wolf.grenade");
         return true;
     }
 
@@ -345,6 +349,8 @@ public final class DWolfStateManager {
         tag.putLong(SLIDE_COOLDOWN_UNTIL, SkillCooldownHelper.until(player, now, SLIDE_COOLDOWN_TICKS));
         tag.putDouble(SLIDE_DIR_X, direction.x);
         tag.putDouble(SLIDE_DIR_Z, direction.z);
+        TacticalMotionSync.start(player, TacticalMotion.SLIDE, tag.getInt(SLIDE_TICKS_REMAINING), direction,
+                p -> isDWolf(p) && slideTicksRemaining(p) > 0, 0, DWolfStateManager::isDWolf);
         return true;
     }
 

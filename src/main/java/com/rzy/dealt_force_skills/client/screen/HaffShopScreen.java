@@ -37,6 +37,8 @@ public class HaffShopScreen extends Screen {
     private boolean searchFocused;
     private String searchQuery = "";
     private String attachmentCategory = "magazine";
+    // 界面尺寸补偿系数：界面尺寸 2 → 1.5 倍，使字与按钮的物理大小与界面尺寸 3 一致
+    private float scaleFactor = 1.0F;
 
     public HaffShopScreen(long coins, List<Entry> entries) {
         super(Component.translatable("screen.dealt_force_skills.shop.title"));
@@ -59,31 +61,46 @@ public class HaffShopScreen extends Screen {
     }
 
     @Override
+    protected void init() {
+        // 本界面只走独立打开路径，按界面尺寸补偿（界面尺寸 2 → 1.5 倍）
+        scaleFactor = ScreenScale.factor(false);
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // 全屏背景必须在缩放之外绘制：renderBackground 按真实 width/height 铺满屏幕
         renderBackground(graphics);
+        float factor = scaleFactor;
+        ScreenScale.push(graphics, factor);
+        int localMouseX = ScreenScale.toLocal(mouseX, factor);
+        int localMouseY = ScreenScale.toLocal(mouseY, factor);
         int left = panelLeft();
         int top = panelTop();
         graphics.fill(left, top, left + panelWidth(), top + panelHeight(), 0xE012171D);
         graphics.fill(left, top, left + panelWidth(), top + 1, 0xFFFFD34D);
         graphics.drawString(font, Component.translatable("screen.dealt_force_skills.shop.coins", coins),
                 left + PADDING, top + 10, 0xFFFFD34D);
-        graphics.drawCenteredString(font, title, width / 2, top + 10, 0xFFFFFF);
-        drawTabs(graphics, mouseX, mouseY);
-        drawItems(graphics, mouseX, mouseY);
-        super.render(graphics, mouseX, mouseY, partialTick);
-        renderHoveredTooltip(graphics, mouseX, mouseY);
+        // 标题按面板中心居中（原先用屏幕宽居中，面板未铺满时标题会偏右）
+        graphics.drawCenteredString(font, title, left + panelWidth() / 2, top + 10, 0xFFFFFF);
+        drawTabs(graphics, localMouseX, localMouseY);
+        drawItems(graphics, localMouseX, localMouseY);
+        super.render(graphics, localMouseX, localMouseY, partialTick);
+        renderHoveredTooltip(graphics, localMouseX, localMouseY);
+        ScreenScale.pop(graphics);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        double localX = ScreenScale.toLocalCoordinate(mouseX, scaleFactor);
+        double localY = ScreenScale.toLocalCoordinate(mouseY, scaleFactor);
         if (button == 0) {
-            if (searchTabAt(mouseX, mouseY)) {
+            if (searchTabAt(localX, localY)) {
                 searchMode = true;
                 searchFocused = true;
                 scrollY = 0;
                 return true;
             }
-            Category tab = tabAt(mouseX, mouseY);
+            Category tab = tabAt(localX, localY);
             if (tab != null) {
                 category = tab;
                 searchMode = false;
@@ -91,7 +108,7 @@ public class HaffShopScreen extends Screen {
                 scrollY = 0;
                 return true;
             }
-            String attachmentTab = attachmentTabAt(mouseX, mouseY);
+            String attachmentTab = attachmentTabAt(localX, localY);
             if (attachmentTab != null) {
                 attachmentCategory = attachmentTab;
                 searchMode = false;
@@ -99,15 +116,15 @@ public class HaffShopScreen extends Screen {
                 scrollY = 0;
                 return true;
             }
-            searchFocused = searchMode && inside(mouseX, mouseY, panelLeft() + PADDING, panelTop() + 56,
+            searchFocused = searchMode && inside(localX, localY, panelLeft() + PADDING, panelTop() + 56,
                     panelWidth() - PADDING * 2, 18);
-            Entry entry = buyButtonAt(mouseX, mouseY);
+            Entry entry = buyButtonAt(localX, localY);
             if (entry != null) {
                 NetworkHandler.sendToServer(new C2S_BuyHaffShopItem(entry.id()));
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(localX, localY, button);
     }
 
     @Override
@@ -138,14 +155,29 @@ public class HaffShopScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (inside(mouseX, mouseY, contentLeft(), contentTop(), contentWidth(), contentHeight())) {
+        double localX = ScreenScale.toLocalCoordinate(mouseX, scaleFactor);
+        double localY = ScreenScale.toLocalCoordinate(mouseY, scaleFactor);
+        if (inside(localX, localY, contentLeft(), contentTop(), contentWidth(), contentHeight())) {
             int maxScroll = maxScroll();
             if (maxScroll > 0) {
                 scrollY = clamp(scrollY - (int) Math.round(delta * SCROLL_STEP), 0, maxScroll);
                 return true;
             }
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(localX, localY, delta);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        return super.mouseDragged(ScreenScale.toLocalCoordinate(mouseX, scaleFactor),
+                ScreenScale.toLocalCoordinate(mouseY, scaleFactor), button,
+                ScreenScale.toLocalDelta(dragX, scaleFactor), ScreenScale.toLocalDelta(dragY, scaleFactor));
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        return super.mouseReleased(ScreenScale.toLocalCoordinate(mouseX, scaleFactor),
+                ScreenScale.toLocalCoordinate(mouseY, scaleFactor), button);
     }
 
     private void drawTabs(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -215,7 +247,8 @@ public class HaffShopScreen extends Screen {
         int width = contentWidth();
         int height = contentHeight();
         graphics.fill(left - 1, top - 1, left + width + 1, top + height + 1, 0x5523333F);
-        graphics.enableScissor(left, top, left + width, top + height);
+        // scissor 用像素坐标换算，不跟随 pose 矩阵，必须把局部坐标乘回缩放系数
+        ScreenScale.enableScissor(graphics, scaleFactor, left, top, left + width, top + height);
         int y = top - scrollY;
         DfsItemQualityTracker tracker = showQualityHeaders() ? new DfsItemQualityTracker() : null;
         for (Entry entry : filteredEntries()) {
@@ -272,7 +305,8 @@ public class HaffShopScreen extends Screen {
     private void renderHoveredTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         Entry entry = rowAt(mouseX, mouseY);
         if (entry != null) {
-            graphics.renderTooltip(font, entry.preview(), mouseX, mouseY);
+            ScreenScale.renderItemTooltip(graphics, font, entry.preview(), mouseX, mouseY,
+                    localWidth(), localHeight());
         }
     }
 
@@ -421,19 +455,29 @@ public class HaffShopScreen extends Screen {
     }
 
     private int panelWidth() {
-        return Math.max(1, Math.min(620, width - 24));
+        return Math.max(1, Math.min(620, localWidth() - 24));
     }
 
     private int panelHeight() {
-        return Math.max(1, Math.min(390, height - 24));
+        return Math.max(1, Math.min(390, localHeight() - 24));
     }
 
     private int panelLeft() {
-        return (width - panelWidth()) / 2;
+        return (localWidth() - panelWidth()) / 2;
     }
 
     private int panelTop() {
-        return Math.max(8, (height - panelHeight()) / 2);
+        return Math.max(8, (localHeight() - panelHeight()) / 2);
+    }
+
+    /** 虚拟布局宽度：真实 GUI 宽 / 界面尺寸补偿系数，让面板在界面尺寸 2 下与尺寸 3 视觉一致 */
+    private int localWidth() {
+        return ScreenScale.localWidth(width, scaleFactor);
+    }
+
+    /** 虚拟布局高度：真实 GUI 高 / 界面尺寸补偿系数 */
+    private int localHeight() {
+        return ScreenScale.localHeight(height, scaleFactor);
     }
 
     private int contentLeft() {

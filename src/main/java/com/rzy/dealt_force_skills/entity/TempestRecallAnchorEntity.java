@@ -23,6 +23,7 @@ public final class TempestRecallAnchorEntity extends Entity {
             SynchedEntityData.defineId(TempestRecallAnchorEntity.class, EntityDataSerializers.BOOLEAN);
 
     private UUID ownerUuid;
+    private boolean nativeOwner;
 
     public TempestRecallAnchorEntity(EntityType<? extends TempestRecallAnchorEntity> type, Level level) {
         super(type, level);
@@ -37,6 +38,14 @@ public final class TempestRecallAnchorEntity extends Entity {
     ) {
         this(type, level);
         ownerUuid = owner.getUUID();
+        entityData.set(DATA_OWNER_ID, owner.getId());
+    }
+
+    public TempestRecallAnchorEntity(EntityType<? extends TempestRecallAnchorEntity> type, Level level,
+            net.minecraft.world.entity.LivingEntity owner) {
+        this(type, level);
+        ownerUuid = owner.getUUID();
+        nativeOwner = owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost;
         entityData.set(DATA_OWNER_ID, owner.getId());
     }
 
@@ -57,6 +66,14 @@ public final class TempestRecallAnchorEntity extends Entity {
             discard();
             return;
         }
+        if (nativeOwner) {
+            if (!(serverLevel.getEntity(ownerUuid) instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost owner) || !owner.body().isAlive()
+                    || !(com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(owner.skills(), com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills tempest)
+                    || !tempest.isAnchor(getUUID())) { discard(); return; }
+            entityData.set(DATA_OWNER_ID, owner.body().getId());
+            entityData.set(DATA_RECALLING, tempest.recalling());
+            return;
+        }
         ServerPlayer owner = serverLevel.getServer().getPlayerList().getPlayer(ownerUuid);
         if (owner == null
                 || owner.level() != serverLevel
@@ -72,10 +89,12 @@ public final class TempestRecallAnchorEntity extends Entity {
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerUuid = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        nativeOwner = tag.getBoolean("OperativeAnchor");
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        tag.putBoolean("OperativeAnchor", nativeOwner);
         if (ownerUuid != null) {
             tag.putUUID("Owner", ownerUuid);
         }

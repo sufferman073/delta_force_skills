@@ -36,7 +36,11 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkHooks;
 
-public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupplier {
+public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private java.util.UUID operativeOwner;
+    @Override public java.util.UUID operativeOwnerUUID() { return operativeOwner; }
+    public static double blastRadius() { return Math.max(0, RADIUS); }
+    public static int fuseTicks() { return Math.max(1, FUSE_TICKS); }
     private static volatile int FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.dwolfhandcannongrenadeentity.fuse_ticks", 70));
     private static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.dwolfhandcannongrenadeentity.radius", 6.0));
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.dwolfhandcannongrenadeentity.bounce_factor", 0.62));
@@ -54,6 +58,8 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
     public DWolfHandCannonGrenadeEntity(EntityType<? extends DWolfHandCannonGrenadeEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
+        if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost
+                && owner instanceof net.minecraft.world.entity.OwnableEntity owned) operativeOwner = owned.getOwnerUUID();
     }
 
     @Override
@@ -112,13 +118,14 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
     protected boolean canHitEntity(Entity target) {
         return super.canHitEntity(target)
                 && target instanceof LivingEntity living
-                && getOwner() instanceof ServerPlayer owner
-                && CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.DWOLF_FAST_BURN_CHARGE)
-                && TargetingUtil.isHostileLivingFor(owner, living);
+                && com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(getOwner(), CommanderBranchUpgrade.DWOLF_FAST_BURN_CHARGE)
+                && TargetingUtil.isHostileLivingFor(getOwner(), living);
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        operativeOwner = tag.hasUUID("OperativeOwner") ? tag.getUUID("OperativeOwner") : null;
         fuseRemaining = tag.getInt("FuseRemaining");
         if (fuseRemaining <= 0) {
             fuseRemaining = FUSE_TICKS;
@@ -128,6 +135,8 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        if (operativeOwner != null) tag.putUUID("OperativeOwner", operativeOwner);
         tag.putInt("FuseRemaining", fuseRemaining);
         tag.putBoolean("Stopped", entityData.get(STOPPED));
     }
@@ -171,8 +180,8 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
 
         LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
         Player ownerPlayer = owner instanceof Player player ? player : null;
-        double radius = CommanderStateManager.skillRadius(ownerPlayer, RADIUS);
-        double falloff = CommanderStateManager.skillDamageFalloff(ownerPlayer, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.dwolfhandcannongrenadeentity", 0.1D));
+        double radius = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.radius(owner, CommanderStateManager.skillRadius(ownerPlayer, RADIUS));
+        double falloff = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.falloff(owner, CommanderStateManager.skillDamageFalloff(ownerPlayer, com.rzy.dealt_force_skills.config.SkillBalance.falloffPerBlock("summons.dwolfhandcannongrenadeentity", 0.1D)));
         RangedSoundHelper.stop(serverLevel, center, ModSounds.D_WOLF_HAND_CANNON_FUSE.get(),
                 SoundSource.PLAYERS, 48.0D);
         serverLevel.playSound(null, center.x, center.y, center.z, ModSounds.D_WOLF_HAND_CANNON_EXPLODE.get(),
@@ -184,7 +193,7 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
 
         AABB box = new AABB(center, center).inflate(radius);
         for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, box,
-                entity -> TargetingUtil.isSelfOrHostileLivingFor(owner, entity))) {
+                entity -> TargetingUtil.isSelfOrHostileLivingFor(owner != null ? owner : this, entity))) {
             double distance = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D).distanceTo(center);
             if (distance > radius) {
                 continue;

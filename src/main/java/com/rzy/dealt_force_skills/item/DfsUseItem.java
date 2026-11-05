@@ -64,7 +64,10 @@ public abstract class DfsUseItem extends QualityTooltipItem {
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity entity) {
         if (!level.isClientSide && entity instanceof ServerPlayer player) {
-            if (applyUseEffect(stack, level, player)) {
+            var departmentUse = com.rzy.dealt_force_skills.department.DepartmentConsumption.before(player, stack);
+            if (com.rzy.dealt_force_skills.department.DepartmentConsumables.observeUse(player,stack,()->applyUseEffect(stack, level, player))) {
+                com.rzy.dealt_force_skills.department.DepartmentUseSpeed.finished(player,stack);
+                com.rzy.dealt_force_skills.department.DepartmentConsumption.finished(player, departmentUse);
                 if (stack.is(com.rzy.dealt_force_skills.registry.ModItems.OE2_COMBAT_STIMULANT.get())) {
                     com.rzy.dealt_force_skills.stamina.StaminaManager.fill(player);
                 }
@@ -77,6 +80,22 @@ public abstract class DfsUseItem extends QualityTooltipItem {
     }
 
     protected abstract boolean applyUseEffect(ItemStack stack, Level level, ServerPlayer player);
+
+    /** Native companion administration; never applies an effect to the administering player. */
+    public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) { return false; }
+
+    /** The caller supplies a copy, then commits it only for non-creative users. */
+    public final boolean administerToOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        if (stack.isEmpty() || !useOnOperative(stack, target)) return false;
+        consumeOperativeUse(stack);
+        return true;
+    }
+
+    protected void consumeOperativeUse(ItemStack stack) {
+        if (!stack.isDamageableItem()) stack.shrink(1);
+        else if (stack.getDamageValue() + 1 >= stack.getMaxDamage()) stack.shrink(1);
+        else stack.setDamageValue(stack.getDamageValue() + 1);
+    }
 
     protected final String configKey() {
         return configKey;
