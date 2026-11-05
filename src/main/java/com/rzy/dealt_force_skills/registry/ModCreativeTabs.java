@@ -159,6 +159,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.PREMIUM_COFFEE_BEANS.get());
                         output.accept(ModItems.HVK_BRAIN_UNIT.get());
                         output.accept(ModItems.BEACON_BRAIN_UNIT.get());
+                        ModItems.OPERATIVE_SPAWN_EGGS.values().forEach(egg -> output.accept(egg.get()));
                         output.accept(ModItems.BEACON_BOSS_SPAWN_EGG.get());
                         output.accept(ModItems.ACCELERATED_TROOPS_SPAWN_EGG.get());
                         output.accept(ModItems.PORTABLE_ADS_DEVICE.get());

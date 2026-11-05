@@ -68,13 +68,24 @@ public final class UndeadShopManager {
             if (!UndeadSupportManager.deploy(player, entry)) {
                 UndeadSoulManager.add(player, price);
                 message(player, "message.dealt_force_skills.undead_shop.deploy_failed");
-            }
+            } else com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.buy.support");
             return;
         }
         UndeadUpgradeManager.setLevel(player, entry, current + 1);
         if (entry.isBracelet()) {
             UndeadUpgradeManager.setEquipped(player, entry, true);
         }
+        String questPurchase=switch(entry.category()) {
+            case TRAIT -> "undead.buy.character";
+            case BRACELET -> "undead.buy.accessory";
+            case SERVICE -> "undead.buy.service";
+            default -> "";
+        };
+        if(!questPurchase.isEmpty())com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,questPurchase);
+        if(entry.category()==UndeadShopCategory.TALENT&&current+1>=entry.maxLevel())
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.talent.maxed");
+        if(entry==UndeadShopEntry.THOUSAND_TEMPERING)
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.buy.thousand_hits");
         DfsAchievements.onShopPurchase(player, "undead", entry.id());
         message(player, "message.dealt_force_skills.undead_shop.purchased");
     }

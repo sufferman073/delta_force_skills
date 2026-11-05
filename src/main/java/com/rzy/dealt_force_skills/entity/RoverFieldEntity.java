@@ -26,12 +26,24 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 import java.util.UUID;
 
-public final class RoverFieldEntity extends Entity implements SmokeCloudModelState {
+public final class RoverFieldEntity extends Entity implements SmokeCloudModelState, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
     private static final EntityDataAccessor<Boolean> SMOKE = SynchedEntityData.defineId(RoverFieldEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> LIFE = SynchedEntityData.defineId(RoverFieldEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> RADIUS = SynchedEntityData.defineId(RoverFieldEntity.class, EntityDataSerializers.FLOAT);
     private static final DustParticleOptions AEROSOL = new DustParticleOptions(new Vector3f(0.65F, 0.95F, 0.65F), 1.1F);
     private UUID ownerId;
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public boolean isNativeOwnedBy(LivingEntity owner) { return allegiance.active() && allegiance.isCaster(owner); }
+    public void configureNative(LivingEntity owner, boolean smoke) {
+        allegiance.capture(owner); configureNative(allegiance, smoke);
+    }
+    public void configureNative(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source, boolean smoke) {
+        allegiance.copyFrom(source); ownerId = source.caster();
+        entityData.set(SMOKE, smoke);
+        entityData.set(LIFE, Math.max(1, smoke ? RoverConfig.SMOKE_DURATION : RoverConfig.INJECTOR_DURATION));
+        entityData.set(RADIUS, (float) Math.max(0.1, smoke ? RoverConfig.SMOKE_RADIUS : RoverConfig.INJECTOR_RADIUS));
+    }
     private final java.util.Set<UUID> purifiedListeners = new java.util.HashSet<>();
 
     public RoverFieldEntity(EntityType<? extends RoverFieldEntity> type, Level level) {
@@ -55,6 +67,7 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
     @Override public void tick() {
         super.tick();
         if (!(level() instanceof ServerLevel level)) return;
+        if (allegiance.active()) { tickNative(level); return; }
         if (tickCount > smokeLifetimeTicks() || ownerId == null
                 || !(level.getEntity(ownerId) instanceof ServerPlayer owner) || !owner.isAlive() || !RoverStateManager.isRover(owner)) {
             discard(); return;
@@ -94,6 +107,26 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
         }
     }
 
+    private void tickNative(ServerLevel level) {
+        if (tickCount > smokeLifetimeTicks() || !allegiance.withinOrders(level, position())) { discard(); return; }
+        LivingEntity owner = ownerId != null && level.getEntity(ownerId) instanceof LivingEntity living ? living : null;
+        boolean smoke = shouldRenderSmokeModel(), pulse = (tickCount - 1) % 20 == 0;
+        if (!smoke && tickCount % 4 == 0) level.sendParticles(AEROSOL, getX(), getY() + 0.5, getZ(), 12, radius()*0.5, radius()*0.4, radius()*0.5, 0);
+        for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(radius()),
+                entity -> entity.isAlive() && entity.distanceToSqr(this) <= radius()*radius() && allegiance.withinOrders(level, entity.position()))) {
+            if (!smoke) RoverStateManager.applyAerosol(owner, target, pulse, allegiance.isAlly(level, target), allegiance.isEnemy(level, target));
+            else if (pulse && allegiance.isEnemy(level, target)) {
+                if (target instanceof Player) {
+                    target.addEffect(new MobEffectInstance(MobEffects.CONFUSION, Math.max(1, RoverConfig.SMOKE_DEBUFF_DURATION), Math.max(0, RoverConfig.SMOKE_NAUSEA_AMPLIFIER)), owner);
+                    target.addEffect(new MobEffectInstance(MobEffects.WITHER, Math.max(1, RoverConfig.SMOKE_DEBUFF_DURATION), Math.max(0, RoverConfig.WITHER_AMPLIFIER)), owner);
+                    target.addEffect(new MobEffectInstance(ModEffects.ROVER_VULNERABLE, Math.max(1, RoverConfig.SMOKE_VULNERABILITY_DURATION)), owner);
+                } else SkillDamageHelper.hurt(target, SkillDamageHelper.trueDamage(level, this, owner), owner,
+                        (float) (target.getMaxHealth()*Math.max(0, RoverConfig.SMOKE_MOB_FRACTION)));
+            }
+        }
+        if (smoke) com.rzy.dealt_force_skills.ai.operative.OperativeSupport.suppressThroughSmoke(this, radius(), allegiance.caster());
+    }
+
     public boolean blocksSight(Vec3 start, Vec3 end) {
         double squared = radius() * radius();
         if (start.distanceToSqr(position()) <= squared && end.distanceToSqr(position()) <= squared) return false;
@@ -104,7 +137,7 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
         return start.add(segment.scale(t)).distanceToSqr(position()) <= squared;
     }
 
-    public boolean conceals(LivingEntity target) { return shouldRenderSmokeModel() && target.getUUID().equals(ownerId); }
+    public boolean conceals(LivingEntity target) { return shouldRenderSmokeModel() && (target.getUUID().equals(ownerId) || allegiance.active() && level() instanceof ServerLevel level && allegiance.isAlly(level, target)); }
     @Override public boolean isPickable() { return false; }
     @Override public boolean isAttackable() { return false; }
     @Override public boolean shouldRenderAtSqrDistance(double distance) { return distance < 512 * 512; }
@@ -112,11 +145,13 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
         net.minecraft.nbt.ListTag listeners = new net.minecraft.nbt.ListTag();
         for (UUID id : purifiedListeners) listeners.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
         tag.put("PurifiedListeners", listeners);
+        allegiance.save(tag, tickCount);
         if (ownerId != null) tag.putUUID("Owner", ownerId);
         tag.putBoolean("Smoke", shouldRenderSmokeModel()); tag.putInt("Life", smokeLifetimeTicks());
         tag.putFloat("Radius", entityData.get(RADIUS)); tag.putInt("Age", tickCount);
     }
     @Override protected void readAdditionalSaveData(CompoundTag tag) {
+        int nativeAge = allegiance.load(tag, Math.max(RoverConfig.SMOKE_DURATION, RoverConfig.INJECTOR_DURATION));
         purifiedListeners.clear();
         for (net.minecraft.nbt.Tag entry : tag.getList("PurifiedListeners", net.minecraft.nbt.Tag.TAG_STRING)) {
             try { purifiedListeners.add(UUID.fromString(entry.getAsString())); } catch (IllegalArgumentException ignored) { }
@@ -124,5 +159,13 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         entityData.set(SMOKE, tag.getBoolean("Smoke")); entityData.set(LIFE, Math.max(1, tag.getInt("Life")));
         entityData.set(RADIUS, Math.max(0.1F, tag.getFloat("Radius"))); tickCount = tag.getInt("Age");
+        if (allegiance.active()) {
+            int limit = Math.max(1, shouldRenderSmokeModel() ? RoverConfig.SMOKE_DURATION : RoverConfig.INJECTOR_DURATION);
+            entityData.set(LIFE, Math.max(1, Math.min(limit, smokeLifetimeTicks())));
+            double configuredRadius = shouldRenderSmokeModel() ? RoverConfig.SMOKE_RADIUS : RoverConfig.INJECTOR_RADIUS;
+            float cap = (float) (Double.isFinite(configuredRadius) ? Math.max(0.1, configuredRadius) : 0.1);
+            entityData.set(RADIUS, Float.isFinite(entityData.get(RADIUS)) ? Math.min(cap, entityData.get(RADIUS)) : cap);
+            tickCount = Math.max(nativeAge, Math.max(0, Math.min(limit + 1, tickCount)));
+        }
     }
 }

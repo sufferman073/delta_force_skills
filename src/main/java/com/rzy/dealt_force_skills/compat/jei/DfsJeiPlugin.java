@@ -24,8 +24,10 @@ import java.util.List;
 
 @JeiPlugin
 public final class DfsJeiPlugin implements IModPlugin {
-    @Override public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) { HvkJeiRecipes.available(runtime); }
-    @Override public void onRuntimeUnavailable() { HvkJeiRecipes.unavailable(); }
+    @Override public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) { HvkJeiRecipes.available(runtime);
+        com.rzy.dealt_force_skills.client.RecipeViewer.install((stack,uses)->runtime.getRecipesGui().show(
+                runtime.getJeiHelpers().getFocusFactory().createFocus(uses?mezz.jei.api.recipe.RecipeIngredientRole.INPUT:mezz.jei.api.recipe.RecipeIngredientRole.OUTPUT,mezz.jei.api.constants.VanillaTypes.ITEM_STACK,stack))); }
+    @Override public void onRuntimeUnavailable() { HvkJeiRecipes.unavailable(); com.rzy.dealt_force_skills.client.RecipeViewer.install(null); }
 
     @Override
     public ResourceLocation getPluginUid() {
@@ -34,6 +36,9 @@ public final class DfsJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
+        registration.addItemStackInfo(new ItemStack(ModItems.DRIFTWOOD.get()),
+                Component.translatable("tooltip.dealt_force_skills.driftwood"),
+                Component.translatable("tooltip.dealt_force_skills.driftwood.maid"));
         registerInfusionCrafting(registration);
         for (Item item : List.of(
                 ModItems.SPECIAL_EQUIPMENT_SUPPLY.get(),

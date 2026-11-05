@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Map;
@@ -32,7 +32,8 @@ public abstract class HearingSoundEngineMixin {
 
     @Unique private double dealt_force_skills$lastHearingMultiplier = Double.NaN;
 
-    @ModifyVariable(method = "play", at = @At("STORE"), ordinal = 1)
+    // Scale the attenuation expression without depending on local variable order.
+    @ModifyExpressionValue(method = "play", at = @At(value = "INVOKE", target = "Ljava/lang/Math;max(FF)F"))
     private float dealt_force_skills$hearingDistance(float distance) {
         return (float) (distance * HearingRangeHelper.multiplier(Minecraft.getInstance().player));
     }

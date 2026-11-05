@@ -491,6 +491,20 @@ public final class SinevaPlaceholderVisuals {
         }
     }
 
+    public static void renderOperativeShield(PoseStack poses, MultiBufferSource buffers, int light, boolean front, boolean broken, float headYaw) {
+        poses.pushPose();
+        if (front) {
+            poses.mulPose(Axis.YP.rotationDegrees(headYaw));
+            poses.translate(0, 0.94D, -0.54D);
+        } else {
+            poses.translate(0, 0.9875D, 0.32D);
+            poses.mulPose(Axis.YP.rotationDegrees(180));
+            poses.mulPose(Axis.XP.rotationDegrees(10));
+        }
+        renderSinevaShield(poses, buffers, light, false, broken, THIRD_PERSON_MODEL_VIEWPORT_Y, true);
+        poses.popPose();
+    }
+
     private static void renderSinevaShield(PoseStack poseStack, MultiBufferSource buffer, int packedLight, boolean firstPerson, boolean viewportBroken) {
         float viewportY = firstPerson ? FIRST_PERSON_VIEWPORT_Y : THIRD_PERSON_WORLD_VIEWPORT_Y;
         renderSinevaShield(poseStack, buffer, packedLight, firstPerson, viewportBroken, viewportY, false);

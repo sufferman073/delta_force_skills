@@ -256,6 +256,7 @@ public final class NoxStateManager {
             NoxDelayedWoundEffect.clearCaps(target);
          } else {
             NoxDelayedWoundEffect.resetCaps(target, healthCap);
+            com.rzy.dealt_force_skills.department.DepartmentHealing.source(target,"nox",owner);
             if (CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.NOX_DEEP_WOUND)) {
                target.getActiveEffects().stream()
                   .filter(instance -> instance.getEffect().value().getCategory() == MobEffectCategory.BENEFICIAL)
@@ -291,6 +292,10 @@ public final class NoxStateManager {
    }
 
    public static void tryApplyDelayedWound(DamageSource source, LivingEntity target, float amount) {
+        var nativeOwner = nativeFromSource(source);
+        if (nativeOwner != null) {
+            com.rzy.dealt_force_skills.ai.operative.NativeNoxSkills.wound(nativeOwner, target, amount); return;
+        }
       if (!(amount <= 0.0F)) {
          playerFromSource(source)
             .filter(owner -> owner != target && isNox(owner) && com.rzy.dealt_force_skills.util.TargetingUtil.isHostileLivingFor(owner, target))
@@ -681,7 +686,7 @@ public final class NoxStateManager {
       if (tag.hasUUID("NoxOwner") && decoy.level() instanceof ServerLevel level) {
          Entity var8 = level.getEntity(tag.getUUID("NoxOwner"));
          Entity attacker = source.getEntity();
-         if (var8 instanceof ServerPlayer owner && attacker instanceof ServerPlayer breaker) {
+         if (var8 instanceof LivingEntity owner && (owner instanceof ServerPlayer || owner instanceof com.rzy.dealt_force_skills.entity.OperativeEntity) && attacker instanceof ServerPlayer breaker) {
             NetworkHandler.sendToPlayer(new S2C_NoxRevealPosition(owner.getId(), owner.position(), 40), breaker);
             breaker.displayClientMessage(Component.translatable("message.dealt_force_skills.nox.decoy_revealed"), true);
             level.playSound(null, decoy.blockPosition(), (SoundEvent)ModSounds.NOX_DECOY_BREAK.get(), SoundSource.PLAYERS, 0.9F, 1.0F);
@@ -739,7 +744,20 @@ public final class NoxStateManager {
       return CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.NOX_SILENT_STEALTH);
    }
 
+    private static com.rzy.dealt_force_skills.ai.operative.OperativeHost nativeFromSource(DamageSource source) {
+        Entity owner = source.getEntity();
+        if (!(owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost)) {
+            owner = source.getDirectEntity();
+            if (owner instanceof Projectile projectile) owner = projectile.getOwner();
+        }
+        return owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost operative
+                && com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(operative.skills(), com.rzy.dealt_force_skills.ai.operative.NativeNoxSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeNoxSkills ? operative : null;
+    }
+
    public static float handleOutgoingDamage(DamageSource source, float amount) {
+        var nativeOwner = nativeFromSource(source);
+        if (nativeOwner != null && com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(nativeOwner.skills(), com.rzy.dealt_force_skills.ai.operative.NativeNoxSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeNoxSkills skills)
+            return skills.outgoing(nativeOwner, amount);
       if (amount <= 0.0F) return amount;
       ServerPlayer attacker = playerFromSource(source).orElse(null);
       if (attacker == null || !isNox(attacker)) return amount;

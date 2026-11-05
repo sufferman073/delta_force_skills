@@ -34,7 +34,9 @@ import java.util.Map;
 import java.util.UUID;
 import net.minecraft.network.syncher.SynchedEntityData;
 
-public class ToxikFireflyEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider {
+public class ToxikFireflyEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
     private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.toxikfireflyentity.life_ticks", 80));
     private static volatile double SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.toxikfireflyentity.speed", 0.82));
     private static volatile double HIT_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("HIT_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.toxikfireflyentity.hit_radius", 0.42));
@@ -52,8 +54,14 @@ public class ToxikFireflyEntity extends Projectile implements ItemSupplier, Bloc
 
     public ToxikFireflyEntity(EntityType<? extends ToxikFireflyEntity> type, Level level, ServerPlayer owner,
                               ToxikFireflyMode mode, Vec3 direction) {
+        this(type, level, (LivingEntity) owner, mode, direction);
+    }
+
+    public ToxikFireflyEntity(EntityType<? extends ToxikFireflyEntity> type, Level level, LivingEntity owner,
+                              ToxikFireflyMode mode, Vec3 direction) {
         this(type, level);
         setOwner(owner);
+        allegiance.capture(owner);
         ownerId = owner.getUUID();
         this.mode = mode == null ? ToxikFireflyMode.LETHAL : mode;
         setDeltaMovement(safeDirection(direction).scale(SPEED));
@@ -71,6 +79,7 @@ public class ToxikFireflyEntity extends Projectile implements ItemSupplier, Bloc
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount > LIFE_TICKS) { discard(); return; }
         Vec3 motion = getDeltaMovement();
         if (motion.lengthSqr() < 0.0001D) {
             motion = new Vec3(0.0D, 0.0D, 1.0D).scale(SPEED);
@@ -106,6 +115,9 @@ public class ToxikFireflyEntity extends Projectile implements ItemSupplier, Bloc
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int age = allegiance.load(tag, LIFE_TICKS);
+        if (allegiance.active()) tickCount = age;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         int ordinal = tag.getInt("Mode");
         ToxikFireflyMode[] modes = ToxikFireflyMode.values();
@@ -114,6 +126,8 @@ public class ToxikFireflyEntity extends Projectile implements ItemSupplier, Bloc
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -145,6 +159,20 @@ public class ToxikFireflyEntity extends Projectile implements ItemSupplier, Bloc
         if (!(hit.getEntity() instanceof LivingEntity target) || !(level() instanceof ServerLevel serverLevel)) {
             discard();
             return;
+        }
+        if (allegiance.active()) {
+            if (!canAffectTarget(target) || !tryMarkHit(serverLevel, target)) { discard(); return; }
+            Entity source = getOwner() != null ? getOwner() : this;
+            if (mode == ToxikFireflyMode.AMPLIFY) {
+                com.rzy.dealt_force_skills.ai.operative.NativeToxikEffects.adrenaline(source, target, ToxikStateManager.FIREFLY_BASE_DURATION_TICKS);
+            } else {
+                com.rzy.dealt_force_skills.ai.operative.NativeToxikEffects.add(source, target,
+                        new net.minecraft.world.effect.MobEffectInstance(com.rzy.dealt_force_skills.registry.ModEffects.TOXIK_FIREFLY_INTERFERENCE, ToxikStateManager.FIREFLY_BASE_DURATION_TICKS, 0));
+                if (getOwner() instanceof LivingEntity living) com.rzy.dealt_force_skills.effect.ToxikFireflyInterferenceEffect.setOwner(target, living);
+            }
+            RangedSoundHelper.playThrottled(serverLevel, target.position(), ModSounds.TOXIK_FIREFLY_HIT.get(),
+                    SoundSource.PLAYERS, 0.62F, mode == ToxikFireflyMode.LETHAL ? 0.95F : 1.12F, 12.0D, 5, 3.0D);
+            discard(); return;
         }
         ServerPlayer owner = owner(serverLevel);
         if (owner == null || !tryMarkHit(serverLevel, target)) {
@@ -190,6 +218,11 @@ public class ToxikFireflyEntity extends Projectile implements ItemSupplier, Bloc
     }
 
     private boolean canAffectTarget(LivingEntity target) {
+        if (allegiance.active()) {
+            if (allegiance.isCaster(target) || com.rzy.dealt_force_skills.ai.operative.OperativeSupport.downed(target)) return false;
+            boolean ally = com.rzy.dealt_force_skills.ai.operative.OperativeSupport.ally(this, target);
+            return mode == ToxikFireflyMode.AMPLIFY ? ally : !ally && TargetingUtil.isHostileLivingFor(this, target);
+        }
         if (!(getOwner() instanceof ServerPlayer owner)) {
             return true;
         }

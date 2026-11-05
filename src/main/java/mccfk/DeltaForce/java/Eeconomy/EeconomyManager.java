@@ -185,13 +185,59 @@ public class EeconomyManager {
         try {
             Files.createDirectories(dir);
             Path file = dir.resolve(playerName + ".json");
-            JsonObject obj = new JsonObject();
+            JsonObject obj = readCurrencyDocument(file);
             obj.addProperty("", String.valueOf(amount));
-            try (BufferedWriter writer = Files.newBufferedWriter(file)) {
-                new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(obj, writer);
-            }
+            writeCurrencyDocument(file,obj);
         } catch (IOException e) {
             LOGGER.error("无法保存玩家经济数据: {}/{}.json", dir, playerName);
+        }
+    }
+
+    private static JsonObject readCurrencyDocument(Path file) throws IOException {
+        if (!Files.exists(file)) return new JsonObject();
+        try (Reader reader=Files.newBufferedReader(file)) {
+            JsonObject document=new com.google.gson.Gson().fromJson(reader, JsonObject.class);
+            if(document==null)throw new IOException("Empty currency document: "+file);
+            return document;
+        } catch (RuntimeException error) {
+            throw new IOException("Invalid currency document: "+file,error);
+        }
+    }
+
+    private static void writeCurrencyDocument(Path file,JsonObject document) throws IOException {
+        Files.createDirectories(file.getParent());
+        Path temporary=Files.createTempFile(file.getParent(),"mail-credit-",".tmp");
+        try {
+            try (BufferedWriter writer=Files.newBufferedWriter(temporary)) {
+                new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(document,writer);
+            }
+            try {Files.move(temporary,file,java.nio.file.StandardCopyOption.ATOMIC_MOVE,java.nio.file.StandardCopyOption.REPLACE_EXISTING);}
+            catch (java.nio.file.AtomicMoveNotSupportedException ignored) {Files.move(temporary,file,java.nio.file.StandardCopyOption.REPLACE_EXISTING);}
+        } finally {Files.deleteIfExists(temporary);}
+    }
+
+    /** Balance and mail receipt share one atomic file, so restoring older player NBT cannot credit twice. */
+    public synchronized boolean creditMail(String playerName,java.util.UUID mailId,long amount) {
+        if(amount<=0)return true;
+        CurrencyType type=CurrencyType.HAVOC_COIN;Path dir=currencyDirs.get(type);
+        if(dir==null)return false;
+        Path file=dir.resolve(playerName+".json");
+        try {
+            JsonObject document=readCurrencyDocument(file);
+            JsonObject receipts=document.has("mailCredits")?document.getAsJsonObject("mailCredits"):new JsonObject();
+            String key=mailId.toString();
+            if(receipts.has(key))return receipts.get(key).getAsLong()==amount;
+            long current=getBalance(playerName,type);
+            if(current<0 || amount>getMax(type)-current)return false;
+            long next=current+amount;
+            document.addProperty("",Long.toString(next));receipts.addProperty(key,Long.toString(amount));
+            document.add("mailCredits",receipts);
+            writeCurrencyDocument(file,document);
+            playerBalances.computeIfAbsent(playerName,ignored->new HashMap<>()).put(type,next);
+            return true;
+        } catch(IOException|RuntimeException error) {
+            LOGGER.error("Unable to credit mailbox reward for {}",playerName,error);
+            return false;
         }
     }
 

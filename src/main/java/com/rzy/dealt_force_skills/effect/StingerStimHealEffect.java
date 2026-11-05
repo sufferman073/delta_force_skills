@@ -26,7 +26,7 @@ public class StingerStimHealEffect extends MobEffect {
             }
         }
         if (!entity.level().isClientSide && entity.getHealth() > 0.0F && entity.tickCount % 20 == 0) {
-            entity.heal(entity.getMaxHealth() * Math.max(0.0F, StingerStateManager.STIM_HEAL_PER_SECOND_FRACTION)
+            com.rzy.dealt_force_skills.department.DepartmentHealing.heal(com.rzy.dealt_force_skills.department.DepartmentHealing.owner(entity,"stinger_stim"),entity,entity.getMaxHealth() * Math.max(0.0F, StingerStateManager.STIM_HEAL_PER_SECOND_FRACTION)
                     * (amplifier + 1));
         }
         return true;

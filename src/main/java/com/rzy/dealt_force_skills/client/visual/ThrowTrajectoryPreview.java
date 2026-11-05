@@ -93,6 +93,14 @@ public final class ThrowTrajectoryPreview {
     }
 
     private static Preview currentPreview(Player player) {
+        if(com.rzy.dealt_force_skills.client.WildfireClient.tool()>0) {
+            return preview(player,.6,-.1,
+                    com.rzy.dealt_force_skills.character.wildfire.WildfireConfig.number("projectile.high_speed",1.55),
+                    com.rzy.dealt_force_skills.character.wildfire.WildfireConfig.number("projectile.high_lift",.3),
+                    com.rzy.dealt_force_skills.character.wildfire.WildfireConfig.number("projectile.gravity",.045),
+                    com.rzy.dealt_force_skills.character.wildfire.WildfireConfig.fraction("projectile.drag",.985),
+                    96,190,190,190);
+        }
         if (ClientShepherdHudState.shouldRender() && ClientShepherdHudState.equippedTool() == ShepherdTool.FRAG_GRENADE) {
             return preview(player, 0.70D, -0.12D, 1.45D, 0.18D, 0.045D, 0.985D, 80, 255, 175, 64);
         }
@@ -172,7 +180,9 @@ public final class ThrowTrajectoryPreview {
 
             points.add(next);
             pos = next;
-            motion = motion.add(0.0D, -preview.gravity(), 0.0D).scale(preview.drag());
+            motion = com.rzy.dealt_force_skills.client.WildfireClient.tool()>0
+                    ? motion.scale(preview.drag()).add(0,-preview.gravity(),0)
+                    : motion.add(0.0D, -preview.gravity(), 0.0D).scale(preview.drag());
         }
 
         return new Trajectory(points, points.get(points.size() - 1), false, new Vec3(0, 1, 0));

@@ -37,7 +37,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult.Type;
 
-public class NTwoCondensedGrenadeEntity extends Projectile implements ItemSupplier {
+public class NTwoCondensedGrenadeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
    private static final int FUSE_TICKS = 30;
    private static final double MAX_RANGE_SQR = 8100.0;
    private static final double GRAVITY = 0.012;
@@ -45,6 +45,10 @@ public class NTwoCondensedGrenadeEntity extends Projectile implements ItemSuppli
    private static final double SMART_HOME_RADIUS = 13.0;
    private static final double SMART_HOMING_WEIGHT = 0.20;
    private UUID ownerId;
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public boolean isNativeOwnedBy(LivingEntity source) { return allegiance.active() && allegiance.isCaster(source); }
+
    private Vec3 startPos = Vec3.ZERO;
    private int fuseRemaining = -1;
    private boolean smartGrenade;
@@ -57,8 +61,8 @@ public class NTwoCondensedGrenadeEntity extends Projectile implements ItemSuppli
       this(type, level);
       this.setOwner(owner);
       this.ownerId = owner.getUUID();
-      this.smartGrenade = owner instanceof ServerPlayer player
-         && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.NTWO_SMART_GRENADE);
+        allegiance.capture(owner);
+      this.smartGrenade = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.NTWO_SMART_GRENADE);
    }
 
    public ItemStack getItem() {
@@ -69,7 +73,8 @@ public class NTwoCondensedGrenadeEntity extends Projectile implements ItemSuppli
    }
 
    public void tick() {
-      super.tick();
+      if (!level().isClientSide && allegiance.active() && tickCount >= 300) { discard(); return; }
+        super.tick();
       if (this.tickCount == 1) {
          this.startPos = this.position();
       }
@@ -108,13 +113,17 @@ public class NTwoCondensedGrenadeEntity extends Projectile implements ItemSuppli
    }
 
    protected void readAdditionalSaveData(CompoundTag tag) {
+        tickCount = allegiance.load(tag, 300);
       this.ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
       this.fuseRemaining = tag.contains("FuseRemaining") ? tag.getInt("FuseRemaining") : -1;
       this.startPos = new Vec3(tag.getDouble("StartX"), tag.getDouble("StartY"), tag.getDouble("StartZ"));
       this.smartGrenade = tag.getBoolean("SmartGrenade");
+        if (allegiance.active()) { fuseRemaining = Math.max(-1, Math.min(FUSE_TICKS, fuseRemaining)); smartGrenade = false; }
+
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
       if (this.ownerId != null) {
          tag.putUUID("Owner", this.ownerId);
       }
@@ -148,6 +157,13 @@ public class NTwoCondensedGrenadeEntity extends Projectile implements ItemSuppli
    }
 
    private void explode(Vec3 center) {
+        if (allegiance.active() && level() instanceof ServerLevel server) {
+            com.rzy.dealt_force_skills.ai.operative.NativeNTwoEffects.apply(this, allegiance, center, 3, 10, 7);
+            com.rzy.dealt_force_skills.ai.operative.NativeNTwoEffects.field(this, allegiance, center, true);
+            server.playSound(null, blockPosition(), ModSounds.N_TWO_CONDENSED_EXPLODE.get(), SoundSource.NEUTRAL, 1, 1);
+            server.sendParticles(ParticleTypes.SNOWFLAKE, center.x, center.y + 0.2, center.z, 80, 1.2, 0.45, 1.2, 0.04);
+            discard(); return;
+        }
       if (this.level() instanceof ServerLevel level) {
          ServerPlayer owner = this.ownerId == null ? null : level.getServer().getPlayerList().getPlayer(this.ownerId);
          if (owner != null) {

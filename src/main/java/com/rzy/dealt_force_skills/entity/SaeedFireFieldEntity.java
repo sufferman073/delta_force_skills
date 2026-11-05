@@ -32,6 +32,9 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
     private static final String KIND_DEFAULT = "default";
     private static final String KIND_IGNITION = "ignition";
     private static final String KIND_NAPALM = "napalm";
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operative = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    private int operativeAge;
+    public void inheritOperative(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source){operative.copyFrom(source);}
     private UUID ownerId;
     private UUID teamOwnerId;
     private int lifeTicks = DEFAULT_LIFE_TICKS;
@@ -48,6 +51,7 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
 
     public SaeedFireFieldEntity(EntityType<? extends SaeedFireFieldEntity> type, Level level, LivingEntity owner) {
         this(type, level);
+        operative.capture(owner);
         if (owner != null) {
             ownerId = owner.getUUID();
             if (owner instanceof SaeedGuardEntity guard) {
@@ -96,12 +100,15 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
             }
             return;
         }
-        if (tickCount % Math.max(1, damageIntervalTicks) == 0 && level() instanceof ServerLevel level) {
+        int age=operative.active()?++operativeAge:tickCount;
+        if(operative.active() && age>lifeTicks){discard();return;}
+        if (age % Math.max(1, damageIntervalTicks) == 0 && level() instanceof ServerLevel level) {
             LivingEntity owner = owner(level);
-            LivingEntity damageOwner = teamOwner(level).<LivingEntity>map(player -> player).orElse(owner);
+            LivingEntity damageOwner = operative.active()?owner:teamOwner(level).<LivingEntity>map(player -> player).orElse(owner);
             AABB box = new AABB(position(), position()).inflate(radius);
             int burningTargets = 0;
             for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
+                if(operative.active() && !operative.isEnemy(level,target))continue;
                 if (!isValidHostileTarget(damageOwner, target) || target.distanceToSqr(position()) > radius * radius) {
                     continue;
                 }
@@ -135,13 +142,14 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
             level.sendParticles(ParticleTypes.FLAME, getX(), getY() + 0.08D, getZ(),
                     KIND_NAPALM.equals(fieldKind) ? 72 : 36, radius * 0.95D, 0.22D, radius * 0.95D, 0.01D);
         }
-        if (tickCount >= lifeTicks) {
+        if (age >= lifeTicks) {
             discard();
         }
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        operativeAge=operative.load(tag,Math.max(160,DEFAULT_LIFE_TICKS));
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         teamOwnerId = tag.hasUUID("TeamOwner") ? tag.getUUID("TeamOwner") : null;
         lifeTicks = tag.contains("LifeTicks") ? tag.getInt("LifeTicks") : DEFAULT_LIFE_TICKS;
@@ -150,10 +158,13 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
         damage = tag.contains("Damage") ? tag.getFloat("Damage") : DEFAULT_DAMAGE;
         fireSeconds = tag.contains("FireSeconds") ? tag.getInt("FireSeconds") : DEFAULT_FIRE_SECONDS;
         fieldKind = tag.getString("FieldKind").isBlank() ? KIND_DEFAULT : tag.getString("FieldKind");
+        if(operative.active()){lifeTicks=Math.max(1,Math.min(Math.max(160,DEFAULT_LIFE_TICKS),lifeTicks));damageIntervalTicks=Math.max(1,Math.min(120,damageIntervalTicks));
+            radius=Double.isFinite(radius)?Math.max(0,Math.min(8,radius)):0;damage=Float.isFinite(damage)?Math.max(0,Math.min(20,damage)):0;fireSeconds=Math.max(0,Math.min(12,fireSeconds));}
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        operative.save(tag,operativeAge);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -189,6 +200,7 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
     }
 
     public Optional<UUID> teamOwnerUuid() {
+        if(operative.active())return Optional.ofNullable(operative.owner());
         if (teamOwnerId != null) {
             return Optional.of(teamOwnerId);
         }
@@ -203,6 +215,7 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
     }
 
     private boolean isFriendlyTarget(Entity target) {
+        if(operative.active() && level() instanceof ServerLevel level)return operative.isAlly(level,target);
         UUID teamOwner = teamOwnerUuid().orElse(null);
         if (teamOwner != null) {
             if (target.getUUID().equals(teamOwner)) {

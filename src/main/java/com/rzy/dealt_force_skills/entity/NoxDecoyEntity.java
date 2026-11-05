@@ -22,7 +22,15 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Optional;
 import java.util.UUID;
 
-public class NoxDecoyEntity extends LivingEntity {
+public class NoxDecoyEntity extends LivingEntity implements com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    private int nativeAge;
+    private static final EntityDataAccessor<Boolean> DATA_NATIVE_OWNER =
+            SynchedEntityData.defineId(NoxDecoyEntity.class, EntityDataSerializers.BOOLEAN);
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
+    public boolean nativeOwner() { return entityData.get(DATA_NATIVE_OWNER); }
+    public int nativeAge() { return nativeAge; }
+
     private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER_UUID =
             SynchedEntityData.defineId(NoxDecoyEntity.class, EntityDataSerializers.OPTIONAL_UUID);
     private static final EntityDataAccessor<String> DATA_OWNER_NAME =
@@ -47,7 +55,7 @@ public class NoxDecoyEntity extends LivingEntity {
         setSilent(true);
     }
 
-    public NoxDecoyEntity(EntityType<? extends NoxDecoyEntity> type, Level level, ServerPlayer owner) {
+    public NoxDecoyEntity(EntityType<? extends NoxDecoyEntity> type, Level level, LivingEntity owner) {
         this(type, level);
         configureFrom(owner);
     }
@@ -59,9 +67,11 @@ public class NoxDecoyEntity extends LivingEntity {
                 .add(Attributes.MOVEMENT_SPEED, 0.0D);
     }
 
-    public void configureFrom(ServerPlayer owner) {
+    public void configureFrom(LivingEntity owner) {
         entityData.set(DATA_OWNER_UUID, Optional.of(owner.getUUID()));
-        entityData.set(DATA_OWNER_NAME, owner.getGameProfile().getName());
+        entityData.set(DATA_OWNER_NAME, owner instanceof ServerPlayer player ? player.getGameProfile().getName() : owner.getName().getString());
+        allegiance.capture(owner);
+        entityData.set(DATA_NATIVE_OWNER, allegiance.active());
         copyEquipment(owner);
 
         CompoundTag tag = getPersistentData();
@@ -83,6 +93,7 @@ public class NoxDecoyEntity extends LivingEntity {
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(DATA_OWNER_UUID, Optional.empty());
+        builder.define(DATA_NATIVE_OWNER, false);
         builder.define(DATA_OWNER_NAME, "");
         builder.define(DATA_MAIN_HAND, ItemStack.EMPTY);
         builder.define(DATA_OFF_HAND, ItemStack.EMPTY);
@@ -99,6 +110,14 @@ public class NoxDecoyEntity extends LivingEntity {
             discard();
             return;
         }
+        if (allegiance.active() && level() instanceof net.minecraft.server.level.ServerLevel level) {
+            var owner = level.getEntity(ownerUuid());
+            if (++nativeAge > Math.max(1, NoxStateManager.CORE_DURATION_TICKS)
+                    || !allegiance.withinOrders(level, position())
+                    || !(owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost operative)
+                    || !(com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(operative.skills(), com.rzy.dealt_force_skills.ai.operative.NativeNoxSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeNoxSkills skills)
+                    || !skills.stealthed()) { discard(); return; }
+        }
         setNoGravity(true);
         setDeltaMovement(Vec3.ZERO);
     }
@@ -108,6 +127,8 @@ public class NoxDecoyEntity extends LivingEntity {
         if (level().isClientSide) {
             return true;
         }
+        if (allegiance.active() && level() instanceof net.minecraft.server.level.ServerLevel level
+                && source.getEntity() != null && allegiance.isAlly(level, source.getEntity())) return true;
         if (amount > 0.0f && NoxStateManager.handleDecoyHurt(this, source, amount)) {
             return true;
         }
@@ -193,11 +214,14 @@ public class NoxDecoyEntity extends LivingEntity {
         entityData.set(DATA_OWNER_UUID, tag.hasUUID("Owner") ? Optional.of(tag.getUUID("Owner")) : Optional.empty());
         entityData.set(DATA_OWNER_NAME, tag.getString("OwnerName"));
         loadEquipment(tag.getCompound(EQUIPMENT_TAG));
+        nativeAge = allegiance.load(tag, Math.max(1, NoxStateManager.CORE_DURATION_TICKS));
+        entityData.set(DATA_NATIVE_OWNER, allegiance.active());
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        allegiance.save(tag, nativeAge);
         ownerData().ifPresent(owner -> tag.putUUID("Owner", owner));
         tag.putString("OwnerName", ownerName());
         CompoundTag equipment = new CompoundTag();
@@ -214,7 +238,7 @@ public class NoxDecoyEntity extends LivingEntity {
         return entityData.get(DATA_OWNER_UUID);
     }
 
-    private void copyEquipment(ServerPlayer owner) {
+    private void copyEquipment(LivingEntity owner) {
         for (EquipmentSlot slot : EquipmentSlot.values()) {
             setItemSlot(slot, owner.getItemBySlot(slot));
         }

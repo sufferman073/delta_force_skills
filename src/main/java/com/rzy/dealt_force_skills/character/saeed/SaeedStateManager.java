@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.saeed;
 
+import com.rzy.dealt_force_skills.motion.TacticalMotion;
+import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
+
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
@@ -10,7 +13,6 @@ import com.rzy.dealt_force_skills.entity.SaeedFireArrowEntity;
 import com.rzy.dealt_force_skills.entity.SaeedFireFieldEntity;
 import com.rzy.dealt_force_skills.entity.SaeedGuardEntity;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
-import com.rzy.dealt_force_skills.network.S2C_TempestStartRoll;
 import com.rzy.dealt_force_skills.network.S2C_SyncSaeedState;
 import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModGameRules;
@@ -343,6 +345,8 @@ public final class SaeedStateManager {
         }
 
         tag.putLong(CORE_ACTIVE_UNTIL, now + CORE_DURATION_TICKS);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"saeed.order");
+        com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"saeed.command.during_order",true);
         tag.putLong(CORE_COOLDOWN_UNTIL, now + CORE_DURATION_TICKS + SkillCooldownHelper.ticks(player, CORE_COOLDOWN_TICKS));
         tag.putLong(COMMAND_VISUAL_UNTIL, now + COMMAND_VISUAL_TICKS);
         player.level().playSound(null, player.blockPosition(), ModSounds.SAEED_COMMAND_CALL.get(),
@@ -368,6 +372,7 @@ public final class SaeedStateManager {
         Vec3 point = hit.getType() == HitResult.Type.MISS ? end : hit.getLocation();
         CompoundTag tag = data(player);
         tag.putBoolean(COMMAND_POINT_SET, true);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().recordArmed(player,"saeed.command.during_order");
         tag.putDouble(COMMAND_POINT_X, point.x);
         tag.putDouble(COMMAND_POINT_Y, point.y);
         tag.putDouble(COMMAND_POINT_Z, point.z);
@@ -749,6 +754,11 @@ public final class SaeedStateManager {
         }
         if (!guard.commandSkillFromOwner(player, slot, targetEntityId, aimPoint, yaw, pitch)) {
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.saeed_monitor.no_target"), true);
+        } else {
+            if(slot!=SkillSlot.PASSIVE)com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"saeed.command.skill");
+            if(isCoreBoostActive(player))com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().recordArmed(player,"saeed.command.during_order");
+            if(guard.guardType()==SaeedGuardType.SHARP_EAGLE&&guard.hasSharpEagleSentryDamageBonus())
+                guard.getPersistentData().putBoolean("DepartmentCommandedSentry",true);
         }
     }
 
@@ -763,7 +773,17 @@ public final class SaeedStateManager {
         SaeedGuardEntity guard = new SaeedGuardEntity(ModEntities.SAEED_GUARD.get(), level);
         guard.configure(player, type, temporary, boostedUntil);
         guard.moveTo(pos.x, pos.y, pos.z, player.getYRot(), 0.0F);
-        level.addFreshEntity(guard);
+        if(!level.addFreshEntity(guard))return false;
+        if(!temporary) {
+            String outcome=switch(type) {
+                case HAKIM,KARIM -> "saeed.recruit.guard";
+                case THUNDER -> "saeed.recruit.thunder";
+                case IRON_RAIN -> "saeed.recruit.iron_rain";
+                case FIREEYE -> "saeed.recruit.fire_eye";
+                case SHARP_EAGLE -> "saeed.recruit.sharp_eagle";
+            };
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,outcome);
+        }
         registerGuard(player, guard);
         level.playSound(null, guard.blockPosition(), guardEnterSound(type),
                 SoundSource.PLAYERS, 0.72F, 1.0F);
@@ -786,6 +806,7 @@ public final class SaeedStateManager {
             return;
         }
         data(player).putInt(PRESTIGE, next);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"saeed.prestige.upgrade");
         DfsAchievements.onSaeedPrestige(player, next);
         player.level().playSound(null, player.blockPosition(), ModSounds.SAEED_PRESTIGE_UP.get(),
                 SoundSource.PLAYERS, 0.85F, 1.0F);
@@ -938,6 +959,7 @@ public final class SaeedStateManager {
                     : (int) amount;
             if (granted > 0) {
                 tag.putInt(TACTICAL_POINTS, current + granted);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"saeed.points",current + granted);
                 syncToClient(player);
             }
         }
@@ -948,6 +970,7 @@ public final class SaeedStateManager {
         initializeIfNeeded(player);
         int value = amount >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) Math.max(0L, amount);
         data(player).putInt(TACTICAL_POINTS, value);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"saeed.points",value);
         syncToClient(player);
         return tacticalPoints(player);
     }
@@ -987,20 +1010,13 @@ public final class SaeedStateManager {
     }
 
     private static void startRollBoost(ServerPlayer player) {
-        Vec3 look = player.getLookAngle();
-        Vec3 horizontal = new Vec3(look.x, 0.0D, look.z);
-        if (horizontal.lengthSqr() < 0.0001D) {
-            horizontal = new Vec3(player.getDeltaMovement().x, 0.0D, player.getDeltaMovement().z);
-        }
-        if (horizontal.lengthSqr() < 0.0001D) {
-            horizontal = Vec3.directionFromRotation(0.0F, player.getYRot());
-        }
-        Vec3 direction = horizontal.normalize();
+        Vec3 direction = com.rzy.dealt_force_skills.motion.TacticalMovementInput.rollDirection(player);
         CompoundTag tag = data(player);
         tag.putInt(ROLL_BOOST_TICKS, ROLL_BOOST_TICKS_TOTAL);
         tag.putDouble(ROLL_BOOST_DIR_X, direction.x);
         tag.putDouble(ROLL_BOOST_DIR_Z, direction.z);
-        NetworkHandler.sendToPlayer(new S2C_TempestStartRoll(), player);
+        TacticalMotionSync.start(player, TacticalMotion.ROLL, tag.getInt(ROLL_BOOST_TICKS), direction,
+                p -> isSaeed(p) && data(p).getInt(ROLL_BOOST_TICKS) > 0, 0, SaeedStateManager::isSaeed);
     }
 
     private static void tickRollBoost(ServerPlayer player) {
@@ -1047,6 +1063,7 @@ public final class SaeedStateManager {
         int current = tacticalPoints(player);
         int updated = (int) Math.min(Integer.MAX_VALUE, (long) current + amount);
         tag.putInt(TACTICAL_POINTS, updated);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"saeed.points",updated);
     }
 
     private static boolean spendTacticalPoints(ServerPlayer player, int amount) {

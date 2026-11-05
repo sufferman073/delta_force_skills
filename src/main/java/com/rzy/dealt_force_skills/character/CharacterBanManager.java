@@ -18,6 +18,7 @@ public final class CharacterBanManager {
     private static final String PLAYER_ALLOWS_TAG = DealtForceSkillsMod.MODID + ".allowed_characters";
     private static final String DATA_NAME = DealtForceSkillsMod.MODID + "_character_bans";
     private static final String SERVER_BANS_TAG = "ServerBans";
+    private static final String SERVER_ALLOWS_TAG = "ServerAllows";
 
     private CharacterBanManager() {
     }
@@ -69,6 +70,7 @@ public final class CharacterBanManager {
     public static boolean banServer(MinecraftServer server, String characterId) {
         ServerBanData data = serverData(server);
         boolean changed = data.bannedCharacters.add(characterId);
+        changed |= data.allowedCharacters.remove(characterId);
         if (changed) {
             data.setDirty();
         }
@@ -78,6 +80,7 @@ public final class CharacterBanManager {
     public static boolean unbanServer(MinecraftServer server, String characterId) {
         ServerBanData data = serverData(server);
         boolean changed = data.bannedCharacters.remove(characterId);
+        changed |= data.allowedCharacters.add(characterId);
         if (changed) {
             data.setDirty();
         }
@@ -86,6 +89,17 @@ public final class CharacterBanManager {
 
     public static boolean isServerBanned(MinecraftServer server, String characterId) {
         return serverData(server).bannedCharacters.contains(characterId);
+    }
+
+    public static boolean isServerAllowed(MinecraftServer server, String characterId) {
+        return server != null && serverData(server).allowedCharacters.contains(characterId);
+    }
+
+    public static void copy(net.minecraft.world.entity.player.Player from, net.minecraft.world.entity.player.Player to) {
+        for (String key : java.util.List.of(PLAYER_BANS_TAG, PLAYER_ALLOWS_TAG)) {
+            if (from.getPersistentData().contains(key, Tag.TAG_LIST))
+                to.getPersistentData().put(key, from.getPersistentData().getList(key, Tag.TAG_STRING).copy());
+        }
     }
 
     private static boolean contains(ListTag list, String characterId) {
@@ -130,6 +144,7 @@ public final class CharacterBanManager {
 
     private static final class ServerBanData extends SavedData {
         private final Set<String> bannedCharacters = new LinkedHashSet<>();
+        private final Set<String> allowedCharacters = new LinkedHashSet<>();
 
         private static ServerBanData load(CompoundTag tag, HolderLookup.Provider registries) {
             ServerBanData data = new ServerBanData();
@@ -137,6 +152,8 @@ public final class CharacterBanManager {
             for (int i = 0; i < bans.size(); i++) {
                 data.bannedCharacters.add(bans.getString(i));
             }
+            ListTag allows = tag.getList(SERVER_ALLOWS_TAG, Tag.TAG_STRING);
+            for (int i = 0; i < allows.size(); i++) data.allowedCharacters.add(allows.getString(i));
             return data;
         }
 
@@ -145,6 +162,9 @@ public final class CharacterBanManager {
             ListTag bans = new ListTag();
             dataCopy().forEach(characterId -> bans.add(StringTag.valueOf(characterId)));
             tag.put(SERVER_BANS_TAG, bans);
+            ListTag allows = new ListTag();
+            allowedCharacters.forEach(id -> allows.add(StringTag.valueOf(id)));
+            tag.put(SERVER_ALLOWS_TAG, allows);
             return tag;
         }
 

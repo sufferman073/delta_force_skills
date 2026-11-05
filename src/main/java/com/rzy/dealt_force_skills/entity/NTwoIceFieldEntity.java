@@ -22,10 +22,14 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-public class NTwoIceFieldEntity extends Entity implements ItemSupplier {
+public class NTwoIceFieldEntity extends Entity implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
    public static final String ACHIEVEMENT_SOURCE_CONDENSED = "condensed";
    public static final String ACHIEVEMENT_SOURCE_DEWAR = "dewar";
    private UUID ownerId;
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public boolean isNativeOwnedBy(LivingEntity source) { return allegiance.active() && allegiance.isCaster(source); }
+
    private int lifeTicks = 320;
    private int intervalTicks = 10;
    private double radius = 6.0;
@@ -69,6 +73,7 @@ public class NTwoIceFieldEntity extends Entity implements ItemSupplier {
 
    public void tick() {
       super.tick();
+        if (allegiance.active() && level() instanceof ServerLevel server) { tickNative(server); return; }
       if (!this.level().isClientSide) {
          if (this.level() instanceof ServerLevel level) {
             LivingEntity owner = this.owner(level);
@@ -97,6 +102,7 @@ public class NTwoIceFieldEntity extends Entity implements ItemSupplier {
    }
 
    protected void readAdditionalSaveData(CompoundTag tag) {
+        tickCount = allegiance.load(tag, 320);
       this.ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
       this.lifeTicks = tag.contains("LifeTicks") ? tag.getInt("LifeTicks") : this.lifeTicks;
       this.intervalTicks = tag.contains("IntervalTicks") ? Math.max(1, tag.getInt("IntervalTicks")) : this.intervalTicks;
@@ -106,9 +112,17 @@ public class NTwoIceFieldEntity extends Entity implements ItemSupplier {
       this.ignoreLineOfSight = tag.getBoolean("IgnoreLineOfSight");
       this.achievementSource = tag.getString("AchievementSource");
       this.achievementSourceId = tag.getString("AchievementSourceId");
+        if (allegiance.active()) {
+            lifeTicks = Math.max(1, Math.min(320, lifeTicks)); intervalTicks = Math.max(1, Math.min(320, intervalTicks));
+            radius = Double.isFinite(radius) ? Math.max(0.1, Math.min(6, radius)) : 6;
+            coldAmount = Math.max(0, Math.min(10, coldAmount)); damage = Float.isFinite(damage) ? Math.max(0, Math.min(2, damage)) : 2;
+            ignoreLineOfSight = false;
+        }
+
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
       if (this.ownerId != null) {
          tag.putUUID("Owner", this.ownerId);
       }
@@ -173,4 +187,19 @@ public class NTwoIceFieldEntity extends Entity implements ItemSupplier {
          DfsAchievements.recordNTwoDewarFreeze(owner, this.achievementSourceId);
       }
    }
+
+    public void configureNative(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source, boolean condensed) {
+        allegiance.copyFrom(source); ownerId = source.caster();
+        radius = condensed ? 3 : 6; lifeTicks = condensed ? 40 : 320;
+        intervalTicks = condensed ? 4 : 10; coldAmount = condensed ? 5 : 10; damage = condensed ? 0 : 2;
+        ignoreLineOfSight = false;
+    }
+    public boolean covers(LivingEntity target) { return tickCount < lifeTicks && target.getBoundingBox().getCenter().distanceToSqr(position()) <= radius * radius; }
+    private void tickNative(ServerLevel server) {
+        if (tickCount >= lifeTicks) { discard(); return; }
+        if (tickCount % intervalTicks == 0) {
+            com.rzy.dealt_force_skills.ai.operative.NativeNTwoEffects.apply(this, allegiance, position(), radius, coldAmount, damage);
+            server.sendParticles(ParticleTypes.SNOWFLAKE, getX(), getY() + 0.1, getZ(), 48, radius * 0.85, 0.25, radius * 0.85, 0.02);
+        }
+    }
 }

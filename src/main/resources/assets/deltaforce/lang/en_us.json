@@ -385,5 +385,14 @@
   "warehouse.deltaforce.page": "Page %s",
 
 
-  "deltaforce.wip.making": "In Development"
+  "deltaforce.wip.making": "In Development",
+  "screen.deltaforce.settings.ui_scale": "UI Scale",
+  "screen.deltaforce.settings.scale_auto_applied": "Automatic UI scale restored. Reopen the screen to apply.",
+  "screen.deltaforce.settings.scale_applied": "UI scale set to %s. Reopen the screen to apply.",
+  "screen.deltaforce.layout.edit": "Edit layout",
+  "screen.deltaforce.layout.reset": "Reset",
+  "screen.deltaforce.layout.apply": "Apply",
+  "screen.deltaforce.layout.scale": "Scale: %s%%",
+  "screen.deltaforce.layout.position": "Offset: X %s / Y %s",
+  "screen.deltaforce.layout.hint": "Drag the canvas to move. Apply, then save in Settings."
 }

@@ -44,7 +44,11 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult.Type;
 import org.joml.Vector3f;
 
-public class TempestWallDrillStingerEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider {
+public class TempestWallDrillStingerEntity extends Projectile implements ItemSupplier, BlockbenchModelPoseProvider, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
+   private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+   private int nativeAge;
+   private UUID attachedEntityUuid;
+   @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
    private static final EntityDataAccessor<Boolean> ATTACHED = SynchedEntityData.defineId(
       com.rzy.dealt_force_skills.entity.TempestWallDrillStingerEntity.class, EntityDataSerializers.BOOLEAN
    );
@@ -84,6 +88,7 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
       super(type, level);
       this.setOwner(owner);
       this.ownerId = owner.getUUID();
+      allegiance.capture(owner);
    }
 
    public ItemStack getItem() {
@@ -101,6 +106,9 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
 
    public void tick() {
       super.tick();
+        if (allegiance.active() && level() instanceof ServerLevel level
+                && (++nativeAge > 160 + Math.max(1, CHARGE_TICKS)
+                || !isAttached() && nativeAge > 160 || !allegiance.withinOrders(level, position()))) { discard(); return; }
       if (this.isAttached()) {
          this.tickAttached();
       } else {
@@ -121,18 +129,25 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
    }
 
    protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        nativeAge = allegiance.load(tag, 160 + Math.max(1, CHARGE_TICKS));
+        attachedEntityUuid = tag.hasUUID("OperativeAttachedEntity") ? tag.getUUID("OperativeAttachedEntity") : null;
       this.ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
       this.attachedFace = Direction.from3DDataValue(tag.getInt("AttachedFace"));
       this.releaseDirection = new Vec3(tag.getDouble("DirX"), tag.getDouble("DirY"), tag.getDouble("DirZ"));
       this.attachedEntityId = tag.getInt("AttachedEntityId");
       this.attachedEntityOffsetY = tag.getDouble("AttachedEntityOffsetY");
       this.chargeTicks = tag.getInt("ChargeTicks");
+        if (allegiance.active()) chargeTicks = Math.max(0, Math.min(Math.max(1, CHARGE_TICKS), chargeTicks));
       this.setAttached(tag.getBoolean("Attached"));
       this.syncPoseData();
       this.noPhysics = this.isAttached();
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, nativeAge);
+        if (attachedEntityUuid != null) tag.putUUID("OperativeAttachedEntity", attachedEntityUuid);
       if (this.ownerId != null) {
          tag.putUUID("Owner", this.ownerId);
       }
@@ -181,6 +196,20 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
    public float blockbenchAnimationSeconds(String animation, float ageSeconds) {
       return "impact_anchor".equals(animation) ? (float)((Integer)this.entityData.get(DATA_CHARGE_TICKS)).intValue() / 20.0F : ageSeconds;
    }
+
+
+    @Override protected boolean canHitEntity(Entity target) {
+        if (allegiance.active() && (!(target instanceof LivingEntity living)
+                || !(level() instanceof ServerLevel level) || !nativeCanAffect(level, living))) return false;
+        return super.canHitEntity(target);
+    }
+    private boolean nativeCanAffect(ServerLevel level, LivingEntity target) {
+        return allegiance.isCaster(target) || allegiance.isEnemy(level, target);
+    }
+    private Entity attachedTarget(ServerLevel level) {
+        return allegiance.active() ? (attachedEntityUuid == null ? null : level.getEntity(attachedEntityUuid))
+                : level.getEntity(attachedEntityId);
+    }
 
    private void tickFlight() {
       Vec3 motion = this.getDeltaMovement();
@@ -246,11 +275,13 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
    }
 
    private void attach(LivingEntity target, Vec3 hitLocation, Vec3 motion) {
-      if (!com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(this.getOwner(), target)) {
+      if (allegiance.active() ? !(level() instanceof ServerLevel level) || !nativeCanAffect(level, target)
+              : !com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(this.getOwner(), target)) {
          this.discard();
       } else {
          this.attachedFace = Direction.UP;
          this.attachedEntityId = target.getId();
+        attachedEntityUuid = target.getUUID();
          this.attachedEntityOffsetY = headAnchorOffset(target);
          this.releaseDirection = motion.lengthSqr() > 1.0E-6 ? motion.normalize() : target.getLookAngle().normalize();
          this.setPos(target.getX(), target.getY() + this.attachedEntityOffsetY, target.getZ());
@@ -275,7 +306,8 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
          this.spawnClientAttachedParticles();
       } else {
          if (this.attachedEntityId >= 0) {
-            if (!(this.level().getEntity(this.attachedEntityId) instanceof LivingEntity target) || !target.isAlive()) {
+            if (!(attachedTarget((ServerLevel) level()) instanceof LivingEntity target) || !target.isAlive()
+                    || allegiance.active() && !nativeCanAffect((ServerLevel) level(), target)) {
                this.discard();
                return;
             }
@@ -321,12 +353,11 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
             0.0
          );
          Set<Integer> disarmed = new HashSet<>();
-         if (this.attachedEntityId >= 0 && level.getEntity(this.attachedEntityId) instanceof LivingEntity attachedTarget && attachedTarget.isAlive()) {
+         if (this.attachedEntityId >= 0 && attachedTarget(level) instanceof LivingEntity attachedTarget && attachedTarget.isAlive()) {
             applyDisarm(level, attachedTarget, owner, disarmed);
          }
 
-         boolean instantTrigger = owner instanceof ServerPlayer player
-            && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
+         boolean instantTrigger = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
          AABB box = instantTrigger
             ? new AABB(var17, var17).inflate(10.0D)
             : new AABB(var17, var17.add(direction.scale(RELEASE_RANGE))).inflate(RELEASE_HALF_WIDTH + 1.0);
@@ -357,8 +388,7 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
    }
 
    private boolean hasInstantTriggerUpgrade(ServerLevel level) {
-      return this.owner(level) instanceof ServerPlayer player
-         && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
+        return com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner(level), CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
    }
 
    private static double headAnchorOffset(LivingEntity target) {
@@ -367,8 +397,9 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
       return Math.max(0.35, Math.min(max, preferred));
    }
 
-   private static boolean applyDisarm(ServerLevel level, LivingEntity target, Entity owner, Set<Integer> disarmed) {
-      if (com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner, target) && disarmed.add(target.getId())) {
+   private boolean applyDisarm(ServerLevel level, LivingEntity target, Entity owner, Set<Integer> disarmed) {
+      if ((allegiance.active() ? nativeCanAffect(level, target)
+              : com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner, target)) && disarmed.add(target.getId())) {
          target.addEffect(
             new MobEffectInstance(
                ModEffects.TEMPEST_DISARMED,

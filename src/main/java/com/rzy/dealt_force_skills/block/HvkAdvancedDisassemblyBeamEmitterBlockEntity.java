@@ -174,6 +174,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
                 CommonEvents.grantHvkBlockLootBonuses(player, level, worldPosition, bonusBase);
             }
         }
+        if(produced>0) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"workblock.construct_or_disassemble");
         play(ModSounds.HVK_DISASSEMBLER_USE.get());
         player.displayClientMessage(Component.translatable(
                 "message.dealt_force_skills.hvk_disassembler.disassembled",
@@ -405,7 +406,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
     private static void giveOrDrop(Player player, ItemStack stack) {
         boolean added = player.getInventory().add(stack);
         if ((!added || !stack.isEmpty()) && !stack.isEmpty()) {
-            player.drop(stack, false);
+            com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, stack);
         }
     }
 

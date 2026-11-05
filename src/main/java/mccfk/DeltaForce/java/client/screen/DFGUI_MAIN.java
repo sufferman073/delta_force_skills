@@ -33,6 +33,8 @@ public class DFGUI_MAIN extends Screen {
     private static final float UI_SCALE = 0.75F; // 相对于原版的缩放
     private static final float REFERENCE_WIDTH = 960f;
     private static final float REFERENCE_HEIGHT = 540f;
+    private int refW = 960;
+    private int refH = 540;
     private static final int TAB_BASE_WIDTH = 91;
     private static final int TAB_BASE_HEIGHT = 32;
     private static final int TAB_START_X_RATIO = 1;  // 标签栏距左边缘 = 屏幕宽度 * 1 / 100
@@ -77,6 +79,22 @@ public class DFGUI_MAIN extends Screen {
 
     // 内嵌子面板：GTI交易行/特勤处界面（在主机面内显示，避免关闭主机面导致的问题）
     private Screen subScreen;
+    public <T extends Screen> T embeddedPage(Class<T> type){return type.isInstance(subScreen)?type.cast(subScreen):null;}
+    public void closeEmbeddedPage(){subScreen=null;}
+    public void openDepartment(String department,String task) {
+        selectedTab=3;lastSelectedTab=3;
+        var screen=new com.rzy.dealt_force_skills.client.screen.DepartmentScreen(this);
+        subScreen=screen;screen.init(Minecraft.getInstance(),refW,refH);screen.navigate(department,task);
+    }
+    private void openWorkbench() {
+        selectedTab=6;lastSelectedTab=6;
+        subScreen=new com.rzy.dealt_force_skills.client.screen.WorkbenchScreen(this);
+        subScreen.init(Minecraft.getInstance(),refW,refH);
+    }
+    private void openMailbox() {
+        subScreen=new com.rzy.dealt_force_skills.client.screen.MailboxScreen(this);
+        subScreen.init(Minecraft.getInstance(),refW,refH);
+    }
 
     // 仓库页数据（仓库标签页自定义渲染用，来自服务端独立仓库系统）
     private int warehouseTotalSlots = 120;
@@ -123,7 +141,7 @@ public class DFGUI_MAIN extends Screen {
             return;
         }
         subScreen = GtiTradingHallScreen.createEmbedded(coins, entries);
-        subScreen.init(Minecraft.getInstance(), (int)REFERENCE_WIDTH, (int)REFERENCE_HEIGHT);
+        subScreen.init(Minecraft.getInstance(), this.refW, this.refH);
     }
 
     /**
@@ -141,7 +159,7 @@ public class DFGUI_MAIN extends Screen {
             return;
         }
         subScreen = SpecialOperationsBaseScreen.createEmbedded(snapshot);
-        subScreen.init(Minecraft.getInstance(), (int)REFERENCE_WIDTH, (int)REFERENCE_HEIGHT);
+        subScreen.init(Minecraft.getInstance(), this.refW, this.refH);
     }
 
     /**
@@ -170,13 +188,13 @@ public class DFGUI_MAIN extends Screen {
             return;
         }
         subScreen = new OperatorSwitchConfirmScreen(characterId);
-        subScreen.init(Minecraft.getInstance(), (int)REFERENCE_WIDTH, (int)REFERENCE_HEIGHT);
+        subScreen.init(Minecraft.getInstance(), this.refW, this.refH);
     }
 
     public void showOperatorMissingConfirm() {
         if (!(subScreen instanceof OperatorSwitchConfirmScreen)) {
             subScreen = new OperatorSwitchConfirmScreen(true);
-            subScreen.init(Minecraft.getInstance(), (int)REFERENCE_WIDTH, (int)REFERENCE_HEIGHT);
+            subScreen.init(Minecraft.getInstance(), this.refW, this.refH);
         }
     }
 
@@ -192,21 +210,32 @@ public class DFGUI_MAIN extends Screen {
     @Override
     protected void init() {
         super.init();
-        this.uiScale = Math.min(this.width / REFERENCE_WIDTH, this.height / REFERENCE_HEIGHT);
-        this.offsetX = (int)((this.width - REFERENCE_WIDTH * this.uiScale) / 2);
-        this.offsetY = (int)((this.height - REFERENCE_HEIGHT * this.uiScale) / 2);
-        // 根据屏幕大小计算位置（按比例，不额外缩放）
+        // 参考画布按放大倍数缩小（960/倍数 x 540/倍数），再等比塞进 GUI 空间：
+        // 画布变小 → 适配系数变大 → 同样的屏幕面积里排更少的画布单位，字与控件等比放大。
+        // 注意不能反过来「保留 960x540 画布再把适配系数乘 1.5」，那样画布会超出屏幕，
+        // 顶部 7 个标签与底栏会被居中裁掉。
+        // 倍数来源：玩家没手动设置过时按当前界面尺寸自动选（>= 3 → 1.0 保持原样，
+        // < 3 → 1.5 放大），手动设置过则一直用玩家的值（见 DFClientConfig#resolveUiScale）。
         DFClientConfig cfg = DFClientConfig.getInstance();
-        this.tabWidth = (int)(TAB_BASE_WIDTH * UI_SCALE);
-        this.tabHeight = (int)(TAB_BASE_HEIGHT * UI_SCALE);
+        double multiplier = cfg.resolveUiScale(Minecraft.getInstance().getWindow().getGuiScale());
+        this.refW = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_WIDTH, multiplier);
+        this.refH = UiCanvasScaleMath.canvasSize(UiCanvasScaleMath.REFERENCE_HEIGHT, multiplier);
+        this.uiScale = UiCanvasScaleMath.fitScale(this.width, this.height, this.refW, this.refH);
+        this.offsetX = UiCanvasScaleMath.canvasOffset(this.width, this.refW, this.uiScale);
+        this.offsetY = UiCanvasScaleMath.canvasOffset(this.height, this.refH, this.uiScale);
+        // 以 4x GUI 参考画布计算固定布局。
+        this.tabWidth = (int) (TAB_BASE_WIDTH * UI_SCALE);
+        this.tabHeight = (int) (TAB_BASE_HEIGHT * UI_SCALE);
         this.tabStartX = (int)(REFERENCE_WIDTH * TAB_START_X_RATIO / 100) + cfg.getTabXOffset();
         this.tabStartY = TAB_START_Y + cfg.getTabYOffset();
         // 恢复仓库标签页时重新请求仓库快照（否则重开界面仓库内容显示为空）
         if (selectedTab == WAREHOUSE_TAB_INDEX) {
             NetworkHandler.sendToServer(new C2S_DfWarehouseAction(C2S_DfWarehouseAction.Action.OPEN, 0, 0, 0));
         }
+        if(subScreen==null&&selectedTab==6)openWorkbench();
+        if(subScreen==null&&selectedTab==3)openDepartment("战斗部门","");
         if (subScreen != null) {
-            subScreen.resize(Minecraft.getInstance(), (int)REFERENCE_WIDTH, (int)REFERENCE_HEIGHT);
+            subScreen.resize(Minecraft.getInstance(), this.refW, this.refH);
         }
     }
 
@@ -221,8 +250,8 @@ public class DFGUI_MAIN extends Screen {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        int w = (int)REFERENCE_WIDTH;
-        int h = (int)REFERENCE_HEIGHT;
+        int w = this.refW;
+        int h = this.refH;
         float inv = 1.0f / this.uiScale;
         int smx = (int)((mouseX - this.offsetX) * inv);
         int smy = (int)((mouseY - this.offsetY) * inv);
@@ -274,14 +303,7 @@ public class DFGUI_MAIN extends Screen {
             int textColor = (i == selectedTab) ? 0xFFFFFFFF : 0xFFAAAAAA;
             guiGraphics.drawString(this.font, tabTitle, textX, textY, textColor, false);
 
-            // 改枪台（tab 6）无实际功能，绘制红叉遮罩
-            if (i == 6) {
-                StartGameScreen.renderWipOverlay(guiGraphics, x, tabStartY, tabWidth, tabHeight, smx, smy);
-            }
-            // 部门（tab 3）无实际内容，绘制红叉遮罩
-            if (i == 3) {
-                StartGameScreen.renderWipOverlay(guiGraphics, x, tabStartY, tabWidth, tabHeight, smx, smy);
-            }
+
         }
 
         if (!hasEmbeddedPage) {
@@ -307,8 +329,8 @@ public class DFGUI_MAIN extends Screen {
         float inv = 1.0f / this.uiScale;
         int mx = (int)((mouseX - this.offsetX) * inv);
         int my = (int)((mouseY - this.offsetY) * inv);
-        int w = (int)REFERENCE_WIDTH;
-        int h = (int)REFERENCE_HEIGHT;
+        int w = this.refW;
+        int h = this.refH;
 
         if (StartGameScreen.hasOpenOverlay()) {
             StartGameScreen.handleOverlayClick(mx, my, button, w, h);
@@ -332,7 +354,8 @@ public class DFGUI_MAIN extends Screen {
                 if (StartGameScreen.isPreBattleRepClicked(mx, my, w, h)) {
                     return true;
                 }
-                if (StartGameScreen.isNoTargetClicked(mx, my, w, h)) {
+                if (subScreen == null && StartGameScreen.isNoTargetClicked(mx, my, w, h)) {
+                    Minecraft.getInstance().setScreen(new com.rzy.dealt_force_skills.client.screen.HomeScreen(this));
                     return true;
                 }
             }
@@ -342,8 +365,9 @@ public class DFGUI_MAIN extends Screen {
                 Minecraft.getInstance().setScreen(new SettingsScreen(this));
                 return true;
             }
-            // 右上角 mail 图标：空触发
+            // 右上角邮箱：打开当前玩家的服务端邮箱
             if (StartGameScreen.isTopRightIconClicked(mx, my, w, h)) {
+                openMailbox();
                 return true;
             }
 
@@ -372,6 +396,14 @@ public class DFGUI_MAIN extends Screen {
             if (mx < x || mx >= x + tabWidth
                     || my < tabStartY || my >= tabStartY + tabHeight) {
                 continue;
+            }
+            if (i == 6) {
+                openWorkbench();
+                return true;
+            }
+            if (i == 3) {
+                openDepartment("战斗部门","");
+                return true;
             }
             if (selectedTab == WAREHOUSE_TAB_INDEX && i != WAREHOUSE_TAB_INDEX) {
                 WarehousePanel.resetInteractionState();
@@ -405,8 +437,8 @@ public class DFGUI_MAIN extends Screen {
         float inv = 1.0f / this.uiScale;
         int mx = (int)((mouseX - this.offsetX) * inv);
         int my = (int)((mouseY - this.offsetY) * inv);
-        int w = (int)REFERENCE_WIDTH;
-        int h = (int)REFERENCE_HEIGHT;
+        int w = this.refW;
+        int h = this.refH;
         // 仓库页：滚轮滚动仓库/物品栏
         if (selectedTab == WAREHOUSE_TAB_INDEX) {
             WarehousePanel.handleMouseScrolled(mx, my, scrollY, w, h);

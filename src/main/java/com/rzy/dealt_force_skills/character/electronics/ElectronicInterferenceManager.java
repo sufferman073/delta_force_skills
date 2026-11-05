@@ -81,7 +81,7 @@ public final class ElectronicInterferenceManager {
          for (HackclawInterferenceFieldEntity field : level.getEntitiesOfClass(
             HackclawInterferenceFieldEntity.class, var7, HackclawInterferenceFieldEntity::isActive
          )) {
-            if (field.position().distanceToSqr(player.position()) <= field.radius() * field.radius()) {
+            if (field.position().distanceToSqr(player.position()) <= field.radius() * field.radius() && !field.protects(player)) {
                return field;
             }
          }
@@ -99,7 +99,7 @@ public final class ElectronicInterferenceManager {
          boolean destroyedFreshDevice = false;
 
          for (Entity entity : level.getEntities(field, box, ElectronicInterferenceManager::isDestroyableElectronicDevice)) {
-            if (!entity.isRemoved()) {
+            if (!entity.isRemoved() && !field.protects(entity)) {
                destroyedFreshDevice |= entity.tickCount <= 40;
                discardElectronicDevice(entity);
                destroyed++;
@@ -121,11 +121,16 @@ public final class ElectronicInterferenceManager {
    }
 
    public static int disruptElectronicDevices(ServerLevel level, Vec3 center, double radius) {
+      return disruptElectronicDevices(level, center, radius, entity -> true);
+   }
+
+   public static int disruptElectronicDevices(ServerLevel level, Vec3 center, double radius,
+                                              java.util.function.Predicate<Entity> mayDisrupt) {
       AABB box = new AABB(center, center).inflate(radius);
       int destroyed = 0;
 
       for (Entity entity : level.getEntities((Entity)null, box, ElectronicInterferenceManager::isDestroyableElectronicDevice)) {
-         if (!entity.isRemoved() && entity.position().distanceTo(center) <= radius) {
+         if (!entity.isRemoved() && entity.position().distanceTo(center) <= radius && mayDisrupt.test(entity)) {
             discardElectronicDevice(entity);
             destroyed++;
          }
@@ -181,6 +186,7 @@ public final class ElectronicInterferenceManager {
    }
 
    private static boolean defaultElectronicSkill(CharacterDefinition character, SkillSlot slot) {
+      if (ModCharacters.WILDFIRE_ID.equals(character.id())) return false;
       if (slot != SkillSlot.PASSIVE && !"dealt_force_skills:engineer/sineva".equals(character.id())) {
          String id = character.id();
          if ("dealt_force_skills:recon/hackclaw".equals(id)) {

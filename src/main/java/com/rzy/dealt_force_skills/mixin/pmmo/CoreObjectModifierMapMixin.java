@@ -27,7 +27,6 @@ public abstract class CoreObjectModifierMapMixin {
                     ordinal = 0,
                     remap = false
             ),
-            index = 0,
             require = 1,
             remap = false
     )

@@ -7,6 +7,8 @@ import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.ParticleTypes;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,12 +31,16 @@ import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.network.syncher.SynchedEntityData;
 
-public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
+public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier, OperativeAreaSource {
     private static final int READY_SOUND_INTERVAL_TICKS = 8;
     private static volatile double TRIGGER_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("TRIGGER_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmospidernesttrapentity.trigger_radius", 6.0));
     private static volatile double MAX_OWNER_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_OWNER_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmospidernesttrapentity.max_owner_distance", 50.0));
     private static volatile int MAX_SPAWNS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_SPAWNS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmospidernesttrapentity.max_spawns", 3));
     private static volatile int SPAWN_INTERVAL_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPAWN_INTERVAL_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmospidernesttrapentity.spawn_interval_ticks", 20));
+    private final OperativeAllegiance allegiance = new OperativeAllegiance();
+    @Override public OperativeAllegiance operativeAllegiance() { return allegiance; }
+    public static double nativeTriggerRadius() { return Math.max(0, TRIGGER_RADIUS); }
+    public static int nativeLifetime() { return 1800; }
     private UUID ownerId;
     private boolean triggered;
     private int spawnsRemaining = MAX_SPAWNS;
@@ -62,6 +68,15 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
         spawnsRemaining = positionDefense ? MAX_SPAWNS * 11 : MAX_SPAWNS;
     }
 
+    public GizmoSpiderNestTrapEntity(EntityType<? extends GizmoSpiderNestTrapEntity> type, Level level, LivingEntity owner) {
+        this(type, level);
+        ownerId = owner.getUUID();
+        allegiance.capture(owner);
+        positionDefense = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.GIZMO_POSITION_DEFENSE);
+        smartSpider = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.GIZMO_SMART_SPIDER);
+        spawnsRemaining = positionDefense ? MAX_SPAWNS * 11 : MAX_SPAWNS;
+    }
+
     @Override
     public ItemStack getItem() {
         return new ItemStack(Items.SPIDER_EYE);
@@ -74,6 +89,7 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && com.rzy.dealt_force_skills.ai.operative.OperativeTrapMaintenance.stale(this, allegiance, TRIGGER_RADIUS)) { discard(); return; }
         if (level().isClientSide) {
             spawnClientIdleParticles();
             return;
@@ -87,6 +103,7 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
             RangedSoundHelper.playTrapSound(serverLevel, position(), ModSounds.GIZMO_SPIDER_NEST_READY.get(), 0.6f, 1.0f);
         }
 
+        if (allegiance.active() && (tickCount >= nativeLifetime() || !allegiance.withinOrders(serverLevel, position()))) { discard(); return; }
         Entity carrier = attachedCarrier(serverLevel);
         if (attachedCarrierId >= 0) {
             if (carrier == null || !carrier.isAlive()) {
@@ -97,8 +114,8 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
         }
 
         Entity owner = owner(serverLevel);
-        if (owner == null || !owner.isAlive()
-                || (!carrierModule && attachedCarrierId < 0 && owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE)) {
+        if ((!allegiance.active() && (owner == null || !owner.isAlive()))
+                || (owner != null && !carrierModule && attachedCarrierId < 0 && owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE)) {
             discard();
             return;
         }
@@ -133,6 +150,7 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        tickCount = allegiance.load(tag, nativeLifetime());
         triggered = tag.getBoolean("Triggered");
         spawnsRemaining = tag.contains("SpawnsRemaining") ? tag.getInt("SpawnsRemaining") : MAX_SPAWNS;
         nextSpawnTick = tag.getLong("NextSpawnTick");
@@ -145,10 +163,16 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
         carrierModule = tag.getBoolean("CarrierModule");
         positionDefense = tag.getBoolean("PositionDefense");
         smartSpider = tag.getBoolean("SmartSpider");
+        if (allegiance.active()) {
+            carrierModule = false; attachedCarrierId = -1;
+            spawnsRemaining = Math.max(0, Math.min(Math.max(0, MAX_SPAWNS), spawnsRemaining));
+            nextSpawnTick = Math.min(nextSpawnTick, level().getGameTime() + Math.max(1, SPAWN_INTERVAL_TICKS));
+        }
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -233,6 +257,7 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
     }
 
     private boolean canTrigger(LivingEntity entity) {
+        if (allegiance.active() && level() instanceof ServerLevel level) return allegiance.isEnemy(level, entity);
         if (!entity.isAlive() || isOwnedBy(entity.getUUID())
                 || !(level() instanceof ServerLevel level)
                 || !TargetingUtil.isHostileLivingFor(owner(level), entity)) {
@@ -256,6 +281,7 @@ public class GizmoSpiderNestTrapEntity extends Entity implements ItemSupplier {
         dir = dir.normalize();
         GizmoSpiderlingEntity spiderling = new GizmoSpiderlingEntity(
                 ModEntities.GIZMO_SPIDERLING.get(), level, ownerId, smartSpider);
+        spiderling.operativeAllegiance().copyFrom(allegiance);
         Vec3 start = position().add(dir.scale(0.42D)).add(0.0D, 0.08D, 0.0D);
         spiderling.setPos(start.x, start.y, start.z);
         spiderling.setTravelDirection(dir);

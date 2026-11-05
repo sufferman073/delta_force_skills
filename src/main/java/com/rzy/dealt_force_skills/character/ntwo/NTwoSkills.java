@@ -70,7 +70,8 @@ public final class NTwoSkills {
         Vec3 start = player.getEyePosition().add(look.scale(0.7D));
         grenade.setPos(start.x, start.y - 0.12D, start.z);
         grenade.setDeltaMovement(look.scale(0.72D));
-        level.addFreshEntity(grenade);
+        if (level.addFreshEntity(grenade))
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         NTwoStateManager.setTrackingCooldown(player);
         level.playSound(null, player.blockPosition(), ModSounds.N_TWO_TRACKING_STUN.get(),
                 SoundSource.PLAYERS, 0.75f, 1.0f);
@@ -135,7 +136,8 @@ public final class NTwoSkills {
         Vec3 start = player.getEyePosition().add(look.scale(0.7D));
         canister.setPos(start.x, start.y - 0.12D, start.z);
         canister.setDeltaMovement(look.scale(1.1D).add(0.0D, 0.22D, 0.0D));
-        level.addFreshEntity(canister);
+        if (level.addFreshEntity(canister))
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         NTwoStateManager.setEquippedTool(player, NTwoTool.NONE);
         level.playSound(null, player.blockPosition(), ModSounds.N_TWO_DEWAR_PIN.get(),
                 SoundSource.PLAYERS, 0.65f, 1.0f);

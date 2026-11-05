@@ -58,6 +58,9 @@ public final class TempestRecallVisuals {
     ) {
         PoseStack poseStack = event.getPoseStack();
         poseStack.pushPose();
+
+        if (ClientTacticalMotion.frame(event.getEntity(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) != null)
+            TacticalPlayerPose.modelSpace(event.getEntity(), poseStack, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         event.getRenderer().getModel().body.translateAndRotate(poseStack);
         poseStack.translate(xOffset, 0.56D, 0.10D);
         poseStack.mulPose(Axis.YP.rotationDegrees(mirror ? 90.0F : -90.0F));

@@ -27,11 +27,25 @@ public final class TeamCombatRules {
         if (target == null || source == null) {
             return false;
         }
+        if (target instanceof com.rzy.dealt_force_skills.compat.maid.MaidSkillHost
+                && source.typeHolder().unwrapKey().map(key -> key.location().getNamespace().equals("dealt_force_skills")).orElse(false)
+                && (com.rzy.dealt_force_skills.util.TargetingUtil.isSelfSource(source.getEntity(), target)
+                    || com.rzy.dealt_force_skills.util.TargetingUtil.isSelfSource(source.getDirectEntity(), target)
+                    || com.rzy.dealt_force_skills.util.TargetingUtil.areOperativeAllies(source.getEntity(), target)
+                    || com.rzy.dealt_force_skills.util.TargetingUtil.areOperativeAllies(source.getDirectEntity(), target))) return true;
+        if (com.rzy.dealt_force_skills.util.TargetingUtil.isCommanderSource(target)
+                && (com.rzy.dealt_force_skills.util.TargetingUtil.isSelfSource(source.getEntity(), target)
+                    || com.rzy.dealt_force_skills.util.TargetingUtil.isSelfSource(source.getDirectEntity(), target))) return true;
         LivingEntity attacker = ShakehandsCombatHandler.resolveAttacker(source, target);
         return shouldCancelFriendlyDamage(target, attacker);
     }
 
     public static boolean shouldCancelFriendlyDamage(LivingEntity target, Entity attacker) {
+        if (target != null && attacker != null) {
+            if (com.rzy.dealt_force_skills.util.TargetingUtil.isSelfSource(attacker, target))
+                return com.rzy.dealt_force_skills.util.TargetingUtil.isCommanderSource(attacker);
+            if (com.rzy.dealt_force_skills.util.TargetingUtil.areOperativeAllies(attacker, target)) return true;
+        }
         if (!(target instanceof Player) || !(attacker instanceof Player)) {
             return false;
         }
@@ -45,6 +59,12 @@ public final class TeamCombatRules {
      * @return true if a player-sourced effect should not apply to the holder under team rules
      */
     public static boolean shouldBlockPlayerEffect(LivingEntity holder, Entity source, MobEffectInstance instance) {
+        if (holder != null && instance != null && source != null
+                && isHarmfulOrControl(instance.getEffect().value())
+                && (com.rzy.dealt_force_skills.util.TargetingUtil.areOperativeAllies(source, holder)
+                    && !com.rzy.dealt_force_skills.util.TargetingUtil.isSelfSource(source, holder)
+                    || com.rzy.dealt_force_skills.util.TargetingUtil.isSelfSource(source, holder)
+                    && com.rzy.dealt_force_skills.util.TargetingUtil.isCommanderSource(source))) return true;
         if (holder == null || instance == null || !(holder instanceof Player targetPlayer)) {
             return false;
         }

@@ -29,18 +29,77 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import java.util.EnumSet;
 
-public final class RoverWolfEntity extends Wolf {
+public final class RoverWolfEntity extends Wolf implements com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    private int missingOwnerTicks, nativeLife, nativeRecovery;
+    private long nativeExpires;
+    @Override public java.util.UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public boolean isNativeOwnedBy(LivingEntity owner) { return allegiance.active() && allegiance.isCaster(owner); }
+    public void configureNative(LivingEntity owner) {
+        allegiance.capture(owner); nativeLife = Math.max(1, RoverConfig.CORE_DURATION);
+        nativeExpires = level().getGameTime() + nativeLife;
+        setPersistenceRequired();
+    }
+    @Override public LivingEntity getOwner() {
+        if (allegiance != null && allegiance.active()) return level() instanceof net.minecraft.server.level.ServerLevel level
+                && allegiance.caster() != null && level.getEntity(allegiance.caster()) instanceof LivingEntity living ? living : null;
+        return super.getOwner();
+    }
+    private boolean nativeReady() {
+        if (tickCount > nativeLife || level().getGameTime() >= nativeExpires) { discard(); return false; }
+        LivingEntity owner = getOwner();
+        if (owner == null) {
+            setTarget(null); getNavigation().stop(); setDeltaMovement(Vec3.ZERO);
+            if (++missingOwnerTicks > 40) discard();
+            return false;
+        }
+        missingOwnerTicks = 0;
+        if (!com.rzy.dealt_force_skills.ai.operative.NativeRoverSkills.dogAvailable(owner, position(), getUUID())) { discard(); return false; }
+        return true;
+    }
+    private void tickNative() {
+        LivingEntity owner = getOwner(); if (owner == null) return;
+        if (nativeRecovery > 0) {
+            nativeRecovery--;
+            setTarget(null); setInvulnerable(nativeRecovery > 0);
+            if (nativeRecovery == 0) setHealth(getMaxHealth()); else setHealth(1);
+        }
+        getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(owner.getAttributeValue(Attributes.MOVEMENT_SPEED) * 4);
+        getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(Math.max(1, RoverConfig.DOG_TARGET_RANGE));
+        LivingEntity target = getTarget();
+        if (target != null && !isValidTarget(target)) { setTarget(null); getNavigation().stop(); }
+        else if (target != null && !isRecovering() && !isPreferredHeight(target)
+                && tickCount % TARGET_HEIGHT_RECHECK_TICKS == 0) {
+            LivingEntity preferred = findPreferredHeightTarget();
+            if (preferred != null) { getNavigation().stop(); setTarget(preferred); }
+        }
+    }
+    @Override public void addAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
+        super.addAdditionalSaveData(tag); allegiance.save(tag, tickCount);
+        if (allegiance.active()) { tag.putInt("NativeLife",nativeLife); tag.putLong("NativeExpires",nativeExpires); tag.putInt("NativeRecovery",nativeRecovery); }
+    }
+    @Override public void readAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int age = allegiance.load(tag, RoverConfig.CORE_DURATION); if (allegiance.active()) {
+            tickCount = age; nativeLife = Math.max(1, Math.min(Math.max(1,RoverConfig.CORE_DURATION), tag.getInt("NativeLife")));
+            nativeExpires = tag.getLong("NativeExpires"); nativeRecovery = Math.max(0,Math.min(160,tag.getInt("NativeRecovery")));
+        }
+        missingOwnerTicks = 0;
+    }
+
     private static final double TARGET_HEIGHT_TOLERANCE = 0.5;
     private static final int TARGET_HEIGHT_RECHECK_TICKS = 10;
     public RoverWolfEntity(EntityType<? extends Wolf> type, Level level) { super(type, level); }
 
     public boolean isRecovering() {
+        if (allegiance.active()) return nativeRecovery > 0;
         return getPersistentData().getLong("RoverRecoverUntil") > SkillCooldownHelper.now(this);
     }
 
     public boolean preventLethalDamage() {
         if (level().isClientSide) return false;
-        if (!isRecovering()) {
+        if (allegiance.active() && !isRecovering()) nativeRecovery = 160;
+        if (!allegiance.active() && !isRecovering()) {
             if (getOwner() instanceof ServerPlayer owner) RoverStateManager.sound(owner, RoverSounds.DOG_RETREAT);
             getPersistentData().putLong("RoverRecoverUntil", SkillCooldownHelper.now(this) + 8 * 20);
         }
@@ -70,6 +129,9 @@ public final class RoverWolfEntity extends Wolf {
 
     private boolean isValidTarget(LivingEntity target) {
         double range = Math.max(1, RoverConfig.DOG_TARGET_RANGE);
+        if (allegiance.active()) return target != this && target.isAlive() && level() instanceof net.minecraft.server.level.ServerLevel level
+                && allegiance.isEnemy(level, target) && target.distanceToSqr(this) <= range*range
+                && getOwner() instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host && host.withinOrders(target.position());
         return target != this && getOwner() instanceof ServerPlayer owner
                 && TargetingUtil.isHostileLivingFor(owner, target)
                 && target.distanceToSqr(this) <= range * range;
@@ -103,6 +165,7 @@ public final class RoverWolfEntity extends Wolf {
     }
 
     @Override public void tick() {
+        if (!level().isClientSide && allegiance.active() && !nativeReady()) return;
         if (!level().isClientSide && isRecovering()) {
             // Keep pathfinding active, including dogs saved by the old no-AI recovery.
             setNoAi(false);
@@ -110,6 +173,7 @@ public final class RoverWolfEntity extends Wolf {
         }
         super.tick();
         if (level().isClientSide) return;
+        if (allegiance.active()) { tickNative(); return; }
         if (!(getOwner() instanceof ServerPlayer owner) || !owner.isAlive() || !RoverStateManager.isRover(owner)
                 || !RoverStateManager.data(owner).hasUUID("Dog")
                 || !getUUID().equals(RoverStateManager.data(owner).getUUID("Dog"))
@@ -148,12 +212,12 @@ public final class RoverWolfEntity extends Wolf {
         CommandMovementGoal() { setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }
 
         @Override public boolean canUse() {
-            return getTarget() == null && getOwner() instanceof ServerPlayer;
+            return getTarget() == null && (getOwner() instanceof ServerPlayer || allegiance.active() && getOwner() != null);
         }
 
         @Override public void tick() {
-            if (!(getOwner() instanceof ServerPlayer owner)) return;
-            Vec3 point = isRecovering() ? null : RoverStateManager.waypoint(owner);
+            LivingEntity owner = getOwner(); if (owner == null) return;
+            Vec3 point = isRecovering() || !(owner instanceof ServerPlayer player) ? null : RoverStateManager.waypoint(player);
             if (point == null) point = owner.position();
             if (position().distanceToSqr(point) > 2.25) getNavigation().moveTo(point.x, point.y, point.z, 1.0);
             else getNavigation().stop();
@@ -164,16 +228,26 @@ public final class RoverWolfEntity extends Wolf {
     }
 
     @Override public boolean doHurtTarget(Entity entity) {
-        if (isRecovering() || !(getOwner() instanceof ServerPlayer owner) || !(entity instanceof LivingEntity target)
-                || !TargetingUtil.isHostileLivingFor(owner, target)) return false;
+        LivingEntity owner = getOwner();
+        if (isRecovering() || owner == null || !(entity instanceof LivingEntity target)
+                || (allegiance.active() ? !com.rzy.dealt_force_skills.ai.operative.NativeRoverSkills.dogAvailable(owner, position(), getUUID()) || !isValidTarget(target)
+                    : !(owner instanceof ServerPlayer player) || !TargetingUtil.isHostileLivingFor(player, target))) return false;
+        float questBefore = target.getHealth() + target.getAbsorptionAmount();
         boolean applied = SkillDamageHelper.hurt(target, damageSources().mobAttack(this), owner,
                 (float) Math.max(0, RoverConfig.DOG_DAMAGE));
         if (applied) {
-            NetworkHandler.sendToPlayer(new S2C_LunaRevealEntities(java.util.List.of(target.getId()),
-                    Math.max(1, RoverConfig.DOG_REVEAL_DURATION)), owner);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"rover.dog.damage",Math.max(0,questBefore-target.getHealth()-target.getAbsorptionAmount()));
+            if (owner instanceof ServerPlayer player) NetworkHandler.sendToPlayer(new S2C_LunaRevealEntities(java.util.List.of(target.getId()),
+                    Math.max(1, RoverConfig.DOG_REVEAL_DURATION)), player);
+            else if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() != null) {
+                bot.skills().remember(target, Math.max(1, RoverConfig.DOG_REVEAL_DURATION));
+                if (level() instanceof net.minecraft.server.level.ServerLevel level && owner instanceof net.minecraft.world.entity.OwnableEntity ownable && ownable.getOwnerUUID() != null
+                        && level.getEntity(ownable.getOwnerUUID()) instanceof ServerPlayer commander)
+                    NetworkHandler.sendToPlayer(new S2C_LunaRevealEntities(java.util.List.of(target.getId()), Math.max(1,RoverConfig.DOG_REVEAL_DURATION)),commander);
+            }
             level().playSound(null, blockPosition(), RoverSounds.DOG_ATTACK, net.minecraft.sounds.SoundSource.PLAYERS, 0.85F, 1.0F);
             if (!target.isAlive()) {
-                RoverStateManager.sound(owner, RoverSounds.DOG_KILL_OWNER);
+                if (owner instanceof ServerPlayer player) RoverStateManager.sound(player, RoverSounds.DOG_KILL_OWNER);
                 if (target instanceof ServerPlayer victim) RoverStateManager.sound(victim, RoverSounds.DOG_KILL_VICTIM);
             }
             if (level().getGameRules().getBoolean(ModGameRules.DEALT_WOUND) && random.nextDouble() < RoverConfig.DOG_INJURY_CHANCE) {
@@ -188,6 +262,9 @@ public final class RoverWolfEntity extends Wolf {
     }
 
     @Override public void remove(RemovalReason reason) {
+        if (!level().isClientSide && reason.shouldDestroy() && allegiance.active()
+                && getOwner() instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(bot.skills(), com.rzy.dealt_force_skills.ai.operative.NativeRoverSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeRoverSkills skills)
+            skills.finishDog(getUUID());
         if (!level().isClientSide && (reason == RemovalReason.KILLED || reason == RemovalReason.DISCARDED)
                 && getOwner() instanceof ServerPlayer owner
                 && RoverStateManager.data(owner).hasUUID("Dog")

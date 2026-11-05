@@ -12,7 +12,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_RaptorRevealEntities implements CustomPacketPayload {
+public class S2C_RaptorRevealEntities implements CustomPacketPayload, com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     public static final CustomPacketPayload.Type<S2C_RaptorRevealEntities> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_raptor_reveal_entities"));
 
@@ -31,6 +31,10 @@ public class S2C_RaptorRevealEntities implements CustomPacketPayload {
 
     public S2C_RaptorRevealEntities(List<RaptorRevealMarker> markers) {
         this.markers = List.copyOf(markers);
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(var marker:markers) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,marker.entityId(),marker.ticks());
     }
 
     public static void encode(S2C_RaptorRevealEntities msg, FriendlyByteBuf buf) {

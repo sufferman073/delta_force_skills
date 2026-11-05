@@ -380,7 +380,7 @@ public class CommonEvents {
    private static boolean commanderGeneConvertingDamage;
    private static Method taczFromLivingEntity;
    private static Method taczCancelReload;
-   private static final String UNDEAD_EXPLORER_LOOT_CLAIMED = "dealt_force_skills.undead_explorer_loot_claimed";
+
 
    public static void onOptionalMaidPickup(Event event) {
       if (!TOUHOU_MAID_PICKUP_PRE_EVENT.equals(event.getClass().getName())) {
@@ -588,7 +588,12 @@ public class CommonEvents {
             } else {
                if (event.getEntity() instanceof ServerPlayer target
                   && (GamblerStateManager.isFullyInvulnerable(target) || GamblerStateManager.isCoveredByOrangeShield(target))) {
-                  event.setCanceled(true);
+                   if (Float.isFinite(event.getAmount()) && event.getAmount() > 0.0F
+                       && GamblerStateManager.isSuperShieldActive(target)) {
+                      com.rzy.dealt_force_skills.department.DepartmentGambler.shieldBlocked(target);
+                      com.rzy.dealt_force_skills.department.DepartmentGambler.resolved(target, event::isCanceled);
+                   }
+                   event.setCanceled(true);
                   return;
                }
 
@@ -610,6 +615,8 @@ public class CommonEvents {
                }
 
                if (event.getEntity() instanceof ServerPlayer target && UndeadStateManager.blocksIncomingAttack(target)) {
+            if(event.getAmount()>0&&UndeadStateManager.explorerSpaceActive(target))
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(target,"undead.explorer.immune");
                   event.setCanceled(true);
                   return;
                }
@@ -618,7 +625,13 @@ public class CommonEvents {
                   return;
                }
 
-               if (GhrothStateManager.isTacticalImmune(player) || GhrothStateManager.shouldDodge(player, source)) {
+               if (GhrothStateManager.isTacticalImmune(player)) {
+            event.setCanceled(true);
+            return;
+        }
+        if (Float.isFinite(event.getAmount()) && event.getAmount()>0.0F && GhrothStateManager.shouldDodge(player, source)) {
+            if(player instanceof ServerPlayer owner)
+                com.rzy.dealt_force_skills.department.DepartmentGhroth.dodged(owner,event::isCanceled);
                   event.setCanceled(true);
                } else if (StingerStateManager.isDowned(player)
                   && !StingerStateManager.isExecutingDownedDeath(player)
@@ -631,7 +644,7 @@ public class CommonEvents {
                } else if (CatDadStateManager.isDowned(player) && !ManbaStateManager.isExecutingDuelTarget(player)) {
                   event.setCanceled(true);
                } else {
-                  if (player instanceof ServerPlayer serverPlayer && CatDadStateManager.tryBlockIncoming(serverPlayer)) {
+                  if (player instanceof ServerPlayer serverPlayer && CatDadStateManager.tryBlockDamage(serverPlayer, event.getAmount())) {
                      event.setCanceled(true);
                      return;
                   }
@@ -677,7 +690,8 @@ public class CommonEvents {
                                  || !SinevaStateManager.isShieldDeployed(player))
                               && Util.isFromBehind(player, sourcePos, 70.0F)
                               && Util.isUpperBodySource(player, attackerx)) {
-                              event.setCanceled(true);
+                              com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"sineva.passive.absorbed",event.getAmount());
+            event.setCanceled(true);
                            }
                         }
                      }
@@ -748,10 +762,20 @@ public class CommonEvents {
       }
    }
 
+    @SubscribeEvent
+    public static void recordOwnerAttack(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post event) {
+        if (event.getNewDamage() > 0 && event.getSource().getEntity() instanceof ServerPlayer owner
+                && event.getEntity() != owner && !TeamCombatRules.shouldCancelFriendlyDamage(event.getEntity(), event.getSource()))
+            owner.setLastHurtMob(event.getEntity());
+    }
+
+
+
    @SubscribeEvent
     public static void onLivingHurt(LivingIncomingDamageEvent event) {
         if (com.rzy.dealt_force_skills.character.rover.RoverStateManager.executingDeath(event.getEntity())) return;
       LivingEntity hurtEntity = event.getEntity();
+        com.rzy.dealt_force_skills.department.DepartmentEquipment.resolved(hurtEntity,()->!event.isCanceled());
       DamageSource source = event.getSource();
       if (hackclawReflectingDamage) {
          return;
@@ -830,6 +854,7 @@ public class CommonEvents {
 
                   if (hurtEntity instanceof ServerPlayer targetPlayer && event.getAmount() > 0.0F) {
                      float adjusted = GamblerStateManager.handleIncomingHurt(targetPlayer, source, event.getAmount());
+            com.rzy.dealt_force_skills.department.DepartmentGambler.resolved(targetPlayer,()->event.isCanceled()&&event.getAmount()==0.0F);
                      if (adjusted <= 0.0F) {
                         event.setCanceled(true);
                         event.setAmount(0.0F);
@@ -904,7 +929,9 @@ public class CommonEvents {
                         }
 
                         if (event.getSource().getEntity() instanceof ServerPlayer attacker && ManbaStateManager.isManba(attacker) && event.getAmount() > 0.0F) {
-                           event.setAmount(event.getAmount() * ManbaStateManager.outgoingDamageMultiplier(attacker, hurtEntity));
+                           float beforeManba=event.getAmount();
+            event.setAmount(beforeManba * ManbaStateManager.outgoingDamageMultiplier(attacker, hurtEntity));
+            com.rzy.dealt_force_skills.department.DepartmentManba.reduced(hurtEntity,attacker,beforeManba,event.getAmount(),()->!event.isCanceled());
                         }
 
                         if (event.getSource().getEntity() instanceof ServerPlayer attacker
@@ -1002,7 +1029,7 @@ public class CommonEvents {
                            } else if (suppressesPotionDamage(player, source)) {
                               event.setAmount(0.0F);
                            } else {
-                              if (player instanceof ServerPlayer serverPlayer && CatDadStateManager.tryBlockIncoming(serverPlayer)) {
+                              if (player instanceof ServerPlayer serverPlayer && CatDadStateManager.tryBlockDamage(serverPlayer, event.getAmount())) {
                                  event.setAmount(0.0F);
                                  return;
                               }
@@ -1079,7 +1106,9 @@ public class CommonEvents {
 
                                  ManbaStateManager.tryTriggerDiversion(serverPlayer, source);
                                  if (event.getAmount() > 0.0F) {
-                                    event.setAmount(event.getAmount() * ManbaStateManager.incomingDamageMultiplier(player, source));
+                                    float beforeManba=event.getAmount();
+                event.setAmount(beforeManba * ManbaStateManager.incomingDamageMultiplier(player, source));
+                com.rzy.dealt_force_skills.department.DepartmentManba.reduced(hurtEntity,serverPlayer,beforeManba,event.getAmount(),()->!event.isCanceled());
                                  }
                               }
 
@@ -1124,7 +1153,8 @@ public class CommonEvents {
                                              return;
                                           }
                                        }
-                                       float equipmentAdjusted = handleEquipmentDefense(serverPlayer, source, event.getAmount());
+                                       event.setAmount(com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.defend(serverPlayer, source, event.getAmount()));
+            float equipmentAdjusted = handleEquipmentDefense(serverPlayer, source, event.getAmount());
                                        if (equipmentAdjusted <= 0.0F) {
                                           event.setAmount(0.0F);
                                           return;
@@ -1206,7 +1236,7 @@ public class CommonEvents {
                                     }
 
                                     if (player instanceof ServerPlayer serverPlayerx && event.getAmount() > 0.0F) {
-                                       CorpsStateManager.onDamageTaken(serverPlayerx, event.getAmount());
+
                                        DfsAchievements.onDamageTaken(serverPlayerx, source, event.getAmount());
                                     }
 
@@ -1296,10 +1326,10 @@ public class CommonEvents {
          }
 
          float damage = event.getAmount();
-         int copies = GhrothStateManager.consumeNoonDamageCopiesForHit(attacker);
-         if (Float.isFinite(damage) && copies > 0) {
-            startGhrothNoonDamageCopies(attacker, target, damage, copies);
-         }
+        if(Float.isFinite(damage)&&damage>0)
+            com.rzy.dealt_force_skills.department.DepartmentGhroth.noon(target,attacker,
+                    ()->!event.isCanceled()&&event.getAmount()>0,
+                    copies->startGhrothNoonDamageCopies(attacker,target,event.getAmount(),copies));
       }
    }
 
@@ -1377,7 +1407,8 @@ public class CommonEvents {
    )
    public static void onLivingHeal(LivingHealEvent event) {
       if (event.getEntity().hasEffect(ModEffects.NOX_DELAYED_WOUND)) {
-         event.setCanceled(true);
+            com.rzy.dealt_force_skills.department.DepartmentHealing.prevented(event.getEntity(),event.getAmount());
+            event.setCanceled(true);
       } else if (StingerStateManager.hasStimSuppression(event.getEntity())) {
          event.setCanceled(true);
       } else if (VlinderStateManager.hasMedicalWasteInterference(event.getEntity())) {
@@ -1454,7 +1485,8 @@ public class CommonEvents {
                * equipmentActionSpeedMultiplier(entity)
                * (double)UndeadUpgradeManager.interactionSpeedMultiplier(entity instanceof Player playerx ? playerx : null)
                * (double)UndeadStateManager.frozenInteractionMultiplier(entity);
-            multiplier = normalizedUseSpeedMultiplier(multiplier);
+            com.rzy.dealt_force_skills.department.DepartmentUseSpeed.start(entity,event.getItem(),event.getDuration(),multiplier);
+         multiplier = normalizedUseSpeedMultiplier(multiplier);
             if (multiplier > 0.0 && Math.abs(multiplier - 1.0) > 1.0E-4) {
                event.setDuration(Math.max(1, (int)Math.ceil((double)event.getDuration() / multiplier)));
             }
@@ -1631,7 +1663,8 @@ public class CommonEvents {
       ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         if (id != null && DealtForceSkillsMod.MODID.equals(id.getNamespace())
                 && !(entity instanceof AcceleratedTroopsEntity)
-                && !(entity instanceof com.rzy.dealt_force_skills.entity.RoverWolfEntity)) {
+                && !(entity instanceof com.rzy.dealt_force_skills.entity.RoverWolfEntity)
+                && !(entity instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost)) {
             entity.discard();
         }
    }
@@ -1804,19 +1837,21 @@ public class CommonEvents {
          return;
       }
       if (event.getEntity().level().isClientSide || !ShakehandsCombatHandler.handleEffectAdded(event)) {
-         boolean rescaled = !event.getEntity().level().isClientSide
+         boolean incomingIsActive = event.getEntity().getEffect(event.getEffectInstance().getEffect()) == event.getEffectInstance();
+         if (!incomingIsActive) NTwoStateManager.boostNativeAddedHarmfulEffect(event.getEntity(), event.getEffectInstance());
+         boolean rescaled = !incomingIsActive && !event.getEntity().level().isClientSide
             && ToxikStateManager.tryRescaleAddedEffect(event.getEntity(), event.getEffectInstance(), event.getEffectSource());
-         if (!rescaled && !event.getEntity().level().isClientSide) {
+         if (!incomingIsActive && !rescaled && !event.getEntity().level().isClientSide) {
             rescaled = UndeadUpgradeManager.tryRescaleAddedEffect(event.getEntity(), event.getEffectInstance(), event.getEffectSource());
          }
 
-         if (!rescaled && !event.getEntity().level().isClientSide) {
+         if (!incomingIsActive && !rescaled && !event.getEntity().level().isClientSide) {
             rescaled = NTwoStateManager.tryBoostAddedHarmfulEffect(
                event.getEntity(), event.getEffectInstance(), event.getEffectSource() instanceof LivingEntity living ? living : null
             );
          }
 
-         if (!rescaled && !event.getEntity().level().isClientSide) {
+         if (!incomingIsActive && !rescaled && !event.getEntity().level().isClientSide) {
             ManbaStateManager.addAffectionForControlledTarget(event.getEntity(), event.getEffectInstance());
          }
 
@@ -2228,9 +2263,6 @@ public class CommonEvents {
             UndeadSoulManager.awardKill(player, entity);
             LexNinjiaCurrencyManager.awardKill(player, entity);
             SaeedStateManager.awardKill(player, entity);
-            if (GhrothStateManager.isGhroth(player)) {
-               GhrothStateManager.recordJusticeKill(player, entity);
-            }
 
             if (DWolfStateManager.isOverloadActive(player)) {
                DWolfSkills.handleOverloadKill(player);
@@ -2254,7 +2286,7 @@ public class CommonEvents {
                NikaidouHiroWitchificationStateManager.onKill(player, entity);
             }
 
-            LexNinjiaStateManager.onKill(player);
+
             if (DepartmentOfTransportationStateManager.isDepartment(player)) {
                DepartmentOfTransportationStateManager.revealFromOffense(player);
             }
@@ -2682,7 +2714,6 @@ public class CommonEvents {
             SaeedStateManager.onOwnerInteractBlock(serverPlayer, event.getPos());
          }
 
-         tryDuplicateUndeadExplorerContainerLoot(event);
          if (event.getItemStack().is(Items.BUCKET)) {
             tryAwardCoarseSalt(event.getEntity(), event.getLevel(), event.getPos(), 0);
          }
@@ -2745,11 +2776,10 @@ public class CommonEvents {
                      tracked.put(type, new CommonEvents.TrackedEffect(currentDuration, effect.getAmplifier()));
                   } else {
                      int reducedDuration = Math.max(1, currentDuration / 2);
-                     MobEffectInstance reduced = new MobEffectInstance(
-                        type, reducedDuration, effect.getAmplifier(), effect.isAmbient(), effect.isVisible(), effect.showIcon()
-                     );
-                     player.removeEffect(type);
-                     player.addEffect(reduced);
+                     // Shorten the existing chain; remove/add would discard hidden infinite effects.
+                     ((com.rzy.dealt_force_skills.mixin.OperativeEffectAccessor)effect).dealt_force_skills$setDuration(reducedDuration);
+                     player.forceAddEffect(effect,null);
+                     com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"uluru.passive.duration_saved",currentDuration-reducedDuration);
                      tracked.put(type, new CommonEvents.TrackedEffect(reducedDuration, effect.getAmplifier()));
                   }
                }
@@ -2858,6 +2888,10 @@ public class CommonEvents {
    )
    public static void onAttackEntity(AttackEntityEvent event) {
       Player player = event.getEntity();
+        if (event.getTarget() instanceof com.rzy.dealt_force_skills.entity.OperativeEntity bot
+                && com.rzy.dealt_force_skills.item.OperativeSpawnEggItem.collect(player, bot)) {
+            event.setCanceled(true); return;
+        }
       if (player instanceof ServerPlayer serverPlayer) {
          MorseStateManager.recordPlayerAction(serverPlayer);
          if (GamblerArenaManager.blocksAttackEntity(serverPlayer, event.getTarget())) {
@@ -3004,6 +3038,7 @@ public class CommonEvents {
    }
 
    private static boolean isAnyToolEquipped(Player player) {
+        if (com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.blocksItems(player)) return true;
       if (SinevaSkills.canUseShieldAction(player)) {
          return true;
       } else if (UluruStateManager.isUluru(player) && UluruStateManager.equippedTool(player) != UluruTool.NONE) {
@@ -3271,7 +3306,11 @@ public class CommonEvents {
          if (departmentChargedCreeper) {
             removeDepartmentOwnerFromExplosionTargets(directSource, event.getAffectedEntities());
             event.getAffectedBlocks().clear();
-            SuperbWarfareCompat.damageVehicles(
+            if (com.rzy.dealt_force_skills.ai.operative.NativeDepartmentSkills.nativeSummon(directSource)) {
+                var allegiance = com.rzy.dealt_force_skills.ai.operative.NativeDepartmentSkills.summonAllegiance(directSource);
+                event.getAffectedEntities().removeIf(entity -> !(entity instanceof LivingEntity living) || !allegiance.isEnemy(serverLevel, living));
+            }
+            if (!com.rzy.dealt_force_skills.ai.operative.NativeDepartmentSkills.nativeSummon(directSource)) SuperbWarfareCompat.damageVehicles(
                serverLevel,
                event.getExplosion().center(),
                6.0,
@@ -3374,6 +3413,7 @@ public class CommonEvents {
    public static void onTaczAttachmentProperty(AttachmentPropertyEvent event) {
       handleGhrothAttachmentProperty(event);
       handleChamberAttachmentProperty(event);
+      com.rzy.dealt_force_skills.workbench.WorkbenchTacz.adjust(event);
    }
 
    @SubscribeEvent(
@@ -4127,7 +4167,8 @@ public class CommonEvents {
       double ghrothBolt = GhrothTaczEnhancement.boltMultiplier(entity);
       return new CommonEvents.TaczSpeedMultipliers(
          adrenalineFireRate * equipment * ghrothFireRate * ModItemEffectHelper.medicineTaczFireRateMultiplier(entity),
-         adrenaline * ghrothReload * ModItemEffectHelper.medicineTaczReloadMultiplier(entity),
+         adrenaline * ghrothReload * ModItemEffectHelper.medicineTaczReloadMultiplier(entity)
+                        * com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.reloadMultiplier(entity),
          adrenaline * equipment * ghrothAim * ModItemEffectHelper.medicineTaczAimSpeedMultiplier(entity),
          adrenaline * ghrothBolt,
          ModItemEffectHelper.medicineTaczAimPenaltyMultiplier(entity)
@@ -4349,7 +4390,8 @@ public class CommonEvents {
                   || NikaidouHiroStateManager.isWeaponActive(player)
                   || NikaidouHiroWitchificationStateManager.isWeaponActive(player)
                   || NikaidouHiroWitchificationStateManager.isActionLocked(player)
-                  || DepartmentOfTransportationStateManager.hasEquippedTool(player)
+                  || com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.blocksItems(player)
+                || DepartmentOfTransportationStateManager.hasEquippedTool(player)
                   || TempestStateManager.isActionLocked(player)
             )) {
             cancelEvent(event);
@@ -4380,6 +4422,14 @@ public class CommonEvents {
       if (!isEventCancelable(event)) {
          return false;
       } else {
+         LivingEntity maidCaster = taczEventEntity(event);
+         if (isTaczSonicTimeEvent(event.getClass().getName())
+               && maidCaster instanceof com.rzy.dealt_force_skills.compat.maid.MaidSkillHost maid
+               && maid.dealtForceMaidSkills().weaponLocked()) {
+            cancelEvent(event);
+            return true;
+         }
+
          if (taczEventEntity(event) instanceof ServerPlayer player && ManbaStateManager.isManba(player) && ManbaStateManager.isDuelActive(player)) {
             cancelEvent(event);
             if ("com.tacz.guns.api.event.common.GunReloadEvent".equals(event.getClass().getName())) {
@@ -4671,7 +4721,7 @@ public class CommonEvents {
       }
    }
 
-   private static boolean isSinevaViewportHit(Player player, DamageSource source, Vec3 sourcePos) {
+   public static boolean isSinevaViewportHit(LivingEntity player, DamageSource source, Vec3 sourcePos) {
       Vec3 forward = player.getLookAngle();
       if (forward.lengthSqr() < 1.0E-4) {
          return false;
@@ -4743,7 +4793,7 @@ public class CommonEvents {
       return entity instanceof LivingEntity living ? living.getEyePosition() : entity.position().add(0.0, (double)entity.getBbHeight() * 0.5, 0.0);
    }
 
-   private static Vec3 playerBodyCenter(Player player) {
+   private static Vec3 playerBodyCenter(LivingEntity player) {
       return player.position().add(0.0, (double)player.getBbHeight() * 0.5, 0.0);
    }
 
@@ -4834,6 +4884,15 @@ public class CommonEvents {
    }
 
    private static float handleEquipmentDefense(ServerPlayer player, DamageSource source, float amount) {
+        if (source instanceof com.rzy.dealt_force_skills.character.wildfire.WildfireDamageSource wildfire) {
+            float bypass = amount * (float) wildfire.equipmentPenetration();
+            return bypass + handleWildfireProtectedEquipmentDamage(player, source, amount - bypass);
+        }
+        return handleWildfireProtectedEquipmentDamage(player, source, amount);
+    }
+
+    private static float handleWildfireProtectedEquipmentDamage(ServerPlayer player, DamageSource source, float amount) {
+        if (amount <= 0) return 0;
       if (isEquipmentBypassDamage(source)) {
          return amount;
       } else {
@@ -4893,6 +4952,7 @@ public class CommonEvents {
                            && now >= player.getPersistentData().getLong("dealt_force_skills.asara_set_fatal_guard_until")) {
                            player.getPersistentData().putLong("dealt_force_skills.asara_set_fatal_guard_until", now + 7200L);
                            player.setHealth(player.getMaxHealth());
+                com.rzy.dealt_force_skills.department.DepartmentEquipment.record(player,"armor.asara.inheritance",1);
                            notifyEquipmentSetTrigger(player, DfsEquipmentItem.Faction.ASARA, ParticleTypes.HEART);
                            return 0.0F;
                         }
@@ -5156,68 +5216,48 @@ public class CommonEvents {
    }
 
    private static float absorbWithEquipment(ServerPlayer player, ItemStack stack, DfsEquipmentItem.Profile profile, float amount) {
-      if (!(amount <= 0.0F) && !stack.isEmpty()) {
-         boolean noDurabilityLoss = ModGameRules.areArmorSpecialsEnabled(player) && profile.ability() == DfsEquipmentItem.SpecialAbility.NO_DURABILITY_LOSS
-            || stack.has(DataComponents.UNBREAKABLE);
-         if (!noDurabilityLoss && !stack.isDamageableItem()) {
-            return amount;
-         } else {
-            boolean broken = DfsEquipmentItem.isBroken(stack);
-            boolean gtiOverload = canGtiOverloadEquipment(player, stack);
-            if (!noDurabilityLoss && broken && !gtiOverload) {
-               return amount;
-            } else {
-               double ratio = DfsEquipmentItem.qualityProtectionRatio(profile.quality());
-               if (equipmentFactionCount(player, DfsEquipmentItem.Faction.HVK) >= 1) {
-                  ratio += 0.04;
-               }
-
-               if (ModGameRules.areArmorSpecialsEnabled(player) && profile.ability() == DfsEquipmentItem.SpecialAbility.STATIONARY_STACKS) {
-                  ratio += (double)((CustomData)stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY))
-                        .copyTag()
-                        .getInt("dealt_force_skills.fs_stationary_stacks")
-                     * 0.04;
-               }
-
-               ratio = Math.min(0.98, ratio);
-               double desiredAbsorb = (double)amount * ratio;
-               if (desiredAbsorb <= 0.0) {
-                  return amount;
-               } else {
-                  int durabilityCost = adjustedEquipmentDurabilityCost(player, profile);
-                  double durabilityMultiplier = adjustedEquipmentDurabilityMultiplier(player, profile);
-                  double effectiveCost = Math.max(0.0, (double)durabilityCost * durabilityMultiplier);
-                  double absorbed = desiredAbsorb;
-                  if (!noDurabilityLoss && effectiveCost > 0.0) {
-                     int durabilityLimit = gtiOverload ? gtiOverloadLimit(stack) : DfsEquipmentItem.breakDamageLimit(stack);
-                     absorbed = Math.min(desiredAbsorb, (double)(durabilityLimit - stack.getDamageValue()) / effectiveCost);
-                  }
-
-                  if (absorbed <= 0.0) {
-                     return amount;
-                  } else {
-                     if (!noDurabilityLoss && effectiveCost > 0.0) {
-                        if (shouldSkipEquipmentDurability(player)) {
-                           notifyEquipmentSetTrigger(player, DfsEquipmentItem.Faction.HVK, ParticleTypes.WAX_ON);
-                        } else {
-                           int rawCost = Math.max(1, (int)Math.ceil(absorbed * effectiveCost));
-                           damageEquipmentStack(player, stack, profile, rawCost);
-                        }
-                     } else if (noDurabilityLoss && profile.ability() == DfsEquipmentItem.SpecialAbility.NO_DURABILITY_LOSS) {
-                        notifyEquipmentAbilityTrigger(player, profile, ParticleTypes.WAX_ON);
-                     }
-
-                     return (float)Math.max(0.0, (double)amount - absorbed);
-                  }
-               }
+        if (!Float.isFinite(amount) || amount <= 0.0F || stack.isEmpty()) return amount;
+        boolean noDurabilityLoss = ModGameRules.areArmorSpecialsEnabled(player) && profile.ability() == DfsEquipmentItem.SpecialAbility.NO_DURABILITY_LOSS || stack.has(DataComponents.UNBREAKABLE);
+        if (!noDurabilityLoss && !stack.isDamageableItem()) return amount;
+        boolean broken = DfsEquipmentItem.isBroken(stack);
+        boolean gtiOverload = canGtiOverloadEquipment(player, stack);
+        if (!noDurabilityLoss && broken && !gtiOverload) return amount;
+        boolean hvk = equipmentFactionCount(player, DfsEquipmentItem.Faction.HVK) >= 1;
+        double baseRatio = DfsEquipmentItem.qualityProtectionRatio(profile.quality());
+        if (ModGameRules.areArmorSpecialsEnabled(player) && profile.ability() == DfsEquipmentItem.SpecialAbility.STATIONARY_STACKS) baseRatio += ((CustomData)stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY)).copyTag().getInt("dealt_force_skills.fs_stationary_stacks") * 0.04D;
+        double ratio = Math.min(0.98D, baseRatio + (hvk ? 0.04D : 0.0D));
+        double desiredAbsorb = amount * ratio;
+        if (desiredAbsorb <= 0.0D) return amount;
+        int durabilityCost = adjustedEquipmentDurabilityCost(player, profile);
+        double durabilityMultiplier = adjustedEquipmentDurabilityMultiplier(player, profile);
+        double effectiveCost = Math.max(0.0D, durabilityCost * durabilityMultiplier);
+        int durabilityLimit = gtiOverload ? gtiOverloadLimit(stack) : DfsEquipmentItem.breakDamageLimit(stack);
+        int remaining = Math.max(0, durabilityLimit - stack.getDamageValue());
+        double capacity = !noDurabilityLoss && effectiveCost > 0.0D ? remaining / effectiveCost : Double.POSITIVE_INFINITY;
+        double absorbed = Math.min(desiredAbsorb, capacity);
+        if (absorbed <= 0.0D) return amount;
+        if (hvk) com.rzy.dealt_force_skills.department.DepartmentEquipment.record(player,"armor.hvk.absorbed",
+                Math.max(0, absorbed - Math.min(amount * Math.min(0.98D,baseRatio),capacity)));
+        if (!noDurabilityLoss && effectiveCost > 0.0D) {
+            int rawCost = Math.max(1, (int)Math.ceil(absorbed * effectiveCost));
+            int unbreaking = Math.max(0, enchantmentLevel(player.level(),Enchantments.UNBREAKING,stack));
+            int actualCost = Math.min(remaining, Math.max(1, (int)Math.ceil(rawCost / (double)(unbreaking + 1))));
+            boolean skipped = shouldSkipEquipmentDurability(player);
+            if (hvk) {
+                int baselineRaw = Math.max(1, (int)Math.ceil(absorbed * (effectiveCost / 0.90D)));
+                int baselineCost = Math.min(remaining, Math.max(1, (int)Math.ceil(baselineRaw / (double)(unbreaking + 1))));
+                com.rzy.dealt_force_skills.department.DepartmentEquipment.record(player,"armor.hvk.durability_saved",
+                        Math.max(0,baselineCost-(skipped?0:actualCost)));
             }
-         }
-      } else {
-         return amount;
-      }
-   }
+            if (skipped) {
+                com.rzy.dealt_force_skills.department.DepartmentEquipment.record(player,"armor.hvk.durability_prevented",1);
+                notifyEquipmentSetTrigger(player,DfsEquipmentItem.Faction.HVK,ParticleTypes.WAX_ON);
+            } else damageEquipmentStack(player,stack,profile,rawCost);
+        } else if (noDurabilityLoss && profile.ability() == DfsEquipmentItem.SpecialAbility.NO_DURABILITY_LOSS) notifyEquipmentAbilityTrigger(player,profile,ParticleTypes.WAX_ON);
+        return (float)Math.max(0.0D,amount-absorbed);
+    }
 
-   private static int adjustedEquipmentDurabilityCost(ServerPlayer player, DfsEquipmentItem.Profile profile) {
+    private static int adjustedEquipmentDurabilityCost(ServerPlayer player, DfsEquipmentItem.Profile profile) {
       int cost = DfsEquipmentItem.qualityDurabilityCost(profile.quality());
       if (equipmentFactionCount(player, DfsEquipmentItem.Faction.ASARA) >= 1) {
          cost--;
@@ -5279,6 +5319,7 @@ public class CommonEvents {
          notifyEquipmentSetTrigger(player, DfsEquipmentItem.Faction.GTI, ParticleTypes.ELECTRIC_SPARK);
       }
       if (gtiOverload && newDamage >= damageLimit) {
+            com.rzy.dealt_force_skills.department.DepartmentEquipment.record(player,"armor.gti.destroyed_absorbing",1);
          stack.shrink(1);
       } else {
          if (ModGameRules.areArmorSpecialsEnabled(player)
@@ -5347,7 +5388,10 @@ public class CommonEvents {
       boolean specials = ModGameRules.areArmorSpecialsEnabled(player);
       tickHelmetVisionEffect(player, head);
       if (equipmentFactionCount(player, DfsEquipmentItem.Faction.GLOBAL_FORCES) >= 1 && player.tickCount % 100 == 0) {
-         if (regenerateEquipmentDurability(head) | regenerateEquipmentDurability(chest)) {
+         int beforeRepair = head.getDamageValue() + chest.getDamageValue();
+            if (regenerateEquipmentDurability(head) | regenerateEquipmentDurability(chest)) {
+                com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"armor.global.restored",
+                        Math.max(0,beforeRepair-head.getDamageValue()-chest.getDamageValue()));
             notifyEquipmentSetTrigger(player, DfsEquipmentItem.Faction.GLOBAL_FORCES, ParticleTypes.HAPPY_VILLAGER);
          }
       }
@@ -5928,7 +5972,10 @@ public class CommonEvents {
             ItemStack copy = original.getItem().copy();
             if (!copy.isEmpty()) {
                LivingEntity entity = event.getEntity();
-               event.getDrops().add(new ItemEntity(entity.level(), entity.getX(), entity.getY(), entity.getZ(), copy));
+               ItemEntity bonus = new ItemEntity(entity.level(),entity.getX(),entity.getY(),entity.getZ(),copy);
+                event.getDrops().add(bonus);
+                if(equipmentFactionCount(killer,DfsEquipmentItem.Faction.GTI)>=1)
+                    com.rzy.dealt_force_skills.department.DepartmentEquipment.bonus(entity,killer,bonus);
                duplicated = true;
             }
          }
@@ -5953,6 +6000,9 @@ public class CommonEvents {
             for (ItemEntity original : originals) {
                ItemStack copy = original.getItem().copy();
                if (!copy.isEmpty()) {
+                    if(copyIndex==0&&event.getSource().getEntity() instanceof ServerPlayer owner
+                            &&UndeadStateManager.isUndead(owner)&&UndeadStateManager.profession(owner)==UndeadProfession.EXPLORER)
+                        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"undead.explorer.bonus_loot",copy.getCount());
                   event.getDrops().add(new ItemEntity(entity.level(), entity.getX(), entity.getY(), entity.getZ(), copy));
                }
             }
@@ -6119,7 +6169,7 @@ public class CommonEvents {
       }
    }
 
-   static Double estimateEquipmentHitHeightRatio(LivingEntity entity, DamageSource source) {
+   public static Double estimateEquipmentHitHeightRatio(LivingEntity entity, DamageSource source) {
       if (isMeleeDamage(source, source.getEntity())) {
          return 0.55;
       } else {
@@ -6639,9 +6689,10 @@ Entity direct = source.getDirectEntity();
          && serverLevel.getGameRules().getBoolean(GameRules.RULE_DOBLOCKDROPS)) {
          for (ItemStack stack : Block.getDrops(state, serverLevel, pos, serverLevel.getBlockEntity(pos), serverPlayer, player.getMainHandItem())) {
             if (!stack.isEmpty()) {
-               serverLevel.addFreshEntity(
+               boolean questSpawned=serverLevel.addFreshEntity(
                   new ItemEntity(serverLevel, (double)pos.getX() + 0.5, (double)pos.getY() + 0.5, (double)pos.getZ() + 0.5, stack.copy())
                );
+               if(questSpawned)com.rzy.dealt_force_skills.department.DepartmentTasks.signal(serverPlayer,"undead.explorer.bonus_loot",stack.getCount());
             }
          }
 
@@ -6649,41 +6700,7 @@ Entity direct = source.getDirectEntity();
       }
    }
 
-   private static void tryDuplicateUndeadExplorerContainerLoot(RightClickBlock event) {
-      if (event.getEntity() instanceof ServerPlayer player
-         && UndeadStateManager.isUndead(player)
-         && UndeadStateManager.profession(player) == UndeadProfession.EXPLORER
-         && event.getLevel() instanceof ServerLevel level) {
-         BlockEntity blockEntity = level.getBlockEntity(event.getPos());
-         if (blockEntity instanceof RandomizableContainerBlockEntity && blockEntity instanceof Container) {
-            CompoundTag saved = blockEntity.saveWithoutMetadata(level.registryAccess());
-            CompoundTag persistent = blockEntity.getPersistentData();
-            if (saved.contains("LootTable", 8) && !persistent.getBoolean("dealt_force_skills.undead_explorer_loot_claimed")) {
-               persistent.putBoolean("dealt_force_skills.undead_explorer_loot_claimed", true);
-               blockEntity.setChanged();
-               BlockPos pos = event.getPos().immutable();
-               level.getServer().tell(new TickTask(level.getServer().getTickCount() + 1, () -> {
-                  if (level.getBlockEntity(pos) instanceof Container container) {
-                     for (int slot = 0; slot < container.getContainerSize(); slot++) {
-                        ItemStack stack = container.getItem(slot);
-                        if (!stack.isEmpty()) {
-                           ItemStack copy = stack.copy();
-                           if (!player.getInventory().add(copy)) {
-                              player.drop(copy, false);
-                           }
-                        }
-                     }
-                  }
-               }));
-               return;
-            }
 
-            return;
-         }
-
-         return;
-      }
-   }
 
    private static boolean hasEquipmentAbility(Player player, DfsEquipmentItem.SpecialAbility ability) {
       if (!ModGameRules.areArmorSpecialsEnabled(player)) {

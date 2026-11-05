@@ -54,6 +54,9 @@ public final class CharacterAvailability {
                 return Optional.of(SERVER_BANNED_MESSAGE);
             }
         }
+        if (character != null && TaskCharacterUnlocks.isLocked(player,character.id())) {
+            return Optional.of("message.dealt_force_skills.selection.task_locked");
+        }
         return selectionBlockedMessageKey(character);
     }
 
@@ -61,7 +64,14 @@ public final class CharacterAvailability {
         Map<String, String> reasons = new LinkedHashMap<>();
         for (CharacterDefinition character : CharacterBranchPackManager.currentCharacters()) {
             selectionBlockedMessageKey(player, character)
-                    .ifPresent(reasonKey -> reasons.put(character.id(), reasonKey));
+                    .ifPresent(reasonKey -> {
+                        if(reasonKey.equals("message.dealt_force_skills.selection.task_locked")) {
+                            String names=com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().definitions().values().stream()
+                                    .filter(task->task.reward().unlocks().contains(character.id()))
+                                    .map(task->task.department()+" · "+task.title()).collect(java.util.stream.Collectors.joining("、"));
+                            reasons.put(character.id(),"task_locked|"+names.substring(0,Math.min(230,names.length())));
+                        } else reasons.put(character.id(),reasonKey);
+                    });
         }
         return reasons;
     }

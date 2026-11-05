@@ -39,16 +39,35 @@ public final class CharacterSkinTextures {
             Map.entry(ModCharacters.GHROTH_ID, skin("ghroth"))
     );
 
-    // Only supplied skins override geometry; other roles retain their existing model behavior.
-    private static final Map<String, String> MODELS = Map.of(
-            ModCharacters.VLINDER_ID, "default",
-            ModCharacters.SHEPHERD_ID, "default",
-            ModCharacters.N_TWO_ID, "default",
-            ModCharacters.VYRON_ID, "default",
-            ModCharacters.RAPTOR_ID, "slim",
-            ModCharacters.TOXIK_ID, "slim",
-            ModCharacters.ROVER_ID, "slim",
-            ModCharacters.COMMANDER_ID, "slim"
+    // Folder classifications are authoritative; wide uses Minecraft's "default" model key.
+    private static final Map<String, String> MODELS = Map.ofEntries(
+            Map.entry(ModCharacters.SINEVA_ID, "default"),
+            Map.entry(ModCharacters.ULURU_ID, "default"),
+            Map.entry(ModCharacters.GIZMO_ID, "default"),
+            Map.entry(ModCharacters.SHEPHERD_ID, "default"),
+            Map.entry(ModCharacters.N_TWO_ID, "default"),
+            Map.entry(ModCharacters.D_WOLF_ID, "default"),
+            Map.entry(ModCharacters.VYRON_ID, "default"),
+            Map.entry(ModCharacters.NOX_ID, "default"),
+            Map.entry(ModCharacters.TEMPEST_ID, "slim"),
+            Map.entry(ModCharacters.LUNA_ID, "slim"),
+            Map.entry(ModCharacters.HACKCLAW_ID, "slim"),
+            Map.entry(ModCharacters.MORSE_ID, "default"),
+            Map.entry(ModCharacters.RAPTOR_ID, "slim"),
+            Map.entry(ModCharacters.STINGER_ID, "default"),
+            Map.entry(ModCharacters.ROVER_ID, "slim"),
+            Map.entry(ModCharacters.COMMANDER_ID, "slim"),
+            Map.entry(ModCharacters.TOXIK_ID, "slim"),
+            Map.entry(ModCharacters.VLINDER_ID, "slim"),
+            Map.entry(ModCharacters.MANBA_ID, "default"),
+            Map.entry(ModCharacters.NIKAIDOU_HIRO_ID, "slim"),
+            Map.entry(ModCharacters.NIKAIDOU_HIRO_WITCHIFICATION_ID, "slim"),
+            Map.entry(ModCharacters.CATDAD_ID, "slim"),
+            Map.entry(ModCharacters.DEPARTMENT_OF_TRANSPORTATION_ID, "default"),
+            Map.entry(ModCharacters.UNDEAD_ID, "default"),
+            Map.entry(ModCharacters.LEX_NINJIA_ID, "default"),
+            Map.entry(ModCharacters.SAEED_ID, "default"),
+            Map.entry(ModCharacters.GHROTH_ID, "default")
     );
 
     private CharacterSkinTextures() {

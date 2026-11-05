@@ -81,7 +81,10 @@ public final class ToxikSkills {
         grenade.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        level.addFreshEntity(grenade);
+        if (level.addFreshEntity(grenade)) {
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        }
         level.playSound(null, player.blockPosition(), ModSounds.TOXIK_TEAR_GAS_THROW.get(),
                 SoundSource.PLAYERS, 0.95f, highThrow ? 0.95f : 1.1f);
         ToxikStateManager.setEquippedTool(player, ToxikTool.NONE);

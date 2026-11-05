@@ -13,7 +13,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_MorseMarkers implements CustomPacketPayload {
+public class S2C_MorseMarkers implements CustomPacketPayload, com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     public static final CustomPacketPayload.Type<S2C_MorseMarkers> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_morse_markers"));
 
@@ -32,6 +32,10 @@ public class S2C_MorseMarkers implements CustomPacketPayload {
 
     public S2C_MorseMarkers(List<MorseWorldMarker> markers) {
         this.markers = List.copyOf(markers);
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(var marker:markers) if(marker.type()==MorseMarkerType.SONAR_REVEAL) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,marker.entityId(),marker.ticks());
     }
 
     public static void encode(S2C_MorseMarkers msg, FriendlyByteBuf buf) {

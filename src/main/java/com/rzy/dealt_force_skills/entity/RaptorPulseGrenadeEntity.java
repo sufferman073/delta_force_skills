@@ -36,7 +36,9 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult.Type;
 import org.joml.Vector3f;
 
-public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier {
+public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
    public static volatile int FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.raptorpulsegrenadeentity.fuse_ticks", 60));
    public static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.raptorpulsegrenadeentity.radius", 10.0));
    public static volatile int ACTION_PAUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("ACTION_PAUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.raptorpulsegrenadeentity.action_pause_ticks", 8));
@@ -58,6 +60,7 @@ public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier
       super(type, level);
       this.setOwner(owner);
       this.ownerId = owner.getUUID();
+        allegiance.capture(owner);
    }
 
    public ItemStack getItem() {
@@ -69,6 +72,11 @@ public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide && allegiance.active()) {
+            if (level() instanceof ServerLevel server && !allegiance.withinOrders(server, position())) { discard(); return; }
+            // Expire before block-hit early returns; age survives repeated save/load.
+            if (tickCount >= Math.max(1, FUSE_TICKS)) { tickFuse(); return; }
+        }
       if (this.stopped) {
          this.setDeltaMovement(Vec3.ZERO);
          if (this.level().isClientSide) {
@@ -100,12 +108,16 @@ public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier
    }
 
    protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        tickCount = allegiance.load(tag, Math.max(1, FUSE_TICKS));
       this.ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
       this.floorBounces = tag.getInt("FloorBounces");
       this.stopped = tag.getBoolean("Stopped");
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
       if (this.ownerId != null) {
          tag.putUUID("Owner", this.ownerId);
       }
@@ -118,7 +130,11 @@ public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier
       level.playSound(null, center.x, center.y, center.z, (SoundEvent)ModSounds.RAPTOR_PULSE_GRENADE_EXPLODE.get(), SoundSource.PLAYERS, 1.1F, 1.0F);
       level.sendParticles(ParticleTypes.ELECTRIC_SPARK, center.x, center.y + 0.4, center.z, 180, RADIUS * 0.45, RADIUS * 0.25, RADIUS * 0.45, 0.12);
       level.sendParticles(BLUE_BURST, center.x, center.y + 0.4, center.z, 120, RADIUS * 0.42, RADIUS * 0.18, RADIUS * 0.42, 0.0);
-      int disruptedDevices = ElectronicInterferenceManager.disruptElectronicDevices(level, center, RADIUS);
+      int disruptedDevices = directEntity instanceof com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource source
+              && source.operativeAllegiance().active()
+              ? ElectronicInterferenceManager.disruptElectronicDevices(level, center, RADIUS,
+              device -> !source.operativeAllegiance().isAlly(level, device))
+              : ElectronicInterferenceManager.disruptElectronicDevices(level, center, RADIUS);
       if (owner instanceof ServerPlayer player && disruptedDevices > 0) {
          DfsAchievements.onElectronicInterference(player, disruptedDevices);
       }
@@ -126,7 +142,7 @@ public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier
       AABB box = new AABB(center, center).inflate(RADIUS);
 
       for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-         if (com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+         if (nativePulseTarget(level, owner, directEntity, target)) {
             Vec3 targetCenter = target.position().add(0.0, (double)target.getBbHeight() * 0.5, 0.0);
             if (!(targetCenter.distanceTo(center) > RADIUS)) {
                target.invulnerableTime = 0;
@@ -219,4 +235,31 @@ public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier
    private LivingEntity owner(ServerLevel level) {
       return this.ownerId != null && level.getEntity(this.ownerId) instanceof LivingEntity owner ? owner : null;
    }
+
+    private static boolean nativePulseTarget(ServerLevel level, LivingEntity owner, Entity direct, LivingEntity target) {
+        if (direct instanceof com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource source && source.operativeAllegiance().active()) {
+            var allegiance = source.operativeAllegiance();
+            return allegiance.isCaster(target) || allegiance.isEnemy(level, target);
+        }
+        return com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner, target);
+    }
+
+    /** Predict this grenade through fuse, bounces and rest without generating/loading terrain. */
+    public static Vec3 nativeImpact(ServerLevel level, Vec3 position, Vec3 motion) {
+        int bounces = 0;
+        for (int age = 1; age < Math.max(1, FUSE_TICKS); age++) {
+            Vec3 next = position.add(motion);
+            if (!level.hasChunkAt(net.minecraft.core.BlockPos.containing(next))) return null;
+            var hit = level.clip(new ClipContext(position, next, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
+                    net.minecraft.world.phys.shapes.CollisionContext.empty()));
+            if (hit.getType() == HitResult.Type.BLOCK) {
+                Direction face = hit.getDirection(); Vec3 normal = Vec3.atLowerCornerOf(face.getNormal());
+                position = hit.getLocation().add(normal.scale(face == Direction.UP ? FLOOR_REST_OFFSET : 0.04D));
+                motion = com.rzy.dealt_force_skills.util.ProjectileBouncePhysics.reflect(face, motion, BOUNCE_FACTOR, 0.45D, 0.86D);
+                if (face == Direction.UP && (++bounces >= MAX_FLOOR_BOUNCES || motion.lengthSqr() < 0.02D)) return position;
+            } else { position = next; motion = motion.add(0, -0.045D, 0).scale(0.985D); }
+        }
+        return position;
+    }
+
 }

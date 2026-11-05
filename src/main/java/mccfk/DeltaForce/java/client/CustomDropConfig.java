@@ -29,7 +29,7 @@ public final class CustomDropConfig {
 
     /** 屏幕HUD显示开关 */
     public static synchronized boolean hudEnabled() {
-        Object v = value("customdrop.hud.enabled", true);
+        Object v = value("customdrop.hud.enabled", false);
         return v instanceof Boolean b && b;
     }
 
@@ -45,23 +45,23 @@ public final class CustomDropConfig {
         return v instanceof Boolean b && b;
     }
 
-    /** 缩放比例，范围 -1.0 ~ 1.0，默认 0 */
+    /** 缩放比例，范围 -0.9 ~ 1.0，默认 0 */
     public static synchronized float hudScale() {
         Object v = value("customdrop.hud.scale", 0.0);
         float raw = v instanceof Number n ? n.floatValue() : 0.0F;
-        return Math.max(-1.0F, Math.min(1.0F, raw));
+        return Float.isFinite(raw) ? Math.max(-0.9F, Math.min(1.0F, raw)) : 0.0F;
     }
 
     /** X偏移（像素），默认 0 */
     public static synchronized int hudXOffset() {
         Object v = value("customdrop.hud.x_offset", 0);
-        return v instanceof Number n ? n.intValue() : 0;
+        return v instanceof Number n ? (int) Math.max(-10000L, Math.min(10000L, n.longValue())) : 0;
     }
 
     /** Y偏移（像素），默认 0 */
     public static synchronized int hudYOffset() {
         Object v = value("customdrop.hud.y_offset", 0);
-        return v instanceof Number n ? n.intValue() : 0;
+        return v instanceof Number n ? (int) Math.max(-10000L, Math.min(10000L, n.longValue())) : 0;
     }
 
     /** 详情快捷键列表（组合键，默认I键=73） */
@@ -71,12 +71,14 @@ public final class CustomDropConfig {
         List<Integer> keys = new ArrayList<>();
         try {
             for (String part : str.split("\\+")) {
-                keys.add(Integer.parseInt(part.trim()));
+                int key = Integer.parseInt(part.trim());
+                if (key < 32 || key > 348) return List.of();
+                keys.add(key);
             }
         } catch (NumberFormatException e) {
-            keys.add(73);
+            return List.of(73);
         }
-        return keys;
+        return List.copyOf(keys);
     }
 
     /** 详情快捷键（单键，兼容旧版，返回组合键中的第一个键） */
@@ -120,17 +122,17 @@ public final class CustomDropConfig {
     }
 
     private static void ensureDefaults() {
-        value("customdrop.hud.enabled", true);
+        value("customdrop.hud.enabled", false);
         value("customdrop.hud.scale", 0.0);
         value("customdrop.hud.x_offset", 0);
         value("customdrop.hud.y_offset", 0);
         value("customdrop.hud.simple_mode", false);
         value("customdrop.hud.hotkey_detailed", false);
-        value("customdrop.hud.hotkey", 73); // I键
+        value("customdrop.hud.hotkey", "73"); // I键
         config().setComment("customdrop.hud.enabled",
                 "开启屏幕HUD显示（看向自定义掉落物时在屏幕上显示品质、物品名、物品模型、介绍等信息）");
         config().setComment("customdrop.hud.scale",
-                "缩放比例，范围 -1.0 ~ 1.0，默认 0.0（不缩放）。负值缩小，正值放大。");
+                "缩放比例，范围 -0.9 ~ 1.0，默认 0.0（不缩放）。负值缩小，正值放大。");
         config().setComment("customdrop.hud.x_offset",
                 "HUD界面X轴偏移（像素），正值向右，负值向左，默认 0。");
         config().setComment("customdrop.hud.y_offset",

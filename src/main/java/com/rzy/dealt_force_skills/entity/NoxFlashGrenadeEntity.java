@@ -38,7 +38,10 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult.Type;
 
-public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
+public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
+   private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+   private int nativeAge;
+   @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
    private static volatile int DEFAULT_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DEFAULT_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.noxflashgrenadeentity.default_fuse_ticks", 80));
    private static volatile int BOUNCE_FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.noxflashgrenadeentity.bounce_fuse_ticks", 12));
    private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.noxflashgrenadeentity.bounce_factor", 0.66));
@@ -49,6 +52,9 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
    private UUID ownerId;
    private int fuseRemaining = DEFAULT_FUSE_TICKS;
    private boolean bounced;
+    public void setNativeFuse(int ticks) {
+        if (allegiance.active()) fuseRemaining = Math.max(2, Math.min(DEFAULT_FUSE_TICKS, ticks));
+    }
 
    public NoxFlashGrenadeEntity(EntityType<? extends com.rzy.dealt_force_skills.entity.NoxFlashGrenadeEntity> type, Level level) {
       super(type, level);
@@ -58,6 +64,7 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
       super(type, level);
       this.setOwner(owner);
       this.ownerId = owner.getUUID();
+      allegiance.capture(owner);
    }
 
    public ItemStack getItem() {
@@ -69,6 +76,10 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
 
    public void tick() {
       super.tick();
+      if (allegiance.active() && level() instanceof ServerLevel level
+              && (++nativeAge > DEFAULT_FUSE_TICKS || !allegiance.withinOrders(level, position()))) {
+          discard(); return;
+      }
       if (!this.level().isClientSide && --this.fuseRemaining <= 0) {
          this.explode(this.position());
       } else {
@@ -92,9 +103,12 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
    }
 
    protected void readAdditionalSaveData(CompoundTag tag) {
+      super.readAdditionalSaveData(tag);
+      nativeAge = allegiance.load(tag, DEFAULT_FUSE_TICKS);
       this.ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
       this.fuseRemaining = tag.getInt("FuseRemaining");
-      if (this.fuseRemaining <= 0) {
+      if (allegiance.active()) fuseRemaining = Math.max(0, Math.min(DEFAULT_FUSE_TICKS, fuseRemaining));
+      else if (this.fuseRemaining <= 0) {
          this.fuseRemaining = DEFAULT_FUSE_TICKS;
       }
 
@@ -102,6 +116,8 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
+      super.addAdditionalSaveData(tag);
+      allegiance.save(tag, nativeAge);
       if (this.ownerId != null) {
          tag.putUUID("Owner", this.ownerId);
       }
@@ -143,7 +159,7 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier {
          AABB box = new AABB(center, center).inflate(RADIUS);
 
          for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
+            if (allegiance.active() ? allegiance.isCaster(target) || allegiance.isEnemy(level, target) : com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner, target)) {
                int flashTicks = this.flashDuration(center, target);
                if (flashTicks > 0) {
                   Vec3 before = target.getDeltaMovement();

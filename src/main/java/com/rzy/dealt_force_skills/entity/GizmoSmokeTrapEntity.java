@@ -6,6 +6,8 @@ import com.rzy.dealt_force_skills.team.DealtTeamManager;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.Direction;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -30,12 +32,16 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
 
-public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider {
+public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, OperativeAreaSource, BlockbenchModelPoseProvider {
     private static final EntityDataAccessor<Integer> DATA_ATTACHED_FACE =
             SynchedEntityData.defineId(GizmoSmokeTrapEntity.class, EntityDataSerializers.INT);
     private static final int READY_SOUND_INTERVAL_TICKS = 8;
     private static volatile double TRIGGER_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("TRIGGER_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmosmoketrapentity.trigger_radius", 3.0));
     private static volatile double MAX_OWNER_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_OWNER_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmosmoketrapentity.max_owner_distance", 50.0));
+    private final OperativeAllegiance allegiance = new OperativeAllegiance();
+    @Override public OperativeAllegiance operativeAllegiance() { return allegiance; }
+    public static double nativeTriggerRadius() { return Math.max(0, TRIGGER_RADIUS); }
+    public static int nativeLifetime() { return 1800; }
     private UUID ownerId;
     private Direction attachedFace = Direction.UP;
 
@@ -44,9 +50,10 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Blockb
         noPhysics = true;
     }
 
-    public GizmoSmokeTrapEntity(EntityType<? extends GizmoSmokeTrapEntity> type, Level level, ServerPlayer owner, Direction attachedFace) {
+    public GizmoSmokeTrapEntity(EntityType<? extends GizmoSmokeTrapEntity> type, Level level, LivingEntity owner, Direction attachedFace) {
         this(type, level);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
         setAttachedFace(attachedFace);
     }
 
@@ -63,6 +70,7 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Blockb
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && com.rzy.dealt_force_skills.ai.operative.OperativeTrapMaintenance.stale(this, allegiance, TRIGGER_RADIUS)) { discard(); return; }
         if (level().isClientSide) {
             spawnClientIdleParticles();
             return;
@@ -76,8 +84,10 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Blockb
             RangedSoundHelper.playTrapSound(serverLevel, position(), ModSounds.GIZMO_SMOKE_TRAP_READY.get(), 0.6f, 1.0f);
         }
 
+        if (allegiance.active() && (tickCount >= nativeLifetime() || !allegiance.withinOrders(serverLevel, position()))) { discard(); return; }
         Entity owner = owner(serverLevel);
-        if (owner == null || !owner.isAlive() || owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE) {
+        if ((!allegiance.active() && (owner == null || !owner.isAlive()))
+                || (owner != null && owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE)) {
             discard();
             return;
         }
@@ -103,11 +113,13 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Blockb
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        tickCount = allegiance.load(tag, nativeLifetime());
         setAttachedFace(Direction.from3DDataValue(tag.getInt("AttachedFace")));
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -135,6 +147,7 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Blockb
         }
         Vec3 burstCenter = position().add(horizontal.normalize().scale(1.6D));
         GizmoSmokeCloudEntity cloud = new GizmoSmokeCloudEntity(ModEntities.GIZMO_SMOKE_CLOUD.get(), serverLevel, ownerId);
+        cloud.operativeAllegiance().copyFrom(allegiance);
         cloud.setPos(burstCenter.x, burstCenter.y, burstCenter.z);
         serverLevel.addFreshEntity(cloud);
         RangedSoundHelper.playTrapSound(serverLevel, burstCenter, ModSounds.GIZMO_SMOKE_TRAP_TRIGGER.get(), 1.0f, 1.0f);
@@ -150,6 +163,7 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Blockb
     }
 
     private boolean canTrigger(LivingEntity entity) {
+        if (allegiance.active() && level() instanceof ServerLevel level) return allegiance.isEnemy(level, entity);
         if (!entity.isAlive() || isOwnerOrTeammate(entity)
                 || !(level() instanceof ServerLevel level)
                 || !TargetingUtil.isHostileLivingFor(owner(level), entity)) {

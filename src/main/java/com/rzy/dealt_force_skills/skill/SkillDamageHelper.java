@@ -68,6 +68,8 @@ public final class SkillDamageHelper {
     }
 
     public static float scale(LivingEntity source, float amount) {
+        if(source instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() instanceof com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills)
+            return amount*com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.commanderStrength();
         if (!(source instanceof Player player) || amount <= 0.0f) {
             return amount;
         }
@@ -101,6 +103,23 @@ public final class SkillDamageHelper {
                 if (previousSkillPlayer == null) ACTIVE_SKILL_PLAYER.remove(); else ACTIVE_SKILL_PLAYER.set(previousSkillPlayer);
             }
         }
+        if(sourceEntity instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() instanceof com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills){
+            boolean previous=COMMANDER_SKILL_DAMAGE.get();COMMANDER_SKILL_DAMAGE.set(true);
+            try{
+                boolean convert=com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.gene()>=15
+                        && !TrainingTargetCompat.recordsDamageWithoutDying(target);
+                DamageSource primary=convert?new DamageSource(bot.body().damageSources().fellOutOfWorld().typeHolder(),source.getDirectEntity(),bot.body()):source;
+                float before=target.getHealth();
+                boolean applied=target.hurt(primary,scaled);
+                if(convert && applied && target.getHealth()<before && target.isAlive()){
+                    for(DamageSource extra:new DamageSource[]{bot.body().damageSources().mobAttack(bot.body()),bot.body().damageSources().magic(),bot.body().damageSources().wither(),bot.body().damageSources().onFire(),bot.body().damageSources().lightningBolt(),bot.body().damageSources().explosion(bot.body(),bot.body())}){
+                        if(!target.isAlive())break;
+                        target.invulnerableTime=0;target.hurt(extra,scaled);
+                    }
+                }
+                return applied;
+            }finally{COMMANDER_SKILL_DAMAGE.set(previous);}
+        }
         return target.hurt(source, scaled);
     }
 
@@ -109,8 +128,9 @@ public final class SkillDamageHelper {
     }
 
     public static boolean hurtUnscaled(LivingEntity target, DamageSource source, float amount) {
-        // Reflect damage must never be blocked by teammate filters (source entity is the shield holder).
-        if (!isReflectDamage(source) && shouldSkipTeammateDamage(target, source, null)) {
+        // Preserve player reflection rules while protecting maids from allied skill reflection.
+        if ((target instanceof com.rzy.dealt_force_skills.compat.maid.MaidSkillHost || !isReflectDamage(source))
+                && shouldSkipTeammateDamage(target, source, null)) {
             return false;
         }
         return target.hurt(source, amount);
@@ -129,10 +149,12 @@ public final class SkillDamageHelper {
     }
 
     private static boolean shouldSkipTeammateDamage(LivingEntity target, DamageSource source, LivingEntity sourceEntity) {
-        Entity attacker = sourceEntity != null ? sourceEntity : source.getEntity();
+        Entity attacker = sourceEntity != null ? sourceEntity : source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
         if (target instanceof Player player && !TargetingUtil.isTargetablePlayer(player)) {
             return true;
         }
+        if (target instanceof com.rzy.dealt_force_skills.compat.maid.MaidSkillHost
+                && (TargetingUtil.isSelfSource(attacker, target) || TargetingUtil.areOperativeAllies(attacker, target))) return true;
         return sourceEntity instanceof Player player
                 && target == player
                 && CommanderStateManager.isCommander(player)

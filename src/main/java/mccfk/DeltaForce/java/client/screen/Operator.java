@@ -73,6 +73,7 @@ public class Operator {
 
     // === 角色预览大图资源（角色id → 原始分辨率）===
     private static final Map<String, PreviewAsset> PREVIEWS = Map.ofEntries(
+            Map.entry("dealt_force_skills:assault/wildfire", new PreviewAsset(454, 288)),
             Map.entry("dealt_force_skills:special/corps", new PreviewAsset(538, 288)),
             Map.entry("dealt_force_skills:assault/d_wolf", new PreviewAsset(279, 288)),
             Map.entry("dealt_force_skills:assault/nox", new PreviewAsset(382, 288)),
@@ -268,6 +269,13 @@ public class Operator {
 
         // 底部滑动示意条（在遮罩之上）
         drawSlider(guiGraphics, screenWidth, screenHeight, viewW, contentW);
+        if(hoveredOperatorId!=null) {
+            CharacterDefinition hovered=getOperatorAt(mouseX,mouseY,screenWidth,screenHeight);
+            if(hovered!=null&&!ClientCharacterSelectionState.canSelect(hovered)) {
+                var description=ClientCharacterSelectionState.blockedDescription(hovered);
+                guiGraphics.renderTooltip(font,font.split(description,300),mouseX,mouseY);
+            }
+        }
     }
 
     /**
@@ -446,6 +454,10 @@ public class Operator {
         if (mouseY >= barTop && mouseY < screenHeight - 20) {
             // 点击干员头像 → 待确认机制
             CharacterDefinition clicked = getOperatorAt(mouseX, mouseY, screenWidth, screenHeight);
+            if(clicked!=null&&!ClientCharacterSelectionState.canSelect(clicked)) {
+                Minecraft.getInstance().player.displayClientMessage(ClientCharacterSelectionState.blockedDescription(clicked),false);
+                return true;
+            }
             if (clicked != null && ClientCharacterSelectionState.canSelect(clicked)) {
                 if (ClientCharacterSelectionState.isSelectedCharacter(clicked.id())) {
                     // 点击当前已选干员：只变白闪一下，不进入待确认/确认流程

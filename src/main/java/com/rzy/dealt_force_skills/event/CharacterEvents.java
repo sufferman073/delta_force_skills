@@ -64,6 +64,10 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 public class CharacterEvents {
     @SubscribeEvent
     public static void onPlayerClone(PlayerEvent.Clone event) {
+        com.rzy.dealt_force_skills.mail.MailboxManager.copy(event.getOriginal(), event.getEntity());
+        com.rzy.dealt_force_skills.department.DepartmentTracker.copy(event.getOriginal(), event.getEntity());
+        com.rzy.dealt_force_skills.character.TaskCharacterUnlocks.copy(event.getOriginal(), event.getEntity());
+        CharacterBanManager.copy(event.getOriginal(), event.getEntity());
         HvkAsaraArenaBlockEntity.copyPlayerSelections(event.getOriginal(), event.getEntity());
         CharacterSelectionManager.copySelectedCharacter(event.getOriginal(), event.getEntity());
         SinevaStateManager.copyState(event.getOriginal(), event.getEntity());
@@ -113,6 +117,10 @@ public class CharacterEvents {
 
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer mailPlayer) {
+            com.rzy.dealt_force_skills.mail.ServerMailService.deliverPending(mailPlayer);
+            com.rzy.dealt_force_skills.mail.MailboxManager.notifyChange(mailPlayer);
+        }
         if (event.getEntity() instanceof ServerPlayer player) {
             PlayerCharacterStore.init();
             CharacterSelectionManager.migrateStoredSelection(player);

@@ -43,9 +43,9 @@ public class EffectConsumableItem extends DfsUseItem {
             if (effect == null) {
                 continue;
             }
-            player.addEffect(new MobEffectInstance(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect),
+            com.rzy.dealt_force_skills.department.DepartmentConsumables.addEffect(player,new MobEffectInstance(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect),
                     entry.durationTicks(), entry.amplifier(),
-                    false, true, true), player);
+                    false, true, true));
         }
         return true;
     }
@@ -55,5 +55,13 @@ public class EffectConsumableItem extends DfsUseItem {
     }
 
     public record EffectEntry(Supplier<MobEffect> effect, int durationTicks, int amplifier) {
+    }
+    @Override public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        for (EffectEntry entry : effects) if (entry.effect().get() != null) {
+            MobEffect effect = entry.effect().get();
+            if (effect.isInstantenous()) effect.applyInstantenousEffect(target, target, target, entry.amplifier(), 1);
+            else target.addEffect(new MobEffectInstance(net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect), entry.durationTicks(), entry.amplifier()), target);
+        }
+        return true;
     }
 }

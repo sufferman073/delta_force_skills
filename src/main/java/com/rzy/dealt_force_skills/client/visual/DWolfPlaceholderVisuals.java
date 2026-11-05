@@ -141,6 +141,9 @@ public final class DWolfPlaceholderVisuals {
         var rightArm = event.getRenderer().getModel().rightArm;
         PoseStack poseStack = event.getPoseStack();
         poseStack.pushPose();
+
+        if (ClientTacticalMotion.frame(event.getEntity(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) != null)
+            TacticalPlayerPose.modelSpace(event.getEntity(), poseStack, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
         rightArm.translateAndRotate(poseStack);
         poseStack.translate(-0.04D, 0.43D, 0.0D);
         poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F));

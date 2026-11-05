@@ -245,6 +245,9 @@ public final class HeldToolThirdPersonVisuals {
     }
 
     private static void applyRightHandAnchor(RenderPlayerEvent.Post event, PoseStack poseStack) {
+        if (ClientTacticalMotion.frame(event.getEntity(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) != null)
+            TacticalPlayerPose.modelSpace(event.getEntity(), poseStack, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
+
         event.getRenderer().getModel().rightArm.translateAndRotate(poseStack);
     }
 

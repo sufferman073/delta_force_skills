@@ -174,7 +174,7 @@ public final class WorkBlockStorageAccess {
         }
         boolean added = player.getInventory().add(stack);
         if ((!added || !stack.isEmpty()) && !stack.isEmpty()) {
-            player.drop(stack, false);
+            com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, stack);
         }
     }
 

@@ -54,6 +54,7 @@ public final class ChamberSkills {
                     player.getYRot(), player.getXRot());
             player.level().playSound(null, player.blockPosition(), ModSounds.CHAMBER_TELEPORT_CARD.get(),
                     SoundSource.PLAYERS, 0.85f, 1.0f);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"chamber.teleported");
             anchor.discard();
             ChamberStateManager.setTeleportCooldown(player);
             ChamberStateManager.syncToClient(player);
@@ -135,6 +136,7 @@ public final class ChamberSkills {
         }
         player.setItemInHand(InteractionHand.MAIN_HAND, gun);
         ChamberStateManager.equipGun(player, requested);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         player.level().playSound(null, player.blockPosition(),
                 sniper ? ModSounds.CHAMBER_TOUR_DE_FORCE.get() : SoundEvents.ARMOR_EQUIP_IRON.value(),
                 SoundSource.PLAYERS, 0.8f, sniper ? 1.0f : 1.1f);
@@ -157,7 +159,7 @@ public final class ChamberSkills {
         Vec3 start = player.getEyePosition().add(look.scale(0.65D));
         projectile.setPos(start.x, start.y - 0.12D, start.z);
         projectile.setDeltaMovement(look.scale(1.65D));
-        level.addFreshEntity(projectile);
+        if(level.addFreshEntity(projectile))com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         ChamberStateManager.setEquippedTool(player, ChamberTool.NONE);
         level.playSound(null, player.blockPosition(), SoundEvents.SNOWBALL_THROW,
                 SoundSource.PLAYERS, 0.8f, 1.25f);

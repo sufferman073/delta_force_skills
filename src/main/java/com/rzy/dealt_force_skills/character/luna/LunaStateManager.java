@@ -183,7 +183,10 @@ public final class LunaStateManager {
          Entity attacker = event.getSource().getEntity();
          if (attacker instanceof ServerPlayer player && isLuna(player) && attacker != event.getEntity()) {
             boolean skillDamage = isLunaSkillDamage(event.getSource());
-            revealToOwner(player, event.getEntity(), skillDamage ? SKILL_REVEAL_TICKS : PASSIVE_REVEAL_TICKS, true);
+            if (revealToOwner(player, event.getEntity(), skillDamage ? SKILL_REVEAL_TICKS : PASSIVE_REVEAL_TICKS, true,
+                  CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.LUNA_ULTIMATE_RECON),
+                  CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.LUNA_WEAK_POINT), true))
+               com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"luna.passive.reveal");
             return;
          }
       }
@@ -200,12 +203,12 @@ public final class LunaStateManager {
       revealToOwner(owner, target, ticks, voiceIfPlayer, ultimateRecon, weakPoint, false);
    }
 
-   private static void revealToOwner(ServerPlayer owner, LivingEntity target, int ticks, boolean voiceIfPlayer,
+   private static boolean revealToOwner(ServerPlayer owner, LivingEntity target, int ticks, boolean voiceIfPlayer,
                                      boolean ultimateRecon, boolean weakPoint, boolean requireActiveLuna) {
       if (owner == null || !owner.isAlive() || requireActiveLuna && !isLuna(owner)
          || target == owner || ticks <= 0
          || !com.rzy.dealt_force_skills.util.PositionRevealHelper.isValidReconTarget(owner, target)) {
-         return;
+         return false;
       }
       boolean alreadyRevealed = ReconRevealThrottle.isActive(target);
       int effectiveTicks = ultimateRecon ? Integer.MAX_VALUE : ticks;
@@ -219,7 +222,7 @@ public final class LunaStateManager {
          targetData.putLong(WEAK_POINT_UNTIL, ReconRevealThrottle.activeUntil(target));
       }
       if (!revealStarted) {
-         return;
+         return false;
       }
       com.rzy.dealt_force_skills.util.PositionRevealHelper.sendToCasterAndTeammates(
          owner, new S2C_LunaRevealEntities(List.of(target.getId()), effectiveTicks));
@@ -231,6 +234,7 @@ public final class LunaStateManager {
                SoundSource.PLAYERS, 0.8F, 1.0F, 32.0D);
          }
       }
+      return true;
    }
 
    public static float applyWeakPointDamage(LivingEntity target, float amount) {

@@ -375,16 +375,24 @@ public final class StingerStateManager {
    }
 
    public static void applyStimHeal(LivingEntity target, boolean doubled) {
+        applyStimHeal(null, target, doubled);
+    }
+
+    public static void applyStimHeal(LivingEntity source, LivingEntity target, boolean doubled) {
       int effectMultiplier = doubled ? 2 : 1;
-      if (!target.level().isClientSide && target.getHealth() > 0.0F) {
-         target.heal(target.getMaxHealth() * Math.max(0.0F, STIM_INSTANT_HEAL_FRACTION) * effectMultiplier);
+        LivingEntity departmentSource=source==null?target:source;
+        com.rzy.dealt_force_skills.department.DepartmentHealing.source(target,"stinger_stim",departmentSource);
+        if (!target.level().isClientSide && target.getHealth() > 0.0F) {
+         com.rzy.dealt_force_skills.department.DepartmentHealing.heal(departmentSource,target,target.getMaxHealth() * Math.max(0.0F, STIM_INSTANT_HEAL_FRACTION) * effectMultiplier
+                    * (float)(com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.commander((net.minecraft.world.entity.Entity) source)
+                        ? com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.commanderEffect() : 1));
       }
       int healAmplifier = DealtForceConfig.intValue("characters.stinger.stinger_state_manager.effect.stinger_stim_heal.3.amplifier", 0);
       int absorptionAmplifier = DealtForceConfig.intValue("characters.stinger.stinger_state_manager.effect.absorption.5.amplifier", 1);
       target.addEffect(
          new MobEffectInstance(
             ModEffects.STINGER_STIM_HEAL,
-            STIM_DURATION_TICKS * effectMultiplier,
+            com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.duration(source, STIM_DURATION_TICKS * effectMultiplier),
             (healAmplifier + 1) * effectMultiplier - 1,
             false,
             true,
@@ -394,7 +402,7 @@ public final class StingerStateManager {
       target.addEffect(
          new MobEffectInstance(
             MobEffects.ABSORPTION,
-            STIM_DURATION_TICKS * effectMultiplier,
+            com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.duration(source, STIM_DURATION_TICKS * effectMultiplier),
             (absorptionAmplifier + 1) * effectMultiplier - 1,
             false,
             true,
@@ -427,7 +435,7 @@ public final class StingerStateManager {
          long now = SkillCooldownHelper.now(target);
          targetData.putLong(HIVE_SMOKE_UNTIL, now + 40L);
          if (now >= targetData.getLong(HIVE_SMOKE_LAST_HEAL) + 20L) {
-            target.heal(Math.max(1.0F, target.getMaxHealth() * 0.10F));
+            com.rzy.dealt_force_skills.department.DepartmentHealing.heal(owner,target,Math.max(1.0F, target.getMaxHealth() * 0.10F));
             targetData.putLong(HIVE_SMOKE_LAST_HEAL, now);
          }
       }
@@ -489,12 +497,16 @@ public final class StingerStateManager {
    }
 
    public static void applyStimSuppression(LivingEntity target, boolean doubled) {
+        applyStimSuppression(null, target, doubled);
+    }
+
+    public static void applyStimSuppression(LivingEntity source, LivingEntity target, boolean doubled) {
       int effectMultiplier = doubled ? 2 : 1;
       int amplifier = DealtForceConfig.intValue("characters.stinger.stinger_state_manager.effect.stinger_stim_suppression.8.amplifier", 0);
       target.addEffect(
          new MobEffectInstance(
             ModEffects.STINGER_STIM_SUPPRESSION,
-            STIM_DURATION_TICKS * effectMultiplier,
+            com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.duration(source, STIM_DURATION_TICKS * effectMultiplier),
             (amplifier + 1) * effectMultiplier - 1,
             false,
             true,

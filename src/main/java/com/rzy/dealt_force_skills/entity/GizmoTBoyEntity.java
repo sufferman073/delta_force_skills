@@ -13,6 +13,8 @@ import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -37,7 +39,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
-public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider {
+public class GizmoTBoyEntity extends Entity implements OperativeAreaSource, ItemSupplier, BlockbenchModelPoseProvider {
    private static final EntityDataAccessor<Float> DATA_DIR_X = SynchedEntityData.defineId(GizmoTBoyEntity.class, EntityDataSerializers.FLOAT);
    private static final EntityDataAccessor<Float> DATA_DIR_Z = SynchedEntityData.defineId(GizmoTBoyEntity.class, EntityDataSerializers.FLOAT);
    private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmotboyentity.life_ticks", 600));
@@ -50,12 +52,16 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
    private static volatile double WEB_LENGTH = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WEB_LENGTH", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmo_t_boy_entity.web_length", 3.5));
    private static volatile double WEB_HALF_WIDTH = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WEB_HALF_WIDTH", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("entities.gizmo_t_boy_entity.web_half_width", 1.75));
    private static final DustParticleOptions RED_MARKER = new DustParticleOptions(new Vector3f(1.0F, 0.05F, 0.02F), 1.2F);
+   private final OperativeAllegiance allegiance = new OperativeAllegiance();
+   @Override public OperativeAllegiance operativeAllegiance() { return allegiance; }
+   public static int nativeLifetime() { return Math.max(1, LIFE_TICKS); }
    private UUID ownerId;
    private float health = 20.0F;
    private double dirX;
    private double dirZ = 1.0;
    private int aimTicks;
    private int aimTargetId = -1;
+   private UUID nativeAimTarget;
    private boolean smartSpider;
    private boolean durableTBoy;
 
@@ -69,6 +75,15 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
       this.smartSpider = CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.GIZMO_SMART_SPIDER);
       this.durableTBoy = CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.GIZMO_DURABLE_TBOY);
       this.setTravelDirection(owner.getLookAngle());
+   }
+
+   public GizmoTBoyEntity(EntityType<? extends GizmoTBoyEntity> type, Level level, LivingEntity owner) {
+      this(type, level);
+      ownerId = owner.getUUID();
+      allegiance.capture(owner);
+      smartSpider = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.GIZMO_SMART_SPIDER);
+      durableTBoy = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.GIZMO_DURABLE_TBOY);
+      setTravelDirection(owner.getLookAngle());
    }
 
    public ItemStack getItem() {
@@ -85,7 +100,7 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
       if (this.level().isClientSide) {
          this.spawnClientTrail();
       } else if (this.level() instanceof ServerLevel serverLevel) {
-         if (this.tickCount >= LIFE_TICKS) {
+         if (tickCount >= LIFE_TICKS || (allegiance.active() && !allegiance.withinOrders(serverLevel, position()))) {
             this.discard();
          } else if (this.aimTicks > 0) {
             this.aimTicks--;
@@ -104,7 +119,15 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
                } else if (chaseTarget.isEmpty()) {
                   chaseTarget = this.findNearestPlayerTarget(serverLevel);
                }
-               chaseTarget.ifPresent(target -> this.setTravelDirection(target.position().subtract(this.position())));
+               chaseTarget.ifPresent(target -> {
+                  this.setTravelDirection(target.position().subtract(this.position()));
+                  if (!this.smartSpider && target.hasEffect(ModEffects.CORROSION)
+                        && (!getPersistentData().hasUUID("DepartmentChase") || !getPersistentData().getUUID("DepartmentChase").equals(target.getUUID()))) {
+                     getPersistentData().putUUID("DepartmentChase",target.getUUID());
+                     com.rzy.dealt_force_skills.department.DepartmentTasks.signal(this.ownerId == null ? null : serverLevel.getEntity(this.ownerId),"gizmo.tbot.corroded_target");
+                  }
+               });
+               if (chaseTarget.isEmpty()) getPersistentData().remove("DepartmentChase");
                this.crawl();
                this.playCrawlSound(serverLevel);
                this.findNearestTarget(serverLevel, STOP_RADIUS + 0.2).ifPresent(this::beginAimingAt);
@@ -131,6 +154,7 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
 
    protected void readAdditionalSaveData(CompoundTag tag) {
       this.ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+      if (tag.getBoolean("OperativeSource")) tickCount = allegiance.load(tag, nativeLifetime());
       this.health = tag.contains("Health") ? tag.getFloat("Health") : 20.0F;
       this.dirX = tag.getDouble("DirX");
       this.dirZ = tag.contains("DirZ") ? tag.getDouble("DirZ") : 1.0;
@@ -139,9 +163,16 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
       this.aimTargetId = tag.contains("AimTarget") ? tag.getInt("AimTarget") : -1;
       this.smartSpider = tag.getBoolean("SmartSpider");
       this.durableTBoy = tag.getBoolean("DurableTBoy");
+      if (allegiance.active()) {
+         aimTargetId = -1;
+         nativeAimTarget = tag.hasUUID("NativeAimTarget") ? tag.getUUID("NativeAimTarget") : null;
+         aimTicks = nativeAimTarget == null ? 0 : Math.max(0, Math.min(Math.max(1, AIM_TICKS), aimTicks));
+      }
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
+      allegiance.save(tag, tickCount);
+      if (allegiance.active() && nativeAimTarget != null) tag.putUUID("NativeAimTarget", nativeAimTarget);
       if (this.ownerId != null) {
          tag.putUUID("Owner", this.ownerId);
       }
@@ -197,7 +228,7 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
    private Optional<LivingEntity> findNearestPlayerTarget(ServerLevel level) {
       AABB box = new AABB(this.position(), this.position()).inflate(PLAYER_TARGET_RADIUS);
       return level.getEntitiesOfClass(LivingEntity.class, box, target -> this.canTarget(target)
-            && target instanceof Player
+            && (allegiance.active() || target instanceof Player)
             && target.distanceToSqr(this) <= PLAYER_TARGET_RADIUS * PLAYER_TARGET_RADIUS)
          .stream()
          .min(Comparator.comparingDouble(target -> target.distanceToSqr(this)));
@@ -209,6 +240,7 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
    }
 
    private boolean canTarget(LivingEntity target) {
+      if (allegiance.active() && level() instanceof ServerLevel level) return allegiance.isEnemy(level, target);
       if (!target.isAlive()) {
          return false;
       } else if (this.ownerId != null && target.getUUID().equals(this.ownerId)) {
@@ -226,6 +258,7 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
 
    private void beginAimingAt(LivingEntity target) {
       this.aimTargetId = target.getId();
+      if (allegiance.active()) nativeAimTarget = target.getUUID();
       this.setTravelDirection(target.position().subtract(this.position()));
       this.aimTicks = AIM_TICKS;
       this.setDeltaMovement(Vec3.ZERO);
@@ -282,6 +315,7 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
    }
 
    private void sprayWeb(ServerLevel level) {
+      if (allegiance.active() && !validNativeAim(level)) { nativeAimTarget = null; aimTicks = 0; return; }
       Vec3 direction = this.webDirection(level);
       Vec3 origin = this.position().add(0.0, (double)this.getBbHeight() * 0.5, 0.0);
       level.playSound(null, this.getX(), this.getY(), this.getZ(), (SoundEvent)ModSounds.GIZMO_T_BOY_TRIGGER.get(), SoundSource.PLAYERS, 1.0F, 1.0F);
@@ -326,6 +360,9 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
    }
 
    private boolean webHitsTarget(LivingEntity target, Vec3 origin, Vec3 direction) {
+      if (allegiance.active() && level().clip(new net.minecraft.world.level.ClipContext(origin, target.getEyePosition(),
+         net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, this)).getType()
+         != net.minecraft.world.phys.HitResult.Type.MISS) return false;
       AABB box = target.getBoundingBox().inflate(0.12);
       double verticalHalfWidth = WEB_HALF_WIDTH + 0.5;
       if (!(box.maxY < origin.y - verticalHalfWidth) && !(box.minY > origin.y + verticalHalfWidth)) {
@@ -357,8 +394,14 @@ public class GizmoTBoyEntity extends Entity implements ItemSupplier, BlockbenchM
       }
    }
 
+   private boolean validNativeAim(ServerLevel level) {
+      Entity target = nativeAimTarget == null ? null : level.getEntity(nativeAimTarget);
+      return target instanceof LivingEntity living && canTarget(living) && target.distanceToSqr(this) <= WEB_LENGTH * WEB_LENGTH;
+   }
+
    private Vec3 webDirection(ServerLevel level) {
-      Entity target = this.aimTargetId >= 0 ? level.getEntity(this.aimTargetId) : null;
+      Entity target = allegiance.active() ? nativeAimTarget == null ? null : level.getEntity(nativeAimTarget)
+         : this.aimTargetId >= 0 ? level.getEntity(this.aimTargetId) : null;
       if (target != null) {
          Vec3 toward = target.position().subtract(this.position());
          Vec3 horizontal = new Vec3(toward.x, 0.0, toward.z);

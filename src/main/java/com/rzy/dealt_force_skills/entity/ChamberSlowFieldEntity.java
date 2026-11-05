@@ -19,9 +19,11 @@ import net.minecraft.world.phys.AABB;
 import java.util.UUID;
 import net.minecraft.network.syncher.SynchedEntityData;
 
-public class ChamberSlowFieldEntity extends Entity implements ItemSupplier {
+public class ChamberSlowFieldEntity extends Entity implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
     private static final int LIFE_TICKS = 5 * 20;
     private static final double RADIUS = 5.0D;
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
     private UUID ownerId;
 
     public ChamberSlowFieldEntity(EntityType<? extends ChamberSlowFieldEntity> type, Level level) {
@@ -30,9 +32,10 @@ public class ChamberSlowFieldEntity extends Entity implements ItemSupplier {
         setNoGravity(true);
     }
 
-    public ChamberSlowFieldEntity(EntityType<? extends ChamberSlowFieldEntity> type, Level level, ServerPlayer owner) {
+    public ChamberSlowFieldEntity(EntityType<? extends ChamberSlowFieldEntity> type, Level level, net.minecraft.world.entity.LivingEntity owner) {
         this(type, level);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
     }
 
     @Override
@@ -60,6 +63,14 @@ public class ChamberSlowFieldEntity extends Entity implements ItemSupplier {
         if (!(level() instanceof ServerLevel level)) {
             return;
         }
+        if (allegiance.active()) {
+            if (tickCount >= LIFE_TICKS) { discard(); return; }
+            if (tickCount % 10 == 0) for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(RADIUS), LivingEntity::isAlive)) {
+                if (target.distanceToSqr(this) <= RADIUS * RADIUS && allegiance.isEnemy(level, target))
+                    target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 16, 2, false, true, true));
+            }
+            return;
+        }
         ServerPlayer owner = owner(level);
         if (owner == null || tickCount >= LIFE_TICKS) {
             discard();
@@ -77,11 +88,14 @@ public class ChamberSlowFieldEntity extends Entity implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        int age = allegiance.load(tag, LIFE_TICKS);
+        if (allegiance.active()) tickCount = age;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }

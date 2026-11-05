@@ -35,7 +35,7 @@ public class CustomDropConfigProvider implements IConfigProvider {
 
     @Override
     public String getValue(String path) {
-        CustomDropConfig.reload();
+        if (dirtyValues.containsKey(path)) return dirtyValues.get(path);
         CommentedFileConfig config = CustomDropConfig.rawConfig();
         if (config == null) return "";
         Object raw = config.get(path);
@@ -100,12 +100,16 @@ public class CustomDropConfigProvider implements IConfigProvider {
                 if (value.length() > 1024) throw new IllegalArgumentException();
                 if (path.endsWith(".scale")) {
                     double d = Double.parseDouble(value);
-                    if (d < -0.9 || d > 1.0) throw new IllegalArgumentException();
+                    if (!Double.isFinite(d) || d < -0.9 || d > 1.0) throw new IllegalArgumentException();
                 }
                 if (path.endsWith("_offset")) {
                     long v = Long.parseLong(value);
-                    if (Math.abs(v) > 10000) throw new IllegalArgumentException();
+                    if (v < -10000 || v > 10000) throw new IllegalArgumentException();
                 }
+                Object original = CustomDropConfig.rawConfig().get(path);
+                if (original == null) throw new IllegalArgumentException();
+                if (original instanceof Boolean && !"true".equalsIgnoreCase(value)
+                        && !"false".equalsIgnoreCase(value)) throw new IllegalArgumentException();
                 if (path.endsWith(".hotkey")) {
                     if (!"-1".equals(value)) {
                         String[] keys = value.split("\\+", -1);

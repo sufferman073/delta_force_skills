@@ -25,7 +25,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, SmokeCloudModelState {
+public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, SmokeCloudModelState, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
+    public void setOperativeSource(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source) { allegiance.copyFrom(source); }
    public static final String COMMANDER_REVEAL_TAG = "dealt_force_skills.commander_smoke_reveal";
    public static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.toxikteargascloudentity.life_ticks", 400));
    public static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.toxikteargascloudentity.radius", 4.8));
@@ -61,6 +64,7 @@ public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, Smo
 
    public void tick() {
       super.tick();
+      if (!level().isClientSide && allegiance.active() && tickCount >= smokeLifetimeTicks()) { discard(); return; }
       if (!this.level().isClientSide) {
          if (this.level() instanceof ServerLevel serverlevel) {
             this.applyBlind(serverlevel);
@@ -76,9 +80,12 @@ public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, Smo
    protected void readAdditionalSaveData(CompoundTag tag) {
       this.ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
       this.setLifeTicks(tag.getInt("LifeTicks") <= 0 ? LIFE_TICKS : tag.getInt("LifeTicks"));
+      int age = allegiance.load(tag, smokeLifetimeTicks());
+      if (allegiance.active()) tickCount = age;
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
+      allegiance.save(tag, tickCount);
       if (this.ownerId != null) {
          tag.putUUID("Owner", this.ownerId);
       }
@@ -87,6 +94,7 @@ public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, Smo
    }
 
    private void applyBlind(ServerLevel level) {
+      if (allegiance.active()) { applyNativeBlind(level); return; }
       if (this.tickCount % 10 == 0) {
          LivingEntity livingentity = this.owner(level);
          AABB aabb = new AABB(this.position(), this.position()).inflate(RADIUS);
@@ -125,6 +133,7 @@ public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, Smo
    }
 
    private void suppressTargetsThroughSmoke(ServerLevel level) {
+      if (allegiance.active()) { com.rzy.dealt_force_skills.ai.operative.OperativeSupport.suppressThroughSmoke(this, RADIUS, ownerId); return; }
       if (this.ownerId != null && level.getEntity(this.ownerId) instanceof LivingEntity livingentity && livingentity.isAlive()) {
          AABB aabb = new AABB(this.position(), this.position()).inflate(40.0);
          boolean flag = livingentity.position().distanceTo(this.position()) <= RADIUS;
@@ -155,6 +164,18 @@ public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, Smo
    private LivingEntity owner(ServerLevel level) {
       return this.ownerId != null && level.getEntity(this.ownerId) instanceof LivingEntity livingentity ? livingentity : null;
    }
+
+    private void applyNativeBlind(ServerLevel level) {
+        if (tickCount % 10 != 0) return;
+        for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(RADIUS),
+                target -> target.isAlive() && !allegiance.isCaster(target)
+                        && TargetingUtil.isHostileLivingFor(this, target)
+                        && !com.rzy.dealt_force_skills.ai.operative.OperativeSupport.ally(this, target))) {
+            if (target.position().add(0, target.getBbHeight() * 0.5, 0).distanceTo(position()) > RADIUS) continue;
+            com.rzy.dealt_force_skills.ai.operative.NativeToxikEffects.add(this, target,
+                    new MobEffectInstance(ModEffects.TOXIK_TEAR_GAS_BLIND, BASE_BLIND_TICKS, 0, false, true, true));
+        }
+    }
 
    private void setLifeTicks(int value) {
       this.lifeTicks = Math.max(1, value);

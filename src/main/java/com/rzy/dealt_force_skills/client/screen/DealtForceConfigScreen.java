@@ -37,7 +37,7 @@ public class DealtForceConfigScreen extends Screen {
     private static final int ROW_HEIGHT = 26;
     private static final int SIDEBAR_ROW = 18;
     private static final List<String> CATEGORY_ORDER = List.of(
-            "hud", "characters", "rules", "bosses", "shop", "player", "gambler", "summons", "items", "other");
+            "hud", "characters", "operatives", "rules", "bosses", "shop", "player", "gambler", "summons", "items", "other");
 
     private static DealtForceConfigScreen active;
     private static final List<ConfigEntryData> pendingServerEntries = new ArrayList<>();

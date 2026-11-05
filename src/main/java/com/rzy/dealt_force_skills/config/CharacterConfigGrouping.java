@@ -8,7 +8,7 @@ public final class CharacterConfigGrouping {
     private static final List<String> CHARACTERS = List.of("catdad", "chamber", "commander", "corps",
             "department", "dwolf", "fox", "gambler", "ghroth", "gizmo", "hackclaw", "lexninjia",
             "luna", "manba", "morse", "nikaidou", "nox", "ntwo", "raptor", "rover", "saeed",
-            "shepherd", "sineva", "stinger", "tempest", "toxik", "uluru", "undead", "vlinder", "vyron");
+            "shepherd", "sineva", "stinger", "tempest", "toxik", "uluru", "undead", "vlinder", "vyron", "wildfire");
 
     private CharacterConfigGrouping() { }
 

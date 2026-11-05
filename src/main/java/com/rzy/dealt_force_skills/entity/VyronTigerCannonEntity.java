@@ -42,12 +42,17 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult.Type;
 
-public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
+public class VyronTigerCannonEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private java.util.UUID operativeOwner;
+    @Override public java.util.UUID operativeOwnerUUID() { return operativeOwner; }
+
    private static volatile int FUSE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FUSE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.vyrontigercannonentity.fuse_ticks", 60));
    private static volatile int KNOCKDOWN_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("KNOCKDOWN_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.vyrontigercannonentity.knockdown_ticks", 100));
    private static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.vyrontigercannonentity.radius", 5.5));
    private static final int READY_SOUND_ELAPSED_TICKS = Math.max(1, (int)Math.ceil((double)FUSE_TICKS * 0.4));
-   private int fuseRemaining = FUSE_TICKS;
+   public static double blastRadius() { return RADIUS; }
+
+    private int fuseRemaining = FUSE_TICKS;
    private int floorBounces;
    private static final EntityDataAccessor<Boolean> STOPPED =
        SynchedEntityData.defineId(VyronTigerCannonEntity.class, EntityDataSerializers.BOOLEAN);
@@ -59,7 +64,8 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
 
    public VyronTigerCannonEntity(EntityType<? extends com.rzy.dealt_force_skills.entity.VyronTigerCannonEntity> type, Level level, LivingEntity owner) {
       super(type, level);
-      this.setOwner(owner);
+      setOwner(owner);
+      if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost && owner instanceof net.minecraft.world.entity.OwnableEntity ownable) operativeOwner = ownable.getOwnerUUID();
    }
 
    public ItemStack getItem() {
@@ -103,12 +109,14 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
    protected boolean canHitEntity(Entity target) {
       return super.canHitEntity(target)
          && target instanceof LivingEntity living
-         && this.getOwner() instanceof ServerPlayer owner
-         && CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.VYRON_FAST_FUSE)
-         && TargetingUtil.isHostileLivingFor(owner, living);
+         && this.getOwner() instanceof LivingEntity owner
+         && com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.VYRON_FAST_FUSE)
+         && com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.hostile(owner, living);
    }
 
    protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        operativeOwner = tag.hasUUID("OperativeOwner") ? tag.getUUID("OperativeOwner") : null;
       this.fuseRemaining = tag.getInt("FuseRemaining");
       if (this.fuseRemaining <= 0) {
          this.fuseRemaining = FUSE_TICKS;
@@ -120,6 +128,8 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
    }
 
    protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        if (operativeOwner != null) tag.putUUID("OperativeOwner", operativeOwner);
       tag.putInt("FuseRemaining", this.fuseRemaining);
       tag.putInt("FloorBounces", this.floorBounces);
       tag.putBoolean("Stopped", this.entityData.get(STOPPED));
@@ -200,11 +210,11 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
          for (LivingEntity target : serverLevel.getEntitiesOfClass(
             LivingEntity.class,
             box,
-            entity -> com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner, entity) && entity.distanceToSqr(center) <= RADIUS * RADIUS
+            entity -> com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner != null ? owner : this, entity) && entity.distanceToSqr(center) <= RADIUS * RADIUS
          )) {
             Vec3 targetCenter = target.position().add(0.0, (double)target.getBbHeight() * 0.5, 0.0);
             if (this.hasLineOfSight(center, targetCenter) && !this.isBlockedBySinevaShield(target, center)) {
-               target.addEffect(
+               boolean questHit = target.addEffect(
                   new MobEffectInstance(
                      ModEffects.STUN,
                      KNOCKDOWN_TICKS,
@@ -219,7 +229,8 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier {
                }
 
                hitAny = true;
-               knockedDownTargets++;
+               if (questHit && target != owner) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"vyron.tiger.hit");
+            knockedDownTargets++;
             }
          }
 

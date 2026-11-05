@@ -1,6 +1,8 @@
 package com.rzy.dealt_force_skills.character.lexninjia;
 
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
+import com.rzy.dealt_force_skills.department.DepartmentTasks;
+import com.rzy.dealt_force_skills.department.DepartmentLex;
 import com.rzy.dealt_force_skills.entity.VisualSmokeCloudEntity;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
@@ -256,7 +258,12 @@ public final class LexNinjiaStateManager {
         }
         state.prepared = matchPrepared(player, state, now).orElse(null);
         tickSpinIonCharge(player, state, now);
+        com.rzy.dealt_force_skills.motion.TacticalMotionSync.ninjaCharge(player, isMotionCharging(player));
         syncToClient(player);
+    }
+
+    public static boolean isBerserkActive(ServerPlayer player) {
+        return isLexNinjia(player) && state(player).hamBerserkUntil > SkillCooldownHelper.now(player);
     }
 
     public static void onKill(ServerPlayer player) {
@@ -444,16 +451,26 @@ public final class LexNinjiaStateManager {
     }
 
     public static void handleBlockPlaced(BlockEvent.EntityPlaceEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)
+        if (event.isCanceled() || !(event.getEntity() instanceof ServerPlayer player)
                 || !isLexNinjia(player)
                 || !(event.getLevel() instanceof ServerLevel level)) {
             return;
         }
         RuntimeState state = state(player);
-        if (state.fertilizerUntil <= level.getGameTime()) {
-            return;
-        }
-        growPlacedCrop(level, event.getPos());
+        long now = SkillCooldownHelper.now(player);
+        if (state.fertilizerUntil <= now && state.peaUntil <= now) return;
+        BlockPos pos = event.getPos().immutable();
+        BlockState placed = level.getBlockState(pos);
+        long epoch = state.epoch;
+        SkillAnimationScheduler.schedule(player, 1, active -> {
+            if (event.isCanceled() || !active.isAlive() || !isLexNinjia(active) || active.level() != level
+                    || RUNTIME.get(active.getUUID()) != state || state.epoch != epoch
+                    || level.getBlockState(pos).getBlock() != placed.getBlock()) return;
+            long tick = SkillCooldownHelper.now(active);
+            boolean pea = state.peaUntil > tick;
+            if (!pea && state.fertilizerUntil <= tick) return;
+            if (growPlacedCrop(level, pos) && pea) DepartmentTasks.signal(active, "lex.peashooter.growth");
+        });
     }
 
     public static void onPlayerAction(LivingEntity entity) {
@@ -480,12 +497,15 @@ public final class LexNinjiaStateManager {
     }
 
     public static void learnArt(ServerPlayer player, LexNinjiaArt art) {
+        boolean newlyKnown = !isKnown(player, art);
         CompoundTag known = player.getPersistentData().getCompound(KNOWN);
         known.putBoolean(art.id(), true);
         player.getPersistentData().put(KNOWN, known);
         if (art == LexNinjiaArt.HAM_FRIEND) {
             setEquipped(player, art, true);
         }
+        if (newlyKnown && isLexNinjia(player) && allNonHamArtsKnown(player))
+            DepartmentTasks.signal(player, "lex.learned.all_normal");
         syncToClient(player);
     }
 
@@ -525,6 +545,7 @@ public final class LexNinjiaStateManager {
         int current = forcedMindExpansions(player);
         if (current < MAX_FORCED_MIND_EXPANSIONS) {
             player.getPersistentData().putInt(MIND_EXPANSIONS, current + 1);
+            if (isLexNinjia(player)) DepartmentTasks.signal(player, "lex.memory.upgrade");
         }
         syncToClient(player);
     }
@@ -610,6 +631,7 @@ public final class LexNinjiaStateManager {
     public static void buyScientificTool(ServerPlayer player) {
         if (!hasScientificTool(player)) {
             player.getPersistentData().putInt(SCIENTIFIC_TOOL_LEVEL, 0);
+            if (isLexNinjia(player)) DepartmentTasks.signal(player, "lex.device.upgrade");
         }
         syncToClient(player);
     }
@@ -631,6 +653,7 @@ public final class LexNinjiaStateManager {
         int level = scientificToolLevel(player);
         if (level >= 0 && level < SCIENTIFIC_TOOL_MAX_LEVEL) {
             player.getPersistentData().putInt(SCIENTIFIC_TOOL_LEVEL, level + 1);
+            if (isLexNinjia(player)) DepartmentTasks.signal(player, "lex.device.upgrade");
         }
         syncToClient(player);
     }
@@ -674,7 +697,7 @@ public final class LexNinjiaStateManager {
 
     public static boolean executeScientificPreset(ServerPlayer player, int slot) {
         if (!isLexNinjia(player) || player.isCreative() || !hasScientificTool(player)
-                || slot < 0 || slot >= scientificMaxPresets(player)) {
+                || slot < 0 || slot >= scientificMaxPresets(player) || isSleeping(player)) {
             return false;
         }
         LexNinjiaPreset preset = LexNinjiaPreset.read(scientificPresets(player), slot, scientificMaxInputs(player));
@@ -685,6 +708,8 @@ public final class LexNinjiaStateManager {
         long now = SkillCooldownHelper.now(player);
         state.inputs.clear();
         state.prepared = null;
+        state.executingPreset = true;
+        try {
         for (LexNinjiaComboInput input : preset.inputs()) {
             if (!applyPresetInput(player, state, input, now)) {
                 syncToClient(player);
@@ -701,6 +726,7 @@ public final class LexNinjiaStateManager {
         state.presetDisplayUntil = now + 60L;
         syncToClient(player);
         return true;
+        } finally { state.executingPreset = false; }
     }
 
     private static boolean applyPresetInput(ServerPlayer player, RuntimeState state,
@@ -959,6 +985,11 @@ public final class LexNinjiaStateManager {
 
     private static void addInput(ServerPlayer player, RuntimeState state, LexNinjiaComboInput input, long now) {
         state.inputs.add(new InputEntry(input, now));
+        String key = switch (input) {
+            case HAND -> "hand"; case BLADE -> "blade"; case HARMONY -> "combine";
+            case SNEAK -> "sneak"; case JUMP -> "jump"; default -> "";
+        };
+        if (!key.isEmpty()) DepartmentTasks.signal(player, "lex.input." + key);
         state.pruneInputs(now);
         state.trimInputs();
         state.prepared = matchPrepared(player, state, now).orElse(null);
@@ -1015,7 +1046,7 @@ public final class LexNinjiaStateManager {
     }
 
     private static void releasePrepared(ServerPlayer player, RuntimeState state, LexNinjiaArt art, LivingEntity target, long now) {
-        if (!canRelease(player, state, art, target)) {
+        if (!player.isAlive() || player.isRemoved() || !isLexNinjia(player) || isSleeping(player) || !canRelease(player, state, art, target)) {
             state.prepared = art;
             return;
         }
@@ -1035,9 +1066,15 @@ public final class LexNinjiaStateManager {
             SkillModelVisualSync.play(player, visual);
         }
         int delayTicks = visual == null ? 0 : visual.impactTick();
+        boolean device = state.executingPreset;
+        long epoch = state.epoch;
+        Level releaseLevel = player.level();
         if (delayTicks > 0) {
             LivingEntity releaseTarget = target;
             SkillAnimationScheduler.schedule(player, delayTicks, delayedPlayer -> {
+                if (!delayedPlayer.isAlive() || delayedPlayer.isRemoved() || !isLexNinjia(delayedPlayer)
+                        || delayedPlayer.level() != releaseLevel || RUNTIME.get(delayedPlayer.getUUID()) != state
+                        || state.epoch != epoch || isSleeping(delayedPlayer)) return;
                 LivingEntity resolvedTarget = releaseTarget != null
                         && releaseTarget.isAlive()
                         && releaseTarget.level() == delayedPlayer.level()
@@ -1046,14 +1083,14 @@ public final class LexNinjiaStateManager {
                 if (art.releaseTrigger() == LexNinjiaReleaseTrigger.LEFT_CLICK && resolvedTarget == null) {
                     return;
                 }
-                applyArt(delayedPlayer, state, art, resolvedTarget, SkillCooldownHelper.now(delayedPlayer));
+                applyArt(delayedPlayer, state, art, resolvedTarget, SkillCooldownHelper.now(delayedPlayer), device);
                 DfsAchievements.onLexArtReleased(delayedPlayer, art.name(), art.cookRecipe());
                 if (art.hamForbidden()) {
                     playHamEcho(delayedPlayer);
                 }
             });
         } else {
-            applyArt(player, state, art, target, now);
+            applyArt(player, state, art, target, now, device);
             DfsAchievements.onLexArtReleased(player, art.name(), art.cookRecipe());
             if (art.hamForbidden()) {
                 playHamEcho(player);
@@ -1134,10 +1171,23 @@ public final class LexNinjiaStateManager {
         return player.isAlive() || art == LexNinjiaArt.HAM_KILL_ALL;
     }
 
-    private static void applyArt(ServerPlayer player, RuntimeState state, LexNinjiaArt art, LivingEntity target, long now) {
+    public static boolean isMotionCharging(ServerPlayer player) {
+        if (!isLexNinjia(player) || player.hasEffect(ModEffects.STUN)) return false;
+        RuntimeState s = state(player);
+        long now = SkillCooldownHelper.now(player);
+        return s.tenMeterReleaseTick > now || s.hamKillReleaseTick > now
+                || s.rightPressTick > 0 && s.prepared == LexNinjiaArt.SPIN_ION_HAND;
+    }
+
+    private static void applyArt(ServerPlayer player, RuntimeState state, LexNinjiaArt art, LivingEntity target, long now, boolean device) {
+        switch (art) {
+            case ONE_WORD_CUT, FLASH_CUT_HAND, ONE_BLADE_TAUNT, CLIFF_FALL_BLADE, NO_NAME_BLADE ->
+                    com.rzy.dealt_force_skills.motion.TacticalMotionSync.lightSlash(player);
+            default -> { }
+        }
         switch (art) {
             case ONE_WORD_CUT -> strikeFrontArea(player, 3.0D, 1.0D, 1.0D, meleeDamage(player));
-            case HANDSHAKE -> applyHandshake(player, state);
+            case HANDSHAKE -> { if (!applyHandshake(player, state)) return; }
             case FLASH_CUT_HAND -> {
                 if (canApplyControl(player, target)) {
                     target.addEffect(new MobEffectInstance(ModEffects.TEMPEST_DISARMED, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.tempest_disarmed.6.duration_ticks", 70), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.tempest_disarmed.6.amplifier", 0)));
@@ -1228,6 +1278,7 @@ public final class LexNinjiaStateManager {
             }
             case HAM_KILL_ALL -> {
                 state.hamKillReleaseTick = now + 5L * 20L;
+                state.hamKillCast = UUID.randomUUID().toString();
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_resistance.11.duration_ticks", 10 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_resistance.11.amplifier", 4), true, false));
             }
             case HAM_BEAST -> summonHamBeast(player, state);
@@ -1235,6 +1286,20 @@ public final class LexNinjiaStateManager {
             default -> {
             }
         }
+        recordCast(player, art, device);
+    }
+
+    private static void recordCast(ServerPlayer player, LexNinjiaArt art, boolean device) {
+        String key = switch (art) {
+            case ONE_WORD_CUT -> "ichiji"; case HANDSHAKE -> "shake_hands";
+            case ARASHI_CUT -> "arashi"; case SHADOW_BLADE -> "shadow"; case SHADOW_CLONE_CROSS -> "cross";
+            case SHARPEN -> "sharpen"; case BURNING_BLADE -> "burning"; case PEA_SHOOTER -> "peashooter";
+            case BIG_PORTION -> "feast"; case GOOD_SLEEP -> "sleep"; case NO_ONE_RETALIATES -> "reflect";
+            case ONE_DEATH_HAND -> "onai"; case ALL_HANDS -> "all_hands"; case HAM_FRIEND -> "hamu_friend";
+            case HAM_BERSERK -> "night_hamu"; case HAM_KILL_ALL -> "hamu_all"; default -> "";
+        };
+        if (!key.isEmpty()) DepartmentTasks.signal(player, "lex.cast." + key);
+        if (device) DepartmentTasks.signal(player, "lex.device.cast");
     }
 
     private static void craftCookArt(ServerPlayer player, RuntimeState state) {
@@ -1260,6 +1325,11 @@ public final class LexNinjiaStateManager {
                 }
                 playArtVisuals(player, art, null);
                 giveOrDrop(player, cookFoodStack(art));
+                String outcome = switch (art) {
+                    case SOLDIER_PILL -> "ration"; case LOTUS_BOX_FOOD -> "lotus";
+                    case HOT_DRINK -> "hot_drink"; default -> "";
+                };
+                if (!outcome.isEmpty()) DepartmentTasks.signal(player, "lex.craft." + outcome);
                 state.inputs.clear();
                 return;
             }
@@ -1374,44 +1444,44 @@ public final class LexNinjiaStateManager {
         return stack;
     }
 
-    private static void applyCookFoodEffect(ServerPlayer player, LexNinjiaArt art) {
+    public static void applyCookFoodEffect(LivingEntity player, LexNinjiaArt art) {
         switch (art) {
-            case SOLDIER_PILL -> player.getFoodData().eat(16, 1.0F);
+            case SOLDIER_PILL -> { if (player instanceof ServerPlayer server) server.getFoodData().eat(16, 1.0F); }
             case NANO_SNICKERS -> {
-                player.getFoodData().eat(20, 1.0F);
-                setLeicra(player, Math.min(maxLeicra(player), leicra(player) + maxLeicra(player) * 0.10F));
+                if (player instanceof ServerPlayer server) server.getFoodData().eat(20, 1.0F);
+                if (player instanceof ServerPlayer server) setLeicra(server, Math.min(maxLeicra(server), leicra(server) + maxLeicra(server) * 0.10F));
                 player.addEffect(new MobEffectInstance(MobEffects.SATURATION, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.saturation.12.duration_ticks", 25 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.saturation.12.amplifier", 0)));
             }
             case HAMBURGER -> {
-                player.getFoodData().eat(20, 1.0F);
+                if (player instanceof ServerPlayer server) server.getFoodData().eat(20, 1.0F);
                 player.heal(player.getMaxHealth());
                 player.addEffect(new MobEffectInstance(MobEffects.SATURATION, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.saturation.13.duration_ticks", 10 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.saturation.13.amplifier", 0)));
                 player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.absorption.14.duration_ticks", 10 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.absorption.14.amplifier", 3)));
             }
             case MILK_FRUIT_SHAKE -> {
-                player.getFoodData().eat(16, 1.5F);
+                if (player instanceof ServerPlayer server) server.getFoodData().eat(16, 1.5F);
                 player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_speed.15.duration_ticks", 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_speed.15.amplifier", 0)));
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_resistance.16.duration_ticks", 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_resistance.16.amplifier", 0)));
             }
             case SHRIMP_HAND -> {
-                player.getFoodData().eat(10, 0.9F);
+                if (player instanceof ServerPlayer server) server.getFoodData().eat(10, 0.9F);
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.17.duration_ticks", 10 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.17.amplifier", 2)));
                 player.getPersistentData().putLong(FOOD_LEICRA_REGEN_UNTIL, SkillCooldownHelper.now(player) + 10L * 20L);
             }
             case ROAST_MEAT_RICE -> {
-                player.getFoodData().eat(100, 10.0F);
+                if (player instanceof ServerPlayer server) server.getFoodData().eat(100, 10.0F);
                 player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_speed.18.duration_ticks", 20 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_speed.18.amplifier", 0)));
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.19.duration_ticks", 20 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.19.amplifier", 2)));
             }
             case MC_NUGGETS -> {
-                player.getFoodData().eat(9, 0.8F);
+                if (player instanceof ServerPlayer server) server.getFoodData().eat(9, 0.8F);
                 player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_speed.20.duration_ticks", 20 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_speed.20.amplifier", 0)));
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.21.duration_ticks", 20 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.21.amplifier", 0)));
                 player.addEffect(new MobEffectInstance(MobEffects.HEALTH_BOOST, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.health_boost.22.duration_ticks", 20 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.health_boost.22.amplifier", 4)));
             }
             case LOTUS_BOX_FOOD -> {
-                player.getFoodData().eat(20, 1.5F);
-                setLeicra(player, Math.min(maxLeicra(player), leicra(player) + maxLeicra(player) * 0.25F));
+                if (player instanceof ServerPlayer server) server.getFoodData().eat(20, 1.5F);
+                if (player instanceof ServerPlayer server) setLeicra(server, Math.min(maxLeicra(server), leicra(server) + maxLeicra(server) * 0.25F));
                 player.heal(com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.lexninjia.lex_ninjia_state_manager.heal.3.heal_amount", 10.0F));
             }
             case MILK_BEER -> {
@@ -1421,7 +1491,7 @@ public final class LexNinjiaStateManager {
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.25.duration_ticks", 20 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.25.amplifier", 1)));
             }
             case COLD_COPPER -> {
-                player.getFoodData().eat(1000, 100.0F);
+                if (player instanceof ServerPlayer server) server.getFoodData().eat(1000, 100.0F);
                 player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_slowdown.26.duration_ticks", 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.movement_slowdown.26.amplifier", 3)));
                 player.addEffect(new MobEffectInstance(MobEffects.POISON, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.poison.27.duration_ticks", 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.poison.27.amplifier", 4)));
                 player.addEffect(new MobEffectInstance(MobEffects.WITHER, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.wither.28.duration_ticks", 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.wither.28.amplifier", 4)));
@@ -1429,7 +1499,7 @@ public final class LexNinjiaStateManager {
                 player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.absorption.30.duration_ticks", 60 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.absorption.30.amplifier", 9)));
             }
             case HOT_DRINK -> {
-                setLeicra(player, maxLeicra(player));
+                if (player instanceof ServerPlayer server) setLeicra(server, maxLeicra(server));
                 player.getPersistentData().putLong(FOOD_LEICRA_REGEN_UNTIL, SkillCooldownHelper.now(player) + 120L * 20L);
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.31.duration_ticks", 120 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.damage_boost.31.amplifier", 0)));
             }
@@ -1581,20 +1651,21 @@ public final class LexNinjiaStateManager {
             float reflectedDamage = Math.max(1.0F, event.getAmount()) * NO_ONE_RETALIATES_REFLECT_MULTIPLIER;
             event.setCanceled(true);
             event.setAmount(0.0F);
-            hurtTrue(caster, attacker, reflectedDamage);
+            DepartmentLex.damage(caster, attacker, SkillDamageHelper.trueDamage(caster.serverLevel(), caster, caster),
+                    SkillDamageHelper.scale(caster, reflectedDamage), true, () -> false);
             break;
         }
     }
 
-    private static void applyHandshake(ServerPlayer player, RuntimeState state) {
-        nearestLookTarget(player, 8.0D, 0.92D).ifPresent(target -> {
-            if (!canApplyControl(player, target)) {
-                return;
-            }
+    private static boolean applyHandshake(ServerPlayer player, RuntimeState state) {
+        LivingEntity previousTarget = nearestLookTarget(player, 8.0D, 0.92D).filter(target -> canApplyControl(player, target)).orElse(null);
+        if (previousTarget == null) return false;
+        { LivingEntity target = previousTarget;
             state.handshakeTarget = target.getUUID();
             target.addEffect(new MobEffectInstance(MobEffects.GLOWING, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.glowing.32.duration_ticks", 15 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.glowing.32.amplifier", 0)));
             player.addEffect(new MobEffectInstance(MobEffects.GLOWING, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.glowing.33.duration_ticks", 15 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.lexninjia.lex_ninjia_state_manager.effect.glowing.33.amplifier", 0)));
-        });
+        }
+        return true;
     }
 
     private static void tauntNearby(ServerPlayer player) {
@@ -1645,6 +1716,7 @@ public final class LexNinjiaStateManager {
         }
         player.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPIN_SLOW_UUID);
         state.tenMeterReleaseTick = 0L;
+        com.rzy.dealt_force_skills.motion.TacticalMotionSync.lightSlash(player);
         strikeFrontArea(player, 66.0D, 6.0D, 6.0D, meleeDamage(player) * 5.0F);
         RangedSoundHelper.playFollowingPlayer(player, SoundEvents.PLAYER_ATTACK_SWEEP,
                 SoundSource.PLAYERS, 1.2F, 0.6F, 32.0D);
@@ -1917,9 +1989,10 @@ public final class LexNinjiaStateManager {
         }
         for (LivingEntity target : player.serverLevel().getEntitiesOfClass(LivingEntity.class,
                 player.getBoundingBox().inflate(100.0D), entity -> entity != player && entity.isAlive())) {
-            executeTarget(player, target);
+            DepartmentLex.execute(player, target, state.hamKillCast, () -> executeTarget(player, target));
         }
         state.hamKillReleaseTick = 0L;
+        state.hamKillCast = "";
         player.hurt(SkillDamageHelper.trueDamage(player.serverLevel(), player, player), player.getMaxHealth() * HAM_KILL_ALL_SELF_DAMAGE_MAX_HEALTH_FRACTION);
     }
 
@@ -1981,8 +2054,10 @@ public final class LexNinjiaStateManager {
         if (target == null || count <= 0 || damage <= 0.0F) {
             return;
         }
+        boolean[] burning = {visual == SlashVisual.BURNING && state.arashiUntil > now
+                && state.shadowBladeUntil > now && state.shadowCloneUntil > now && state.sharpenStacks > 0};
         for (int i = 0; i < count; i++) {
-            state.slashQueue.add(new PendingSlash(target.getUUID(), now + firstDelay + i * interval, damage, visual, sideOffset));
+            state.slashQueue.add(new PendingSlash(target.getUUID(), now + firstDelay + i * interval, damage, visual, sideOffset, burning));
         }
     }
 
@@ -1990,8 +2065,8 @@ public final class LexNinjiaStateManager {
         if (target == null || damage <= 0.0F) {
             return;
         }
-        state.slashQueue.add(new PendingSlash(target.getUUID(), now + 3L, damage, SlashVisual.CLONE, -1.15D));
-        state.slashQueue.add(new PendingSlash(target.getUUID(), now + 6L, damage, SlashVisual.CLONE, 1.15D));
+        state.slashQueue.add(new PendingSlash(target.getUUID(), now + 3L, damage, SlashVisual.CLONE, -1.15D, new boolean[]{false}));
+        state.slashQueue.add(new PendingSlash(target.getUUID(), now + 6L, damage, SlashVisual.CLONE, 1.15D, new boolean[]{false}));
     }
 
     private static void playMainShadowCloneSlash(ServerPlayer player, LivingEntity target) {
@@ -2014,13 +2089,20 @@ public final class LexNinjiaStateManager {
             Entity entity = player.serverLevel().getEntity(slash.target());
             if (entity instanceof LivingEntity target && target.isAlive()) {
                 playQueuedSlashVisual(player, target, slash);
-                hurtTrue(player, target, slash.damage());
+                DepartmentLex.damage(player, target, SkillDamageHelper.trueDamage(player.serverLevel(), player, player),
+                        SkillDamageHelper.scale(player, slash.damage()), false, () -> {
+                            if (!slash.burning()[0]) return false;
+                            slash.burning()[0] = false;
+                            return true;
+                        });
             }
             iterator.remove();
         }
     }
 
     private static void playQueuedSlashVisual(ServerPlayer player, LivingEntity target, PendingSlash slash) {
+        if (slash.visual() != SlashVisual.CLONE)
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.lightSlash(player);
         ServerLevel level = player.serverLevel();
         Vec3 hit = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
         switch (slash.visual()) {
@@ -2137,16 +2219,21 @@ public final class LexNinjiaStateManager {
         tag.putInt(ROOT + ".snake_poison_stacks", Math.min(9, tag.getInt(ROOT + ".snake_poison_stacks") + 3));
     }
 
-    private static void growPlacedCrop(ServerLevel level, BlockPos pos) {
+    private static boolean growPlacedCrop(ServerLevel level, BlockPos pos) {
+        BlockState before = level.getBlockState(pos);
+        boolean immature = before.getBlock() instanceof net.minecraft.world.level.block.CropBlock crop && !crop.isMaxAge(before);
         for (int i = 0; i < 4; i++) {
             BlockState state = level.getBlockState(pos);
             if (!(state.getBlock() instanceof BonemealableBlock bonemealable)
                     || !bonemealable.isValidBonemealTarget(level, pos, state)
                     || !bonemealable.isBonemealSuccess(level, level.random, pos, state)) {
-                return;
+                break;
             }
             bonemealable.performBonemeal(level, level.random, pos, state);
         }
+        BlockState after = level.getBlockState(pos);
+        return immature && after.getBlock() == before.getBlock()
+                && ((net.minecraft.world.level.block.CropBlock)after.getBlock()).isMaxAge(after);
     }
 
     private static boolean isSleeping(ServerPlayer player) {
@@ -2258,9 +2345,7 @@ public final class LexNinjiaStateManager {
         if (stack.isEmpty()) {
             return;
         }
-        if (!player.getInventory().add(stack.copy())) {
-            player.level().addFreshEntity(new ItemEntity(player.level(), player.getX(), player.getY(), player.getZ(), stack.copy()));
-        }
+        com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, stack);
     }
 
     private static boolean canConsumeMainHand(ItemStack hand, int count) {
@@ -2348,7 +2433,7 @@ public final class LexNinjiaStateManager {
     private record TimedBlock(BlockPos pos, long expireTick) {
     }
 
-    private record PendingSlash(UUID target, long tick, float damage, SlashVisual visual, double sideOffset) {
+    private record PendingSlash(UUID target, long tick, float damage, SlashVisual visual, double sideOffset, boolean[] burning) {
     }
 
     private enum SlashVisual {
@@ -2358,6 +2443,9 @@ public final class LexNinjiaStateManager {
     }
 
     private static final class RuntimeState {
+        private long epoch;
+        private boolean executingPreset;
+        private String hamKillCast = "";
         private final List<InputEntry> inputs = new ArrayList<>();
         private final List<TimedBlock> wallBlocks = new ArrayList<>();
         private final List<PendingSlash> slashQueue = new ArrayList<>();
@@ -2424,6 +2512,9 @@ public final class LexNinjiaStateManager {
         }
 
         private void clearCombatRuntime(long now) {
+            epoch++;
+            executingPreset = false;
+            hamKillCast = "";
             inputs.clear();
             prepared = null;
             presetDisplayText = "";

@@ -153,6 +153,12 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
         return false;
     }
 
+    protected boolean canActAsGuard() { return true; }
+
+    protected float standaloneFireStreamDamage(LivingEntity target, float ordinaryDamage) {
+        return target.getMaxHealth() * 0.05F;
+    }
+
     protected boolean shouldUseAutomaticGuardSkills() {
         return true;
     }
@@ -338,6 +344,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
         if (level().isClientSide || !(level() instanceof ServerLevel level)) {
             return;
         }
+        if (!canActAsGuard()) { setTarget(null); getNavigation().stop(); stopFireStream(); return; }
         tickTaczOperator();
         if (isFireeyeDetonating()) {
             tickFireeyeDetonation(level);
@@ -645,7 +652,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
         tag.putBoolean("FireeyeDetonating", entityData.get(DATA_FIREEYE_DETONATING));
     }
 
-    private boolean isFireeyeDetonating() {
+    protected final boolean isFireeyeDetonating() {
         return entityData.get(DATA_FIREEYE_DETONATING);
     }
 
@@ -717,6 +724,8 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
     }
 
     private boolean isSaeedTeamMember(Entity target) {
+        if (this instanceof com.rzy.dealt_force_skills.ai.operative.NativeSaeedGuardEntity guard)
+            return !(target instanceof LivingEntity living) || !guard.isEnemy(living);
         if (target instanceof SaeedGuardEntity) {
             return true;
         }
@@ -1165,7 +1174,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
         return false;
     }
 
-    private boolean useGuardSkill(ServerLevel level, ServerPlayer owner, SkillSlot slot, LivingEntity target, Vec3 aimPoint) {
+    protected final boolean useGuardSkill(ServerLevel level, ServerPlayer owner, SkillSlot slot, LivingEntity target, Vec3 aimPoint) {
         long now = level.getGameTime();
         SaeedGuardType type = guardType();
         if (type == SaeedGuardType.HAKIM && slot != SkillSlot.CORE) {
@@ -1211,16 +1220,19 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
         }
         Vec3 pos = anchor.get();
         getPersistentData().putBoolean(SHARP_EAGLE_HAS_SENTRY, true);
+        getPersistentData().remove("DepartmentCommandedSentry");
         getPersistentData().putDouble(SHARP_EAGLE_SENTRY_X, pos.x);
         getPersistentData().putDouble(SHARP_EAGLE_SENTRY_Y, pos.y);
         getPersistentData().putDouble(SHARP_EAGLE_SENTRY_Z, pos.z);
         getPersistentData().putLong(WEAPON_SKILL_UNTIL, now + SHARP_EAGLE_SENTRY_DURATION_TICKS);
         getPersistentData().putLong(SKILL_COOLDOWN_UNTIL, now + scaledCooldownTicks(owner, SHARP_EAGLE_SENTRY_COOLDOWN_TICKS));
         teleportTo(pos.x, pos.y, pos.z);
-        setYRot(owner.getYRot());
-        setYHeadRot(owner.getYRot());
-        setYBodyRot(owner.getYRot());
-        setXRot(owner.getXRot());
+        if (owner != null) {
+            setYRot(owner.getYRot());
+            setYHeadRot(owner.getYRot());
+            setYBodyRot(owner.getYRot());
+            setXRot(owner.getXRot());
+        }
         setTarget(target);
         lockSharpEagleSentry();
         playAttackVoice(level, guardSkillSound(SaeedGuardType.SHARP_EAGLE), 0.78F);
@@ -1366,7 +1378,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
                     continue;
                 }
                 if (isStandaloneTrooper() && type == SaeedGuardType.FIREEYE) {
-                    damage = target.getMaxHealth() * 0.05F;
+                    damage = standaloneFireStreamDamage(target, damage);
                 }
                 target.invulnerableTime = 0;
                 target.igniteForSeconds(type == SaeedGuardType.KARIM ? 8 : 5);

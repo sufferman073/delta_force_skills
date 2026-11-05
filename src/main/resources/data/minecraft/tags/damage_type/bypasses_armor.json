@@ -26,6 +26,8 @@
     "dealt_force_skills:department_trap",
     "dealt_force_skills:department_trap_manual",
     "dealt_force_skills:department_core",
-    "dealt_force_skills:department_passive_blast"
+    "dealt_force_skills:department_passive_blast",
+    "dealt_force_skills:department_sloth",
+    "dealt_force_skills:wildfire_impact"
   ]
 }

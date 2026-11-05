@@ -40,6 +40,14 @@ public class BladeWireBlockEntity extends BlockEntity {
     private static final String CORE_HEALTH = "CoreHealth";
     private static final String EXPIRES_AT = "ExpiresAt";
 
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance =
+            new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+
+    public void configureOperative(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source) {
+        allegiance.copyFrom(source);
+        setChanged();
+    }
+
     private UUID ownerId;
     private BlockPos corePos;
     private boolean core;
@@ -55,6 +63,7 @@ public class BladeWireBlockEntity extends BlockEntity {
     }
 
     public void configureCore(UUID ownerId) {
+        getPersistentData().remove("DepartmentCast");
         this.ownerId = ownerId;
         this.core = true;
         this.corePos = worldPosition;
@@ -106,6 +115,13 @@ public class BladeWireBlockEntity extends BlockEntity {
             return;
         }
 
+        if (level.getGameTime() % 40 == 0 && be.expiresAt - level.getGameTime() <= Math.max(1, LIFETIME_TICKS) - 200
+                && com.rzy.dealt_force_skills.ai.operative.OperativeTrapMaintenance.stale(
+                    serverLevel, Vec3.atBottomCenterOf(pos), be.allegiance, 5)) {
+            level.removeBlock(pos, false); // Existing onRemoved removes only this core's linked wire.
+            return;
+        }
+
         int liveWires = be.countLinkedWires(level);
         be.linkedWireCount = liveWires;
         if (liveWires <= 0) {
@@ -114,9 +130,12 @@ public class BladeWireBlockEntity extends BlockEntity {
         }
 
         ServerPlayer owner = be.ownerId == null ? null : serverLevel.getServer().getPlayerList().getPlayer(be.ownerId);
+        LivingEntity damageOwner = be.allegiance.active() && be.ownerId != null
+                ? (serverLevel.getEntity(be.ownerId) instanceof LivingEntity living ? living : null) : owner;
         AABB box = new AABB(pos).inflate(5.0);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box,
-                entity -> owner != null
+                entity -> be.allegiance.active() ? entity.isAlive() && !be.allegiance.isAlly(serverLevel, entity)
+                        : owner != null
                         ? TargetingUtil.isHostileLivingFor(owner, entity)
                         : TargetingUtil.isTargetableLiving(entity))) {
             if (!be.isInsideWireArea(level, target.position())) {
@@ -124,7 +143,9 @@ public class BladeWireBlockEntity extends BlockEntity {
             }
 
             Vec3 beforeDamageMovement = target.getDeltaMovement();
-            boolean damaged = SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(serverLevel, null, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("deployables.blade_wire_block_entity.skill_hurt.0.damage", 4.0f));
+            float questBefore = target.getHealth()+target.getAbsorptionAmount();
+            boolean damaged = SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(serverLevel, null, damageOwner), damageOwner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("deployables.blade_wire_block_entity.skill_hurt.0.damage", 4.0f));
+            com.rzy.dealt_force_skills.department.DepartmentCombat.wireDamage(serverLevel,pos,damageOwner,Math.max(0,questBefore-target.getHealth()-target.getAbsorptionAmount()));
             if (!damaged) {
                 continue;
             }
@@ -257,6 +278,7 @@ public class BladeWireBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
+        allegiance.save(tag, 0);
         if (ownerId != null) {
             tag.putUUID(OWNER, ownerId);
         }
@@ -276,6 +298,7 @@ public class BladeWireBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
+        allegiance.load(tag, 1);
         ownerId = tag.hasUUID(OWNER) ? tag.getUUID(OWNER) : null;
         core = tag.getBoolean(CORE);
         linkedWireCount = tag.getInt(LINKED_WIRE_COUNT);
@@ -320,7 +343,9 @@ public class BladeWireBlockEntity extends BlockEntity {
     private int countLinkedWires(Level level) {
         int count = 0;
         for (BlockPos check : BlockPos.betweenClosed(worldPosition.offset(-4, -2, -4), worldPosition.offset(4, 2, 4))) {
-            if (level.getBlockState(check).is(ModBlocks.BLADE_WIRE.get())) {
+            if (level.getBlockState(check).is(ModBlocks.BLADE_WIRE.get())
+                    && (!allegiance.active() || level.getBlockEntity(check) instanceof BladeWireBlockEntity wire
+                    && worldPosition.equals(wire.corePos))) {
                 count++;
             }
         }
@@ -331,7 +356,9 @@ public class BladeWireBlockEntity extends BlockEntity {
         linkedWireCount = 0;
         setChanged();
         for (BlockPos check : BlockPos.betweenClosed(worldPosition.offset(-4, -2, -4), worldPosition.offset(4, 2, 4))) {
-            if (level.getBlockState(check).is(ModBlocks.BLADE_WIRE.get())) {
+            if (level.getBlockState(check).is(ModBlocks.BLADE_WIRE.get())
+                    && (!allegiance.active() || level.getBlockEntity(check) instanceof BladeWireBlockEntity wire
+                    && worldPosition.equals(wire.corePos))) {
                 level.removeBlock(check, false);
             }
         }

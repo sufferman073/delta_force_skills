@@ -55,11 +55,16 @@ public final class GhrothArmoryManager {
         ItemStack purchasedForMessage = purchased.copy();
         boolean inserted = player.getInventory().add(purchased);
         if (!inserted && !purchased.isEmpty()) {
-            player.drop(purchased, false);
+            com.rzy.dealt_force_skills.mail.MailboxManager.deliver(player, purchased);
         }
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.shop.purchased",
                 purchasedForMessage.getHoverName(), entry.price()), true);
         playPurchaseSound(player);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"ghroth.buy");
+        if(entry.categoryKey().equals(TaczShopCatalog.Type.GUN.categoryKey()))
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"ghroth.buy.gun");
+        if(entry.categoryKey().equals(TaczShopCatalog.Type.ATTACHMENT.categoryKey()))
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"ghroth.buy.attachment");
         DfsAchievements.onShopPurchase(player, "ghroth", entry.id());
         HaffCoinManager.sync(player);
     }

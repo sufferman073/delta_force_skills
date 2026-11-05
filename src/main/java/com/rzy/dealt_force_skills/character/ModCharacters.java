@@ -22,6 +22,7 @@ public final class ModCharacters {
     public static final String LEGACY_CORPS_ID = DealtForceSkillsMod.MODID + ":assault/corps";
     public static final String VYRON_ID = DealtForceSkillsMod.MODID + ":assault/vyron";
     public static final String NOX_ID = DealtForceSkillsMod.MODID + ":assault/nox";
+    public static final String WILDFIRE_ID = DealtForceSkillsMod.MODID + ":assault/wildfire";
     public static final String TEMPEST_ID = DealtForceSkillsMod.MODID + ":assault/tempest";
     public static final String LUNA_ID = DealtForceSkillsMod.MODID + ":recon/luna";
     public static final String HACKCLAW_ID = DealtForceSkillsMod.MODID + ":recon/hackclaw";
@@ -58,6 +59,7 @@ public final class ModCharacters {
             Map.entry(normalizeCommandName("拳抖幻"), CORPS_ID),
             Map.entry(normalizeCommandName("QuanDouhuan"), CORPS_ID),
             Map.entry(normalizeCommandName("威龙"), VYRON_ID),
+            Map.entry(normalizeCommandName("野火"), WILDFIRE_ID),
             Map.entry(normalizeCommandName("疾风"), TEMPEST_ID),
             Map.entry(normalizeCommandName("露娜"), LUNA_ID),
             Map.entry(normalizeCommandName("骇爪"), HACKCLAW_ID),
@@ -300,6 +302,19 @@ public final class ModCharacters {
                             true)
             )
     ));
+
+    public static final CharacterDefinition WILDFIRE = register(new CharacterDefinition(
+            WILDFIRE_ID, "character.dealt_force_skills.wildfire.name", CharacterRole.ASSAULT,
+            "characters_records/Assault/Wildfire.txt", List.of(
+                    new SkillDefinition(SkillSlot.PASSIVE, "character.dealt_force_skills.wildfire.skill.battle_hardened",
+                            "character.dealt_force_skills.wildfire.skill.battle_hardened.desc", 0, true),
+                    new SkillDefinition(SkillSlot.ACTIVE_1, "character.dealt_force_skills.wildfire.skill.ring_smoke",
+                            "character.dealt_force_skills.wildfire.skill.ring_smoke.desc", 900, true),
+                    new SkillDefinition(SkillSlot.ACTIVE_2, "character.dealt_force_skills.wildfire.skill.he_grenade",
+                            "character.dealt_force_skills.wildfire.skill.he_grenade.desc", 1400, true),
+                    new SkillDefinition(SkillSlot.CORE, "character.dealt_force_skills.wildfire.skill.shield_breaker",
+                            "character.dealt_force_skills.wildfire.skill.shield_breaker.desc", 1500, true)
+            )));
 
     public static final CharacterDefinition TEMPEST = register(new CharacterDefinition(
             TEMPEST_ID,
@@ -928,7 +943,7 @@ public final class ModCharacters {
             true,
             CharacterRole.RECON,
             "characters_records/Valorant/Chamber.txt",
-            false,
+            true,
             List.of(
                     new SkillDefinition(SkillSlot.PASSIVE,
                             "character.dealt_force_skills.chamber.skill.spare_cash",

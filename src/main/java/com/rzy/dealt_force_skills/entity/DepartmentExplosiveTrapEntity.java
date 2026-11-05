@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
     private static final EntityDataAccessor<Integer> DATA_ATTACHED_FACE =
             SynchedEntityData.defineId(DepartmentExplosiveTrapEntity.class, EntityDataSerializers.INT);
     private static final int READY_SOUND_INTERVAL_TICKS = 45;
@@ -62,15 +63,22 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
     }
 
     public DepartmentExplosiveTrapEntity(
+            EntityType<? extends DepartmentExplosiveTrapEntity> type, Level level, ServerPlayer owner,
+            Direction attachedFace, int chargeSlot, long chargeReadyAt) {
+        this(type, level, (LivingEntity) owner, attachedFace, chargeSlot, chargeReadyAt);
+    }
+
+    public DepartmentExplosiveTrapEntity(
             EntityType<? extends DepartmentExplosiveTrapEntity> type,
             Level level,
-            ServerPlayer owner,
+            LivingEntity owner,
             Direction attachedFace,
             int chargeSlot,
             long chargeReadyAt
     ) {
         this(type, level);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
         setAttachedFace(attachedFace);
         this.chargeSlot = chargeSlot;
         this.chargeReadyAt = chargeReadyAt;
@@ -82,13 +90,14 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
     }
 
     @Override
-    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+    protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
         builder.define(DATA_ATTACHED_FACE, Direction.UP.get3DDataValue());
     }
 
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && com.rzy.dealt_force_skills.ai.operative.OperativeTrapMaintenance.stale(this, allegiance, AUTO_TRIGGER_RADIUS)) { discardWithoutRefund(); return; }
         if (level().isClientSide) {
             spawnClientIdleParticles();
             return;
@@ -98,7 +107,9 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
         }
 
         Entity owner = owner(level);
-        if (owner == null || !owner.isAlive() || owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE) {
+        if (allegiance.active() ? tickCount > 1200 || owner != null && (!owner.isAlive() || owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE)
+                || !allegiance.withinOrders(level, position())
+                : owner == null || !owner.isAlive() || owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE) {
             discardAndNotify(level);
             return;
         }
@@ -131,6 +142,7 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
     public boolean hurt(DamageSource source, float amount) {
         if (!level().isClientSide && amount > 0.0F && level() instanceof ServerLevel level) {
             Entity attacker = source.getEntity();
+            if (allegiance.active() && (!(attacker instanceof LivingEntity living) || !allegiance.isEnemy(level, living))) return false;
             if (!isOwnerOrTeammate(attacker)) {
                 armAutoTrigger(level);
             }
@@ -145,6 +157,13 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
         chargeSlot = tag.contains("ChargeSlot") ? tag.getInt("ChargeSlot") : -1;
         chargeReadyAt = tag.getLong("ChargeReadyAt");
         triggerDelayTicks = tag.getInt("TriggerDelay");
+        int age = allegiance.load(tag, 1200);
+        if (allegiance.active()) {
+            tickCount = age;
+            triggerDelayTicks = Math.max(0, Math.min(AUTO_DETONATION_DELAY_TICKS, triggerDelayTicks));
+            chargeSlot = Math.max(-1, Math.min(DepartmentOfTransportationStateManager.TRAP_MAX_CHARGES - 1, chargeSlot));
+            chargeReadyAt = Math.max(0, Math.min(level().getGameTime() + DepartmentOfTransportationStateManager.TRAP_COOLDOWN_TICKS, chargeReadyAt));
+        }
     }
 
     @Override
@@ -156,7 +175,9 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
         tag.putInt("ChargeSlot", chargeSlot);
         tag.putLong("ChargeReadyAt", chargeReadyAt);
         tag.putInt("TriggerDelay", triggerDelayTicks);
+        allegiance.save(tag, tickCount);
     }
+
 
     public boolean isOwnedBy(UUID owner) {
         return ownerId != null && ownerId.equals(owner);
@@ -201,6 +222,7 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
     }
 
     private void explode(ServerLevel level, boolean manual) {
+        if (isRemoved() || allegiance.active() && !allegiance.withinOrders(level, position())) { discard(); return; }
         Entity owner = owner(level);
         double radius = manual ? MANUAL_DAMAGE_RADIUS : AUTO_DAMAGE_RADIUS;
         DamageSource source = manual
@@ -214,6 +236,7 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
 
         AABB box = new AABB(position(), position()).inflate(radius);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
+            if (allegiance.active() && (!(allegiance.isCaster(target) || allegiance.isEnemy(level, target)) || !hasLineOfSightTo(target))) continue;
             if ((isOwnerOrTeammate(target) && !isOwnedBy(target.getUUID()))
                     || TargetingUtil.isPlayerOwnedSummonOf(ownerLiving, target)) {
                 continue;
@@ -231,13 +254,17 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
             target.setDeltaMovement(before.add(target.position().subtract(position()).normalize().scale(manual ? 0.55D : 0.35D)));
             target.hurtMarked = true;
         }
-        SuperbWarfareCompat.damageVehicles(level, position(), radius, source, this,
+        if (!allegiance.active()) SuperbWarfareCompat.damageVehicles(level, position(), radius, source, this,
                 (manual ? 12.0F : 16.0F) / 100.0F, false);
         spawnChargedCreeper(level);
         discardAndNotify(level);
     }
 
     private void spawnChargedCreeper(ServerLevel level) {
+        if (allegiance.active()) {
+            com.rzy.dealt_force_skills.ai.operative.NativeDepartmentSkills.spawnCreeper(level, position(), allegiance);
+            return;
+        }
         Creeper creeper = EntityType.CREEPER.create(level);
         if (creeper == null) {
             return;
@@ -269,6 +296,7 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
     }
 
     private boolean canTrigger(LivingEntity entity) {
+        if (allegiance.active() && level() instanceof ServerLevel serverLevel) return allegiance.isEnemy(serverLevel, entity);
         Entity owner = level() instanceof ServerLevel serverLevel ? owner(serverLevel) : null;
         if (!entity.isAlive() || isOwnerOrTeammate(entity)
                 || !TargetingUtil.isHostileLivingFor(owner, entity)) {
@@ -285,6 +313,7 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
     }
 
     private boolean isOwnerOrTeammate(Entity entity) {
+        if (allegiance.active() && level() instanceof ServerLevel serverLevel) return allegiance.isAlly(serverLevel, entity);
         if (entity == null) {
             return false;
         }
@@ -316,7 +345,7 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
     private void discardAndNotify(ServerLevel level) {
         if (!removalNotified) {
             removalNotified = true;
-            DepartmentOfTransportationStateManager.notifyTrapRemoved(level, ownerId);
+            if (!allegiance.active()) DepartmentOfTransportationStateManager.notifyTrapRemoved(level, ownerId);
         }
         discard();
     }

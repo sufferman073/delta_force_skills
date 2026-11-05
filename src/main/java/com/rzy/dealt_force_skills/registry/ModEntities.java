@@ -1,6 +1,8 @@
 package com.rzy.dealt_force_skills.registry;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.entity.OperativeEntity;
+import com.rzy.dealt_force_skills.ai.operative.NativeSaeedGuardEntity;
 import com.rzy.dealt_force_skills.character.saeed.SaeedGuardType;
 import com.rzy.dealt_force_skills.entity.AsaraTrooperEntity;
 import com.rzy.dealt_force_skills.entity.AsaraTrooperRole;
@@ -493,6 +495,11 @@ public class ModEntities {
                             .updateInterval(1)
                             .build("vlinder_active_defense_drone"));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<com.rzy.dealt_force_skills.entity.WildfireDeviceEntity>> WILDFIRE_DEVICE =
+            ENTITIES.register("wildfire_device", () -> EntityType.Builder.<com.rzy.dealt_force_skills.entity.WildfireDeviceEntity>of(
+                    com.rzy.dealt_force_skills.entity.WildfireDeviceEntity::new, MobCategory.MISC)
+                    .sized(0.25F, 0.25F).clientTrackingRange(128).updateInterval(1).build("wildfire_device"));
+
     public static final DeferredHolder<EntityType<?>, EntityType<TempestWallDrillStingerEntity>> TEMPEST_WALL_DRILL_STINGER =
             ENTITIES.register("tempest_wall_drill_stinger",
                     () -> EntityType.Builder.<TempestWallDrillStingerEntity>of(TempestWallDrillStingerEntity::new, MobCategory.MISC)
@@ -531,6 +538,14 @@ public class ModEntities {
                             .clientTrackingRange(128)
                             .updateInterval(2)
                             .build("department_explosive_trap"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<OperativeEntity>> OPERATIVE =
+            ENTITIES.register("operative", () -> EntityType.Builder.<OperativeEntity>of(OperativeEntity::new, MobCategory.CREATURE)
+                    .sized(0.6F, 1.8F).clientTrackingRange(64).updateInterval(2).build("operative"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<NativeSaeedGuardEntity>> OPERATIVE_SAEED_GUARD =
+            ENTITIES.register("operative_saeed_guard", () -> EntityType.Builder.<NativeSaeedGuardEntity>of(NativeSaeedGuardEntity::new, MobCategory.CREATURE)
+                    .sized(0.6F, 1.8F).clientTrackingRange(128).updateInterval(2).build("operative_saeed_guard"));
 
     public static final DeferredHolder<EntityType<?>, EntityType<SaeedGuardEntity>> SAEED_GUARD =
             ENTITIES.register("saeed_guard",

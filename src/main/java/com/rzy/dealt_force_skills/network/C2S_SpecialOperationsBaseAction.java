@@ -72,6 +72,16 @@ public record C2S_SpecialOperationsBaseAction(Action action, String target, int 
                 case DEPOSIT, WITHDRAW -> { }
                 case EXCHANGE -> success = SpecialOperationsBaseManager.exchange(player, msg.target, msg.amount);
             }
+            if (msg.action == Action.OPEN) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"base.open");
+            if (success) {
+                switch(msg.action) {
+                    case UPGRADE -> com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"base.upgrade."+msg.target);
+                    case SELL -> com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"base.sell");
+                    case REDEEM -> com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"base.redeem");
+                    case DEPOSIT, WITHDRAW -> com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"base.warehouse.transfer");
+                    default -> { }
+                }
+            }
             if (msg.action != Action.OPEN && msg.action != Action.PAGE && msg.action != Action.UPGRADE) {
                 player.displayClientMessage(net.minecraft.network.chat.Component.translatable(success
                         ? "message.dealt_force_skills.transaction.success" : "message.dealt_force_skills.transaction.failed"), true);

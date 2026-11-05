@@ -89,8 +89,8 @@ public class HealingMedicineItem extends DfsUseItem {
             if (remainingDurability > painReliefExtraCost) {
                 stack.hurtAndBreak(painReliefExtraCost, player,
                         player.getUsedItemHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
-                player.addEffect(new MobEffectInstance(ModEffects.PAIN_RELIEF, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.healing_medicine_item.effect.pain_relief.0.duration_ticks", 30 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.healing_medicine_item.effect.pain_relief.0.amplifier", 0),
-                        false, true, true), player);
+                com.rzy.dealt_force_skills.department.DepartmentConsumables.addEffect(player,new MobEffectInstance(ModEffects.PAIN_RELIEF, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.healing_medicine_item.effect.pain_relief.0.duration_ticks", 30 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.healing_medicine_item.effect.pain_relief.0.amplifier", 0),
+                        false, true, true));
             }
         }
         return true;
@@ -110,8 +110,12 @@ public class HealingMedicineItem extends DfsUseItem {
         if (cost <= 0) {
             return false;
         }
+        ItemStack departmentDose = stack.copy();
+        float departmentHealth = player.getHealth();
         stack.hurtAndBreak(cost, player, player.getUsedItemHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
         player.heal((float) (player.getMaxHealth() * healPercent));
+        com.rzy.dealt_force_skills.department.DepartmentConsumption.healed(player, departmentDose, departmentHealth);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().fail(player, "consume");
         incrementMedicineWorkTicks(stack);
         if (feedback) {
             play(level, player, workSound);
@@ -145,4 +149,23 @@ public class HealingMedicineItem extends DfsUseItem {
     private static boolean needsHealing(LivingEntity entity) {
         return entity.getHealth() < entity.getMaxHealth();
     }
+    @Override public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        if (!needsHealing(target) || stack.getDamageValue() >= stack.getMaxDamage()) return false;
+        // One administration completes this item's normal course, bounded by its remaining durability.
+        int damage = stack.getDamageValue();
+        for (int i = 0; i < expectedMedicineWorkTicks(stack) && needsHealing(target) && damage < stack.getMaxDamage(); i++) {
+            target.heal((float) (target.getMaxHealth() * healPercent));
+            damage += Math.min(Math.max(1, durabilityPerSecond), stack.getMaxDamage() - damage);
+        }
+        if (painReliefExtraCost > 0 && stack.getMaxDamage() - damage > painReliefExtraCost
+                && !target.hasEffect(ModEffects.PAIN_RELIEF)) {
+            damage += painReliefExtraCost;
+            target.addEffect(new MobEffectInstance(ModEffects.PAIN_RELIEF,
+                    com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.healing_medicine_item.effect.pain_relief.0.duration_ticks", 600),
+                    com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("items.healing_medicine_item.effect.pain_relief.0.amplifier", 0)), target);
+        }
+        if (damage >= stack.getMaxDamage()) stack.shrink(1); else stack.setDamageValue(damage);
+        return true;
+    }
+    @Override protected void consumeOperativeUse(ItemStack stack) { /* Course already charged above. */ }
 }

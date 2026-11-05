@@ -40,7 +40,7 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
 
-public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider {
+public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, BlockbenchModelPoseProvider, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
     private static final EntityDataAccessor<Integer> DATA_ATTACHED_FACE =
             SynchedEntityData.defineId(ShepherdSonicTrapEntity.class, EntityDataSerializers.INT);
     private static final int READY_SOUND_INTERVAL_TICKS = 40;
@@ -51,11 +51,15 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
     private static volatile double MAX_OWNER_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_OWNER_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.shepherdsonictrapentity.max_owner_distance", 50.0));
     private static final DustParticleOptions SONIC_DUST = new DustParticleOptions(new Vector3f(1.0f, 0.83f, 0.20f), 1.35f);
 
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
+
     private UUID ownerId;
     private Direction attachedFace = Direction.UP;
     private int triggerDelayTicks;
     private boolean removalNotified;
     private int attachedCarrierId = -1;
+    private UUID nativeCarrierUuid;
     private double attachedOffsetX;
     private double attachedOffsetY;
     private double attachedOffsetZ;
@@ -65,9 +69,10 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
         noPhysics = true;
     }
 
-    public ShepherdSonicTrapEntity(EntityType<? extends ShepherdSonicTrapEntity> type, Level level, ServerPlayer owner, Direction attachedFace) {
+    public ShepherdSonicTrapEntity(EntityType<? extends ShepherdSonicTrapEntity> type, Level level, LivingEntity owner, Direction attachedFace) {
         this(type, level);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
         setAttachedFace(attachedFace);
     }
 
@@ -84,6 +89,7 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && com.rzy.dealt_force_skills.ai.operative.OperativeTrapMaintenance.stale(this, allegiance, AUTO_TRIGGER_RADIUS)) { discardAndRelease((ServerLevel)level()); return; }
         if (level().isClientSide) {
             spawnClientIdleParticles();
             return;
@@ -93,8 +99,9 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
             return;
         }
 
+        if (allegiance.active() && tickCount >= nativeLifetime()) { discardAndRelease(serverLevel); return; }
         Entity carrier = attachedCarrier(serverLevel);
-        if (attachedCarrierId >= 0) {
+        if (attachedCarrierId >= 0 || allegiance.active() && nativeCarrierUuid != null) {
             if (carrier == null || !carrier.isAlive()) {
                 discardAndRelease(serverLevel);
                 return;
@@ -103,8 +110,8 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
         }
 
         Entity owner = owner(serverLevel);
-        if (owner == null || !owner.isAlive()
-                || (attachedCarrierId < 0 && owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE)) {
+        if ((!allegiance.active() && (owner == null || !owner.isAlive()))
+                || (owner != null && attachedCarrierId < 0 && owner.distanceToSqr(this) > MAX_OWNER_DISTANCE * MAX_OWNER_DISTANCE)) {
             discardAndRelease(serverLevel);
             return;
         }
@@ -147,9 +154,11 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        tickCount = allegiance.load(tag, nativeLifetime());
+        nativeCarrierUuid = tag.hasUUID("OperativeCarrier") ? tag.getUUID("OperativeCarrier") : null;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         setAttachedFace(Direction.from3DDataValue(tag.getInt("AttachedFace")));
-        triggerDelayTicks = tag.getInt("TriggerDelay");
+        triggerDelayTicks = Math.max(0, Math.min(Math.max(1, AUTO_DETONATION_DELAY_TICKS), tag.getInt("TriggerDelay")));
         attachedCarrierId = tag.contains("AttachedCarrierId") ? tag.getInt("AttachedCarrierId") : -1;
         attachedOffsetX = tag.getDouble("AttachedOffsetX");
         attachedOffsetY = tag.getDouble("AttachedOffsetY");
@@ -158,6 +167,8 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
+        if (nativeCarrierUuid != null) tag.putUUID("OperativeCarrier", nativeCarrierUuid);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -180,10 +191,11 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
 
     public void attachToCarrier(Entity carrier, Vec3 offset) {
         if (carrier == null) {
-            attachedCarrierId = -1;
+            attachedCarrierId = -1; nativeCarrierUuid = null;
             return;
         }
         attachedCarrierId = carrier.getId();
+        if (allegiance.active()) nativeCarrierUuid = carrier.getUUID();
         attachedOffsetX = offset.x;
         attachedOffsetY = offset.y;
         attachedOffsetZ = offset.z;
@@ -191,12 +203,16 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
     }
 
     public boolean isAttachedTo(Entity carrier) {
-        return carrier != null && attachedCarrierId == carrier.getId();
+        return carrier != null && (allegiance.active() ? carrier.getUUID().equals(nativeCarrierUuid) : attachedCarrierId == carrier.getId());
     }
 
     public void triggerManual() {
         if (!(level() instanceof ServerLevel serverLevel)) {
             discard();
+            return;
+        }
+        if (allegiance.active() && tickCount >= nativeLifetime()) {
+            discardAndRelease(serverLevel);
             return;
         }
         explode(serverLevel, MANUAL_DAMAGE_RADIUS);
@@ -208,6 +224,16 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
         } else {
             discard();
         }
+    }
+
+    public static int nativeLifetime() { return 1800; }
+
+    private boolean nativeEnemy(LivingEntity target) {
+        if (!TargetingUtil.isTargetableLiving(target) || allegiance.isAlly(this, target)) return false;
+        Entity owner = level() instanceof ServerLevel level ? owner(level) : null;
+        return owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host
+                ? host.isEnemy(target) && host.withinOrders(target.position())
+                : target instanceof Enemy;
     }
 
     private void armAutoTrigger(ServerLevel level) {
@@ -234,7 +260,7 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
             if (!TargetingUtil.isTargetableLiving(target)) {
                 continue;
             }
-            if (isOwnerOrTeammate(target)) {
+            if (allegiance.active() ? !nativeEnemy(target) : isOwnerOrTeammate(target)) {
                 continue;
             }
             double distance = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D).distanceTo(position());
@@ -254,8 +280,7 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
             RangedSoundHelper.playTrapSoundThrottled(level, target.position(), ModSounds.SHEPHERD_SONIC_SHOCK_HIT.get(),
                     0.58f, 1.0f + (target.getRandom().nextFloat() - 0.5f) * 0.12f, 8, 5.0D);
         }
-        if (ownerPlayer != null
-                && CommanderStateManager.hasBranchUpgrade(ownerPlayer, CommanderBranchUpgrade.SHEPHERD_TRAP_AIRCRAFT)) {
+        if (com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.SHEPHERD_TRAP_AIRCRAFT)) {
             ShepherdDroneEntity.pulseAt(level, position(), owner, 80);
         }
         discardAndRelease(level);
@@ -271,7 +296,7 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
 
     private Optional<LivingEntity> findTriggerTarget(ServerLevel level) {
         AABB box = new AABB(position(), position()).inflate(AUTO_TRIGGER_RADIUS);
-        if (attachedCarrierId >= 0) {
+        if (attachedCarrierId >= 0 && !allegiance.active()) {
             return level.getEntitiesOfClass(ServerPlayer.class, box, this::canCarrierTrigger)
                     .stream()
                     .min(Comparator.comparingDouble(target -> target.distanceToSqr(this)))
@@ -288,6 +313,7 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
     }
 
     private boolean canTrigger(LivingEntity entity) {
+        if (allegiance.active()) return nativeEnemy(entity);
         if (!entity.isAlive() || isOwnerOrTeammate(entity)) {
             return false;
         }
@@ -301,6 +327,7 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
         if (entity == null) {
             return false;
         }
+        if (allegiance.active()) return allegiance.isAlly(this, entity);
         if (isOwnedBy(entity.getUUID())) {
             return true;
         }
@@ -331,6 +358,11 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
     }
 
     private Entity attachedCarrier(ServerLevel level) {
+        if (allegiance.active() && nativeCarrierUuid != null) {
+            Entity carrier = level.getEntity(nativeCarrierUuid);
+            attachedCarrierId = carrier == null ? -2 : carrier.getId();
+            return carrier;
+        }
         return attachedCarrierId < 0 ? null : level.getEntity(attachedCarrierId);
     }
 

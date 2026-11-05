@@ -30,7 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.network.syncher.SynchedEntityData;
 
-public class ShepherdDroneEntity extends Entity implements ItemSupplier {
+public class ShepherdDroneEntity extends Entity implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource {
     private static final int PHASE_ASCEND = 0;
     private static final int PHASE_FORWARD = 1;
     private static final int PHASE_TAP_COUNTDOWN = 2;
@@ -48,6 +48,9 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
     private static volatile double SEEK_STOP_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SEEK_STOP_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.shepherddroneentity.seek_stop_distance", 2.5));
     private static final DustParticleOptions DRONE_DUST = new DustParticleOptions(new Vector3f(1.0f, 0.82f, 0.26f), 1.2f);
 
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operativeAllegiance() { return allegiance; }
+
     private UUID ownerId;
     private boolean patrolMode;
     private int phase = PHASE_ASCEND;
@@ -61,9 +64,10 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
         noPhysics = false;
     }
 
-    public ShepherdDroneEntity(EntityType<? extends ShepherdDroneEntity> type, Level level, ServerPlayer owner, boolean patrolMode) {
+    public ShepherdDroneEntity(EntityType<? extends ShepherdDroneEntity> type, Level level, LivingEntity owner, boolean patrolMode) {
         this(type, level);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
         this.patrolMode = patrolMode;
         Vec3 look = owner.getLookAngle();
         Vec3 horizontal = new Vec3(look.x, 0.0D, look.z);
@@ -95,7 +99,7 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
             return;
         }
         Entity owner = owner(serverLevel);
-        if (owner == null || !owner.isAlive()) {
+        if (allegiance.active() ? tickCount >= nativeLifetime() : owner == null || !owner.isAlive()) {
             discard();
             return;
         }
@@ -112,17 +116,19 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        tickCount = allegiance.load(tag, nativeLifetime());
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         patrolMode = tag.getBoolean("PatrolMode");
         phase = tag.getInt("Phase");
-        phaseTicks = tag.getInt("PhaseTicks");
-        patrolPulses = tag.getInt("PatrolPulses");
+        phaseTicks = Math.max(0, Math.min(nativeLifetime(), tag.getInt("PhaseTicks")));
+        patrolPulses = Math.max(0, Math.min(Math.max(1, PATROL_MAX_PULSES), tag.getInt("PatrolPulses")));
         directionX = tag.getDouble("DirectionX");
         directionZ = tag.getDouble("DirectionZ");
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -138,6 +144,24 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
         return ownerId != null && ownerId.equals(owner);
     }
 
+    public static int nativeLifetime() {
+        return (int) Math.min(10000L, Math.max(1, ASCEND_TICKS) + (long) Math.max(1, FORWARD_TICKS)
+                + Math.max(Math.max(1, TAP_COUNTDOWN_TICKS), (long) Math.max(1, PATROL_COUNTDOWN_TICKS) * Math.max(1, PATROL_MAX_PULSES)) + 2);
+    }
+
+    private boolean nativeEnemy(LivingEntity target) {
+        if (!TargetingUtil.isTargetableLiving(target) || allegiance.isAlly(this, target)) return false;
+        Entity owner = level() instanceof ServerLevel level ? owner(level) : null;
+        return owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host
+                ? host.isEnemy(target) && host.withinOrders(target.position())
+                : target instanceof net.minecraft.world.entity.monster.Enemy;
+    }
+
+    private Optional<LivingEntity> nearestNativeEnemy(ServerLevel level) {
+        return level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(SEEK_RADIUS), this::nativeEnemy)
+                .stream().min(Comparator.comparingDouble(e -> e.distanceToSqr(this)));
+    }
+
     private void tickAscend(ServerLevel level) {
         moveAndSound(level, new Vec3(0.0D, 9.0D / ASCEND_TICKS, 0.0D));
         if (phaseTicks >= ASCEND_TICKS || verticalCollision) {
@@ -146,7 +170,7 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
     }
 
     private void tickForward(ServerLevel level) {
-        Optional<ServerPlayer> target = nearestNonOwnerPlayer(level);
+        Optional<? extends LivingEntity> target = allegiance.active() ? nearestNativeEnemy(level) : nearestNonOwnerPlayer(level);
         Vec3 motion = target.map(player -> horizontalDirectionTo(player).scale(SEEK_SPEED))
                 .orElseGet(() -> new Vec3(directionX * (12.0D / FORWARD_TICKS), 0.0D, directionZ * (12.0D / FORWARD_TICKS)));
         moveAndSound(level, motion);
@@ -203,10 +227,14 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
     }
 
     private void pulse(ServerLevel level, int durationTicks) {
-        pulseAt(level, position(), owner(level), durationTicks);
+        pulseAt(level, position(), owner(level), durationTicks, allegiance.active() ? this : null);
     }
 
     public static void pulseAt(ServerLevel level, Vec3 center, Entity owner, int durationTicks) {
+        pulseAt(level, center, owner, durationTicks, null);
+    }
+
+    private static void pulseAt(ServerLevel level, Vec3 center, Entity owner, int durationTicks, ShepherdDroneEntity nativeSource) {
         RangedSoundHelper.playThrottled(level, center, ModSounds.SHEPHERD_DRONE_STUN.get(),
                 SoundSource.PLAYERS, 0.85f, 1.0f, 20.0D, 10, 5.0D);
         level.sendParticles(ParticleTypes.SONIC_BOOM, center.x, center.y, center.z,
@@ -219,7 +247,7 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
         boolean hitPlayer = false;
         int affectedTargets = 0;
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            if (!TargetingUtil.isHostileLivingFor(owner, target)) {
+            if (nativeSource != null ? !nativeSource.nativeEnemy(target) : !TargetingUtil.isHostileLivingFor(owner, target)) {
                 continue;
             }
             if (pulseOwnerId != null && target.getUUID().equals(pulseOwnerId)) {
@@ -254,7 +282,7 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier {
 
         AABB box = new AABB(position(), position()).inflate(STUN_RADIUS);
         for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, box, ServerPlayer::isAlive)) {
-            if (!TargetingUtil.isHostilePlayerFor(owner, player)
+            if ((allegiance.active() ? !nativeEnemy(player) : !TargetingUtil.isHostilePlayerFor(owner, player))
                     || (ownerId != null && player.getUUID().equals(ownerId))) {
                 continue;
             }

@@ -268,6 +268,7 @@ public final class NikaidouHiroWitchificationStateManager {
         int restored = (int) Math.min(spent, elapsedIntervals);
         int remainingSpent = spent - restored;
         tag.putInt(RESCUE_TRIGGERS, remainingSpent);
+        if (restored > 0) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "witch.rewind.regenerated", restored);
         if (remainingSpent > 0) {
             tag.putLong(REWIND_RECHARGE_AT, rechargeAt + (long) restored * interval);
         } else {
@@ -353,6 +354,7 @@ public final class NikaidouHiroWitchificationStateManager {
             return true;
         }
         tag.putInt(PHASE, PHASE_CORE);
+        tag.putString(com.rzy.dealt_force_skills.department.DepartmentNikaidou.CORE_CAST, java.util.UUID.randomUUID().toString());
         tag.putLong(CORE_START_TICK, now);
         tag.putLong(LAST_DECAY_TICK, now);
         tag.putBoolean(SPAWNED_SKELETON, false);
@@ -413,6 +415,7 @@ public final class NikaidouHiroWitchificationStateManager {
             player.setHealth(Math.max(1.0F, player.getHealth()));
             return 0.0F;
         }
+        if (!tag.getBoolean(FORCE_DEATH) && blocksOrdinaryRemnantDamage(player, source)) return 0.0F;
         if (isCoreLikePhase(phase) && !isWitchSelfDrain(player, source)) {
             return (float) (amount * (1.0D - CORE_DAMAGE_REDUCTION));
         }
@@ -424,12 +427,20 @@ public final class NikaidouHiroWitchificationStateManager {
             return false;
         }
         CompoundTag tag = data(player);
-        return tag.getInt(PHASE) == PHASE_FINAL && !tag.getBoolean(FORCE_DEATH);
+        return !tag.getBoolean(FORCE_DEATH) && (tag.getInt(PHASE) == PHASE_FINAL
+                || blocksOrdinaryRemnantDamage(player, source));
+    }
+
+    private static boolean blocksOrdinaryRemnantDamage(Player player, DamageSource source) {
+        return isRemnantPhase(data(player).getInt(PHASE)) && !isWitchSelfDrain(player, source)
+                && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)
+                && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_RESISTANCE);
     }
 
     public static boolean tryRewindFatalRescue(ServerPlayer player, DamageSource source, float amount) {
-        if (!isNikaidouHiroWitchification(player)
+        if (!Float.isFinite(amount) || !isNikaidouHiroWitchification(player)
                 || data(player).getInt(PHASE) == PHASE_FINAL
+                || blocksOrdinaryRemnantDamage(player, source)
                 || amount < player.getHealth()
                 || isSelfSource(player, source)) {
             return false;
@@ -446,6 +457,10 @@ public final class NikaidouHiroWitchificationStateManager {
         if (anchorLevel == null) {
             return false;
         }
+        double x=tag.getDouble(ANCHOR_X), y=tag.getDouble(ANCHOR_Y), z=tag.getDouble(ANCHOR_Z);
+        float yaw=tag.getFloat(ANCHOR_YAW), pitch=tag.getFloat(ANCHOR_PITCH);
+        if (!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||!Float.isFinite(yaw)||!Float.isFinite(pitch)) return false;
+        long previousRecharge=tag.getLong(REWIND_RECHARGE_AT);
         int trigger = tag.getInt(RESCUE_TRIGGERS) + 1;
         tag.putInt(RESCUE_TRIGGERS, trigger);
         if (tag.getLong(REWIND_RECHARGE_AT) <= 0L) {
@@ -453,9 +468,16 @@ public final class NikaidouHiroWitchificationStateManager {
         }
         tag.putBoolean(ANCHOR_ACTIVE, trigger < REWIND_MAX_TRIGGERS);
         updateTransientModifiers(player);
-        player.teleportTo(anchorLevel, tag.getDouble(ANCHOR_X), tag.getDouble(ANCHOR_Y), tag.getDouble(ANCHOR_Z),
-                tag.getFloat(ANCHOR_YAW), tag.getFloat(ANCHOR_PITCH));
+        player.teleportTo(anchorLevel, x, y, z, yaw, pitch);
+        if (player.level()!=anchorLevel || player.position().distanceToSqr(x,y,z)>1.0E-6D) {
+            tag.putInt(RESCUE_TRIGGERS, trigger-1);
+            tag.putLong(REWIND_RECHARGE_AT, previousRecharge);
+            tag.putBoolean(ANCHOR_ACTIVE, true);
+            updateTransientModifiers(player);
+            return false;
+        }
         player.setHealth(player.getMaxHealth());
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "witch.rewind");
         play(player, rewindRescueSound(trigger), 1.0F, 1.0F);
         player.level().playSound(null, player.blockPosition(), SoundEvents.BELL_BLOCK,
                 SoundSource.PLAYERS, 1.0F, 1.0F);
@@ -476,7 +498,8 @@ public final class NikaidouHiroWitchificationStateManager {
             startRemnantLock(player);
             return true;
         }
-        if (isRemnantPhase(phase) && !isSelfSource(player, source)) {
+        if (isRemnantPhase(phase) && !isSelfSource(player, source)
+                && !blocksOrdinaryRemnantDamage(player, source)) {
             startFinal(player);
             return true;
         }
@@ -749,6 +772,7 @@ public final class NikaidouHiroWitchificationStateManager {
     private static void enterRemnant(ServerPlayer player, long now) {
         CompoundTag tag = data(player);
         tag.putInt(PHASE, PHASE_REMNANT);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "witch.core.remains_or_end");
         tag.putLong(REMNANT_START_TICK, now);
         tag.putLong(LAST_DECAY_TICK, now);
         tag.putLong(LAST_REVEAL_TICK, now - (long) REMNANT_REVEAL_INTERVAL_TICKS);
@@ -764,6 +788,7 @@ public final class NikaidouHiroWitchificationStateManager {
         stopTransitionSounds(player);
         CompoundTag tag = data(player);
         tag.putInt(PHASE, PHASE_FINAL);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "witch.core.remains_or_end");
         tag.putLong(FINAL_UNTIL, now + FINAL_COUNTDOWN_TICKS);
         tag.putLong(CORE_COOLDOWN_UNTIL, 0L);
         setEquippedTool(player, NikaidouHiroTool.RITUAL_SWORD);
@@ -787,11 +812,10 @@ public final class NikaidouHiroWitchificationStateManager {
         updateTransientModifiers(player);
         syncToClient(player);
         DamageSource source = SkillDamageHelper.nikaidouDecay(player.serverLevel(), player, player);
-        SkillDamageHelper.hurtUnscaled(player, source, Float.MAX_VALUE);
-        if (player.isAlive()) {
-            player.setHealth(0.0F);
-            player.die(source);
-        }
+        // Terminal skill death must not pass an overflowing damage value through
+        // armor/effect calculations (Infinity * 0 produces NaN on NeoForge).
+        player.setHealth(0.0F);
+        player.die(source);
         // A different death handler may cancel the forced death. Restore the final
         // countdown so the next server tick retries instead of leaving the player
         // in a non-interactive one-second state with ForceDeath latched forever.
@@ -917,6 +941,7 @@ public final class NikaidouHiroWitchificationStateManager {
         }
         if (!visibleToPlayer.isEmpty()) {
             NetworkHandler.sendToPlayer(new S2C_NTwoRevealEntities(visibleToPlayer), player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "witch.reveal");
         }
     }
 

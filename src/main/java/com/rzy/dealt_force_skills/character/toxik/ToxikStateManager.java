@@ -174,7 +174,8 @@ public final class ToxikStateManager {
 
    public static double behaviorSpeedMultiplier(LivingEntity entity) {
       double multiplier = 1.0;
-      if (entity instanceof Player player && isToxik(player)) {
+      if (entity instanceof Player player && isToxik(player)
+            || com.rzy.dealt_force_skills.ai.operative.NativeToxikEffects.isToxik(entity)) {
          multiplier *= PASSIVE_BEHAVIOR_MULTIPLIER;
       }
 
@@ -227,7 +228,8 @@ public final class ToxikStateManager {
          return true;
       } else {
          data(player).putLong("AdrenalineCooldownUntil", SkillCooldownHelper.until(player, now, ADRENALINE_COOLDOWN_TICKS));
-         double radius = CommanderStateManager.skillRadius(player, ADRENALINE_RADIUS);
+         com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"toxik.adrenaline");
+        double radius = CommanderStateManager.skillRadius(player, ADRENALINE_RADIUS);
          AABB box = player.getBoundingBox().inflate(radius);
 
          for (Player target : player.level()
@@ -258,7 +260,7 @@ public final class ToxikStateManager {
             addEffectWithScalingGuard(
                owner,
                target,
-               new MobEffectInstance(ModEffects.TOXIK_ADRENALINE, Math.max(1, baseTicks * 26), 29, false, true, true)
+               new MobEffectInstance(ModEffects.TOXIK_ADRENALINE, scaleDuration(baseTicks, 26), 29, false, true, true)
             );
             return;
          }
@@ -281,7 +283,11 @@ public final class ToxikStateManager {
 
    public static boolean addToxikScaledEffect(ServerPlayer owner, LivingEntity target, MobEffectInstance baseEffect) {
       MobEffectInstance scaled = scaledEffect(owner, target, baseEffect);
-      return addEffectWithScalingGuard(owner, target, scaled);
+      boolean accepted = addEffectWithScalingGuard(owner, target, scaled);
+        if (accepted && owner != null && isToxik(owner)
+                && (scaled.getDuration()!=baseEffect.getDuration() || scaled.getAmplifier()!=baseEffect.getAmplifier()))
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"toxik.passive");
+        return accepted;
    }
 
    public static MobEffectInstance scaledEffect(
@@ -296,7 +302,7 @@ public final class ToxikStateManager {
    }
 
    private static MobEffectInstance scaledEffect(ServerPlayer owner, LivingEntity target, MobEffectInstance original, boolean positive) {
-      int duration = Math.max(1, original.getDuration());
+      int duration = original.isInfiniteDuration() ? -1 : Math.max(1, original.getDuration());
       int amplifier = Math.max(0, original.getAmplifier());
       if (owner != null && isToxik(owner)) {
          boolean self = target.getUUID().equals(owner.getUUID());
@@ -304,7 +310,7 @@ public final class ToxikStateManager {
             duration = scaleDuration(duration, 20);
             amplifier = scaleAmplifier(amplifier, 20);
          } else if (self) {
-            duration = Math.max(1, duration / 100);
+            duration = duration == -1 ? -1 : Math.max(1, duration / 100);
             amplifier = 0;
          } else if (target instanceof Player) {
             duration = scaleDuration(duration, 5);
@@ -322,6 +328,8 @@ public final class ToxikStateManager {
    }
 
    public static boolean tryRescaleAddedEffect(LivingEntity target, MobEffectInstance added, Entity effectSource) {
+        if (added != null && target.getEffect(added.getEffect()) == added) return false;
+      if (com.rzy.dealt_force_skills.ai.operative.NativeToxikEffects.tryRescale(target, added, effectSource)) return true;
       if (!target.level().isClientSide && added != null && !isScalingMobEffect(target) && !shouldSkipAutoScale(added)) {
          ServerPlayer owner;
          label35: {
@@ -343,9 +351,13 @@ public final class ToxikStateManager {
             return false;
          } else {
             MobEffectInstance scaled = scaledEffect(owner, target, added);
-            return scaled.getDuration() == added.getDuration() && scaled.getAmplifier() == added.getAmplifier()
-               ? false
-               : addEffectWithScalingGuard(owner, target, scaled);
+            if (scaled.getDuration() == added.getDuration() && scaled.getAmplifier() == added.getAmplifier()) return false;
+            // Added fires before vanilla merges this instance, so do not recursively add it.
+            var incoming = (com.rzy.dealt_force_skills.mixin.OperativeEffectAccessor) added;
+            incoming.dealt_force_skills$setDuration(scaled.getDuration());
+            incoming.dealt_force_skills$setAmplifier(scaled.getAmplifier());
+        com.rzy.dealt_force_skills.department.DepartmentEffects.scaled(added,owner);
+            return true;
          }
       } else {
          return false;
@@ -443,7 +455,7 @@ public final class ToxikStateManager {
       }
    }
 
-   private static void spawnFireflySwarm(ServerLevel level, ServerPlayer owner, ToxikFireflyMode mode, Vec3 eye, Vec3 look) {
+   public static void spawnFireflySwarm(ServerLevel level, LivingEntity owner, ToxikFireflyMode mode, Vec3 eye, Vec3 look) {
       Vec3 forward = look.lengthSqr() < 1.0E-4 ? new Vec3(0.0, 0.0, 1.0) : look.normalize();
       Vec3 right = forward.cross(new Vec3(0.0, 1.0, 0.0));
       if (right.lengthSqr() < 1.0E-4) {
@@ -675,6 +687,7 @@ public final class ToxikStateManager {
    }
 
    private static int scaleDuration(int baseDuration, int multiplier) {
+        if (baseDuration == -1) return -1;
       long scaled = (long)Math.max(1, baseDuration) * (long)multiplier;
       return (int)Math.max(1L, Math.min(2147483647L, scaled));
    }

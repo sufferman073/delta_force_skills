@@ -11,7 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_HackclawPathLines implements CustomPacketPayload {
+public class S2C_HackclawPathLines implements CustomPacketPayload, com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     public static final CustomPacketPayload.Type<S2C_HackclawPathLines> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_hackclaw_path_lines"));
 
@@ -45,6 +45,10 @@ public class S2C_HackclawPathLines implements CustomPacketPayload {
                     Math.min(MAX_LINE_TICKS, line.ticks())));
         }
         this.lines = List.copyOf(limited);
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(var line:lines) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,line.targetEntityId(),line.ticks());
     }
 
     public static void encode(S2C_HackclawPathLines msg, FriendlyByteBuf buf) {

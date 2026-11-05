@@ -20,7 +20,21 @@ public class NetworkHandler {
 
     @SubscribeEvent
     public static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(DealtForceSkillsMod.MODID).versioned("64");
+        PayloadRegistrar registrar = event.registrar(DealtForceSkillsMod.MODID).versioned("75");
+        registrar.playToServer(C2S_HomeAction.TYPE, C2S_HomeAction.STREAM_CODEC, C2S_HomeAction::handle);
+        registrar.playToClient(S2C_HomeSnapshot.TYPE, S2C_HomeSnapshot.STREAM_CODEC, S2C_HomeSnapshot::handle);
+        registrar.playToClient(S2C_HomeDimension.TYPE, S2C_HomeDimension.STREAM_CODEC, S2C_HomeDimension::handle);
+        registrar.playToServer(C2S_WildfireAction.TYPE,C2S_WildfireAction.STREAM_CODEC,C2S_WildfireAction::handle);
+        registrar.playToClient(S2C_WildfireState.TYPE,S2C_WildfireState.STREAM_CODEC,NetworkHandler::handleClientPayload);
+        registrar.playToServer(C2S_WorkbenchAction.TYPE,C2S_WorkbenchAction.STREAM_CODEC,C2S_WorkbenchAction::handle);
+        registrar.playToClient(S2C_WorkbenchSnapshot.TYPE,S2C_WorkbenchSnapshot.STREAM_CODEC,S2C_WorkbenchSnapshot::handle);
+        registrar.playToServer(C2S_MailboxAction.TYPE,C2S_MailboxAction.STREAM_CODEC,C2S_MailboxAction::handle);
+        registrar.playToServer(C2S_DepartmentAction.TYPE,C2S_DepartmentAction.STREAM_CODEC,C2S_DepartmentAction::handle);
+        registrar.playToClient(S2C_DepartmentSnapshot.TYPE,S2C_DepartmentSnapshot.STREAM_CODEC,S2C_DepartmentSnapshot::handle);
+        registrar.playToClient(S2C_MailboxSnapshot.TYPE,S2C_MailboxSnapshot.STREAM_CODEC,S2C_MailboxSnapshot::handle);
+        registrar.playToServer(C2S_SelectMaidCharacter.TYPE, C2S_SelectMaidCharacter.STREAM_CODEC, C2S_SelectMaidCharacter::handle);
+        registrar.playToClient(S2C_OpenMaidSelection.TYPE, S2C_OpenMaidSelection.STREAM_CODEC, S2C_OpenMaidSelection::handle);
+        registrar.playToServer(C2S_TacticalInput.TYPE, C2S_TacticalInput.STREAM_CODEC, C2S_TacticalInput::handle);
         registrar.playToServer(C2S_FoxMusicAction.TYPE, C2S_FoxMusicAction.STREAM_CODEC, C2S_FoxMusicAction::handle);
         registrar.playToClient(S2C_FoxMusicSnapshot.TYPE, S2C_FoxMusicSnapshot.STREAM_CODEC, S2C_FoxMusicSnapshot::handle);
         registrar.playToClient(S2C_FoxMusicPlayback.TYPE, S2C_FoxMusicPlayback.STREAM_CODEC, S2C_FoxMusicPlayback::handle);
@@ -197,6 +211,7 @@ public class NetworkHandler {
         registrar.playToClient(S2C_SyncSaeedState.TYPE, S2C_SyncSaeedState.STREAM_CODEC, NetworkHandler::handleClientPayload);
         registrar.playToClient(S2C_SyncGhrothState.TYPE, S2C_SyncGhrothState.STREAM_CODEC, NetworkHandler::handleClientPayload);
         registrar.playToClient(S2C_TempestStartRoll.TYPE, S2C_TempestStartRoll.STREAM_CODEC, NetworkHandler::handleClientPayload);
+        registrar.playToClient(S2C_TacticalMotion.TYPE, S2C_TacticalMotion.STREAM_CODEC, NetworkHandler::handleClientPayload);
         registrar.playToClient(S2C_SyncHelmetVision.TYPE, S2C_SyncHelmetVision.STREAM_CODEC, NetworkHandler::handleClientPayload);
         registrar.playToClient(S2C_SinevaShieldStaminaConsume.TYPE, S2C_SinevaShieldStaminaConsume.STREAM_CODEC, NetworkHandler::handleClientPayload);
         registrar.playToClient(S2C_SyncGluedPositions.TYPE, S2C_SyncGluedPositions.STREAM_CODEC, NetworkHandler::handleClientPayload);
@@ -250,6 +265,7 @@ public class NetworkHandler {
     }
 
     public static void sendToPlayer(CustomPacketPayload payload, ServerPlayer player) {
+        if (payload instanceof com.rzy.dealt_force_skills.department.DepartmentRecon.Packet reveal) reveal.recordDepartmentReveal(player);
         if (!isSkillHudStatePacket(payload)) {
             PacketDistributor.sendToPlayer(player, payload);
             return;

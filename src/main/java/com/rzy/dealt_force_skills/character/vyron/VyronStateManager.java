@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.vyron;
 
+import com.rzy.dealt_force_skills.motion.TacticalMotion;
+import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
+
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
@@ -58,6 +61,8 @@ public final class VyronStateManager {
 
    private VyronStateManager() {
    }
+
+   public static double dashSpeed() { return DASH_SPEED; }
 
    public static boolean isVyron(Player player) {
       Optional<String> selected = CharacterSelectionManager.getSelectedCharacterId(player);
@@ -138,10 +143,14 @@ public final class VyronStateManager {
             Vec3 normalized = horizontal.normalize();
             long now = SkillCooldownHelper.now(player);
             boolean poweredBeforeDash = isPowered(player);
-            tag.putInt("DashTicks", CommanderStateManager.skillDuration(player, DASH_DURATION_TICKS));
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"vyron.thrust");
+        if(tag.getInt("DashTicks")>0) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"vyron.thrust.chained");
+        tag.putInt("DashTicks", CommanderStateManager.skillDuration(player, DASH_DURATION_TICKS));
             tag.putDouble("DashDirX", normalized.x);
             tag.putDouble("DashDirZ", normalized.z);
             tag.putLong("DashCooldownUntil", SkillCooldownHelper.until(player, now, DASH_COOLDOWN_TICKS));
+            TacticalMotionSync.start(player, TacticalMotion.JET, tag.getInt("DashTicks"), normalized,
+                        p -> isVyron(p) && dashTicks(p) > 0);
             grantPowered(player, false);
             if (poweredBeforeDash) {
                DfsAchievements.recordVyronDashWhilePowered(player);
@@ -223,6 +232,7 @@ public final class VyronStateManager {
          int amplifier = CommanderStateManager.skillEffectAmplifier(player,
             DealtForceConfig.intValue("characters.vyron.vyron_state_manager.effect.vyron_powered.0.amplifier", 0));
          data(player).putLong("PoweredUntil", SkillCooldownHelper.now(player) + (long)duration);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"vyron.passive");
          player.addEffect(
             new MobEffectInstance(
                ModEffects.VYRON_POWERED,

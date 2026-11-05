@@ -129,7 +129,7 @@ public final class ShepherdSkills {
                 level, player, placement.get().face());
         Vec3 pos = placement.get().position();
         trap.setPos(pos.x, pos.y, pos.z);
-        level.addFreshEntity(trap);
+        if(level.addFreshEntity(trap)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         RangedSoundHelper.playTrapSoundThrottled(level, pos, ModSounds.SHEPHERD_SONIC_TRAP_DEPLOY.get(), 0.7f, 1.0f, 5, 3.0D);
         if (triggerImmediately) {
             trap.triggerManual();
@@ -171,7 +171,10 @@ public final class ShepherdSkills {
         grenade.setDeltaMovement(look.scale(1.45D).add(0.0D, 0.18D, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        level.addFreshEntity(grenade);
+        if (level.addFreshEntity(grenade)) {
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        }
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.SHEPHERD_FRAG_GRENADE_THROW.get(),
                 SoundSource.PLAYERS, 0.85f, 1.0f, 16.0D, 5, 3.0D);
         ShepherdStateManager.setEquippedTool(player, ShepherdTool.NONE);
@@ -190,7 +193,7 @@ public final class ShepherdSkills {
         Vec3 look = player.getLookAngle().normalize();
         Vec3 start = player.getEyePosition().add(look.scale(0.45D));
         drone.setPos(start.x, start.y + 0.15D, start.z);
-        level.addFreshEntity(drone);
+        if(level.addFreshEntity(drone)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         ShepherdStateManager.setCoreCooldown(player);
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.SHEPHERD_DRONE_TAKEOFF.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f, 16.0D, 5, 3.0D);

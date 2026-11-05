@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.entity;
 
+import com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance;
+import com.rzy.dealt_force_skills.ai.operative.OperativeAreaSource;
+
 import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
 import com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper;
@@ -25,7 +28,9 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.network.syncher.SynchedEntityData;
 
-public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupplier {
+public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupplier, OperativeAreaSource {
+    private final OperativeAllegiance nativeAllegiance = new OperativeAllegiance();
+    @Override public OperativeAllegiance operativeAllegiance() { return nativeAllegiance; }
     private static volatile double FIRE_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FIRE_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.uluruincendiarygrenadeentity.fire_radius", 6.0));
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.uluruincendiarygrenadeentity.bounce_factor", 0.68));
     private boolean earthFire;
@@ -36,8 +41,8 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
     public UluruIncendiaryGrenadeEntity(EntityType<? extends UluruIncendiaryGrenadeEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
-        earthFire = owner instanceof net.minecraft.world.entity.player.Player player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.ULURU_EARTH_FIRE);
+        nativeAllegiance.capture(owner);
+        earthFire = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.ULURU_EARTH_FIRE);
     }
 
     @Override
@@ -52,6 +57,7 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && nativeAllegiance.active() && tickCount > 80) { discard(); return; }
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);
 
@@ -81,11 +87,16 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int nativeAge = nativeAllegiance.load(tag, 80);
+        if (nativeAllegiance.active()) tickCount = nativeAge;
         earthFire = tag.getBoolean("EarthFire");
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        nativeAllegiance.save(tag, tickCount);
         tag.putBoolean("EarthFire", earthFire);
     }
 
@@ -145,7 +156,9 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
         UluruExplosionHelper.destroyQuickCovers(serverLevel, center, radius);
 
         UluruFireFieldEntity field = new UluruFireFieldEntity(ModEntities.ULURU_FIRE_FIELD.get(), serverLevel, owner);
+        field.operativeAllegiance().copyFrom(nativeAllegiance);
         field.setEarthFire(earthFire);
+        field.getPersistentData().putString("DepartmentIncendiaryCast",getUUID().toString());
         field.setPos(center.x, center.y, center.z);
         serverLevel.addFreshEntity(field);
         discard();

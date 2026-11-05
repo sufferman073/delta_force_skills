@@ -107,6 +107,7 @@ public final class CharacterSkillModelVisuals {
         if (entity instanceof Player || entity.isInvisible()) {
             return;
         }
+        if (entity instanceof com.rzy.dealt_force_skills.compat.maid.MaidSkillHost) renderMaidProps(event);
         SkillModelVisual visual = ClientSkillModelVisualState.visual(entity);
         if (visual != SkillModelVisual.UNDEAD_SCHOLAR_FIBERS) {
             return;
@@ -129,6 +130,42 @@ public final class CharacterSkillModelVisuals {
                 poseStack, event.getMultiBufferSource(), event.getPackedLight(),
                 Set.of(), 0xA0FFB8B8);
         poseStack.popPose();
+    }
+
+    /** Model-independent anchors also work with a maid's custom model. Post starts at world feet. */
+    private static void renderMaidProps(RenderLivingEvent.Post<?, ?> event) {
+        LivingEntity maid = event.getEntity();
+        float partial = com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick());
+        PoseStack poses = event.getPoseStack();
+        float bodyYaw = Mth.rotLerp(partial, maid.yBodyRotO, maid.yBodyRot);
+        float scale = Mth.clamp(maid.getBbHeight() / 1.8F, .5F, 1.5F);
+        if (com.rzy.dealt_force_skills.client.character.ClientSinevaRenderState.isSineva(maid)) {
+            poses.pushPose();
+            poses.mulPose(Axis.YP.rotationDegrees(180 - bodyYaw));
+            poses.scale(-scale, -scale, scale);
+            poses.translate(0, -1.501, 0);
+            SinevaPlaceholderVisuals.renderOperativeShield(poses, event.getMultiBufferSource(), event.getPackedLight(),
+                    com.rzy.dealt_force_skills.client.character.ClientSinevaRenderState.isShieldDeployed(maid),
+                    com.rzy.dealt_force_skills.client.character.ClientSinevaRenderState.isViewportBroken(maid),
+                    Mth.wrapDegrees(Mth.rotLerp(partial, maid.yHeadRotO, maid.yHeadRot) - bodyYaw));
+            poses.popPose();
+        }
+        SkillModelVisual visual = ClientSkillModelVisualState.visual(maid);
+        if (visual == SkillModelVisual.UNDEAD_SCHOLAR_FIBERS) return; // Existing adaptive cover below.
+        ModelSpec spec = specFor(visual, maid.getId(), partial);
+        if (spec == null) return;
+        poses.pushPose();
+        poses.mulPose(Axis.YP.rotationDegrees(-bodyYaw));
+        boolean back = spec.placement() == Placement.BACK_GHOST;
+        boolean ring = spec.placement() == Placement.KNIGHT_RING_SHIELDS;
+        boolean head = spec.placement() == Placement.HEAD_TOP;
+        poses.translate(back || ring || head ? 0 : -.32 * scale,
+                maid.getBbHeight() * (head ? 1.08 : .64), back ? -.4 : ring ? 0 : .42);
+        float size = spec.scale() * scale * (ring ? 3.2F : 1);
+        poses.scale(size, size, size);
+        BlockbenchAnimatedModelRenderer.render(spec.model(), spec.animation(), spec.seconds(), poses,
+                event.getMultiBufferSource(), event.getPackedLight(), spec.hiddenGroups(), spec.argb());
+        poses.popPose();
     }
 
     private static ModelSpec specFor(SkillModelVisual visual, Player player, float partialTick) {
@@ -300,6 +337,9 @@ public final class CharacterSkillModelVisuals {
             float scale
     ) {
         float finalScale = scale;
+        if (placement == Placement.HAND && ClientTacticalMotion.frame(event.getEntity(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) != null) {
+            TacticalPlayerPose.modelSpace(event.getEntity(), poseStack, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
+        }
         if (placement == Placement.HAND
                 || placement == Placement.FULL_SCREEN) {
             applyRightHandAnchor(event, poseStack);

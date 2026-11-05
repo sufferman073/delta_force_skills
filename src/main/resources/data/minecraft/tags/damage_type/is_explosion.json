@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "dealt_force_skills:wildfire_grenade",
+    "dealt_force_skills:wildfire_impact"
+  ]
+}

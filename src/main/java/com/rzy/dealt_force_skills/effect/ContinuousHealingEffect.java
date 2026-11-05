@@ -17,7 +17,9 @@ public class ContinuousHealingEffect extends MobEffect {
     @Override
     public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         if (!entity.level().isClientSide && entity.getHealth() > 0.0F) {
+            float questBefore=entity.getHealth();
             entity.heal(entity.getMaxHealth() * 0.02F * (amplifier + 1));
+            com.rzy.dealt_force_skills.department.DepartmentConsumables.healed(entity,Math.max(0,entity.getHealth()-questBefore));
         }
         return true;
     }

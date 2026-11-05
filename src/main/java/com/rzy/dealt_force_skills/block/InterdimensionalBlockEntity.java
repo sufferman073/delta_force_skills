@@ -183,6 +183,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
         }
         foodEnergy -= cost;
         ItemStack output = new ItemStack(item, count);
+        com.rzy.dealt_force_skills.department.DepartmentCrafting.crafted(player,output);
         WorkBlockStorageAccess.giveWithBlockLootBonus(player, level, worldPosition, output);
         markUpdated();
         playUseSound();
@@ -400,6 +401,8 @@ public class InterdimensionalBlockEntity extends BlockEntity {
             outputs.add(new ItemStack(item));
         }
     }
+
+    public static boolean isCraftableFood(Item item) { return foodEnergy(item) > 0.0D; }
 
     private static double foodEnergy(Item item) {
         if (item == null) {

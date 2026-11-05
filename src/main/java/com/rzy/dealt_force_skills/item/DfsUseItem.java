@@ -66,7 +66,10 @@ public abstract class DfsUseItem extends QualityTooltipItem {
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity entity) {
         if (!level.isClientSide && entity instanceof ServerPlayer player) {
-            if (applyUseEffect(stack, level, player)) {
+            var departmentUse = com.rzy.dealt_force_skills.department.DepartmentConsumption.before(player, stack);
+            if (com.rzy.dealt_force_skills.department.DepartmentConsumables.observeUse(player,stack,()->applyUseEffect(stack, level, player))) {
+                com.rzy.dealt_force_skills.department.DepartmentUseSpeed.finished(player,stack);
+                com.rzy.dealt_force_skills.department.DepartmentConsumption.finished(player, departmentUse);
                 if (stack.is(com.rzy.dealt_force_skills.registry.ModItems.OE2_COMBAT_STIMULANT.get())) {
                     com.rzy.dealt_force_skills.stamina.StaminaManager.fill(player);
                 }
@@ -159,5 +162,16 @@ public abstract class DfsUseItem extends QualityTooltipItem {
         int width = 10;
         int filled = Math.min(width, Math.max(0, Math.round(width * (ticks / (float) Math.max(1, required)))));
         return "[" + "#".repeat(filled) + ".".repeat(width - filled) + "]";
+    }
+    public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) { return false; }
+    public final boolean administerToOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        if (stack.isEmpty() || !useOnOperative(stack, target)) return false;
+        consumeOperativeUse(stack);
+        return true;
+    }
+    protected void consumeOperativeUse(ItemStack stack) {
+        if (!stack.isDamageableItem()) stack.shrink(1);
+        else if (stack.getDamageValue() + 1 >= stack.getMaxDamage()) stack.shrink(1);
+        else stack.setDamageValue(stack.getDamageValue() + 1);
     }
 }

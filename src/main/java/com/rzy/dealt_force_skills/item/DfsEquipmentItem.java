@@ -62,6 +62,18 @@ public class DfsEquipmentItem extends ArmorItem {
         return quality;
     }
 
+    // Custom armor remains usable beyond its ordinary broken limit under GTI's overload.
+    // NeoForge's defaults clamp both accessors to maxDamage, unlike Forge 1.20.1.
+    @Override
+    public int getDamage(ItemStack stack) {
+        return Math.max(0,stack.getOrDefault(DataComponents.DAMAGE,0));
+    }
+
+    @Override
+    public void setDamage(ItemStack stack,int damage) {
+        stack.set(DataComponents.DAMAGE,Math.max(0,damage));
+    }
+
     @Override
     public Component getName(ItemStack stack) {
         Component name = Component.translatable(getDescriptionId(stack));

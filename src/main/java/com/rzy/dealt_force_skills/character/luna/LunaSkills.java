@@ -157,7 +157,7 @@ public final class LunaSkills {
         arrow.setYRot((float) (Math.atan2(look.x, look.z) * (180.0D / Math.PI)));
         arrow.setXRot((float) (Math.atan2(look.y, Math.sqrt(look.x * look.x + look.z * look.z))
                 * -(180.0D / Math.PI)));
-        level.addFreshEntity(arrow);
+        if(level.addFreshEntity(arrow)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.LUNA_ARROW_RELEASE.get(),
                 SoundSource.PLAYERS, 0.95f, power > 2.8D ? 1.16f : 1.0f, 18.0D, 4, 3.0D);
     }
@@ -195,7 +195,8 @@ public final class LunaSkills {
         grenade.setDeltaMovement(look.scale(1.55D).add(0.0D, 0.18D, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        level.addFreshEntity(grenade);
+        if (level.addFreshEntity(grenade))
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.LUNA_GRENADE_THROW.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f, 16.0D, 5, 3.0D);
         LunaStateManager.setEquippedTool(player, LunaTool.NONE);
@@ -233,7 +234,7 @@ public final class LunaSkills {
         arrow.setYRot((float) (Math.atan2(look.x, look.z) * (180.0D / Math.PI)));
         arrow.setXRot((float) (Math.atan2(look.y, Math.sqrt(look.x * look.x + look.z * look.z))
                 * -(180.0D / Math.PI)));
-        level.addFreshEntity(arrow);
+        if(level.addFreshEntity(arrow)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.LUNA_ARROW_RELEASE.get(),
                 SoundSource.PLAYERS, 1.0f, 0.95f, 18.0D, 4, 3.0D);
     }

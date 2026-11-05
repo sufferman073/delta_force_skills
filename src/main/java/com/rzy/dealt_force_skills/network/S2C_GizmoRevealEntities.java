@@ -10,7 +10,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class S2C_GizmoRevealEntities implements CustomPacketPayload {
+public class S2C_GizmoRevealEntities implements CustomPacketPayload, com.rzy.dealt_force_skills.department.DepartmentRecon.Packet {
     public static final CustomPacketPayload.Type<S2C_GizmoRevealEntities> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "s2c_gizmo_reveal_entities"));
 
@@ -29,6 +29,10 @@ public class S2C_GizmoRevealEntities implements CustomPacketPayload {
 
     public S2C_GizmoRevealEntities(List<Integer> entityIds) {
         this.entityIds = List.copyOf(entityIds);
+    }
+
+    @Override public void recordDepartmentReveal(net.minecraft.server.level.ServerPlayer viewer) {
+        for(int id:entityIds) com.rzy.dealt_force_skills.department.DepartmentRecon.mark(viewer,id,30);
     }
 
     public static void encode(S2C_GizmoRevealEntities msg, FriendlyByteBuf buf) {

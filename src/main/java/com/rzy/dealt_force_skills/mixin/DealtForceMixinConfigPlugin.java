@@ -18,11 +18,15 @@ public final class DealtForceMixinConfigPlugin implements IMixinConfigPlugin {
     private static final String TACZ_MIXIN_PREFIX = "com.rzy.dealt_force_skills.mixin.tacz.";
 
     private boolean pmmoLoaded;
+    private boolean maidLoaded;
     private boolean taczLoaded;
+    private boolean pointblankLoaded;
 
     @Override
     public void onLoad(String mixinPackage) {
         LoadingModList loadingMods = FMLLoader.getLoadingModList();
+        pointblankLoaded = loadingMods != null && loadingMods.getModFileById("pointblank") != null;
+        maidLoaded = loadingMods != null && loadingMods.getModFileById("touhou_little_maid") != null;
         pmmoLoaded = loadingMods != null && loadingMods.getModFileById(PMMO_MOD_ID) != null;
         taczLoaded = loadingMods != null && loadingMods.getModFileById(TACZ_MOD_ID) != null;
     }
@@ -34,9 +38,11 @@ public final class DealtForceMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.startsWith("com.rzy.dealt_force_skills.mixin.pointblank.")) return pointblankLoaded;
         if (mixinClassName.startsWith(TACZ_MIXIN_PREFIX)) {
             return taczLoaded;
         }
+        if (mixinClassName.contains(".TouhouMaid")) return maidLoaded;
         if (!PMMO_MIXIN.equals(mixinClassName)) {
             return true;
         }

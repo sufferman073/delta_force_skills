@@ -162,7 +162,8 @@ public final class NoxSkills {
         grenade.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        level.addFreshEntity(grenade);
+        if (level.addFreshEntity(grenade))
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         level.playSound(null, player.blockPosition(), ModSounds.NOX_FLASH_PIN.get(),
                 SoundSource.PLAYERS, 0.7f, 1.0f);
         level.playSound(null, player.blockPosition(), ModSounds.NOX_FLASH_THROW.get(),

@@ -15,6 +15,11 @@ import java.util.UUID;
 /** Client-only JEI access. No JEI classes occur in the server catalog or either work block. */
 final class HvkJeiRecipes {
     private static volatile int generation;
+    private static final int RECIPE_LIMIT = 50000;
+    private static final class Scan {
+        int scanned, recipeErrors, lookupErrors;
+        boolean truncated;
+    }
     private HvkJeiRecipes() { }
 
     static void available(IJeiRuntime runtime) {
@@ -25,15 +30,20 @@ final class HvkJeiRecipes {
         client.execute(() -> {
             if (token != generation || client.getSingleplayerServer() != server) return;
             List<HvkJeiRecipeCatalog.Entry> entries = new ArrayList<>();
+            Scan scan = new Scan();
             try (var categories = runtime.getRecipeManager().createRecipeCategoryLookup().includeHidden().get()) {
-                categories.forEach(category -> collect(runtime, category, entries));
+                categories.forEach(category -> collect(runtime, category, entries, scan));
             } catch (RuntimeException | LinkageError ignored) {
-                // JEI is optional; keep usable recipes from categories that completed successfully.
+                scan.lookupErrors++; // Retain usable entries, but report the partial result.
             }
             List<HvkJeiRecipeCatalog.Entry> snapshot = List.copyOf(entries);
-            com.mojang.logging.LogUtils.getLogger().info("HVK collected {} JEI item recipes for the integrated server", snapshot.size());
             server.execute(() -> {
-                if (token == generation) HvkJeiRecipeCatalog.replace(server, snapshot);
+                if (token != generation) return;
+                HvkJeiRecipeCatalog.replace(server, snapshot);
+                com.mojang.logging.LogUtils.getLogger().info(
+                        "HVK JEI item recipe snapshot applied: accepted={} scanned={} skipped={} recipeErrors={} lookupErrors={} truncated={} limit={}",
+                        snapshot.size(), scan.scanned, scan.scanned - snapshot.size() - scan.recipeErrors,
+                        scan.recipeErrors, scan.lookupErrors, scan.truncated, RECIPE_LIMIT);
             });
         });
     }
@@ -45,11 +55,13 @@ final class HvkJeiRecipes {
     }
 
     private static <T> void collect(IJeiRuntime runtime, IRecipeCategory<T> category,
-                                    List<HvkJeiRecipeCatalog.Entry> entries) {
+                                    List<HvkJeiRecipeCatalog.Entry> entries, Scan scan) {
         try (var recipes = runtime.getRecipeManager().createRecipeLookup(category.getRecipeType()).includeHidden().get()) {
             var iterator = recipes.iterator();
-            while (iterator.hasNext() && entries.size() < 50000) {
+            while (iterator.hasNext()) {
+                if (entries.size() >= RECIPE_LIMIT) { scan.truncated = true; break; }
                 T recipe = iterator.next();
+                scan.scanned++;
                 try {
                     var layout = runtime.getRecipeManager().createRecipeLayoutDrawable(category, recipe,
                             runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup());
@@ -84,9 +96,9 @@ final class HvkJeiRecipes {
                     }
                     entries.add(new HvkJeiRecipeCatalog.Entry(id, output, inputs));
                 } catch (RuntimeException | LinkageError ignored) {
-                    // A broken third-party category must not prevent native recipe access.
+                    scan.recipeErrors++; // Count failures without blocking native recipes.
                 }
             }
-        } catch (RuntimeException | LinkageError ignored) { }
+        } catch (RuntimeException | LinkageError ignored) { scan.lookupErrors++; }
     }
 }

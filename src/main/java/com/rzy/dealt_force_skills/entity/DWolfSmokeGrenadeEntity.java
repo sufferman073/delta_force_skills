@@ -26,6 +26,7 @@ public class DWolfSmokeGrenadeEntity extends Projectile implements ItemSupplier 
     private static volatile int MAX_FLIGHT_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_FLIGHT_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.dwolfsmokegrenadeentity.max_flight_ticks", 80));
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.dwolfsmokegrenadeentity.bounce_factor", 0.7));
     private UUID ownerId;
+    private boolean nativeOperative;
     private int smokeLifeTicks = DWolfSmokeCloudEntity.LIFE_TICKS;
 
     public DWolfSmokeGrenadeEntity(EntityType<? extends DWolfSmokeGrenadeEntity> type, Level level) {
@@ -36,6 +37,7 @@ public class DWolfSmokeGrenadeEntity extends Projectile implements ItemSupplier 
         super(type, level);
         setOwner(owner);
         ownerId = owner.getUUID();
+        nativeOperative = owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost;
     }
 
     public void setSmokeLifeTicks(int smokeLifeTicks) {
@@ -54,6 +56,7 @@ public class DWolfSmokeGrenadeEntity extends Projectile implements ItemSupplier 
     @Override
     public void tick() {
         super.tick();
+        if (nativeOperative && !level().isClientSide && tickCount > MAX_FLIGHT_TICKS) { burst(position()); return; }
 
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);
@@ -79,6 +82,9 @@ public class DWolfSmokeGrenadeEntity extends Projectile implements ItemSupplier 
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        nativeOperative = tag.getBoolean("NativeOperative");
+        if (nativeOperative) tickCount = Math.max(0, Math.min(Math.max(1, MAX_FLIGHT_TICKS), tag.getInt("OperativeAge")));
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         smokeLifeTicks = tag.contains("SmokeLifeTicks")
                 ? Math.max(1, tag.getInt("SmokeLifeTicks"))
@@ -87,6 +93,9 @@ public class DWolfSmokeGrenadeEntity extends Projectile implements ItemSupplier 
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putBoolean("NativeOperative", nativeOperative);
+        if (nativeOperative) tag.putInt("OperativeAge", tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -125,6 +134,7 @@ public class DWolfSmokeGrenadeEntity extends Projectile implements ItemSupplier 
 
         DWolfSmokeCloudEntity cloud = new DWolfSmokeCloudEntity(ModEntities.D_WOLF_SMOKE_CLOUD.get(), serverLevel, ownerId);
         cloud.setLifeTicks(smokeLifeTicks);
+        cloud.setOperativeLifetime(nativeOperative);
         cloud.setPos(center.x, center.y, center.z);
         serverLevel.addFreshEntity(cloud);
         discard();

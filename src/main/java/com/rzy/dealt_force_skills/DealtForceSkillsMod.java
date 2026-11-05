@@ -108,7 +108,9 @@ public class DealtForceSkillsMod {
     private void registerEntityAttributes(EntityAttributeCreationEvent event) {
         event.put(ModEntities.ROVER_WOLF.get(), net.minecraft.world.entity.animal.Wolf.createAttributes().build());
         event.put(ModEntities.NOX_DECOY.get(), NoxDecoyEntity.createAttributes().build());
+        event.put(ModEntities.OPERATIVE.get(), com.rzy.dealt_force_skills.entity.OperativeEntity.createAttributes().build());
         event.put(ModEntities.SAEED_GUARD.get(), SaeedGuardEntity.createAttributes().build());
+        event.put(ModEntities.OPERATIVE_SAEED_GUARD.get(), SaeedGuardEntity.createAttributes().build());
         event.put(ModEntities.ASARA_FLAMETHROWER.get(), AsaraTrooperEntity.createAttributes().build());
         event.put(ModEntities.ASARA_MACHINE_GUNNER.get(), AsaraTrooperEntity.createAttributes().build());
         event.put(ModEntities.ASARA_SHIELD_TROOPER.get(), AsaraTrooperEntity.createAttributes().build());

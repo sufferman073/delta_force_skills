@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.stamina;
 
+import com.rzy.dealt_force_skills.motion.TacticalMotion;
+import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
+
 import com.rzy.dealt_force_skills.character.stinger.StingerStateManager;
 import com.rzy.dealt_force_skills.entity.UluruLoiteringMissileEntity;
 import com.rzy.dealt_force_skills.registry.ModEffects;
@@ -65,6 +68,7 @@ public final class StaminaMovement {
                 moving && player.isSwimming() && !exhausted, StaminaSettings.swimCost());
         boolean sprint = boost(player, state, "SprintBoostTicks", eligible && StaminaFeature.SPRINT.enabled(player) && !player.isInWater(),
                 moving && player.isSprinting() && !exhausted, StaminaSettings.sprintCost());
+        TacticalMotionSync.locomotion(player, sprint, swim);
         double multiplier = StaminaManager.actionMultiplier(player);
         modifier(player.getAttribute(Attributes.MOVEMENT_SPEED), SPRINT_ID, sprint ? StaminaSettings.sprintBonus() * multiplier : 0.0D);
         modifier(player.getAttribute(NeoForgeMod.SWIM_SPEED), SWIM_ID, swim ? StaminaSettings.swimBonus() * multiplier : 0.0D);
@@ -109,6 +113,8 @@ public final class StaminaMovement {
         int ticks = Math.max(2, (int) Math.ceil(5.0D / StaminaManager.actionMultiplier(player)));
         state.putInt("VaultTicks", ticks);
         state.putInt("VaultTotal", ticks);
+        TacticalMotionSync.start(player, TacticalMotion.VAULT, ticks, forward,
+                p -> StaminaManager.data(p).getInt("VaultTicks") > 0);
         state.putDouble("VaultStartX", player.getX());
         state.putDouble("VaultStartY", player.getY());
         state.putDouble("VaultStartZ", player.getZ());

@@ -50,5 +50,7 @@ public class DriftwoodItem extends Item {
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.dealt_force_skills.driftwood")
                 .withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("tooltip.dealt_force_skills.driftwood.maid")
+                .withStyle(ChatFormatting.DARK_GRAY));
     }
 }

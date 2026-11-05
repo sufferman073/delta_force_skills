@@ -25,4 +25,8 @@ public class SpecialEquipmentSupplyItem extends DfsUseItem {
         ModItemEffectHelper.refreshSkillCooldowns(player);
         return true;
     }
+    @Override public boolean useOnOperative(ItemStack stack, com.rzy.dealt_force_skills.entity.OperativeEntity target) {
+        target.skills().refresh(target);
+        return true;
+    }
 }

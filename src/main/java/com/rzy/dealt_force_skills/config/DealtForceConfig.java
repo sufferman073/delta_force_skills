@@ -37,6 +37,7 @@ public final class DealtForceConfig {
     private static final List<LiveBinding<?>> LIVE_BINDINGS = new ArrayList<>();
     private static Map<String, Object> runtimeOverrides = Map.of();
     private static final String[] GAMEPLAY_DEFAULT_CLASSES = {
+            "com.rzy.dealt_force_skills.ai.operative.OperativeSettings",
             "com.rzy.dealt_force_skills.block.BladeWireBlockEntity",
             "com.rzy.dealt_force_skills.block.HvkAdvancedStandardTemplateConstructorBlockEntity",
             "com.rzy.dealt_force_skills.block.QuickCoverBlockEntity",
@@ -271,6 +272,8 @@ public final class DealtForceConfig {
         GeneratedGameplayDefaults.populate();
         com.rzy.dealt_force_skills.stamina.StaminaSettings.populate();
         SkillBalance.populate();
+        com.rzy.dealt_force_skills.home.HomeSettings.populate();
+        com.rzy.dealt_force_skills.character.wildfire.WildfireConfig.populateDefaults();
         for (String className : GAMEPLAY_DEFAULT_CLASSES) {
             try {
                 Class.forName(className, true, DealtForceConfig.class.getClassLoader());

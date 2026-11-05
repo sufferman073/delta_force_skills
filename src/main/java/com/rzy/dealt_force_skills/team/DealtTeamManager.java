@@ -108,6 +108,13 @@ public final class DealtTeamManager {
       return false;
    }
 
+    /** Stable persistent-team identity; temporary competition teams never authorize homes. */
+    public static String persistentSquadKey(MinecraftServer server, UUID player) {
+        var data = data(server);
+        var team = teamFor(data, player);
+        return team == null || isMatchTeamName(team.name) || data.activeMatchTeams.contains(team.key) ? "" : team.key;
+    }
+
    public static boolean areTeammatesById(UUID first, UUID second, MinecraftServer server) {
       if (first == null || second == null || first.equals(second) || server == null) {
          return false;
@@ -1543,6 +1550,7 @@ public final class DealtTeamManager {
    }
 
    private static void addMember(DealtTeamManager.TeamData data, MinecraftServer server, DealtTeamManager.TeamRecord team, UUID player) {
+        com.rzy.dealt_force_skills.home.HomeManager.membershipChanged(server, player);
       clearPendingFor(data, player);
       team.members.add(player);
       data.setDirty();
@@ -1563,6 +1571,7 @@ public final class DealtTeamManager {
    }
 
    private static void removeMember(DealtTeamManager.TeamData data, MinecraftServer server, DealtTeamManager.TeamRecord team, UUID player, String message) {
+        com.rzy.dealt_force_skills.home.HomeManager.membershipChanged(server, player);
       team.members.remove(player);
       team.joinRequests.remove(player);
       team.leaveRequests.remove(player);
@@ -1638,6 +1647,7 @@ public final class DealtTeamManager {
    }
 
    private static List<UUID> disbandTeam(DealtTeamManager.TeamData data, MinecraftServer server, DealtTeamManager.TeamRecord team) {
+        for (UUID memberId : team.members) com.rzy.dealt_force_skills.home.HomeManager.membershipChanged(server, memberId);
       List<UUID> list = new ArrayList<>(team.members);
       data.teams.remove(team.key);
       data.teamBornBindings.remove(team.key);

@@ -233,22 +233,26 @@ public final class NTwoStateManager {
     }
 
     public static boolean addCold(LivingEntity owner, LivingEntity target, int amount) {
+        return addNativeCold(owner.getUUID(), owner, target, amount);
+    }
+
+    public static boolean addNativeCold(UUID ownerId, LivingEntity owner, LivingEntity target, int amount) {
         if (target == null || !target.isAlive() || amount <= 0
-                || owner.getUUID().equals(target.getUUID())
+                || ownerId == null || ownerId.equals(target.getUUID())
                 || com.rzy.dealt_force_skills.effect.ShakehandsCombatHandler.blocksExternalSpecial(target, owner)) {
             return false;
         }
         CompoundTag tag = coldData(target);
         int previous = cold(target);
-        boolean quickFrost = owner instanceof ServerPlayer player
-                && CommanderStateManager.hasBranchUpgrade(player, CommanderBranchUpgrade.NTWO_QUICK_FROST);
+        boolean quickFrost = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner, CommanderBranchUpgrade.NTWO_QUICK_FROST);
         int value = quickFrost
                 ? (previous > Integer.MAX_VALUE - amount ? Integer.MAX_VALUE : previous + amount)
                 : (int) Math.min(100L, (long) previous + amount);
         tag.putInt(COLD_VALUE, value);
         tag.putBoolean(QUICK_FROST, quickFrost);
-        tag.putUUID(COLD_OWNER, owner.getUUID());
-        tag.putString(COLD_OWNER_NAME, owner.getName().getString());
+        tag.putUUID(COLD_OWNER, ownerId);
+        tag.putBoolean("NativeSource", owner == null || owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost);
+        tag.putString(COLD_OWNER_NAME, owner == null ? "N-Two" : owner.getName().getString());
         if (value > previous) {
             long now = SkillCooldownHelper.now(target);
             tag.putLong(COLD_LAST_INCREASE_TICK, now);
@@ -394,24 +398,30 @@ public final class NTwoStateManager {
         }
     }
 
+    public static boolean hasNativeCold(LivingEntity target) {
+        return hasCold(target) && coldData(target).getBoolean("NativeSource");
+    }
+
+    /** Added runs before vanilla merges the incoming instance; a nested add would be overwritten. */
+    public static void boostNativeAddedHarmfulEffect(LivingEntity target, MobEffectInstance effect) {
+        if (target.level().isClientSide || effect == null || !hasNativeCold(target)
+                || effect.getEffect().value().getCategory() != MobEffectCategory.HARMFUL
+                || effect.getEffect() == ModEffects.N_TWO_FROZEN) return;
+        ((com.rzy.dealt_force_skills.mixin.OperativeEffectAccessor) effect).dealt_force_skills$setAmplifier(
+                (int) Math.min(Integer.MAX_VALUE, (long) effect.getAmplifier() + 1));
+    }
+
     public static boolean tryBoostAddedHarmfulEffect(LivingEntity target, MobEffectInstance effect, LivingEntity source) {
+        if (hasNativeCold(target)) return false;
         if (target.level().isClientSide || effect == null || !hasCold(target)
                 || effect.getEffect().value().getCategory() != MobEffectCategory.HARMFUL
                 || effect.getEffect() == ModEffects.N_TWO_FROZEN) {
             return false;
         }
-        CompoundTag tag = coldData(target);
-        if (tag.getBoolean(EFFECT_BOOSTING)) {
-            return false;
-        }
-        tag.putBoolean(EFFECT_BOOSTING, true);
-        try {
-            target.addEffect(new MobEffectInstance(effect.getEffect(), effect.getDuration(),
-                    effect.getAmplifier() + 1, false, true, true), source);
-            return true;
-        } finally {
-            tag.remove(EFFECT_BOOSTING);
-        }
+        if (target.getEffect(effect.getEffect()) == effect) return false;
+        ((com.rzy.dealt_force_skills.mixin.OperativeEffectAccessor) effect).dealt_force_skills$setAmplifier(
+                (int) Math.min(Integer.MAX_VALUE, (long) effect.getAmplifier() + 1));
+        return true;
     }
 
     public static void setFreezeStruggleHolding(ServerPlayer player, boolean holding) {

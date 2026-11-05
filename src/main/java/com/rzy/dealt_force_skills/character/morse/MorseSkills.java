@@ -118,7 +118,10 @@ public final class MorseSkills {
         orb.setDeltaMovement(look.scale(1.45D).add(0.0D, 0.18D, 0.0D));
         orb.setYRot(player.getYRot());
         orb.setXRot(player.getXRot());
-        level.addFreshEntity(orb);
+        if (level.addFreshEntity(orb)) {
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        }
         level.playSound(null, player.blockPosition(), ModSounds.MORSE_SHOCK_ORB_THROW.get(),
                 SoundSource.PLAYERS, 0.95f, 1.0f);
         MorseStateManager.setEquippedTool(player, MorseTool.NONE);
@@ -146,7 +149,10 @@ public final class MorseSkills {
         grenade.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        level.addFreshEntity(grenade);
+        if (level.addFreshEntity(grenade)) {
+            com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        }
         level.playSound(null, player.blockPosition(), ModSounds.MORSE_FLASH_THROW.get(),
                 SoundSource.PLAYERS, 0.95f, highThrow ? 0.95f : 1.1f);
         MorseStateManager.setEquippedTool(player, MorseTool.NONE);

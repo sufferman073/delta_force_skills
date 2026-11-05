@@ -21,6 +21,7 @@ import java.util.UUID;
 import net.minecraft.network.syncher.SynchedEntityData;
 
 public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
     private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.stingersmokedroneentity.life_ticks", 200));
     private static volatile int SMOKE_INTERVAL_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SMOKE_INTERVAL_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.stingersmokedroneentity.smoke_interval_ticks", 8));
     private static volatile double SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.stingersmokedroneentity.speed", 0.42));
@@ -28,6 +29,8 @@ public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
     private static volatile double GUIDE_ARRIVAL_DISTANCE_SQR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("GUIDE_ARRIVAL_DISTANCE_SQR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue(
       "summons.stingersmokedroneentity.guide_arrival_distance_sqr", 2.5600000000000005
    ));
+    private Vec3 nativeCover;
+    public void setNativeCover(Vec3 point) { if (allegiance.active()) nativeCover = point; }
     private UUID ownerId;
     private boolean guided;
     private boolean enhanced;
@@ -40,9 +43,10 @@ public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
         noPhysics = true;
     }
 
-    public StingerSmokeDroneEntity(EntityType<? extends StingerSmokeDroneEntity> type, Level level, ServerPlayer owner, boolean guided) {
+    public StingerSmokeDroneEntity(EntityType<? extends StingerSmokeDroneEntity> type, Level level, net.minecraft.world.entity.LivingEntity owner, boolean guided) {
         this(type, level);
         ownerId = owner.getUUID();
+        allegiance.capture(owner);
         this.guided = guided;
         Vec3 look = owner.getLookAngle().normalize();
         directionX = look.x;
@@ -79,11 +83,18 @@ public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
         Vec3 direction = guided && owner instanceof ServerPlayer player
                 ? guidedDirection(player)
                 : storedDirection();
+        if (allegiance.active() && nativeCover != null) {
+            if (position().distanceToSqr(nativeCover) <= 0.5D) { spawnSmoke(serverLevel); discard(); return; }
+            direction = nativeCover.subtract(position()).normalize();
+        }
         rememberDirection(direction);
         Vec3 motion = direction.scale(SPEED);
+        if (allegiance.active() && owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host
+                && !host.withinOrders(position().add(motion))) { discard(); return; }
         setDeltaMovement(motion);
         move(MoverType.SELF, motion);
-        if (tickCount % SMOKE_INTERVAL_TICKS == 1) {
+        int interval = allegiance.active() ? Math.max(1, SMOKE_INTERVAL_TICKS) : SMOKE_INTERVAL_TICKS;
+        if (allegiance.active() ? tickCount % interval == 1 % interval : tickCount % interval == 1) {
             spawnSmoke(serverLevel);
         }
         if (tickCount % 20 == 1) {
@@ -94,7 +105,10 @@ public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        int age = allegiance.load(tag, LIFE_TICKS);
+        if (allegiance.active()) tickCount = age;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        nativeCover = tag.contains("CoverX") ? new Vec3(tag.getDouble("CoverX"), tag.getDouble("CoverY"), tag.getDouble("CoverZ")) : null;
         guided = tag.getBoolean("Guided");
         enhanced = tag.getBoolean("Enhanced");
         directionX = tag.getDouble("DirectionX");
@@ -104,9 +118,11 @@ public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
+        if (nativeCover != null) { tag.putDouble("CoverX", nativeCover.x); tag.putDouble("CoverY", nativeCover.y); tag.putDouble("CoverZ", nativeCover.z); }
         tag.putBoolean("Guided", guided);
         tag.putBoolean("Enhanced", enhanced);
         tag.putDouble("DirectionX", directionX);
@@ -170,6 +186,7 @@ public class StingerSmokeDroneEntity extends Entity implements ItemSupplier {
                 true
         );
         cloud.setDroneSource(getUUID());
+        cloud.setOperativeSource(allegiance);
         cloud.setEnhanced(enhanced);
         cloud.setPos(getX(), getY(), getZ());
         level.addFreshEntity(cloud);

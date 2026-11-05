@@ -13,9 +13,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.gen.Invoker;
 
 /**
  * Client-side climbing boost for blocks glued by the HVK Universal Glue item. Registered client-only
@@ -39,19 +38,11 @@ public abstract class HvkClimbableMixin {
         }
     }
 
-    @Invoker(value = "handleOnClimbable", remap = false)
-    abstract Vec3 dealt_force_skills$invokeHandleOnClimbable(Vec3 vec3);
-
-    @Redirect(method = "handleRelativeFrictionAndCalculateMovement",
+    @ModifyExpressionValue(method = "handleRelativeFrictionAndCalculateMovement",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/LivingEntity;handleOnClimbable(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"),
-            remap = false)
-    private Vec3 dealt_force_skills$rescaleClimbShimmy(LivingEntity self, Vec3 deltaMovement) {
-        // handleOnClimbable is private on LivingEntity, so it can't be called directly on `self` from
-        // this mixin's source (private access doesn't cross class files, regardless of how Mixin later
-        // merges the bytecode) - go through an @Invoker accessor instead, called on `this` since the
-        // generated invoker method only exists on the mixin's own class body.
-        Vec3 result = this.dealt_force_skills$invokeHandleOnClimbable(deltaMovement);
+                    target = "Lnet/minecraft/world/entity/LivingEntity;handleOnClimbable(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"), remap = false)
+    private Vec3 dealt_force_skills$rescaleClimbShimmy(Vec3 result) {
+        LivingEntity self = (LivingEntity) (Object) this;
         if (!dealt_force_skills$isNearGluedPosition(self)) {
             return result;
         }

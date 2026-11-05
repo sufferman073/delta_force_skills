@@ -30,15 +30,9 @@ public class StartGameScreen {
 
     // 按钮贴图路径
     private static final ResourceLocation BTN_BUTTON     = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/button.png"); // 128x48
-    private static final ResourceLocation BTN_CHAT       = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/chat.png"); // 64x64
-    private static final ResourceLocation BTN_COLLECTION = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/collection.png"); // 64x64
-    private static final ResourceLocation BTN_SHOP       = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/shop.png"); // 64x64
-    private static final ResourceLocation BTN_MARKET     = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/market.png"); // 64x64
-    private static final ResourceLocation BTN_PASS       = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/pass.png"); // 64x64
-    private static final ResourceLocation BTN_EVENT      = ResourceLocation.fromNamespaceAndPath("deltaforce", "textures/gui/start_game/event.png"); // 64x64
 
     private static final ResourceLocation[] BTN_TEXTURES = {
-        BTN_BUTTON, BTN_CHAT, BTN_COLLECTION, BTN_SHOP, BTN_MARKET, BTN_PASS, BTN_EVENT
+        BTN_BUTTON
     };
 
     // === 右侧新增按钮贴图 ===
@@ -60,7 +54,7 @@ public class StartGameScreen {
     };
     private static final int NEW_BTN_COUNT = 6;
 
-    private static final int BTN_COUNT = 7;
+    private static final int BTN_COUNT = 1;
     private static final int BAR_HEIGHT = 20;
     private static final int FIRST_X_RATIO = 3;     // 首个按钮距左边缘 = 屏幕宽度 * 3 / 100
     private static final int[] GAP_PATTERN = {7, 6, 6};
@@ -821,7 +815,11 @@ public class StartGameScreen {
         // 2. mail（常显，往左）- 无实际功能
         int mailX = settingsX - TOP_RIGHT_GAP - TOP_RIGHT_ICON_SIZE;
         guiGraphics.blit(ICON_MAIL, mailX, y, 0, 0, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE);
-        renderWipOverlay(guiGraphics, mailX, y, TOP_RIGHT_ICON_SIZE, TOP_RIGHT_ICON_SIZE, mouseX, mouseY);
+        int mailCount=com.rzy.dealt_force_skills.client.ClientMailboxState.total();
+        if(mailCount>0) {
+            guiGraphics.fill(mailX+TOP_RIGHT_ICON_SIZE-9,y-3,mailX+TOP_RIGHT_ICON_SIZE+5,y+8,0xFFD74C45);
+            guiGraphics.drawString(font,mailCount>99?"99+":Integer.toString(mailCount),mailX+TOP_RIGHT_ICON_SIZE-8,y-2,0xFFFFFFFF,false);
+        }
 
         // 当前已绘制区域的最左位置
         int cursorX = mailX;
@@ -1109,7 +1107,7 @@ public class StartGameScreen {
             hovered = -3;
         }
         // no_target 玩法面板无实际功能，绘制红叉遮罩
-        renderWipOverlay(guiGraphics, noX, noY, NO_TARGET_W, NO_TARGET_H, mouseX, mouseY);
+        guiGraphics.drawCenteredString(Minecraft.getInstance().font, Component.translatable("home.dealt_force_skills.select_map"), noX + NO_TARGET_W / 2, noY + NO_TARGET_H / 2 - 4, 0xFFE5E9EC);
 
         return hovered;
     }

@@ -175,6 +175,7 @@ public final class CommanderSupportManager {
         announceSupportApplied(player, support);
         CommanderStateManager.syncToClient(player);
         persist(player.server);
+        com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"commander.support");
         return true;
     }
 

@@ -1,6 +1,7 @@
 package com.rzy.dealt_force_skills.advancement;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.department.DepartmentTasks;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.SkillSlot;
@@ -220,6 +221,7 @@ public final class DfsAchievements {
     }
 
     public static void onRescue(ServerPlayer rescuer, ServerPlayer target, boolean self, String source) {
+        if("stinger".equals(source)||"vlinder".equals(source)||"rover".equals(source)) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(rescuer,"support.revive");
         if (rescuer == null || source == null) {
             return;
         }
@@ -341,6 +343,7 @@ public final class DfsAchievements {
     }
 
     public static void recordNTwoFreeze(ServerPlayer owner, LivingEntity target, int freezeTicks) {
+        if(owner!=null&&target!=null) com.rzy.dealt_force_skills.department.DepartmentCombat.frozen(owner,target,freezeTicks);
         if (owner == null || target == null || !isSelected(owner, ModCharacters.N_TWO_ID)) {
             return;
         }
@@ -361,6 +364,7 @@ public final class DfsAchievements {
     }
 
     public static void recordNTwoCondensedFreeze(ServerPlayer owner, String sourceId, UUID targetId) {
+        if(owner!=null&&targetId!=null) DepartmentTasks.scoped(owner,"n_two.grenade.cast_frozen",1,sourceId,targetId.toString(),24000);
         if (owner == null || sourceId == null || sourceId.isBlank() || targetId == null
                 || !isSelected(owner, ModCharacters.N_TWO_ID)) {
             return;
@@ -372,6 +376,7 @@ public final class DfsAchievements {
     }
 
     public static void recordNTwoDewarFreeze(ServerPlayer owner, String sourceId) {
+        DepartmentTasks.signal(owner,"n_two.dewar.freeze");
         if (owner == null || sourceId == null || sourceId.isBlank() || !isSelected(owner, ModCharacters.N_TWO_ID)) {
             return;
         }
@@ -488,6 +493,7 @@ public final class DfsAchievements {
     }
 
     public static void recordTempestRecallSuccess(ServerPlayer player, double pathLength) {
+        DepartmentTasks.signal(player,"tempest.recall.triggered");
         if (player != null && isSelected(player, ModCharacters.TEMPEST_ID) && pathLength >= 250.0D) {
             award(player, green(8));
         }
@@ -546,12 +552,14 @@ public final class DfsAchievements {
     }
 
     public static void recordGizmoTBoyWeb(ServerPlayer player, int webbedTargets) {
+        if(webbedTargets>0) DepartmentTasks.signal(player,"gizmo.tbot.affected");
         if (player != null && isSelected(player, ModCharacters.GIZMO_ID) && webbedTargets >= 2) {
             award(player, green(14));
         }
     }
 
     public static void recordGizmoSpiderNestHits(ServerPlayer player, List<UUID> targets) {
+        if(targets!=null&&!targets.isEmpty()) DepartmentTasks.signal(player,"gizmo.spider.affected");
         if (player == null || targets == null || !isSelected(player, ModCharacters.GIZMO_ID)) {
             return;
         }
@@ -571,6 +579,7 @@ public final class DfsAchievements {
     }
 
     public static void recordShepherdSonicTrapHit(ServerPlayer player, LivingEntity target, boolean warned) {
+        if(target!=null) DepartmentTasks.signal(player,"shepherd.sonic.affected");
         if (player != null && target != null && isSelected(player, ModCharacters.SHEPHERD_ID) && warned) {
             award(player, green(15));
         }
@@ -584,6 +593,7 @@ public final class DfsAchievements {
 
     public static void recordShepherdFragArmorBreak(ServerPlayer player, LivingEntity target, boolean bounced,
                                                     int armorPiecesBroken, boolean sonicShocked, boolean killed) {
+        if(armorPiecesBroken>0) DepartmentTasks.signal(player,"shepherd.grenade.armor_broken",armorPiecesBroken);
         if (player == null || target == null || !isSelected(player, ModCharacters.SHEPHERD_ID)) {
             return;
         }
@@ -602,6 +612,7 @@ public final class DfsAchievements {
     }
 
     public static void recordToxikFireflyHit(ServerPlayer player, LivingEntity target, boolean lethalMode) {
+        if(target!=null) DepartmentTasks.signal(player,"toxik.firefly.applied");
         if (player == null || target == null || !isSelected(player, ModCharacters.TOXIK_ID)) {
             return;
         }
@@ -673,6 +684,7 @@ public final class DfsAchievements {
     }
 
     public static void recordVlinderHealing(ServerPlayer player, float amount) {
+        DepartmentTasks.signal(player,"vlinder.healing",amount); DepartmentTasks.signal(player,"skill.healing",amount);
         if (player == null || !isSelected(player, ModCharacters.VLINDER_ID) || amount <= 0.0F) {
             return;
         }
@@ -711,6 +723,7 @@ public final class DfsAchievements {
     }
 
     public static void recordLunaCompositeArmorBreak(ServerPlayer player, LivingEntity target, int armorPiecesBroken) {
+        if(armorPiecesBroken>0) DepartmentTasks.signal(player,"luna.grenade.armor_broken",armorPiecesBroken);
         if (player == null || target == null || !isSelected(player, ModCharacters.LUNA_ID) || armorPiecesBroken <= 0) {
             return;
         }
@@ -754,6 +767,7 @@ public final class DfsAchievements {
     }
 
     public static void recordMorseSonarActionReveal(ServerPlayer player, ServerPlayer target) {
+        DepartmentTasks.signal(player,"morse.sonar.detect");
         if (player == null || target == null || !isSelected(player, ModCharacters.MORSE_ID)) {
             return;
         }
@@ -825,6 +839,7 @@ public final class DfsAchievements {
     }
 
     public static void recordDepartmentCalibration(ServerPlayer player, LivingEntity target, int stacks) {
+        if(target!=null) DepartmentTasks.signal(player,"transport.calibration.level",stacks);
         if (player != null && target instanceof ServerPlayer && isSelected(player, ModCharacters.DEPARTMENT_OF_TRANSPORTATION_ID)
                 && stacks >= 5) {
             award(player, green(37));
@@ -1793,6 +1808,13 @@ public final class DfsAchievements {
             return group + "/0" + number;
         }
         return group + "/" + number;
+    }
+
+    /** Count completed real entries; category/root/recipe advancements never count. */
+    public static int completedForDepartment(ServerPlayer player,boolean challenge) {
+        int total=0;
+        for(int i=1;i<=(challenge?56:55);i++)if(isDone(player,challenge?purple(i):green(i)))total++;
+        return total;
     }
 
     private static List<String> buildNormalAdvancements() {

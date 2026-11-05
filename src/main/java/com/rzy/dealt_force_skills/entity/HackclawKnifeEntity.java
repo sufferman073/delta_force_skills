@@ -29,7 +29,9 @@ import net.minecraft.world.phys.Vec3;
 import java.util.UUID;
 import net.minecraft.network.syncher.SynchedEntityData;
 
-public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
+public class HackclawKnifeEntity extends Projectile implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
     private static volatile float HIT_DAMAGE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("HIT_DAMAGE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.hackclawknifeentity.hit_damage", 50.0F));
     private static volatile int MAX_FLIGHT_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("MAX_FLIGHT_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.hackclawknifeentity.max_flight_ticks", 120));
     private UUID ownerId;
@@ -41,6 +43,7 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
     public HackclawKnifeEntity(EntityType<? extends HackclawKnifeEntity> type, Level level, LivingEntity owner) {
         super(type, level);
         setOwner(owner);
+        allegiance.capture(owner);
         ownerId = owner.getUUID();
     }
 
@@ -56,6 +59,7 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && allegiance.active() && tickCount >= MAX_FLIGHT_TICKS) { discard(); return; }
 
         Vec3 motion = getDeltaMovement();
         Vec3 start = position();
@@ -90,16 +94,22 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected boolean canHitEntity(Entity target) {
-        return super.canHitEntity(target) && target != getOwner() && target instanceof LivingEntity;
+        return super.canHitEntity(target) && target != getOwner() && target instanceof LivingEntity
+                && (!allegiance.active() || !allegiance.isAlly(this, target));
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        int nativeAge = allegiance.load(tag, MAX_FLIGHT_TICKS);
+        if (allegiance.active()) tickCount = nativeAge;
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
@@ -115,7 +125,9 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
         if (hit.getEntity() instanceof LivingEntity target) {
             Vec3 before = target.getDeltaMovement();
             target.invulnerableTime = 0;
+            boolean wasAlive = target.isAlive();
             SkillDamageHelper.hurt(target, damageSource(level, owner), owner, HIT_DAMAGE);
+            if (wasAlive && !target.isAlive()) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"hackclaw.knife.kill");
             target.setDeltaMovement(before);
             target.hurtMarked = true;
         }
@@ -140,6 +152,7 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
                 SoundSource.PLAYERS, 1.0f, 1.0f, 24.0D, 4, 3.0D);
         HackclawInterferenceFieldEntity field = new HackclawInterferenceFieldEntity(
                 ModEntities.HACKCLAW_INTERFERENCE_FIELD.get(), level, ownerId, attachedFace);
+        field.setOperativeAllegiance(allegiance);
         field.setPos(center.x, center.y, center.z);
         level.addFreshEntity(field);
         discard();
@@ -149,6 +162,7 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier {
         if (owner instanceof Player player) {
             return player.damageSources().playerAttack(player);
         }
+        if (allegiance.active() && owner != null) return level.damageSources().mobProjectile(this, owner);
         return level.damageSources().generic();
     }
 

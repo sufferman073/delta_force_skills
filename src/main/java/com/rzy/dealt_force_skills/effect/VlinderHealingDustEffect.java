@@ -34,6 +34,7 @@ public class VlinderHealingDustEffect extends MobEffect {
             ServerPlayer owner = VlinderStateManager.healingDustOwner(entity);
             if (owner != null && healed > 0.0F) {
                 DfsAchievements.recordVlinderHealing(owner, healed);
+                if(owner==entity) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"vlinder.dust.self_heal");
             }
         }
         return true;

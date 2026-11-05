@@ -18,7 +18,9 @@ public final class CommanderSkills {
             return false;
         }
         boolean inheritedAlternate = slot == SkillSlot.CORE ? false : alternate;
-        return SkillDispatcher.useInheritedSkill(player, source.get(), slot, inheritedAlternate);
+        return com.rzy.dealt_force_skills.department.DepartmentTasks.observeActivation(player,
+                slot==SkillSlot.CORE?(alternate?"commander.core2":"commander.core1"):"",
+                ()->SkillDispatcher.useInheritedSkill(player, source.get(), slot, inheritedAlternate));
     }
 
     public static boolean useSelectedSkill(ServerPlayer player, CommanderSkillChoice choice,
@@ -34,8 +36,9 @@ public final class CommanderSkills {
                     "message.dealt_force_skills.commander.skill_not_selected"), true);
             return false;
         }
-        boolean handled = SkillDispatcher.useInheritedSkill(
-                player, source.get(), choice.skillSlot(), inheritedAlternate);
+        boolean handled = com.rzy.dealt_force_skills.department.DepartmentTasks.observeActivation(player,
+                choice==CommanderSkillChoice.CORE_1?"commander.core1":choice==CommanderSkillChoice.CORE_2?"commander.core2":"",
+                ()->SkillDispatcher.useInheritedSkill(player, source.get(), choice.skillSlot(), inheritedAlternate));
         CommanderStateManager.syncToClient(player);
         return handled;
     }

@@ -69,14 +69,24 @@ public final class SinevaSkills {
     }
 
     public static void deployBladeWire(ServerLevel level, BlockPos center, ServerPlayer owner) {
+        deployBladeWire(level, center, owner, null);
+    }
+
+    /** The native branch retains allegiance even when its projectile owner is unloaded. */
+    public static void deployBladeWire(ServerLevel level, BlockPos center, LivingEntity owner,
+            com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance) {
+        boolean nativeSource = allegiance != null && allegiance.active();
         BlockPos corePos = findGroundPlacement(level, center);
         if (corePos == null) {
             return;
         }
 
+        if (nativeSource && owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host
+                && !host.withinOrders(Vec3.atCenterOf(corePos))) return;
         level.setBlock(corePos, ModBlocks.BLADE_WIRE_CORE.get().defaultBlockState(), 3);
         if (level.getBlockEntity(corePos) instanceof com.rzy.dealt_force_skills.block.BladeWireBlockEntity core) {
-            core.configureCore(owner.getUUID());
+            core.configureCore(nativeSource ? allegiance.caster() : owner.getUUID());
+            if (nativeSource) core.configureOperative(allegiance);
         }
 
         int placedWires = 0;
@@ -90,9 +100,12 @@ public final class SinevaSkills {
                     continue;
                 }
 
+                if (nativeSource && owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host
+                        && !host.withinOrders(Vec3.atCenterOf(wirePos))) continue;
                 level.setBlock(wirePos, ModBlocks.BLADE_WIRE.get().defaultBlockState(), 3);
                 if (level.getBlockEntity(wirePos) instanceof com.rzy.dealt_force_skills.block.BladeWireBlockEntity wire) {
-                    wire.configureWire(owner.getUUID(), corePos);
+                    wire.configureWire(nativeSource ? allegiance.caster() : owner.getUUID(), corePos);
+                    if (nativeSource) wire.configureOperative(allegiance);
                     placedWires++;
                 }
             }
@@ -103,7 +116,16 @@ public final class SinevaSkills {
         }
 
         level.playSound(null, corePos, ModSounds.SINEVA_BARBED_WIRE_LAND.get(), SoundSource.BLOCKS, 1.0f, 1.0f);
-        damageBladeWireBurst(level, corePos, owner);
+        if (nativeSource) {
+            Vec3 origin = Vec3.atCenterOf(corePos);
+            for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, new AABB(corePos).inflate(4),
+                    e -> e.isAlive() && e.distanceToSqr(origin) <= 16 && !allegiance.isAlly(level, e))) {
+                SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(level, null, owner), owner,
+                        com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.sineva.sineva_skills.skill_hurt.2.damage", 12.0f));
+                if (target instanceof ServerPlayer player) InjuryManager.applyBladeWireBurst(player);
+            }
+            com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper.destroyQuickCovers(level, Vec3.atCenterOf(corePos), 5.0, allegiance);
+        } else damageBladeWireBurst(level, corePos, (ServerPlayer) owner);
     }
 
     public static boolean tryShieldBash(ServerPlayer player) {
@@ -168,6 +190,8 @@ public final class SinevaSkills {
                 != StaminaManager.ConsumeResult.SUCCESS) return false;
         SinevaStateManager.setChargeCooldown(player, CHARGE_COOLDOWN_TICKS);
         CHARGING_PLAYERS.put(player.getUUID(), new ChargeData(horizontal.normalize(), 14));
+        com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"sineva.shield.cancel_gun_kill",false);
+        if (!player.onGround()) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"sineva.shield.air_dash");
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.SINEVA_SHIELD_BASH_CHARGE.get(),
                 SoundSource.PLAYERS, 1.0f, 0.8f, 32.0D);
         return true;
@@ -274,6 +298,8 @@ public final class SinevaSkills {
         }
 
         projectile.setOwner(player);
+        projectile.getPersistentData().putUUID("DepartmentReflectOwner",player.getUUID());
+        projectile.getPersistentData().putBoolean("DepartmentReflectCounted",false);
         projectile.setDeltaMovement(reflectedMotion);
         alignProjectileRotation(projectile, reflectedMotion);
         projectile.hasImpulse = true;
@@ -405,7 +431,8 @@ public final class SinevaSkills {
         hook.setPos(start.x, start.y, start.z);
         hook.setDeltaMovement(look.scale(2.2));
         alignGrappleRotation(hook, look, player);
-        level.addFreshEntity(hook);
+        if (target != null) hook.getPersistentData().putUUID("DepartmentLockedTarget",target.getUUID());
+        if (level.addFreshEntity(hook)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
     }
 
     private static void alignGrappleRotation(GrappleHookEntity hook, Vec3 direction, ServerPlayer player) {
@@ -436,6 +463,8 @@ public final class SinevaSkills {
                     return true;
                 }
                 boolean deployed = !SinevaStateManager.isShieldDeployed(player);
+                if (deployed) com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"sineva.shield.cancel_gun_kill",false);
+                else if (CHARGING_PLAYERS.containsKey(player.getUUID())) com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"sineva.shield.cancel_gun_kill",true);
                 SinevaStateManager.setShieldDeployed(player, deployed);
                 RangedSoundHelper.playFollowingPlayer(player, ModSounds.SINEVA_SHIELD_TOGGLE.get(),
                         SoundSource.PLAYERS, 0.85f, deployed ? 1.08f : 0.82f, 32.0D);
@@ -470,7 +499,9 @@ public final class SinevaSkills {
         AABB box = new AABB(corePos).inflate(4.0);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box,
                 entity -> entity != owner && entity.isAlive() && entity.distanceToSqr(center) <= 16.0)) {
+            float questBefore = target.getHealth()+target.getAbsorptionAmount();
             SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(level, null, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.sineva.sineva_skills.skill_hurt.2.damage", 12.0f));
+            com.rzy.dealt_force_skills.department.DepartmentCombat.wireDamage(level,corePos,owner,Math.max(0,questBefore-target.getHealth()-target.getAbsorptionAmount()));
             if (target instanceof ServerPlayer player) {
                 InjuryManager.applyBladeWireBurst(player);
             }

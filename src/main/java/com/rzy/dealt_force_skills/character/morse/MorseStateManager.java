@@ -156,6 +156,7 @@ public final class MorseStateManager {
     }
 
     public static void onPlayerSound(ServerPlayer source, Vec3 position) {
+        nativePlayerSound(source, position);
         if (!(source.level() instanceof ServerLevel level)) {
             return;
         }
@@ -517,5 +518,17 @@ public final class MorseStateManager {
     }
 
     private record DeployTarget(Vec3 position) {
+    }
+
+    public static int nativeSoundTicks() { return Math.max(1, SOUND_MARK_TICKS); }
+    public static int nativeSoundCooldown() { return Math.max(1, SOUND_MARK_COOLDOWN_TICKS); }
+    private static void nativePlayerSound(ServerPlayer source, Vec3 position) {
+        if (!(source.level() instanceof ServerLevel level)) return;
+        double range = Math.max(0, SOUND_MARK_RANGE);
+        for (var bot : level.getEntitiesOfClass(com.rzy.dealt_force_skills.entity.OperativeEntity.class,
+                new net.minecraft.world.phys.AABB(position, position).inflate(range))) {
+            if (bot.distanceToSqr(position) <= range * range && com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(bot.skills(), com.rzy.dealt_force_skills.ai.operative.NativeMorseSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeMorseSkills skills)
+                skills.hear(bot, source, noisySoundPosition(level, position));
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿{
+{
   "tab.deltaforce": "三角洲行动",
   "mod.deltaforce": "三角洲行动",
   "mod.dealt_force_skills": "三角洲技艺",
@@ -2130,5 +2130,14 @@
   "config.dealt_force_skills.zone_marker_render": "区域标记渲染",
 
 
-  "deltaforce.wip.making": "制作中"
+  "deltaforce.wip.making": "制作中",
+  "screen.deltaforce.settings.ui_scale": "界面放大倍数",
+  "screen.deltaforce.settings.scale_auto_applied": "已恢复自动界面缩放，重新打开界面后生效。",
+  "screen.deltaforce.settings.scale_applied": "界面缩放已设为 %s，重新打开界面后生效。",
+  "screen.deltaforce.layout.edit": "布局编辑",
+  "screen.deltaforce.layout.reset": "重置",
+  "screen.deltaforce.layout.apply": "应用",
+  "screen.deltaforce.layout.scale": "缩放：%s%%",
+  "screen.deltaforce.layout.position": "偏移：X %s / Y %s",
+  "screen.deltaforce.layout.hint": "拖动空白区域调整位置；应用后返回设置保存。"
 }

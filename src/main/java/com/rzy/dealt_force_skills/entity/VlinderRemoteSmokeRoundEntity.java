@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.projectile.ItemSupplier;
@@ -21,12 +22,18 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.UUID;
+import com.rzy.dealt_force_skills.ai.operative.*;
+import com.rzy.dealt_force_skills.character.SkillSlot;
 import net.minecraft.network.syncher.SynchedEntityData;
 
 public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplier {
     public static volatile double SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.vlinderremotesmokeroundentity.speed", 0.3));
     private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.vlinderremotesmokeroundentity.life_ticks", 180));
     private static volatile double GUIDE_DISTANCE = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("GUIDE_DISTANCE", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.vlinderremotesmokeroundentity.guide_distance", 42.0));
+
+    private final OperativeAllegiance allegiance = new OperativeAllegiance();
+    private int missingTicks;
+    private Vec3 nativeDestination;
     private UUID ownerId;
     private double directionX;
     private double directionY;
@@ -41,6 +48,27 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
         this(type, level);
         ownerId = owner.getUUID();
         rememberDirection(owner.getLookAngle());
+    }
+
+
+    public VlinderRemoteSmokeRoundEntity(EntityType<? extends VlinderRemoteSmokeRoundEntity> type, Level level, LivingEntity owner, Vec3 destination) {
+        this(type, level); ownerId = owner.getUUID(); allegiance.capture(owner); nativeDestination = destination;
+        rememberDirection(destination.subtract(owner.getEyePosition()));
+    }
+    public boolean isNativeCovering(LivingEntity owner, Vec3 point) {
+        return isAlive() && allegiance.active() && owner.getUUID().equals(ownerId) && nativeDestination != null
+                && nativeDestination.distanceToSqr(point) <= StingerSmokeCloudEntity.RADIUS * StingerSmokeCloudEntity.RADIUS;
+    }
+    private boolean prepareNative(ServerLevel level) {
+        if (nativeDestination == null || !Double.isFinite(nativeDestination.lengthSqr())) { discard(); return false; }
+        Entity owner = ownerId == null ? null : level.getEntity(ownerId);
+        if (!(owner instanceof LivingEntity living)) { if (++missingTicks > 40 || tickCount >= LIFE_TICKS) discard(); return false; }
+        missingTicks = 0;
+        if (!NativeVlinderSkills.deviceAvailable(living, SkillSlot.ACTIVE_2, nativeDestination)) { discard(); return false; }
+        if (nativeDestination.distanceToSqr(position()) <= Math.max(0.01, SPEED * SPEED)) {
+            setPos(nativeDestination); burst(level); return false;
+        }
+        return true;
     }
 
     @Override
@@ -63,6 +91,7 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
             discard();
             return;
         }
+        if (allegiance.active() && !prepareNative(level)) return;
         if (tickCount >= LIFE_TICKS) {
             burst(level);
             return;
@@ -94,6 +123,10 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        int nativeAge = allegiance.load(tag, LIFE_TICKS);
+        if (allegiance.active()) tickCount = nativeAge;
+        missingTicks = 0;
+        nativeDestination = tag.contains("NativeX") ? new Vec3(tag.getDouble("NativeX"), tag.getDouble("NativeY"), tag.getDouble("NativeZ")) : null;
         directionX = tag.getDouble("DirectionX");
         directionY = tag.getDouble("DirectionY");
         directionZ = tag.getDouble("DirectionZ");
@@ -101,9 +134,11 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        allegiance.save(tag, tickCount);
         if (ownerId != null) {
             tag.putUUID("Owner", ownerId);
         }
+        if (nativeDestination != null) { tag.putDouble("NativeX", nativeDestination.x); tag.putDouble("NativeY", nativeDestination.y); tag.putDouble("NativeZ", nativeDestination.z); }
         tag.putDouble("DirectionX", directionX);
         tag.putDouble("DirectionY", directionY);
         tag.putDouble("DirectionZ", directionZ);
@@ -116,10 +151,12 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
         if (tickCount < 5 && ownerId != null && ownerId.equals(entity.getUUID())) {
             return false;
         }
+        if (allegiance.active() && level() instanceof ServerLevel level && allegiance.isAlly(level, entity)) return false;
         return entity.isPickable();
     }
 
     private Vec3 guidedDirection(ServerLevel level) {
+        if (allegiance.active() && nativeDestination != null) return nativeDestination.subtract(position()).normalize();
         Vec3 current = storedDirection();
         Entity owner = ownerId == null ? null : level.getEntity(ownerId);
         if (!(owner instanceof ServerPlayer player) || !player.isAlive()) {
@@ -155,6 +192,7 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
                 StingerSmokeCloudEntity.GRENADE_LIFE_TICKS,
                 false
         );
+        if (allegiance.active()) cloud.setOperativeSource(allegiance);
         cloud.setPos(getX(), getY(), getZ());
         level.addFreshEntity(cloud);
         level.playSound(null, blockPosition(), ModSounds.VLINDER_REMOTE_SMOKE_BURST.get(),

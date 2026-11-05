@@ -31,6 +31,8 @@ import net.minecraft.network.syncher.SynchedEntityData;
 public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
     private static volatile double BOUNCE_FACTOR = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOUNCE_FACTOR", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.saeedfirearrowentity.bounce_factor", 0.62));
     private static volatile double FIELD_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("FIELD_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.saeedfirearrowentity.field_radius", 6.0));
+    private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance operative = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
+    private int operativeAge;
     private boolean canBounce;
     private boolean hitVoicePlayed;
     private int bounces;
@@ -44,6 +46,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
     public SaeedFireArrowEntity(EntityType<? extends SaeedFireArrowEntity> type, Level level, LivingEntity owner, boolean canBounce) {
         this(type, level);
         setOwner(owner);
+        operative.capture(owner);
         this.canBounce = canBounce;
     }
 
@@ -67,6 +70,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
             discard();
             return;
         }
+        if (operative.active() && ++operativeAge>80 && fixedTicks<0) { fixAt(serverLevel,snapToGround(position())); }
         if (fixedTicks >= 0) {
             tickFixed(serverLevel);
             return;
@@ -106,6 +110,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
         if (owner == null && !TargetingUtil.isTargetableLiving(living)) {
             return false;
         }
+        if (operative.active() && level() instanceof ServerLevel level && !operative.isEnemy(level,living)) return false;
         if (isFriendlyTarget(target)) {
             return false;
         }
@@ -114,10 +119,14 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        operativeAge=operative.load(tag,88);
         canBounce = tag.getBoolean("CanBounce");
         hitVoicePlayed = tag.getBoolean("HitVoicePlayed");
         bounces = tag.getInt("Bounces");
+        if(operative.active())bounces=Math.max(0,Math.min(1,bounces));
         fixedTicks = tag.contains("FixedTicks") ? tag.getInt("FixedTicks") : -1;
+        if(operative.active())fixedTicks=Math.max(-1,Math.min(8,fixedTicks));
         if (tag.contains("FixedX")) {
             fixedCenter = new Vec3(tag.getDouble("FixedX"), tag.getDouble("FixedY"), tag.getDouble("FixedZ"));
         }
@@ -125,6 +134,8 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        operative.save(tag,operativeAge);
         tag.putBoolean("CanBounce", canBounce);
         tag.putBoolean("HitVoicePlayed", hitVoicePlayed);
         tag.putInt("Bounces", bounces);
@@ -139,6 +150,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
     private void handleEntityHit(ServerLevel level, EntityHitResult hit) {
         if (hit.getEntity() instanceof LivingEntity target) {
             LivingEntity owner = getOwner() instanceof LivingEntity living ? living : null;
+            if(operative.active() && !operative.isEnemy(level,target))return;
             target.invulnerableTime = 0;
             boolean damaged = SkillDamageHelper.hurt(target, SkillDamageHelper.trueDamage(level, this, owner), owner,
                     com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.saeed_fire_arrow_entity.skill_hurt.0.damage", 10.0F));
@@ -190,6 +202,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
         boolean damagedAny = false;
         Entity targetingOwner = targetingOwner();
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
+            if(operative.active() && !operative.isEnemy(level,target))continue;
             if (!isValidHostileTarget(targetingOwner, target) || target.distanceToSqr(center) > FIELD_RADIUS * FIELD_RADIUS) {
                 continue;
             }
@@ -203,6 +216,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
             playHitVoiceOnce(level, center);
         }
         SaeedFireFieldEntity field = new SaeedFireFieldEntity(ModEntities.SAEED_FIRE_FIELD.get(), level, owner);
+        field.inheritOperative(operative);
         field.setPos(center.x, center.y, center.z);
         level.addFreshEntity(field);
         discard();
@@ -254,6 +268,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
     }
 
     private boolean isFriendlyTarget(Entity target) {
+        if(operative.active() && level() instanceof ServerLevel level)return operative.isAlly(level,target);
         Entity ownerEntity = getOwner();
         if (target == ownerEntity) {
             return true;

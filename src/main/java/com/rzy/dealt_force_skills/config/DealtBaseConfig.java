@@ -54,12 +54,40 @@ public final class DealtBaseConfig {
     }
 
     public static synchronized void populateRedemptionDefaults() {
+        value("customdrop.enabled", false);
+        config().setComment("customdrop.enabled", "Master switch for custom ground item entities. False preserves vanilla item physics, pickup, merge, despawn and rendering; existing custom entities convert back without losing their stack.");
+        value("workbench.enabled", true);
+        value("workbench.repair_enabled", true);
+        value("workbench.attachments_enabled", true);
+        config().setComment("workbench.enabled", "Allow players to use the equipment workbench. Existing equipment effects are preserved.");
+        for (var stat : com.rzy.dealt_force_skills.workbench.WorkbenchStat.values()) {
+            String path = "workbench.stats." + stat.key() + ".enabled";
+            value(path, true);
+            config().setComment(path, stat.title + ": allow changing this property; existing allocations remain effective and locked when disabled.");
+        }
         value(REDEMPTION_ENABLED, true);
         value(GTI_REDEMPTION_ENABLED, true);
         config().setComment(REDEMPTION_ENABLED, "Whether players may redeem previously sold items.");
         config().setComment(GTI_REDEMPTION_ENABLED,
                 "Whether the GTI Special Operations access point redemption/buyback function is available.");
         dirty = true;
+    }
+
+    public static synchronized boolean customDropsEnabled() {
+        Object configured=value("customdrop.enabled",false);return configured instanceof Boolean enabled&&enabled;
+    }
+    public static synchronized boolean workbenchEnabled() {
+        return enabled("workbench.enabled");
+    }
+
+    public static synchronized boolean workbenchRepairEnabled() { return enabled("workbench.repair_enabled"); }
+    public static synchronized boolean workbenchAttachmentsEnabled() { return enabled("workbench.attachments_enabled"); }
+    public static synchronized boolean workbenchStatEnabled(com.rzy.dealt_force_skills.workbench.WorkbenchStat stat) {
+        return enabled("workbench.stats." + stat.key() + ".enabled");
+    }
+    private static boolean enabled(String path) {
+        Object configured = value(path, true);
+        return !(configured instanceof Boolean flag) || flag;
     }
 
     public static synchronized boolean redemptionEnabled() {

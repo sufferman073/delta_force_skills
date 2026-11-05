@@ -1,7 +1,8 @@
 package com.rzy.dealt_force_skills.client.visual;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
-import com.rzy.dealt_force_skills.registry.ModEffects;
+import com.rzy.dealt_force_skills.character.sineva.SinevaKnockdownState;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -23,43 +24,50 @@ public final class ClientSinevaKnockdownState {
     private ClientSinevaKnockdownState() {
     }
 
+    private static Object level;
+    private static void checkLevel() {
+        Object current = Minecraft.getInstance().level;
+        if (level != current) { reset(); level = current; }
+    }
+
     public static void sync(int entityId, int ticks, float yaw) {
-        if (ticks <= 0) {
-            ACTIVE.remove(entityId);
-            return;
+        checkLevel();
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        KnockdownVisual old = ACTIVE.remove(entityId);
+        if (old != null && old.entity != null) SinevaKnockdownState.clear(old.entity);
+        if (ticks <= 0 || !Float.isFinite(yaw)) return;
+        KnockdownVisual visual = new KnockdownVisual(ticks, yaw);
+        ACTIVE.put(entityId, visual);
+        if (mc.level.getEntity(entityId) instanceof LivingEntity entity) {
+            visual.entity=entity;
+            SinevaKnockdownState.begin(entity, ticks, yaw);
         }
-        ACTIVE.put(entityId, new KnockdownVisual(ticks, yaw));
     }
 
     public static void tick(Minecraft minecraft) {
-        if (minecraft.level == null) {
-            ACTIVE.clear();
-            return;
-        }
-
+        checkLevel();
+        if (minecraft.level == null) return;
         Iterator<Map.Entry<Integer, KnockdownVisual>> iterator = ACTIVE.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry<Integer, KnockdownVisual> entry = iterator.next();
-            Entity entity = minecraft.level.getEntity(entry.getKey());
-            if (entity == null || !entity.isAlive()) {
-                iterator.remove();
-                continue;
+            var entry=iterator.next(); KnockdownVisual visual=entry.getValue();
+            Entity entity=minecraft.level.getEntity(entry.getKey());
+            visual.ageTicks++; visual.remainingTicks--;
+            if (visual.entity == null && entity instanceof LivingEntity living && visual.remainingTicks > 0) {
+                visual.entity=living;
+                SinevaKnockdownState.begin(living, visual.remainingTicks, visual.yaw);
             }
-            if (entity == minecraft.player && !minecraft.player.hasEffect(ModEffects.STUN)) {
-                iterator.remove();
-                continue;
-            }
-
-            KnockdownVisual visual = entry.getValue();
-            visual.ageTicks++;
-            visual.remainingTicks--;
-            if (visual.remainingTicks <= 0) {
+            if (visual.remainingTicks <= 0 || visual.ageTicks > 20 && visual.entity == null
+                    || visual.entity != null && (visual.entity != entity || !visual.entity.isAlive()
+                    || !SinevaKnockdownState.active(visual.entity))) {
+                if (visual.entity != null) SinevaKnockdownState.clear(visual.entity);
                 iterator.remove();
             }
         }
     }
 
     public static void reset() {
+        SinevaKnockdownState.clearSide(true);
         ACTIVE.clear();
     }
 
@@ -82,6 +90,7 @@ public final class ClientSinevaKnockdownState {
     }
 
     private static final class KnockdownVisual {
+        private LivingEntity entity;
         private final float yaw;
         private int remainingTicks;
         private int ageTicks;
