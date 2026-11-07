@@ -1,14 +1,12 @@
 package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.config.DealtForceConfig;
-import com.mojang.logging.LogUtils;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.item.DfsEquipmentItem;
 import com.rzy.dealt_force_skills.registry.ModEffects;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -26,34 +24,21 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.scores.PlayerTeam;
-import net.minecraft.world.scores.Scoreboard;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.slf4j.Logger;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 
 @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class HelmetVisionClient {
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final RenderLevelStageEvent.Stage HELMET_VISION_RENDER_STAGE = RenderLevelStageEvent.Stage.AFTER_ENTITIES;
-    private static final double MAX_THERMAL_HIGHLIGHT_RANGE = 96.0D;
-    private static final int MAX_THERMAL_HIGHLIGHT_TARGETS = 128;
-    private static final double MAX_THERMAL_BOX_EDGE = 16.0D;
-    private static final double THERMAL_HIGHLIGHT_RANGE = Math.min(MAX_THERMAL_HIGHLIGHT_RANGE,
-            Math.max(0.0D, DealtForceConfig.doubleValue("client.helmet_vision_client.thermal_highlight_range", 96.0D)));
     private static final int HEARING_REVEAL_COLOR = 0xFF7EE8FF;
     private static final double MAX_HEARING_REVEAL_RANGE = Math.max(0.0D,
             DealtForceConfig.doubleValue("client.helmet_vision_client.hearing_reveal_max_range", 64.0D));
@@ -65,10 +50,7 @@ public final class HelmetVisionClient {
             DealtForceConfig.doubleValue("client.helmet_vision_client.hearing_reveal_max_box_edge", 16.0D));
     private static final double HEARING_REVEAL_RANGE_PER_BOOST = Math.max(0.0D,
             DealtForceConfig.doubleValue("client.helmet_vision_client.hearing_reveal_range_per_boost", 100.0D));
-    private static final String THERMAL_TEAM_NAME = "dfs_thermal";
-    private static final Map<Integer, ThermalHighlightState> THERMAL_RESTORE = new HashMap<>();
     private static final Map<Integer, HearingRevealState> HEARING_REVEALS = new HashMap<>();
-    private static ClientLevel thermalLevel;
     private static ClientLevel hearingLevel;
 
     private HelmetVisionClient() {
@@ -97,60 +79,26 @@ public final class HelmetVisionClient {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
-        if (thermalLevel != minecraft.level) {
-            clearThermalHighlightCache();
-            thermalLevel = minecraft.level;
-        }
         if (hearingLevel != minecraft.level) {
             clearHearingRevealCache();
             hearingLevel = minecraft.level;
         }
-        tickThermalHighlights(minecraft);
         tickHearingReveals(minecraft);
     }
 
     @SubscribeEvent
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
-        clearThermalHighlightCache();
+        HelmetVisionRenderer.close();
         clearHearingRevealCache();
-        thermalLevel = null;
         hearingLevel = null;
     }
 
     @SubscribeEvent
     public static void onClientLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof ClientLevel) {
-            clearThermalHighlightCache();
+            HelmetVisionRenderer.close();
             clearHearingRevealCache();
-            thermalLevel = null;
             hearingLevel = null;
-        }
-    }
-
-    @SubscribeEvent
-    public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {
-        if (!VanillaGuiOverlay.HOTBAR.id().equals(event.getOverlay().id())) {
-            return;
-        }
-        Minecraft minecraft = Minecraft.getInstance();
-        LocalPlayer player = minecraft.player;
-        if (player == null) {
-            return;
-        }
-
-        int mode = DfsEquipmentItem.activeVisionMode(player);
-        int width = event.getGuiGraphics().guiWidth();
-        int height = event.getGuiGraphics().guiHeight();
-        if (mode == DfsEquipmentItem.VISION_NIGHT) {
-            event.getGuiGraphics().fill(0, 0, width, height, 0x244AFF5C);
-            event.getGuiGraphics().fill(0, 0, width, height, 0x12F0FFF0);
-            renderScanLines(event, player.tickCount, width, height, 0x245CFF66);
-        } else if (mode == DfsEquipmentItem.VISION_THERMAL) {
-            event.getGuiGraphics().fill(0, 0, width, height, 0x5E101010);
-            event.getGuiGraphics().fill(0, 0, width, height, 0x32FFFFFF);
-            renderScanLines(event, player.tickCount, width, height, 0x26FFFFFF);
-        } else {
-            restoreThermalHighlights();
         }
     }
 
@@ -165,12 +113,11 @@ public final class HelmetVisionClient {
             return;
         }
 
-        boolean thermal = DfsEquipmentItem.activeVisionMode(player) == DfsEquipmentItem.VISION_THERMAL;
         ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
         DfsEquipmentItem.Profile profile = DfsEquipmentItem.profile(head);
         double hearingRange = hearingRevealRange(player, profile);
         boolean hearing = hearingRange > 0.0D && !HEARING_REVEALS.isEmpty();
-        if (!thermal && !hearing) {
+        if (!hearing) {
             return;
         }
 
@@ -182,9 +129,6 @@ public final class HelmetVisionClient {
         RenderSystem.disableDepthTest();
         try {
             var lineBuffer = buffers.getBuffer(RenderType.lines());
-            if (thermal) {
-                renderThermalEntityBoxes(minecraft, player, poseStack, lineBuffer, cameraPos);
-            }
             if (hearing) {
                 renderHearingRevealBoxes(minecraft, player, poseStack, lineBuffer, cameraPos);
             }
@@ -196,43 +140,6 @@ public final class HelmetVisionClient {
             }
         } finally {
             RenderSystem.enableDepthTest();
-        }
-    }
-
-    private static void renderScanLines(RenderGuiOverlayEvent.Post event, int tickCount, int width, int height, int color) {
-        int offset = Math.floorMod(tickCount, 8);
-        for (int y = offset; y < height; y += 8) {
-            event.getGuiGraphics().fill(0, y, width, y + 1, color);
-        }
-    }
-
-    private static void renderThermalEntityBoxes(Minecraft minecraft, LocalPlayer player, PoseStack poseStack,
-                                                 VertexConsumer lineBuffer, Vec3 cameraPos) {
-        if (!isFinite(cameraPos)) {
-            return;
-        }
-        double rangeSqr = THERMAL_HIGHLIGHT_RANGE * THERMAL_HIGHLIGHT_RANGE;
-        Vec3 viewer = player.getEyePosition();
-        if (!isFinite(viewer)) {
-            return;
-        }
-        int rendered = 0;
-        for (Entity entity : minecraft.level.entitiesForRendering()) {
-            if (rendered >= MAX_THERMAL_HIGHLIGHT_TARGETS) {
-                break;
-            }
-            if (entity == player || !entity.isAlive() || entity.isSpectator()
-                    || !hasFinitePosition(entity)
-                    || entity.distanceToSqr(viewer) > rangeSqr
-                    || isThermalHiddenTarget(entity)) {
-                continue;
-            }
-            AABB box = safeThermalRenderBox(entity.getBoundingBox(), cameraPos, 0.08D);
-            if (box == null) {
-                continue;
-            }
-            LevelRenderer.renderLineBox(poseStack, lineBuffer, box, 1.0F, 1.0F, 1.0F, 0.98F);
-            rendered++;
         }
     }
 
@@ -397,10 +304,6 @@ public final class HelmetVisionClient {
         return safeRenderBox(box, cameraPos, inflate, MAX_HEARING_BOX_EDGE);
     }
 
-    private static AABB safeThermalRenderBox(AABB box, Vec3 cameraPos, double inflate) {
-        return safeRenderBox(box, cameraPos, inflate, MAX_THERMAL_BOX_EDGE);
-    }
-
     private static AABB safeRenderBox(AABB box, Vec3 cameraPos, double inflate, double maxEdge) {
         if (!isReasonableBox(box, maxEdge) || !isFinite(cameraPos)) {
             return null;
@@ -451,138 +354,8 @@ public final class HelmetVisionClient {
         poseStack.popPose();
     }
 
-    private static void tickThermalHighlights(Minecraft minecraft) {
-        if (minecraft.player == null || minecraft.level == null) {
-            clearThermalHighlightCache();
-            return;
-        }
-        if (!isThermalVisionActive()) {
-            restoreThermalHighlights();
-            return;
-        }
-        if (THERMAL_HIGHLIGHT_RANGE <= 0.0D) {
-            restoreThermalHighlights();
-            return;
-        }
-
-        Set<Integer> current = new HashSet<>();
-        int highlighted = 0;
-        for (LivingEntity entity : minecraft.level.getEntitiesOfClass(
-                LivingEntity.class,
-                minecraft.player.getBoundingBox().inflate(THERMAL_HIGHLIGHT_RANGE),
-                entity -> entity.isAlive()
-                        && entity != minecraft.player
-                        && !isThermalHiddenTarget(entity))) {
-            if (highlighted >= MAX_THERMAL_HIGHLIGHT_TARGETS) {
-                break;
-            }
-            if (!hasFinitePosition(entity)
-                    || !isReasonableBox(entity.getBoundingBox(), MAX_THERMAL_BOX_EDGE)) {
-                continue;
-            }
-            current.add(entity.getId());
-            THERMAL_RESTORE.putIfAbsent(entity.getId(), captureThermalState(entity));
-            entity.setGlowingTag(true);
-            applyThermalTeam(entity);
-            highlighted++;
-        }
-
-        THERMAL_RESTORE.entrySet().removeIf(entry -> {
-            if (current.contains(entry.getKey())) {
-                return false;
-            }
-            restoreThermalHighlight(minecraft, entry.getKey(), entry.getValue());
-            return true;
-        });
-    }
-
-    private static boolean isThermalHiddenTarget(Entity entity) {
-        return entity instanceof Player player && player.hasEffect(ModEffects.NOX_STEALTH.get());
-    }
-
-    private static void restoreThermalHighlights() {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null || minecraft.level != thermalLevel) {
-            clearThermalHighlightCache();
-            thermalLevel = minecraft.level;
-            return;
-        }
-        for (Map.Entry<Integer, ThermalHighlightState> entry : THERMAL_RESTORE.entrySet()) {
-            restoreThermalHighlight(minecraft, entry.getKey(), entry.getValue());
-        }
-        clearThermalHighlightCache();
-    }
-
-    private static ThermalHighlightState captureThermalState(Entity entity) {
-        PlayerTeam team = entity.getTeam() instanceof PlayerTeam playerTeam ? playerTeam : null;
-        return new ThermalHighlightState(entity.isCurrentlyGlowing(), entity.getScoreboardName(),
-                team != null ? team.getName() : "");
-    }
-
-    private static void applyThermalTeam(Entity entity) {
-        try {
-            Scoreboard scoreboard = entity.level().getScoreboard();
-            PlayerTeam thermalTeam = scoreboard.getPlayerTeam(THERMAL_TEAM_NAME);
-            if (thermalTeam == null) {
-                thermalTeam = scoreboard.addPlayerTeam(THERMAL_TEAM_NAME);
-                thermalTeam.setColor(ChatFormatting.WHITE);
-            }
-            String scoreboardName = entity.getScoreboardName();
-            PlayerTeam current = scoreboard.getPlayersTeam(scoreboardName);
-            if (current == thermalTeam) {
-                return;
-            }
-            removeFromTeamIfCurrent(scoreboard, scoreboardName, current);
-            if (scoreboard.getPlayersTeam(scoreboardName) == null) {
-                scoreboard.addPlayerToTeam(scoreboardName, thermalTeam);
-            }
-        } catch (RuntimeException exception) {
-            LOGGER.debug("Failed to apply thermal highlight team to entity {}", entity.getId(), exception);
-        }
-    }
-
-    private static void restoreThermalHighlight(Minecraft minecraft, int entityId, ThermalHighlightState state) {
-        try {
-            if (minecraft.level == null || minecraft.level != thermalLevel) {
-                return;
-            }
-            Entity entity = minecraft.level.getEntity(entityId);
-            if (entity != null && entity.getScoreboardName().equals(state.scoreboardName())) {
-                entity.setGlowingTag(state.glowing());
-            }
-            Scoreboard scoreboard = minecraft.level.getScoreboard();
-            String scoreboardName = state.scoreboardName();
-            PlayerTeam thermalTeam = scoreboard.getPlayerTeam(THERMAL_TEAM_NAME);
-            removeFromTeamIfCurrent(scoreboard, scoreboardName, thermalTeam);
-
-            PlayerTeam current = scoreboard.getPlayersTeam(scoreboardName);
-            if (!state.teamName().isBlank() && (current == null || current == thermalTeam)) {
-                PlayerTeam originalTeam = scoreboard.getPlayerTeam(state.teamName());
-                if (originalTeam != null && scoreboard.getPlayersTeam(scoreboardName) == current) {
-                    scoreboard.addPlayerToTeam(scoreboardName, originalTeam);
-                }
-            }
-        } catch (RuntimeException exception) {
-            LOGGER.debug("Failed to restore thermal highlight for entity {} ({})",
-                    entityId, state.scoreboardName(), exception);
-        }
-    }
-
-    private static void removeFromTeamIfCurrent(Scoreboard scoreboard, String entry, PlayerTeam targetTeam) {
-        if (targetTeam != null && scoreboard.getPlayersTeam(entry) == targetTeam) {
-            scoreboard.removePlayerFromTeam(entry, targetTeam);
-        }
-    }
-
-    private static void clearThermalHighlightCache() {
-        THERMAL_RESTORE.clear();
-    }
-
     private static void clearHearingRevealCache() {
         HEARING_REVEALS.clear();
-    }
-
-    private record ThermalHighlightState(boolean glowing, String scoreboardName, String teamName) {
     }
 
     private static final class HearingRevealState {

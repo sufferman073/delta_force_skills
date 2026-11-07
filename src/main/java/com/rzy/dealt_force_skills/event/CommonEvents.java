@@ -2671,6 +2671,11 @@ public class CommonEvents {
             recordSaeedGuardTaczPreDamage(event);
             return;
         }
+        // 1.2.0's pre-fire event can still fail ammo validation or be cancelled.
+        if ("com.tacz.guns.api.event.common.GunFirePostEvent".equals(eventName)) {
+            handleGhrothStarsGunFire(event);
+            return;
+        }
         if (TACZ_GUN_RELOAD_EVENT.equals(eventName)) {
             recordMorseTaczAction(event);
             if (cancelLexNinjiaTaczAction(event) || cancelUndeadTaczAction(event) || cancelDownedTaczAction(event)
@@ -2697,9 +2702,6 @@ public class CommonEvents {
                 return;
             }
             snapshotMhsTaczAmmo(eventName, event);
-            if (TACZ_GUN_FIRE_EVENT.equals(eventName)) {
-                handleGhrothStarsGunFire(event);
-            }
         }
 
         if (!TACZ_AMMO_HIT_BLOCK_EVENT.equals(eventName)) {
@@ -3368,39 +3370,28 @@ public class CommonEvents {
     }
 
     private static void shiftTaczServerDataHolder(LivingEntity entity, TaczSpeedMultipliers multipliers) {
+        // Fire rate, reload and ADS are applied once by the TaCZ timing mixins.
         try {
             Class<?> operatorClass = Class.forName(TACZ_GUN_OPERATOR);
             Object operator = operatorClass.getMethod("fromLivingEntity", LivingEntity.class).invoke(null, entity);
             Object dataHolder = operatorClass.getMethod("getDataHolder").invoke(operator);
-            long fireExtraMillis = extraTaczMillis(multipliers.fireRate());
             long reloadExtraMillis = extraTaczMillis(multipliers.reload());
-            long aimExtraMillis = extraTaczMillis(multipliers.aim());
             long boltExtraMillis = extraTaczMillis(multipliers.bolt());
-            long aimPenaltyMillis = extraTaczMillis(multipliers.aimPenalty());
-            // 射速：TaCZ 用 shootTimestamp 计算冷却，时间戳往过去推等价于冷却更快结束。
-            shiftLongFieldIfNonNegative(dataHolder, "shootTimestamp", -fireExtraMillis);
-            shiftLongFieldIfNonNegative(dataHolder, "lastShootTimestamp", -fireExtraMillis);
-            shiftLongFieldIfNonNegative(dataHolder, "lockTimestamp", -Math.max(fireExtraMillis, Math.max(reloadExtraMillis, boltExtraMillis)));
-            // 换弹/拉栓/切枪：这些也是时间戳驱动，正在进行时加速推进。
-            if (isTaczReloading(dataHolder)) {
-                shiftLongFieldIfNonNegative(dataHolder, "reloadTimestamp", -reloadExtraMillis);
-            }
+            shiftLongFieldIfNonNegative(dataHolder, "lockTimestamp", -Math.max(reloadExtraMillis, boltExtraMillis));
             if (booleanField(dataHolder, "isBolting")) {
                 shiftLongFieldIfNonNegative(dataHolder, "boltTimestamp", -boltExtraMillis);
             }
             shiftLongFieldIfNonNegative(dataHolder, "drawTimestamp", -Math.max(0L, reloadExtraMillis / 2L));
-            // 开镜：只改时间戳在部分事件顺序下体感不明显，所以额外直接推进 aimingProgress。
-            if (booleanField(dataHolder, "isAiming")) {
-                shiftLongFieldIfNonNegative(dataHolder, "aimingTimestamp", -aimExtraMillis + aimPenaltyMillis);
-                boostFloatField(dataHolder, "aimingProgress", adrenalineAimProgressBoost(multipliers.aim()), 0.0F, 1.0F);
-                reduceFloatField(dataHolder, "aimingProgress", taczAimPenaltyProgress(multipliers.aimPenalty()), 0.0F, 1.0F);
-            }
         } catch (ReflectiveOperationException | LinkageError ignored) {
             // TACZ is optional; missing or changed APIs should not break this mod.
         }
     }
 
     private static void shiftTaczClientDataHolder(Player player, TaczSpeedMultipliers multipliers) {
+        if (!com.tacz.guns.util.time.GunTime.shouldTick()) {
+            return;
+        }
+        // Fire rate, reload and ADS are applied once by the TaCZ timing mixins.
         try {
             Class<?> clientOperatorClass = Class.forName(TACZ_CLIENT_GUN_OPERATOR);
             Method fromLocalPlayer = null;
@@ -3415,32 +3406,15 @@ public class CommonEvents {
             }
             Object operator = fromLocalPlayer.invoke(null, player);
             Object dataHolder = clientOperatorClass.getMethod("getDataHolder").invoke(operator);
-            long fireExtraMillis = extraTaczMillis(multipliers.fireRate());
             long reloadExtraMillis = extraTaczMillis(multipliers.reload());
-            long aimExtraMillis = extraTaczMillis(multipliers.aim());
             long boltExtraMillis = extraTaczMillis(multipliers.bolt());
-            long aimPenaltyMillis = extraTaczMillis(multipliers.aimPenalty());
-            // 客户端射速判定读取 clientShootTimestamp；服务端读取 shootTimestamp，两边都要推。
-            shiftLongFieldIfNonNegative(dataHolder, "clientShootTimestamp", -fireExtraMillis);
-            shiftLongFieldIfNonNegative(dataHolder, "clientLastShootTimestamp", -fireExtraMillis);
-            // 客户端状态锁会挡住连射/换弹表现，也要同步加速释放。
-            shiftLongFieldIfNonNegative(dataHolder, "lockTimestamp", -Math.max(fireExtraMillis, Math.max(reloadExtraMillis, boltExtraMillis)));
+            shiftLongFieldIfNonNegative(dataHolder, "lockTimestamp", -Math.max(reloadExtraMillis, boltExtraMillis));
             if (booleanField(dataHolder, "isBolting")) {
                 shiftLongFieldIfNonNegative(dataHolder, "boltTimestamp", -boltExtraMillis);
             }
-            // 开镜表现读取 clientAimingProgress。参考牧羊人“周期性打断开镜”的反向思路，
-            // 这里直接推进进度，避免只改 timestamp 但视觉仍然慢。
-            if (booleanField(dataHolder, "clientIsAiming")) {
-                shiftLongFieldIfNonNegative(dataHolder, "clientAimingTimestamp", -aimExtraMillis + aimPenaltyMillis);
-                boostFloatField(dataHolder, "clientAimingProgress", adrenalineAimProgressBoost(multipliers.aim()), 0.0F, 1.0F);
-                reduceFloatField(dataHolder, "clientAimingProgress", taczAimPenaltyProgress(multipliers.aimPenalty()), 0.0F, 1.0F);
-            }
-            // 蓄力武器也属于“枪械行为速度”，给充能进度补一份额外推进。
             if (booleanField(dataHolder, "isCharging")) {
                 boostFloatField(dataHolder, "chargeProgress", adrenalineChargeProgressBoost(Math.max(multipliers.fireRate(), multipliers.aim())), 0.0F, Float.MAX_VALUE);
             }
-            // 如果 TaCZ 正在等待异步射击记录，肾上腺素下不要让这个锁成为额外射速瓶颈。
-            setBooleanFieldIfPresent(dataHolder, "isShootRecorded", true);
         } catch (ReflectiveOperationException | LinkageError ignored) {
             // Client-side TACZ bridge is best-effort and safe when TACZ is absent.
         }
@@ -4503,31 +4477,12 @@ public class CommonEvents {
         }
     }
 
-    private static void tickHelmetVisionEffect(ServerPlayer player, ItemStack head) {
-        int visionMode = DfsEquipmentItem.activeVisionMode(head);
-        if (visionMode == DfsEquipmentItem.VISION_NIGHT) {
-            MobEffectInstance current = player.getEffect(MobEffects.NIGHT_VISION);
-            if (current == null || current.getDuration() < 220) {
-                player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 260, 0, true, false, true), player);
-            }
-            return;
-        }
-
-        MobEffectInstance current = player.getEffect(MobEffects.NIGHT_VISION);
-        if (current != null && current.getAmplifier() == 0 && current.isAmbient()
-                && !current.isVisible() && current.getDuration() <= 280) {
-            player.removeEffect(MobEffects.NIGHT_VISION);
-        }
-    }
-
     private static void tickDfsEquipment(ServerPlayer player) {
         ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
         Profile headProfile = DfsEquipmentItem.profile(head);
         Profile chestProfile = DfsEquipmentItem.profile(chest);
 
-        // Helmet night vision / thermal vision are NOT special abilities — always tick.
-        tickHelmetVisionEffect(player, head);
         if (equipmentFactionCount(player, Faction.GLOBAL_FORCES) >= 1 && player.tickCount % 100 == 0) {
             int beforeRepair = head.getDamageValue() + chest.getDamageValue();
             if (regenerateEquipmentDurability(head) | regenerateEquipmentDurability(chest)) {

@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.mixin.tacz;
 
+import com.tacz.guns.util.time.GunTime;
 import com.rzy.dealt_force_skills.compat.TaczTimingCompat;
 import com.rzy.dealt_force_skills.event.CommonEvents;
 import com.tacz.guns.entity.shooter.ShooterDataHolder;
@@ -22,7 +23,7 @@ public abstract class LivingEntityAimSpeedMixin {
     private void dfs$adjustAimTimestamp(CallbackInfo ci) {
         if (data.isAiming) {
             data.aimingTimestamp = TaczTimingCompat.scaleElapsedTimestamp(data.aimingTimestamp,
-                    System.currentTimeMillis(), CommonEvents.effectiveTaczAimMultiplier(shooter));
+                    GunTime.nowMillis(), CommonEvents.effectiveTaczAimMultiplier(shooter));
         }
     }
 }

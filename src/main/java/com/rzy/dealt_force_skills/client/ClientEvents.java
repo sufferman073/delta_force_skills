@@ -227,35 +227,28 @@ public class ClientEvents {
     }
 
     private static void accelerateTaczAdrenalineClient(net.minecraft.client.player.LocalPlayer player) {
+        if (!com.tacz.guns.util.time.GunTime.shouldTick()) {
+            return;
+        }
         TaczSpeedMultipliers multipliers = taczSpeedMultipliers(player);
         if (!multipliers.hasChange()) {
             return;
         }
+        // Fire rate, reload and ADS are applied once by the TaCZ timing mixins.
         try {
             Class<?> clientOperatorClass = Class.forName(TACZ_CLIENT_GUN_OPERATOR);
             Method fromLocalPlayer = clientOperatorClass.getMethod("fromLocalPlayer", net.minecraft.client.player.LocalPlayer.class);
             Object operator = fromLocalPlayer.invoke(null, player);
             Object dataHolder = clientOperatorClass.getMethod("getDataHolder").invoke(operator);
-            long fireExtraMillis = extraTaczMillis(multipliers.fireRate());
             long reloadExtraMillis = extraTaczMillis(multipliers.reload());
-            long aimExtraMillis = extraTaczMillis(multipliers.aim());
             long boltExtraMillis = extraTaczMillis(multipliers.bolt());
-            long aimPenaltyMillis = extraTaczMillis(multipliers.aimPenalty());
-            shiftLongFieldIfNonNegative(dataHolder, "clientShootTimestamp", -fireExtraMillis);
-            shiftLongFieldIfNonNegative(dataHolder, "clientLastShootTimestamp", -fireExtraMillis);
-            shiftLongFieldIfNonNegative(dataHolder, "lockTimestamp", -Math.max(fireExtraMillis, Math.max(reloadExtraMillis, boltExtraMillis)));
+            shiftLongFieldIfNonNegative(dataHolder, "lockTimestamp", -Math.max(reloadExtraMillis, boltExtraMillis));
             if (booleanField(dataHolder, "isBolting")) {
                 shiftLongFieldIfNonNegative(dataHolder, "boltTimestamp", -boltExtraMillis);
-            }
-            if (booleanField(dataHolder, "clientIsAiming")) {
-                shiftLongFieldIfNonNegative(dataHolder, "clientAimingTimestamp", -aimExtraMillis + aimPenaltyMillis);
-                boostFloatField(dataHolder, "clientAimingProgress", adrenalineAimProgressBoost(multipliers.aim()), 0.0F, 1.0F);
-                reduceFloatField(dataHolder, "clientAimingProgress", taczAimPenaltyProgress(multipliers.aimPenalty()), 0.0F, 1.0F);
             }
             if (booleanField(dataHolder, "isCharging")) {
                 boostFloatField(dataHolder, "chargeProgress", adrenalineChargeProgressBoost(Math.max(multipliers.fireRate(), multipliers.aim())), 0.0F, Float.MAX_VALUE);
             }
-            setBooleanFieldIfPresent(dataHolder, "isShootRecorded", true);
         } catch (ReflectiveOperationException | LinkageError ignored) {
             // TaCZ is optional; keep the bridge best-effort and non-fatal.
         }
@@ -380,6 +373,9 @@ public class ClientEvents {
     }
 
     private static void delayTaczMorseShockClient(net.minecraft.client.player.LocalPlayer player) {
+        if (!com.tacz.guns.util.time.GunTime.shouldTick()) {
+            return;
+        }
         MobEffectInstance shock = player.getEffect(ModEffects.MORSE_STRONG_SHOCK.get());
         if (shock == null) {
             return;

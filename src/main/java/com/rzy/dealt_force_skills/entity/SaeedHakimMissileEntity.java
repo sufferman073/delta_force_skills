@@ -1,6 +1,7 @@
 package com.rzy.dealt_force_skills.entity;
 
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
+import com.rzy.dealt_force_skills.character.saeed.SaeedStateManager;
 import com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper;
 import com.rzy.dealt_force_skills.compat.SuperbWarfareCompat;
 import com.rzy.dealt_force_skills.registry.ModSounds;
@@ -262,14 +263,7 @@ public class SaeedHakimMissileEntity extends Projectile implements ItemSupplier 
     }
 
     private boolean isFriendly(Entity entity) {
-        Optional<UUID> teamOwner = ownerTeamUuid();
-        if (teamOwner.isEmpty()) {
-            return false;
-        }
-        if (entity.getUUID().equals(teamOwner.get())) {
-            return true;
-        }
-        return entity instanceof SaeedGuardEntity guard && guard.isOwnedBy(teamOwner.get());
+        return ownerTeamUuid().filter(ownerId -> SaeedStateManager.isGuardAlly(ownerId, entity)).isPresent();
     }
 
     private Optional<UUID> ownerTeamUuid() {

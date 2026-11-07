@@ -15,5 +15,6 @@ public final class WildfireDeviceRenderer extends EntityRenderer<WildfireDeviceE
         if(entity.mode()<WildfireDeviceEntity.CLOUD){grenade.render(entity,yaw,partial,pose,buffer,light);return;}
         smoke.render(entity,yaw,partial,pose,buffer,light);
     }
+    public SmokeCloudRenderer<WildfireDeviceEntity> smokeRenderer(){return smoke;}
     @Override public ResourceLocation getTextureLocation(WildfireDeviceEntity entity){return smoke.getTextureLocation(entity);}
 }

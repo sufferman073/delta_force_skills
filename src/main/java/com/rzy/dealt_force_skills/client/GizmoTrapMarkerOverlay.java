@@ -3,6 +3,7 @@ package com.rzy.dealt_force_skills.client;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.util.TrapMarkerTargeting;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoTrapMarker;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoTrapType;
 import com.rzy.dealt_force_skills.client.character.ClientGizmoHudState;
@@ -61,7 +62,7 @@ public final class GizmoTrapMarkerOverlay {
             GizmoTrapMarker marker,
             double distance
     ) {
-        Vec3 pos = marker.position().add(0.0D, 0.55D, 0.0D);
+        Vec3 pos = marker.position().add(0.0D, TrapMarkerTargeting.MARKER_HEIGHT, 0.0D);
         poseStack.pushPose();
         poseStack.translate(pos.x - cameraPos.x, pos.y - cameraPos.y, pos.z - cameraPos.z);
         poseStack.mulPose(camera.rotation());

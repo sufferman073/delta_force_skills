@@ -22,6 +22,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.Collection;
+import java.util.List;
 
 @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class CharacterBanCommands {
@@ -29,6 +30,7 @@ public final class CharacterBanCommands {
             new DynamicCommandExceptionType(input -> Component.translatable(
                     "commands.dealt_force_skills.character_ban.unknown", input));
     private static final SuggestionProvider<CommandSourceStack> CHARACTER_SUGGESTIONS = (context, builder) -> {
+        builder.suggest("ALL");
         for (String suggestion : ModCharacters.commandNameSuggestions()) {
             builder.suggest(quoteIfNeeded(suggestion));
         }
@@ -72,23 +74,25 @@ public final class CharacterBanCommands {
             boolean disabled
     )
             throws CommandSyntaxException {
-        CharacterDefinition character = resolveCharacter(characterInput);
-        Component characterName = character.displayName();
+        List<CharacterDefinition> characters = resolveCharacters(characterInput);
+        Component characterName = displayName(characterInput, characters);
         int changedCount = 0;
         int forcedReselections = 0;
 
         for (ServerPlayer target : targets) {
-            if (disabled) {
-                Component reason = Component.translatable(
-                        "message.dealt_force_skills.selection.force_reselect", characterName);
-                if (CharacterBanManager.banPlayer(target, character.id())) {
+            for (CharacterDefinition character : characters) {
+                if (disabled) {
+                    Component reason = Component.translatable(
+                            "message.dealt_force_skills.selection.force_reselect", character.displayName());
+                    if (CharacterBanManager.banPlayer(target, character.id())) {
+                        changedCount++;
+                    }
+                    if (CharacterSelectionManager.forceReselectionIfSelected(target, character.id(), reason)) {
+                        forcedReselections++;
+                    }
+                } else if (CharacterBanManager.unbanPlayer(target, character.id())) {
                     changedCount++;
                 }
-                if (CharacterSelectionManager.forceReselectionIfSelected(target, character.id(), reason)) {
-                    forcedReselections++;
-                }
-            } else if (CharacterBanManager.unbanPlayer(target, character.id())) {
-                changedCount++;
             }
             CharacterAvailability.syncToClient(target);
         }
@@ -110,34 +114,43 @@ public final class CharacterBanCommands {
 
     private static int setBanForServer(CommandSourceStack source, String characterInput, boolean disabled)
             throws CommandSyntaxException {
-        CharacterDefinition character = resolveCharacter(characterInput);
-        boolean changed = disabled
-                ? CharacterBanManager.banServer(source.getServer(), character.id())
-                : CharacterBanManager.unbanServer(source.getServer(), character.id());
-        Component characterName = character.displayName();
+        List<CharacterDefinition> characters = resolveCharacters(characterInput);
+        Component characterName = displayName(characterInput, characters);
+        int changedCount = 0;
+        for (CharacterDefinition character : characters) {
+            boolean changed = disabled
+                    ? CharacterBanManager.banServer(source.getServer(), character.id())
+                    : CharacterBanManager.unbanServer(source.getServer(), character.id());
+            if (changed) {
+                changedCount++;
+            }
+        }
         int forcedReselections = 0;
 
         for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
-            if (disabled
-                    && !CharacterBanManager.isPlayerAllowed(player, character.id())
-                    && CharacterSelectionManager.forceReselectionIfSelected(player, character.id(),
-                    Component.translatable("message.dealt_force_skills.selection.force_reselect", characterName))) {
-                forcedReselections++;
+            for (CharacterDefinition character : characters) {
+                if (disabled
+                        && !CharacterBanManager.isPlayerAllowed(player, character.id())
+                        && CharacterSelectionManager.forceReselectionIfSelected(player, character.id(),
+                        Component.translatable("message.dealt_force_skills.selection.force_reselect",
+                                character.displayName()))) {
+                    forcedReselections++;
+                }
             }
             CharacterAvailability.syncToClient(player);
         }
 
-        int changedCount = changed ? 1 : 0;
+        int changed = changedCount;
         int forcedCount = forcedReselections;
         if (disabled) {
             source.sendSuccess(() -> Component.translatable(
                     "commands.dealt_force_skills.dealtbanserver.ban_success",
-                    characterName, changedCount, forcedCount), true);
+                    characterName, changed, forcedCount), true);
             return changedCount + forcedReselections;
         }
         source.sendSuccess(() -> Component.translatable(
                 "commands.dealt_force_skills.dealtbanserver.unban_success",
-                characterName, changedCount), true);
+                characterName, changed), true);
         return changedCount;
     }
 
@@ -145,6 +158,18 @@ public final class CharacterBanCommands {
         return ModCharacters.findByCommandName(input)
                 .or(() -> CharacterBranchPackManager.findCharacter(input))
                 .orElseThrow(() -> UNKNOWN_CHARACTER.create(input));
+    }
+
+    private static List<CharacterDefinition> resolveCharacters(String input) throws CommandSyntaxException {
+        return "ALL".equalsIgnoreCase(input)
+                ? CharacterBranchPackManager.currentCharacters()
+                : List.of(resolveCharacter(input));
+    }
+
+    private static Component displayName(String input, List<CharacterDefinition> characters) {
+        return "ALL".equalsIgnoreCase(input)
+                ? Component.translatable("commands.dealt_force_skills.character_ban.all")
+                : characters.get(0).displayName();
     }
 
     private static String quoteIfNeeded(String value) {

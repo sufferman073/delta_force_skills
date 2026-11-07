@@ -739,6 +739,7 @@
   "character.dealt_force_skills.vyron.skill.tiger_cannon": "虎蹲炮",
   "character.dealt_force_skills.vyron.skill.tiger_cannon.desc": "切出发射器后发射可弹跳炮弹，爆炸后击倒未被正面盾阻挡的目标。",
   "commands.dealt_force_skills.character_ban.unknown": "未知角色：%s",
+  "commands.dealt_force_skills.character_ban.all": "所有角色",
   "commands.dealt_force_skills.dealtbancharacter.ban_success": "已为 %2$s 名玩家禁用 %1$s（新增禁用 %3$s 人，强制重选 %4$s 人）。",
   "commands.dealt_force_skills.dealtbancharacter.unban_success": "已为 %2$s 名玩家解除 %1$s 禁用（解除 %3$s 人）。",
   "commands.dealt_force_skills.dealtbanserver.ban_success": "已在全服禁用 %1$s（本次新增 %2$s，强制重选 %3$s 人）。",

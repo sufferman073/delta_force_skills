@@ -321,15 +321,17 @@ public final class ModItemEffectHelper {
         refreshSkillCooldowns(player, false);
     }
 
-    public static void refreshSkillCooldowns(ServerPlayer player, boolean fillRoverCharges) {
+    public static void refreshSkillCooldowns(ServerPlayer player, boolean fillCharges) {
         CompoundTag persistent = player.getPersistentData();
         for (String key : new ArrayList<>(persistent.getAllKeys())) {
             if (key.startsWith(DealtForceSkillsMod.MODID + ".") && persistent.contains(key, Tag.TAG_COMPOUND)) {
-                refreshCooldownFields(persistent.getCompound(key), player);
+                refreshCooldownFields(persistent.getCompound(key), player, fillCharges);
             }
         }
-        com.rzy.dealt_force_skills.character.rover.RoverStateManager.refreshSkills(player, fillRoverCharges);
-        com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.refreshSkills(player, fillRoverCharges);
+        com.rzy.dealt_force_skills.character.rover.RoverStateManager.refreshSkills(player, fillCharges);
+        com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.refreshSkills(player, fillCharges);
+        com.rzy.dealt_force_skills.character.department.DepartmentOfTransportationStateManager.refreshTrapCharges(player, fillCharges);
+        com.rzy.dealt_force_skills.character.saeed.SaeedStateManager.refreshFireAmmo(player, fillCharges);
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                 "message.dealt_force_skills.item.skill_cooldowns_refreshed"), true);
     }
@@ -338,46 +340,31 @@ public final class ModItemEffectHelper {
         return entity.hasEffect(ModEffects.LAUGHING_MANIA_III.get());
     }
 
-    private static void refreshCooldownFields(CompoundTag tag, ServerPlayer player) {
+    private static void refreshCooldownFields(CompoundTag tag, ServerPlayer player, boolean fillCharges) {
         for (Map.Entry<String, Integer> entry : CHARGE_MAXIMUMS.entrySet()) {
             String chargeKey = entry.getKey();
             if (!tag.contains(chargeKey, Tag.TAG_INT)) {
                 continue;
             }
-            tag.putInt(chargeKey, CommanderStateManager.skillCapacity(player, entry.getValue()));
+            int maximum = CommanderStateManager.skillCapacity(player, entry.getValue());
+            int charges = fillCharges ? maximum : Math.min(maximum, Math.max(0, tag.getInt(chargeKey)) + 1);
+            tag.putInt(chargeKey, charges);
             String rechargeKey = chargeKey.replace("Charges", "NextRecharge");
-            if (tag.contains(rechargeKey, Tag.TAG_LONG) || tag.contains(rechargeKey, Tag.TAG_INT)) {
+            // Keep ongoing recharge progress when a supply restores only one layer.
+            if (charges >= maximum && (tag.contains(rechargeKey, Tag.TAG_LONG) || tag.contains(rechargeKey, Tag.TAG_INT))) {
                 tag.putLong(rechargeKey, 0L);
             }
         }
         for (String key : new ArrayList<>(tag.getAllKeys())) {
             if (tag.contains(key, Tag.TAG_COMPOUND)) {
-                refreshCooldownFields(tag.getCompound(key), player);
+                refreshCooldownFields(tag.getCompound(key), player, fillCharges);
                 continue;
             }
-            if (key.contains("NextRecharge") && restoreOneCharge(tag, key, player)) {
-                continue;
-            }
-            if (key.contains("CooldownUntil")
+            if ((key.contains("CooldownUntil") || (fillCharges && key.contains("NextRecharge")))
                     && (tag.contains(key, Tag.TAG_LONG) || tag.contains(key, Tag.TAG_INT))) {
                 tag.putLong(key, 0L);
             }
         }
-    }
-
-    private static boolean restoreOneCharge(CompoundTag tag, String rechargeKey, ServerPlayer player) {
-        String chargeKey = rechargeKey.replace("NextRecharge", "Charges");
-        Integer baseMaxCharges = CHARGE_MAXIMUMS.get(chargeKey);
-        if (baseMaxCharges == null || !tag.contains(chargeKey, Tag.TAG_INT)) {
-            if (tag.contains(rechargeKey, Tag.TAG_LONG) || tag.contains(rechargeKey, Tag.TAG_INT)) {
-                tag.putLong(rechargeKey, 0L);
-            }
-            return true;
-        }
-        int maxCharges = CommanderStateManager.skillCapacity(player, baseMaxCharges);
-        tag.putInt(chargeKey, maxCharges);
-        tag.putLong(rechargeKey, 0L);
-        return true;
     }
 
     public static void suppressActiveHarmfulAttributes(Player player) {

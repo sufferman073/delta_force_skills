@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.entity;
 
+import com.tacz.guns.util.time.GunTime;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.entity.ReloadState;
 import com.tacz.guns.api.entity.ShootResult;
@@ -11,6 +12,7 @@ import com.tacz.guns.entity.shooter.LivingEntityDrawGun;
 import com.tacz.guns.entity.shooter.LivingEntityFireSelect;
 import com.tacz.guns.entity.shooter.LivingEntityMelee;
 import com.tacz.guns.entity.shooter.LivingEntityReload;
+import com.tacz.guns.entity.shooter.LivingEntityUnload;
 import com.tacz.guns.entity.shooter.LivingEntityShoot;
 import com.tacz.guns.entity.shooter.LivingEntitySpeedModifier;
 import com.tacz.guns.entity.shooter.LivingEntitySprint;
@@ -49,6 +51,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -70,7 +73,7 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
 
-public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
+public class SaeedGuardEntity extends PathfinderMob implements IGunOperator, OwnableEntity {
     private static final EntityDataAccessor<Integer> DATA_TYPE =
             SynchedEntityData.defineId(SaeedGuardEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER =
@@ -142,6 +145,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
     private final LivingEntityShoot taczShoot = new LivingEntityShoot(this, taczData, taczDraw);
     private final LivingEntityBolt taczBolt = new LivingEntityBolt(taczData, this, taczDraw, taczShoot);
     private final LivingEntityReload taczReload = new LivingEntityReload(this, taczData, taczDraw, taczShoot);
+    private final LivingEntityUnload taczUnload = new LivingEntityUnload(this, taczData, taczDraw, taczShoot, taczMelee);
     private final LivingEntitySpeedModifier taczSpeed = new LivingEntitySpeedModifier(this, taczData);
     private final LivingEntitySprint taczSprint = new LivingEntitySprint(this, taczData);
     private boolean suppressKnockbackMotion;
@@ -260,6 +264,17 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
 
     public Optional<UUID> ownerUuid() {
         return entityData.get(DATA_OWNER);
+    }
+
+    @Override
+    public UUID getOwnerUUID() {
+        return ownerUuid().orElse(null);
+    }
+
+    @Override
+    public LivingEntity getOwner() {
+        UUID ownerId = getOwnerUUID();
+        return ownerId == null ? null : level().getPlayerByUUID(ownerId);
     }
 
     public int skillCooldownRemainingTicks() {
@@ -523,7 +538,7 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
     @Override
     public void initialData() {
         taczData.initialData();
-        taczData.currentGunItem = this::getMainHandItem;
+        taczData.setCurrentGunItem(this::getMainHandItem);
     }
 
     @Override
@@ -539,6 +554,11 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
     @Override
     public void reload() {
         taczReload.reload();
+    }
+
+    @Override
+    public void unloadAmmo() {
+        taczUnload.unloadAmmo();
     }
 
     @Override
@@ -563,12 +583,18 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
 
     @Override
     public ShootResult shoot(java.util.function.Supplier<Float> pitch, java.util.function.Supplier<Float> yaw) {
-        return shoot(pitch, yaw, System.currentTimeMillis() - taczData.baseTimestamp);
+        return shoot(pitch, yaw, GunTime.nowMillis() - taczData.baseTimestamp);
     }
 
     @Override
     public ShootResult shoot(java.util.function.Supplier<Float> pitch, java.util.function.Supplier<Float> yaw, long timestamp) {
         return taczShoot.shoot(pitch, yaw, timestamp);
+    }
+
+    @Override
+    public ShootResult shoot(java.util.function.Supplier<Float> pitch, java.util.function.Supplier<Float> yaw,
+                             long timestamp, float chargeProgress) {
+        return taczShoot.shoot(pitch, yaw, timestamp, chargeProgress);
     }
 
     @Override
@@ -734,6 +760,9 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
     private boolean isSaeedTeamMember(Entity target) {
         if (this instanceof com.rzy.dealt_force_skills.ai.operative.NativeSaeedGuardEntity guard)
             return !(target instanceof LivingEntity living) || !guard.isEnemy(living);
+        if (ownerUuid().filter(ownerId -> SaeedStateManager.isGuardAlly(ownerId, target)).isPresent()) {
+            return true;
+        }
         if (target instanceof SaeedGuardEntity) {
             return true;
         }
@@ -899,6 +928,9 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator {
             return false;
         }
         if (owner != null && target instanceof AsaraTrooperEntity) {
+            return false;
+        }
+        if (ownerUuid().filter(ownerId -> SaeedStateManager.isGuardAlly(ownerId, target)).isPresent()) {
             return false;
         }
         if (owner == null) {

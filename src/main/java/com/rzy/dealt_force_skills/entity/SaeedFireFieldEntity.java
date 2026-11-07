@@ -3,6 +3,7 @@ package com.rzy.dealt_force_skills.entity;
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import com.rzy.dealt_force_skills.character.saeed.SaeedGuardType;
+import com.rzy.dealt_force_skills.character.saeed.SaeedStateManager;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -216,10 +217,7 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
         if(operative.active() && level() instanceof ServerLevel level)return operative.isAlly(level,target);
         UUID teamOwner = teamOwnerUuid().orElse(null);
         if (teamOwner != null) {
-            if (target.getUUID().equals(teamOwner)) {
-                return true;
-            }
-            return target instanceof SaeedGuardEntity guard && guard.isOwnedBy(teamOwner);
+            return SaeedStateManager.isGuardAlly(teamOwner, target);
         }
         if (ownerId == null) {
             return false;

@@ -4,7 +4,7 @@ import com.rzy.dealt_force_skills.motion.TacticalMotion;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 
-/** Separate the slide's low collision pose from animation inputs, only while drawing it. */
+/** Keep the slide's low collision pose separate from swimming animation inputs. */
 public final class SlideRenderState {
     private static final ThreadLocal<Entity> SLIDING = new ThreadLocal<>();
     private SlideRenderState() { }
@@ -13,12 +13,26 @@ public final class SlideRenderState {
         return entity != null && SLIDING.get() == entity;
     }
 
+    public static boolean suppressSwimming(Entity entity) {
+        if (entity == null || !entity.level().isClientSide || entity.isInWater()) return false;
+        if (active(entity)) return true;
+        if (entity instanceof Player player) {
+            // Gun animations can sample swimming before the renderer is entered.
+            if (player == net.minecraft.client.Minecraft.getInstance().player
+                    && com.rzy.dealt_force_skills.client.DWolfInputHandler.isSlideActiveForVisual()) return true;
+            var frame = ClientTacticalMotion.frame(player, 0);
+            return frame != null && frame.kind() == TacticalMotion.SLIDE;
+        }
+        return false;
+    }
+
     public static void render(Entity entity, float partial, Runnable render) {
         Entity previous = SLIDING.get();
         boolean slide = false;
         if (entity instanceof Player player) {
             var frame = ClientTacticalMotion.frame(player, partial);
-            slide = frame != null && frame.kind() == TacticalMotion.SLIDE && frame.pose().weight > 0;
+            // A zero-weight entry frame already has the low collision pose.
+            slide = frame != null && frame.kind() == TacticalMotion.SLIDE;
         }
         if (entity instanceof com.rzy.dealt_force_skills.entity.OperativeEntity bot) {
             var frame = ClientOperativeMotion.frame(bot, partial);

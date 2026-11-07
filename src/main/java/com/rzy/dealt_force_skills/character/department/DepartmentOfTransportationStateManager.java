@@ -369,6 +369,24 @@ public final class DepartmentOfTransportationStateManager {
         return Optional.empty();
     }
 
+    public static void refreshTrapCharges(ServerPlayer player, boolean fillCharges) {
+        if (!isDepartment(player)) {
+            return;
+        }
+        initializeIfNeeded(player);
+        CompoundTag tag = data(player);
+        ensureTrapChargeState(player);
+        if (fillCharges) {
+            for (int slot = 0; slot < TRAP_MAX_CHARGES; slot++) {
+                tag.putLong(trapChargeKey(slot), 0L);
+            }
+        } else {
+            restoreTrapCharge(player, -1, 0L);
+        }
+        tag.remove(TRAP_COOLDOWN_UNTIL);
+        syncToClient(player);
+    }
+
     public static void restoreTrapCharge(ServerPlayer player, int chargeSlot, long chargeReadyAt) {
         ensureTrapChargeState(player);
         CompoundTag tag = data(player);

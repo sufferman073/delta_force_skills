@@ -24,7 +24,8 @@ public final class NoxStealthVisuals {
     public static void onRenderLivingPre(RenderLivingEvent.Pre<?, ?> event) {
         if (event.getEntity() instanceof Player player
                 && player.hasEffect(ModEffects.NOX_STEALTH.get())
-                && !ClientNoxHudState.isEntityRevealed(player.getId())) {
+                && !ClientNoxHudState.isEntityRevealed(player.getId())
+                && !com.rzy.dealt_force_skills.client.HelmetVisionRenderer.reveals(player)) {
             event.setCanceled(true);
         }
     }
@@ -33,7 +34,8 @@ public final class NoxStealthVisuals {
     public static void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
         Player player = event.getEntity();
         if (player.hasEffect(ModEffects.NOX_STEALTH.get())
-                && !ClientNoxHudState.isEntityRevealed(player.getId())) {
+                && !ClientNoxHudState.isEntityRevealed(player.getId())
+                && !com.rzy.dealt_force_skills.client.HelmetVisionRenderer.reveals(player)) {
             event.setCanceled(true);
         }
     }

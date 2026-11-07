@@ -24,7 +24,7 @@ public final class TaskCharacterUnlocks {
     }
 
     public static boolean isLocked(ServerPlayer player, String id) {
-        return REWARDED.contains(id) && !isUnlocked(player,id)
+        return !player.isCreative() && REWARDED.contains(id) && !isUnlocked(player,id)
                 && !CharacterBanManager.isPlayerAllowed(player,id)
                 && !CharacterBanManager.isServerAllowed(player.getServer(),id);
     }

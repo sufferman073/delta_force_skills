@@ -61,6 +61,8 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public class CharacterEvents {
+    private static final java.util.Map<ServerPlayer, Boolean> CREATIVE_AVAILABILITY = new java.util.WeakHashMap<>();
+
     @SubscribeEvent
     public static void onPlayerClone(PlayerEvent.Clone event) {
         com.rzy.dealt_force_skills.mail.MailboxManager.copy(event.getOriginal(), event.getEntity());
@@ -172,6 +174,12 @@ public class CharacterEvents {
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         if (!(event.player instanceof ServerPlayer player)) return;
+
+        // Read the applied mode after cancellable game-mode events have finished.
+        Boolean previousCreative = CREATIVE_AVAILABILITY.put(player, player.isCreative());
+        if (previousCreative != null && previousCreative != player.isCreative()) {
+            CharacterAvailability.syncToClient(player);
+        }
 
         // Attribute modifiers are player-owned, not character-owned. Reconcile
         // Commander modifiers before dispatching the currently selected role so

@@ -105,7 +105,8 @@ dependencies {
 
     // Optional backpack upgrade API; never bundled or required at runtime.
     compileOnly fg.deobf('maven.modrinth:sophisticated-core:1Xl7lP0L')
-    compileOnly files('other_compact_mods/tacz-1.20.1-1.1.8-hotfix.jar')
+    // Official TaCZ 1.2.0 for Forge 1.20.1; version ID disambiguates loader releases.
+    compileOnly fg.deobf('maven.modrinth:timeless-and-classics-zero:QGCbNkTy')
     compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.20.0.106')
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
