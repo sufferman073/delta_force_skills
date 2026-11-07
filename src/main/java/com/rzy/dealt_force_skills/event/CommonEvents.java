@@ -3516,6 +3516,12 @@ public class CommonEvents {
       handleTaczSonicTimeEvent("com.tacz.guns.api.event.common.GunFireSelectEvent", event);
    }
 
+   @SubscribeEvent
+   public static void onTaczGunFirePost(com.tacz.guns.api.event.common.GunFirePostEvent event) {
+      // Only successful shots may create a guaranteed-hit fallback.
+      handleGhrothStarsGunFire(event);
+   }
+
    private static void handleTaczSonicTimeEvent(String eventName, Event event) {
       recordMorseTaczAction(event);
       if (!cancelManbaDuelTaczAction(event)
@@ -3527,9 +3533,6 @@ public class CommonEvents {
          && !throttleSonicTaczTimeEvent(event)) {
          accelerateTaczAdrenalineForEvent(eventName, event);
          snapshotMhsTaczAmmo(eventName, event);
-         if ("com.tacz.guns.api.event.common.GunFireEvent".equals(eventName)) {
-            handleGhrothStarsGunFire(event);
-         }
       }
    }
 
@@ -4207,6 +4210,9 @@ public class CommonEvents {
    }
 
    private static void shiftTaczClientDataHolder(Player player, CommonEvents.TaczSpeedMultipliers multipliers) {
+      if (!com.tacz.guns.util.time.GunTime.shouldTick()) {
+          return;
+      }
       try {
          Class<?> clientOperatorClass = Class.forName("com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator");
          Method fromLocalPlayer = null;
@@ -5365,28 +5371,12 @@ public class CommonEvents {
       }
    }
 
-   private static void tickHelmetVisionEffect(ServerPlayer player, ItemStack head) {
-      int visionMode = DfsEquipmentItem.activeVisionMode(head);
-      if (visionMode != 1) {
-         MobEffectInstance current = player.getEffect(MobEffects.NIGHT_VISION);
-         if (current != null && current.getAmplifier() == 0 && current.isAmbient() && !current.isVisible() && current.getDuration() <= 280) {
-            player.removeEffect(MobEffects.NIGHT_VISION);
-         }
-      } else {
-         MobEffectInstance current = player.getEffect(MobEffects.NIGHT_VISION);
-         if (current == null || current.getDuration() < 220) {
-            player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 260, 0, true, false, true), player);
-         }
-      }
-   }
-
    private static void tickDfsEquipment(ServerPlayer player) {
       ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
       ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
       DfsEquipmentItem.Profile headProfile = DfsEquipmentItem.profile(head);
       DfsEquipmentItem.Profile chestProfile = DfsEquipmentItem.profile(chest);
       boolean specials = ModGameRules.areArmorSpecialsEnabled(player);
-      tickHelmetVisionEffect(player, head);
       if (equipmentFactionCount(player, DfsEquipmentItem.Faction.GLOBAL_FORCES) >= 1 && player.tickCount % 100 == 0) {
          int beforeRepair = head.getDamageValue() + chest.getDamageValue();
             if (regenerateEquipmentDurability(head) | regenerateEquipmentDurability(chest)) {

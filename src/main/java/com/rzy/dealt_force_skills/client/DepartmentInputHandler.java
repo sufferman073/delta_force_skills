@@ -1,6 +1,7 @@
 package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.util.TrapMarkerTargeting;
 import com.rzy.dealt_force_skills.character.department.DepartmentPlacementHelper;
 import com.rzy.dealt_force_skills.character.department.DepartmentTool;
 import com.rzy.dealt_force_skills.character.department.DepartmentToolAction;
@@ -111,6 +112,18 @@ public final class DepartmentInputHandler {
         }
 
         if (!ClientDepartmentHudState.hasEquippedTool()) {
+            if (minecraft.screen != null || !ClientDepartmentHudState.shouldRender()
+                    || event.getHand() != InteractionHand.MAIN_HAND
+                    || (!event.isAttack() && !event.isUseItem()) || !handsEmpty(minecraft.player)) {
+                return;
+            }
+            findLookedAtMarker(minecraft).ifPresent(marker -> {
+                event.setSwingHand(false);
+                event.setCanceled(true);
+                DepartmentToolAction action = event.isAttack()
+                        ? DepartmentToolAction.RECALL_MARKER : DepartmentToolAction.TRIGGER_MARKER;
+                NetworkHandler.sendToServer(new C2S_DepartmentToolAction(action, marker.entityId()));
+            });
             return;
         }
         event.setSwingHand(false);
@@ -225,16 +238,8 @@ public final class DepartmentInputHandler {
         Vec3 eye = minecraft.player.getEyePosition();
         Vec3 look = minecraft.player.getLookAngle().normalize();
         return ClientDepartmentHudState.trapMarkers().stream()
-                .filter(marker -> marker.position().distanceTo(eye) <= 50.0D)
-                .filter(marker -> {
-                    Vec3 toMarker = marker.position().subtract(eye);
-                    if (toMarker.lengthSqr() < 0.0001D) {
-                        return true;
-                    }
-                    double distance = toMarker.length();
-                    double alignment = look.dot(toMarker.scale(1.0D / distance));
-                    return alignment > 0.996D || Math.sqrt(Math.max(0.0D, 1.0D - alignment * alignment)) * distance < 0.45D;
-                })
+                .filter(marker -> TrapMarkerTargeting.isLookingAt(eye, look, marker.position(),
+                        TrapMarkerTargeting.DEPARTMENT_MARKER_HEIGHT))
                 .min(Comparator.comparingDouble(marker -> marker.position().distanceToSqr(eye)));
     }
 

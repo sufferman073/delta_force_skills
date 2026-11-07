@@ -71,6 +71,7 @@ public final class StealthFadeVisuals {
     public static void render(RenderPlayerEvent.Pre event) {
         if (!(event.getEntity() instanceof AbstractClientPlayer player) || !player.isAlive()) return;
         checkLevel();
+        if (com.rzy.dealt_force_skills.client.HelmetVisionRenderer.reveals(player)) return;
         if (player.hasEffect(ModEffects.DEPARTMENT_CONCEALMENT)
                 || player.hasEffect(MobEffects.INVISIBILITY)) return;
         // A replacement renderer owns its mesh. Never reveal an invisible YSM model via a vanilla duplicate.

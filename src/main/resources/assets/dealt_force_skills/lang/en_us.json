@@ -739,6 +739,7 @@
   "character.dealt_force_skills.vyron.skill.tiger_cannon": "Tiger Crouching Cannon",
   "character.dealt_force_skills.vyron.skill.tiger_cannon.desc": "Equip a launcher and fire a bouncing shell that knocks down targets not blocked by a front shield.",
   "commands.dealt_force_skills.character_ban.unknown": "Unknown character: %s",
+  "commands.dealt_force_skills.character_ban.all": "all characters",
   "commands.dealt_force_skills.dealtbancharacter.ban_success": "Banned %1$s for %2$s player(s); %3$s new ban(s), %4$s forced reselection(s).",
   "commands.dealt_force_skills.dealtbancharacter.unban_success": "Unbanned %1$s for %2$s player(s); %3$s ban(s) removed.",
   "commands.dealt_force_skills.dealtbanserver.ban_success": "Banned %1$s server-wide; %2$s new server ban(s), %3$s forced reselection(s).",

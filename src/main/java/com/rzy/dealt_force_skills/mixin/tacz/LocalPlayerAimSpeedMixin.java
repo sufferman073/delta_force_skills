@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.mixin.tacz;
 
+import com.tacz.guns.util.time.GunTime;
 import com.rzy.dealt_force_skills.client.ClientEvents;
 import com.rzy.dealt_force_skills.compat.TaczTimingCompat;
 import com.tacz.guns.client.gameplay.LocalPlayerDataHolder;
@@ -22,7 +23,7 @@ public abstract class LocalPlayerAimSpeedMixin {
     private void dfs$adjustAimTimestamp(CallbackInfo ci) {
         if (data.clientIsAiming) {
             data.clientAimingTimestamp = TaczTimingCompat.scaleElapsedTimestamp(data.clientAimingTimestamp,
-                    System.currentTimeMillis(), ClientEvents.effectiveTaczClientAimMultiplier(player));
+                    GunTime.nowMillis(), ClientEvents.effectiveTaczClientAimMultiplier(player));
         }
     }
 }

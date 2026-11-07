@@ -216,6 +216,9 @@ public class ClientEvents {
     }
 
     private static void accelerateTaczAdrenalineClient(net.minecraft.client.player.LocalPlayer player) {
+        if (!com.tacz.guns.util.time.GunTime.shouldTick()) {
+            return;
+        }
         TaczSpeedMultipliers multipliers = taczSpeedMultipliers(player);
         if (!multipliers.hasChange()) {
             return;
@@ -359,6 +362,9 @@ public class ClientEvents {
     }
 
     private static void delayTaczMorseShockClient(net.minecraft.client.player.LocalPlayer player) {
+        if (!com.tacz.guns.util.time.GunTime.shouldTick()) {
+            return;
+        }
         MobEffectInstance shock = player.getEffect(ModEffects.MORSE_STRONG_SHOCK);
         if (shock == null) {
             return;

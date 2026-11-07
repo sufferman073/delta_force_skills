@@ -596,12 +596,42 @@ public final class SaeedStateManager {
     }
 
     public static boolean shouldCancelTeamDamage(Entity target, DamageSource source) {
+        Optional<UUID> guardOwner = guardFromDamageSource(source).flatMap(SaeedGuardEntity::ownerUuid);
+        if (source.getDirectEntity() instanceof SaeedFireFieldEntity field) {
+            guardOwner = field.teamOwnerUuid();
+        }
+        if (guardOwner.filter(ownerId -> isGuardAlly(ownerId, target)).isPresent()) {
+            return true;
+        }
         Optional<UUID> targetOwner = teamOwnerId(target);
         if (targetOwner.isEmpty()) {
             return false;
         }
         return sourceTeamOwnerId(source.getEntity()).filter(targetOwner.get()::equals).isPresent()
                 || sourceTeamOwnerId(source.getDirectEntity()).filter(targetOwner.get()::equals).isPresent();
+    }
+
+    /** Summoner protection follows persistent squad membership, even while the owner is offline. */
+    public static boolean isGuardAlly(UUID ownerId, Entity target) {
+        if (ownerId == null || target == null) {
+            return false;
+        }
+        UUID targetId = target instanceof Player player ? player.getUUID()
+                : target instanceof SaeedGuardEntity guard ? guard.ownerUuid().orElse(null) : null;
+        if (targetId == null) {
+            return false;
+        }
+        if (ownerId.equals(targetId)) {
+            return true;
+        }
+        var server = target.getServer();
+        if (com.rzy.dealt_force_skills.team.DealtTeamManager.areTeammatesById(ownerId, targetId, server)) {
+            return true;
+        }
+        Player owner = server == null ? null : server.getPlayerList().getPlayer(ownerId);
+        Player teammate = target instanceof Player player ? player
+                : server == null ? null : server.getPlayerList().getPlayer(targetId);
+        return owner != null && teammate != null && owner.isAlliedTo(teammate);
     }
 
     private static Optional<UUID> sourceTeamOwnerId(Entity entity) {
@@ -884,6 +914,22 @@ public final class SaeedStateManager {
 
     public static int fireAmmo(ServerPlayer player) {
         return Mth.clamp(data(player).getInt(FIRE_AMMO), 0, FIRE_MAX_AMMO);
+    }
+
+    public static void refreshFireAmmo(ServerPlayer player, boolean fillCharges) {
+        if (!isSaeed(player)) {
+            return;
+        }
+        initializeIfNeeded(player);
+        CompoundTag tag = data(player);
+        int ammo = fillCharges ? FIRE_MAX_AMMO : Math.min(FIRE_MAX_AMMO, fireAmmo(player) + 1);
+        tag.putInt(FIRE_AMMO, ammo);
+        if (ammo >= FIRE_MAX_AMMO) {
+            tag.putLong(FIRE_NEXT_RECHARGE, 0L);
+        } else if (tag.getLong(FIRE_NEXT_RECHARGE) <= 0L) {
+            tag.putLong(FIRE_NEXT_RECHARGE, SkillCooldownHelper.until(player, FIRE_RECHARGE_TICKS));
+        }
+        syncToClient(player);
     }
 
     public static int fireRechargeRemainingTicks(ServerPlayer player) {

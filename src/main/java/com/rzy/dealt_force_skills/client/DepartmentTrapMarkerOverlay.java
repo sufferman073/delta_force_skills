@@ -3,6 +3,7 @@ package com.rzy.dealt_force_skills.client;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.util.TrapMarkerTargeting;
 import com.rzy.dealt_force_skills.character.department.DepartmentTrapMarker;
 import com.rzy.dealt_force_skills.client.character.ClientDepartmentHudState;
 import net.minecraft.client.Camera;
@@ -25,7 +26,8 @@ public final class DepartmentTrapMarkerOverlay {
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || !ClientDepartmentHudState.shouldRender()) {
+        // Render while the world camera transform is still active.
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || !ClientDepartmentHudState.shouldRender()) {
             return;
         }
 
@@ -61,11 +63,11 @@ public final class DepartmentTrapMarkerOverlay {
             DepartmentTrapMarker marker,
             double distance
     ) {
-        Vec3 pos = marker.position().add(0.0D, 0.65D, 0.0D);
+        Vec3 pos = marker.position().add(0.0D, TrapMarkerTargeting.DEPARTMENT_MARKER_HEIGHT, 0.0D);
         poseStack.pushPose();
         poseStack.translate(pos.x - cameraPos.x, pos.y - cameraPos.y, pos.z - cameraPos.z);
         poseStack.mulPose(camera.rotation());
-        poseStack.scale(-0.025F, -0.025F, 0.025F);
+        poseStack.scale(0.025F, -0.025F, 0.025F);
         String text = Component.translatable("hud.dealt_force_skills.department.marker.trap").getString()
                 + " " + Math.round(distance) + "m";
         font.drawInBatch(text, -font.width(text) / 2.0F, 0.0F, 0xFFFF7C3A, false,

@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.mixin.tacz;
 
+import com.tacz.guns.util.time.GunTime;
 import com.rzy.dealt_force_skills.event.CommonEvents;
 import com.tacz.guns.entity.shooter.ShooterDataHolder;
 import net.minecraft.world.entity.LivingEntity;
@@ -18,20 +19,25 @@ public abstract class LivingEntityReloadSpeedMixin {
     @Shadow @Final private LivingEntity shooter;
     @Shadow @Final private ShooterDataHolder data;
     @Unique private long dfs$lastReloadTickMillis = -1L;
+    @Unique private long dfs$reloadEpoch = -1L;
 
     @Inject(method = "tickReloadState()Lcom/tacz/guns/api/entity/ReloadState;", at = @At("HEAD"), remap = false)
     private void dfs$accelerateReload(CallbackInfoReturnable<?> cir) {
-        long now = System.currentTimeMillis();
-        if (data.reloadTimestamp < 0L || data.reloadStateType == null || !data.reloadStateType.isReloading()) {
+        long now = GunTime.nowMillis();
+        long epoch = GunTime.epoch();
+        if (dfs$reloadEpoch != epoch || data.reloadTimestamp < 0L
+                || data.reloadStateType == null || !data.reloadStateType.isReloading()) {
+            dfs$reloadEpoch = epoch;
             dfs$lastReloadTickMillis = now;
             return;
         }
         if (dfs$lastReloadTickMillis >= 0L && now > dfs$lastReloadTickMillis) {
             double multiplier = CommonEvents.effectiveTaczReloadMultiplier(shooter);
             if (Double.isFinite(multiplier) && multiplier > 1.0001D) {
-                long elapsed = now - dfs$lastReloadTickMillis;
+                // A new reload must not inherit time spent idle or on the previous gun.
+                long elapsed = Math.max(0L, now - Math.max(dfs$lastReloadTickMillis, data.reloadTimestamp));
                 long extra = Math.max(0L, Math.round(elapsed * (multiplier - 1.0D)));
-                data.reloadTimestamp -= extra;
+                data.reloadTimestamp = Math.max(0L, data.reloadTimestamp - extra);
             }
         }
         dfs$lastReloadTickMillis = now;

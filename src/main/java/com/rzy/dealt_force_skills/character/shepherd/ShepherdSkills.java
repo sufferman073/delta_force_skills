@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.character.shepherd;
 
+import com.rzy.dealt_force_skills.util.TrapMarkerTargeting;
 import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
 
 import com.rzy.dealt_force_skills.character.SkillSlot;
@@ -237,14 +238,8 @@ public final class ShepherdSkills {
             return false;
         }
 
-        Vec3 eye = player.getEyePosition();
-        Vec3 toTarget = entity.position().add(0.0D, entity.getBbHeight() * 0.5D, 0.0D).subtract(eye);
-        if (toTarget.lengthSqr() < 0.0001D) {
-            return true;
-        }
-        double distance = toTarget.length();
-        double alignment = player.getLookAngle().normalize().dot(toTarget.scale(1.0D / distance));
-        return alignment > 0.996D || Math.sqrt(Math.max(0.0D, 1.0D - alignment * alignment)) * distance < 0.45D;
+        return TrapMarkerTargeting.isLookingAt(player.getEyePosition(), player.getLookAngle(), entity.position(),
+                TrapMarkerTargeting.MARKER_HEIGHT);
     }
 
     private static boolean handsEmpty(ServerPlayer player) {

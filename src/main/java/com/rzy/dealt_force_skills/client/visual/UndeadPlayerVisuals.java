@@ -47,7 +47,8 @@ public final class UndeadPlayerVisuals {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onHidePlayerPre(RenderPlayerEvent.Pre event) {
-        if (shouldHideCompletely(event.getEntity())) {
+        if (shouldHideCompletely(event.getEntity())
+                && !com.rzy.dealt_force_skills.client.HelmetVisionRenderer.reveals(event.getEntity())) {
             event.setCanceled(true);
         }
     }
@@ -74,7 +75,8 @@ public final class UndeadPlayerVisuals {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderLivingPre(RenderLivingEvent.Pre<?, ?> event) {
-        if (event.getEntity() instanceof Player player && shouldHideCompletely(player)) {
+        if (event.getEntity() instanceof Player player && shouldHideCompletely(player)
+                && !com.rzy.dealt_force_skills.client.HelmetVisionRenderer.reveals(player)) {
             event.setCanceled(true);
         }
     }

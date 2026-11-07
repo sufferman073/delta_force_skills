@@ -23,7 +23,8 @@ public abstract class LivingEntityShootSpeedMixin {
         if (data.shootTimestamp < 0L) {
             return;
         }
-        long elapsed = Math.max(0L, relativeNow - data.shootTimestamp);
+        // Preserve future timestamps used by scripted or scheduled shots.
+        long elapsed = relativeNow - data.shootTimestamp;
         cir.setReturnValue(TaczTimingCompat.accelerateRemainingCooldown(
                 cir.getReturnValueJ(), elapsed, CommonEvents.effectiveTaczFireRateMultiplier(shooter), 5L));
     }

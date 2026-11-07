@@ -105,7 +105,8 @@ dependencies {
     
 
     // dealt_force_skills (friend mod) compile-time dependencies
-    compileOnly "maven.modrinth:tacz-1.21.1:1.1.8-hotfix-r6"
+    // Official TaCZ 1.2.0 for NeoForge 1.21.1, replacing the unofficial port.
+    compileOnly 'maven.modrinth:timeless-and-classics-zero:O2Pfsh6w'
     compileOnly "maven.modrinth:parcool:1.21.1-3.4.3.3"
     compileOnly 'mezz.jei:jei-1.21.1-common-api:19.8.4.110'
 }

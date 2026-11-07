@@ -29,11 +29,16 @@ public final class SmokeCloudRenderer<T extends Entity & SmokeCloudModelState> e
     @Override
     public void render(T entity, float entityYaw, float partialTick, PoseStack poseStack,
                        MultiBufferSource buffer, int packedLight) {
-        if (ClientVisionHooks.isThermalVisionActive() || !entity.shouldRenderSmokeModel()) {
+        // Smoke is drawn once by SmokeWorldRenderer, outside ordinary entity culling.
+    }
+
+    public void renderWorld(Entity entity, float partialTick, PoseStack poseStack, MultiBufferSource buffer) {
+        if (!(entity instanceof SmokeCloudModelState smoke)
+                || ClientVisionHooks.isThermalVisionActive() || !smoke.shouldRenderSmokeModel()) {
             return;
         }
         float ageTicks = entity.tickCount + partialTick;
-        float remainingTicks = entity.smokeLifetimeTicks() - ageTicks;
+        float remainingTicks = smoke.smokeLifetimeTicks() - ageTicks;
         String animation;
         float seconds;
         if (ageTicks < BURST_TICKS) {
@@ -52,7 +57,6 @@ public final class SmokeCloudRenderer<T extends Entity & SmokeCloudModelState> e
         BlockbenchAnimatedModelRenderer.render(model, animation, seconds, poseStack, buffer,
                 LightTexture.FULL_BRIGHT, 0xFFFFFFFF);
         poseStack.popPose();
-        super.render(entity, entityYaw, partialTick, poseStack, buffer, packedLight);
     }
 
     @Override

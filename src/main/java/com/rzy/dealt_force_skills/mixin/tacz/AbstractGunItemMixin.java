@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(targets = "com.tacz.guns.api.item.gun.AbstractGunItem", remap = false)
+@Mixin(value = com.tacz.guns.api.item.gun.AbstractGunItem.class, remap = false)
 public abstract class AbstractGunItemMixin {
     @Inject(method = "allowAttachment", at = @At("RETURN"), cancellable = true, remap = false)
     private void dfs$allowGhrothEnhancedAttachment(ItemStack gun, ItemStack attachmentItem,

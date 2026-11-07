@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.entity;
 
+import com.tacz.guns.util.time.GunTime;
 import com.rzy.dealt_force_skills.boss.BeaconLootHelper;
 import com.rzy.dealt_force_skills.boss.AcceleratedTroopsSquadManager;
 import com.rzy.dealt_force_skills.boss.BeaconTaczEquipment;
@@ -19,6 +20,7 @@ import com.tacz.guns.entity.shooter.LivingEntityDrawGun;
 import com.tacz.guns.entity.shooter.LivingEntityFireSelect;
 import com.tacz.guns.entity.shooter.LivingEntityMelee;
 import com.tacz.guns.entity.shooter.LivingEntityReload;
+import com.tacz.guns.entity.shooter.LivingEntityUnload;
 import com.tacz.guns.entity.shooter.LivingEntityShoot;
 import com.tacz.guns.entity.shooter.LivingEntitySpeedModifier;
 import com.tacz.guns.entity.shooter.LivingEntitySprint;
@@ -237,6 +239,7 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
     private final LivingEntityShoot taczShoot = new LivingEntityShoot(this, taczData, taczDraw);
     private final LivingEntityBolt taczBolt = new LivingEntityBolt(taczData, this, taczDraw, taczShoot);
     private final LivingEntityReload taczReload = new LivingEntityReload(this, taczData, taczDraw, taczShoot);
+    private final LivingEntityUnload taczUnload = new LivingEntityUnload(this, taczData, taczDraw, taczShoot, taczMelee);
     private final LivingEntitySpeedModifier taczSpeed = new LivingEntitySpeedModifier(this, taczData);
     private final LivingEntitySprint taczSprint = new LivingEntitySprint(this, taczData);
 
@@ -1066,7 +1069,7 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
     @Override
     public void initialData() {
         taczData.initialData();
-        taczData.currentGunItem = this::getMainHandItem;
+        taczData.setCurrentGunItem(this::getMainHandItem);
     }
 
     @Override
@@ -1082,6 +1085,11 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
     @Override
     public void reload() {
         taczReload.reload();
+    }
+
+    @Override
+    public void unloadAmmo() {
+        taczUnload.unloadAmmo();
     }
 
     @Override
@@ -1106,12 +1114,18 @@ public class BeaconBossEntity extends Monster implements SkillPlayerLikeTarget, 
 
     @Override
     public ShootResult shoot(java.util.function.Supplier<Float> pitch, java.util.function.Supplier<Float> yaw) {
-        return shoot(pitch, yaw, System.currentTimeMillis() - taczData.baseTimestamp);
+        return shoot(pitch, yaw, GunTime.nowMillis() - taczData.baseTimestamp);
     }
 
     @Override
     public ShootResult shoot(java.util.function.Supplier<Float> pitch, java.util.function.Supplier<Float> yaw, long timestamp) {
         return taczShoot.shoot(pitch, yaw, timestamp);
+    }
+
+    @Override
+    public ShootResult shoot(java.util.function.Supplier<Float> pitch, java.util.function.Supplier<Float> yaw,
+                             long timestamp, float chargeProgress) {
+        return taczShoot.shoot(pitch, yaw, timestamp, chargeProgress);
     }
 
     @Override

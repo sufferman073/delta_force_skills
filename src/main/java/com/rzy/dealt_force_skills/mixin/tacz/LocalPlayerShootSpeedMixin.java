@@ -1,5 +1,6 @@
 package com.rzy.dealt_force_skills.mixin.tacz;
 
+import com.tacz.guns.util.time.GunTime;
 import com.rzy.dealt_force_skills.client.ClientEvents;
 import com.rzy.dealt_force_skills.compat.TaczTimingCompat;
 import com.tacz.guns.api.item.IGun;
@@ -28,7 +29,8 @@ public abstract class LocalPlayerShootSpeedMixin {
         if (data.clientShootTimestamp < 0L) {
             return;
         }
-        long elapsed = Math.max(0L, System.currentTimeMillis() - data.clientShootTimestamp);
+        // Scripts may reserve a future firing time; preserve that animation lock.
+        long elapsed = GunTime.nowMillis() - data.clientShootTimestamp;
         cir.setReturnValue(TaczTimingCompat.accelerateRemainingCooldown(
                 cir.getReturnValueJ(), elapsed, ClientEvents.effectiveTaczClientFireRateMultiplier(player), 0L));
     }
