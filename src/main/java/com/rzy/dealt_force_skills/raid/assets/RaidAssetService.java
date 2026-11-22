@@ -128,9 +128,8 @@ public final class RaidAssetService {
         if (phase.equals(SessionPhase.ENTERING.name()) && outcome != SafeBoxRules.Outcome.SERVER_RESTART)
             throw new IllegalStateException("Incomplete entry can only be recovered as an interrupted session");
         CompoundTag profile = RaidPlayerAssets.profile(account);
-        CompoundTag current = actual == null ? session.getCompound("Actual").copy() : actual.copy();
-        // ENTERING may still contain the untouched survival inventory. Never count it as raid loot.
-        if (phase.equals(SessionPhase.ENTERING.name())) current = emptyActual(server);
+        CompoundTag current = (phase.equals(SessionPhase.ENTERING.name()) ? session.getCompound("Entry")
+                : actual == null ? session.getCompound("Actual") : actual).copy();
         validateActual(server, current);
         List<ItemStack> ordinary = ordinary(server, current);
         List<ItemStack> safe = RaidItemCodec.readList(server, current.getList("SAFE", Tag.TAG_COMPOUND), 9);
@@ -139,11 +138,7 @@ public final class RaidAssetService {
         for (int i = 0; i < safe.size(); i++) if (!safe.get(i).isEmpty()) occupied.add(i);
         SafeBoxRules.Settlement safeSettlement = SafeBoxRules.settle(safeState, outcome, occupied);
         List<ItemStack> mail = new ArrayList<>(), drops = new ArrayList<>();
-        if (outcome == SafeBoxRules.Outcome.SERVER_RESTART) {
-            RaidItemCodec.appendNonempty(mail, all(server, session.getCompound("Entry")));
-            RaidItemCodec.appendNonempty(mail, ordinary);
-            RaidItemCodec.appendNonempty(mail, safe);
-        } else if (outcome == SafeBoxRules.Outcome.EXTRACTED) {
+        if (outcome == SafeBoxRules.Outcome.SERVER_RESTART || outcome == SafeBoxRules.Outcome.EXTRACTED) {
             RaidItemCodec.appendNonempty(mail, ordinary); RaidItemCodec.appendNonempty(mail, safe);
         } else {
             RaidItemCodec.appendNonempty(drops, ordinary);
@@ -176,6 +171,14 @@ public final class RaidAssetService {
         if (session.getString("Phase").equals(SessionPhase.TERMINAL.name())) return true;
         if (!session.getString("Phase").equals(SessionPhase.SETTLING.name())) return false;
         CompoundTag settlement = session.getCompound("Settlement");
+        if (SafeBoxRules.Outcome.SERVER_RESTART.name().equals(settlement.getString("Outcome"))) {
+            CompoundTag snapshot = session.getCompound("Actual");
+            if (!snapshot.equals(legacyEnteringSnapshot())) {
+                List<ItemStack> singleLoadout = validateActual(server, snapshot);
+                singleLoadout.removeIf(com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaStateManager::isHandGuardShield);
+                settlement.put("Mail", RaidItemCodec.writeList(server, singleLoadout));
+            }
+        }
         if (settlement.getString("RestoreStage").equals("CLEARING")) {
             player.closeContainer();
             com.rzy.dealt_force_skills.character.lexninjia.LexNinjiaStateManager.clearRaidTransient(player);
@@ -233,12 +236,12 @@ public final class RaidAssetService {
         return new SettlementResult(settlement.getUUID("Id"), SafeBoxRules.Outcome.valueOf(settlement.getString("Outcome")),
                 RaidItemCodec.readList(server, drops, drops.size()), fresh);
     }
-    private static void validateActual(MinecraftServer server, CompoundTag actual) {
+    private static List<ItemStack> validateActual(MinecraftServer server, CompoundTag actual) {
         for (String key : new String[]{"Inventory", "Curios", "SAFE", "EXTRA"})
             if (!actual.contains(key, Tag.TAG_LIST)) throw new IllegalArgumentException("Incomplete actual loadout: " + key);
-        all(server, actual);
+        return all(server, actual);
     }
-    private static CompoundTag emptyActual(MinecraftServer server) {
+    private static CompoundTag legacyEnteringSnapshot() {
         CompoundTag result = new CompoundTag();
         for (String key : new String[]{"Inventory", "Curios", "SAFE", "EXTRA"}) result.put(key, new ListTag());
         return result;
