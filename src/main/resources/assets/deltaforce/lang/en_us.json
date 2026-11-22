@@ -1,4 +1,6 @@
 {
+  "config.deltaforce.BASE|customdrop.enabled": "Custom dropped items (server)",
+  "config.deltaforce.subcategory.rules": "Server rules",
   "tab.deltaforce": "Delta Force",
   "mod.deltaforce": "Delta Force",
   "mod.dealt_force_skills": "Dealt Force Skills",

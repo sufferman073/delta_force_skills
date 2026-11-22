@@ -3,6 +3,14 @@ package com.rzy.dealt_force_skills.client.visual;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.character.ntwo.NTwoTool;
+import com.rzy.dealt_force_skills.character.stinger.StingerTool;
+import com.rzy.dealt_force_skills.character.toxik.ToxikTool;
+import com.rzy.dealt_force_skills.character.rover.RoverConfig;
+import com.rzy.dealt_force_skills.client.RoverClient;
+import com.rzy.dealt_force_skills.client.character.ClientNTwoHudState;
+import com.rzy.dealt_force_skills.client.character.ClientStingerHudState;
+import com.rzy.dealt_force_skills.client.character.ClientToxikHudState;
 import com.rzy.dealt_force_skills.character.luna.LunaTool;
 import com.rzy.dealt_force_skills.character.hackclaw.HackclawTool;
 import com.rzy.dealt_force_skills.character.morse.MorseTool;
@@ -101,6 +109,16 @@ public final class ThrowTrajectoryPreview {
                     com.rzy.dealt_force_skills.character.wildfire.WildfireConfig.fraction("projectile.drag",.985),
                     96,190,190,190);
         }
+        if (ClientStingerHudState.hasEquippedTool() && ClientStingerHudState.equippedTool() == StingerTool.SMOKE_GRENADE)
+            return preview(player, .58, -.10, 1.8, .34, .045, .985, 80, 138, 240, 172);
+        if (ClientToxikHudState.hasEquippedTool() && ClientToxikHudState.equippedTool() == ToxikTool.TEAR_GAS)
+            return preview(player, .58, -.10, 1.75, .34, .045, .985, 80, 206, 225, 108);
+        if (RoverClient.tool() == 1)
+            return preview(player, .35, -.10, Math.max(.1, RoverConfig.SMOKE_HIGH_SPEED), RoverConfig.SMOKE_HIGH_LIFT, .04, .99, 80, 180, 205, 148);
+        if (ClientNTwoHudState.hasEquippedTool() && ClientNTwoHudState.equippedTool() == NTwoTool.DEWAR_CANISTER)
+            return preview(player, .7, -.12, 1.1, .22, .045, .986, 80, 142, 224, 252);
+        if (ClientNTwoHudState.hasEquippedTool() && ClientNTwoHudState.equippedTool() == NTwoTool.CONDENSER_LAUNCHER)
+            return preview(player, .75, -.12, 3.25, .18, .012, .996, 96, 125, 199, 255);
         if (ClientShepherdHudState.shouldRender() && ClientShepherdHudState.equippedTool() == ShepherdTool.FRAG_GRENADE) {
             return preview(player, 0.70D, -0.12D, 1.45D, 0.18D, 0.045D, 0.985D, 80, 255, 175, 64);
         }
@@ -180,7 +198,7 @@ public final class ThrowTrajectoryPreview {
 
             points.add(next);
             pos = next;
-            motion = com.rzy.dealt_force_skills.client.WildfireClient.tool()>0
+            motion = com.rzy.dealt_force_skills.client.WildfireClient.tool()>0 || RoverClient.tool() == 1
                     ? motion.scale(preview.drag()).add(0,-preview.gravity(),0)
                     : motion.add(0.0D, -preview.gravity(), 0.0D).scale(preview.drag());
         }

@@ -2,13 +2,13 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:fire_charge"
+      "id": "minecraft:fire_charge"
     },
     "title": {
       "text": "堵桥来"
     },
     "description": {
-      "text": "使用乌鲁鲁时，在未死亡的情况下处于高处击杀至少12名玩家"
+      "text": "使用乌鲁鲁时，在未死亡的情况下处于高处击杀至少12个实体"
     },
     "frame": "challenge",
     "show_toast": true,

@@ -94,7 +94,7 @@ public final class NativeTempestSkills implements OperativeSkills {
                 || host.body().hasEffect(ModEffects.STUN) || host.body().hasEffect(ModEffects.WEBBED)
                 || !host.withinOrders(host.body().position())
                 || OperativeElectronics.blocked(host, com.rzy.dealt_force_skills.character.ModCharacters.TEMPEST_ID, slot)) return 0;
-        boolean threat = enemy != null && host.isEnemy(enemy) && host.withinOrders(enemy.position());
+        boolean threat = OperativeHearing.knownContact(host, enemy) && host.withinOrders(enemy.position());
         return switch (slot) {
             case ACTIVE_1 -> rollCooldown == 0 && !pendingRoll && !host.body().isInWaterOrBubble()
                     && (host.body().isOnFire() || threat && host.body().distanceToSqr(enemy) >= 36

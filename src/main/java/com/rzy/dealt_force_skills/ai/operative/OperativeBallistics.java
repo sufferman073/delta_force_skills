@@ -5,11 +5,14 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-/** Low arcs simulated with the same discrete integration as the existing projectiles. */
+/** Arcs simulated with the same discrete integration as the existing projectiles. */
 public final class OperativeBallistics {
     private OperativeBallistics() { }
 
-    public record Shot(Vec3 direction, Vec3 impact, int flightTicks) { }
+    public record Shot(Vec3 direction, Vec3 impact, int flightTicks, double speed) {
+        public Shot(Vec3 direction, Vec3 impact, int flightTicks) { this(direction, impact, flightTicks, Double.NaN); }
+        public double launchSpeed(double normal) { return Double.isNaN(speed) ? normal : speed; }
+    }
 
     /** Simulate the first entity collision as well as blocks, so an ally in the path prevents release. */
     public static Shot direct(OperativeHost host, net.minecraft.world.entity.LivingEntity target,
@@ -70,10 +73,50 @@ public final class OperativeBallistics {
         double angle = (low + high) * 0.5D;
         Vec3 direction = new Vec3(offset.x / distance * Math.cos(angle), Math.sin(angle),
                 offset.z / distance * Math.cos(angle));
+        return landing(host, target, direction, speed, lift, forward, down, gravity, drag, flightLimit, radius, floorOnly);
+    }
+
+    /** Keep the normal low throw, then try bounded high arcs when cover blocks it. */
+    public static Shot lob(OperativeHost host, Vec3 target, double speed, double lift,
+                           double forward, double down, double gravity, double drag,
+                           int flightLimit, double radius, boolean floorOnly) {
+        Shot low = solve(host, target, speed, lift, forward, down, gravity, drag, flightLimit, radius, floorOnly);
+        if (low != null) return low;
+        Vec3 offset = target.subtract(host.body().getEyePosition());
+        double distance = offset.horizontalDistance();
+        if (distance < forward + 0.1D) return null;
+        for (int degrees = 15; degrees <= 85; degrees += 2) {
+            double angle = Math.toRadians(degrees);
+            Vec3 direction = new Vec3(offset.x / distance * Math.cos(angle), Math.sin(angle),
+                    offset.z / distance * Math.cos(angle));
+            Shot shot = landing(host, target, direction, speed, lift, forward, down, gravity, drag, flightLimit, radius, floorOnly);
+            if (shot != null) return shot;
+        }
+        return null;
+    }
+
+    /** Shorter throws need less velocity to land before the existing fuse/lifetime expires. */
+    public static Shot lobWithSpeed(OperativeHost host, Vec3 target, double speed, double lift,
+                                    double forward, double down, double gravity, double drag,
+                                    int flightLimit, double radius, boolean floorOnly) {
+        for (double scale : new double[]{1, .85, .7, .55, .4}) {
+            Shot shot = lob(host, target, speed * scale, lift, forward, down, gravity, drag, flightLimit, radius, floorOnly);
+            if (shot != null) return new Shot(shot.direction(), shot.impact(), shot.flightTicks(), speed * scale);
+        }
+        return null;
+    }
+
+    private static Shot landing(OperativeHost host, Vec3 target, Vec3 direction, double speed, double lift,
+                                double forward, double down, double gravity, double drag,
+                                int flightLimit, double radius, boolean floorOnly) {
+        Vec3 eye = host.body().getEyePosition();
         Vec3 position = eye.add(direction.scale(forward)).add(0, -down, 0);
+        if (host.serverLevel().clip(new ClipContext(eye, position, ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE, host.body())).getType() != HitResult.Type.MISS) return null;
         Vec3 motion = direction.scale(speed).add(0, lift, 0);
         for (int tick = 0; tick < flightLimit; tick++) {
             Vec3 next = position.add(motion);
+            if (!host.withinOrders(next) || !host.serverLevel().hasChunkAt(net.minecraft.core.BlockPos.containing(next))) return null;
             var hit = host.body().level().clip(new ClipContext(position, next, ClipContext.Block.COLLIDER,
                     ClipContext.Fluid.NONE, host.body()));
             if (hit.getType() == HitResult.Type.BLOCK) {

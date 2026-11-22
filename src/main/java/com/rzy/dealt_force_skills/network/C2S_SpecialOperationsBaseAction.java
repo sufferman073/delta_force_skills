@@ -52,6 +52,7 @@ public record C2S_SpecialOperationsBaseAction(Action action, String target, int 
     public static void handle(C2S_SpecialOperationsBaseAction msg, IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
+            if (player != null && com.rzy.dealt_force_skills.raid.RaidAccess.baseEntrance(player, msg.action == Action.OPEN || msg.action == Action.PAGE)) return;
             if (player == null) return;
             boolean gtiAccess = GtiTradingHallManager.hasBaseAccess(player);
             if (!gtiAccess && !DealtShopAccessManager.isAllowed(DealtShopAccessManager.Service.BASE, player)) return;

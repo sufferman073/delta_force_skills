@@ -1,1 +1,18 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/cranberry_special"}}
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "textures": {
+    "particle": "dealt_force_skills:item/cranberry_special"
+  },
+  "base": {
+    "parent": "dealt_force_skills:item/refresh_drinks/cranberry_special"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/cranberry_special"
+      }
+    }
+  }
+}

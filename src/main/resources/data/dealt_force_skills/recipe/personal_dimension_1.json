@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "###",
+    "#X#",
+    "###"
+  ],
+  "key": {
+    "#": {
+      "item": "minecraft:iron_block"
+    },
+    "X": {
+      "item": "dealt_force_skills:personal_dimension_0"
+    }
+  },
+  "result": {
+    "id": "dealt_force_skills:personal_dimension_1",
+    "count": 1
+  }
+}

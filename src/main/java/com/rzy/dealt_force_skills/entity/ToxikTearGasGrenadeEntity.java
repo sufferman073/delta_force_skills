@@ -52,6 +52,7 @@ public class ToxikTearGasGrenadeEntity extends Projectile implements ItemSupplie
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.hostileThreat(this, "toxik.skill.tear_gas", (ToxikTearGasCloudEntity.RADIUS));
         if (!level().isClientSide && allegiance.active() && tickCount > MAX_FLIGHT_TICKS) { burst(position()); return; }
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);

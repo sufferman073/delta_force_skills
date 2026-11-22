@@ -14,11 +14,20 @@ import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
+@EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class SkillHudRenderCompat {
     private static final ResourceLocation SKILL_HUD_LAYER = ResourceLocation.fromNamespaceAndPath(
             DealtForceSkillsMod.MODID, "skill_hud");
     private static final LayeredDraw.Layer SYNTHETIC_HOTBAR_LAYER = (graphics, partialTick) -> {
     };
+    @SubscribeEvent
+    public static void captureProjection(net.neoforged.neoforge.client.event.RenderLevelStageEvent event) {
+        if (event.getStage() == net.neoforged.neoforge.client.event.RenderLevelStageEvent.Stage.AFTER_ENTITIES)
+            ClientSkillFeedback.renderExits(event.getPoseStack(), event.getCamera().getPosition());
+        if (event.getStage() == net.neoforged.neoforge.client.event.RenderLevelStageEvent.Stage.AFTER_LEVEL)
+            ClientSkillFeedback.projection(event.getProjectionMatrix());
+    }
+
     private static boolean postDispatch;
 
     private SkillHudRenderCompat() {
@@ -43,7 +52,10 @@ public final class SkillHudRenderCompat {
         try {
             RenderGuiLayerEvent.Post hudEvent = new RenderGuiLayerEvent.Post(
                     graphics, partialTick, VanillaGuiLayers.HOTBAR, SYNTHETIC_HOTBAR_LAYER);
+            SkillIconHud.beginFrame();
             renderSkillHud(hudEvent);
+            SkillIconHud.endFrame(graphics);
+            ClientSkillFeedback.render(graphics);
             graphics.flush();
         } finally {
             postDispatch = false;

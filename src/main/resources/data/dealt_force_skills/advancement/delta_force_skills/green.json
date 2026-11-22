@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/root",
   "display": {
     "icon": {
-      "item": "minecraft:emerald"
+      "id": "minecraft:emerald"
     },
     "title": {
       "text": "三角洲技艺：入门"

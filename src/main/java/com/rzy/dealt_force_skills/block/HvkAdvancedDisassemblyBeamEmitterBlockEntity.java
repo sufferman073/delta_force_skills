@@ -143,7 +143,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         List<SourceSlot> sources = collectSources();
         if (countSourceWithRedemption(player, recipe.result(), sources, sourceCost) < sourceCost) {
             player.displayClientMessage(Component.translatable(
-                    "message.dealt_force_skills.hvk_disassembler.source_missing", recipe.result().getHoverName()), true);
+                    "message.dealt_force_skills.hvk_disassembler.source_missing", WorkBlockItemNames.name(recipe.result())), true);
             sendRecipeDetail(player, recipeId, 0);
             return 0;
         }
@@ -157,7 +157,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         int removed = consumeSourceWithRedemption(player, recipe.result(), sourceCost, sources);
         if (removed < sourceCost) {
             player.displayClientMessage(Component.translatable(
-                    "message.dealt_force_skills.hvk_disassembler.source_missing", recipe.result().getHoverName()), true);
+                    "message.dealt_force_skills.hvk_disassembler.source_missing", WorkBlockItemNames.name(recipe.result())), true);
             sendRecipeDetail(player, recipeId, 0);
             return 0;
         }
@@ -178,7 +178,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         play(ModSounds.HVK_DISASSEMBLER_USE.get());
         player.displayClientMessage(Component.translatable(
                 "message.dealt_force_skills.hvk_disassembler.disassembled",
-                sourceCost, recipe.result().getHoverName(), produced), true);
+                sourceCost, WorkBlockItemNames.name(recipe.result()), produced), true);
         sendRecipeDetail(player, recipeId, 0);
         return batches;
     }
@@ -575,12 +575,20 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
                 collectIndexedRecipes(level, type, seen, recipes, byId);
             }
             for (SyntheticRecipe recipe : syntheticRecipes(level)) {
-                addIndexedRecipe(recipe.id(), recipe.recipe(), seen, recipes, byId);
+                try {
+                    addIndexedRecipe(recipe.id(), recipe.recipe(), seen, recipes, byId);
+                } catch (RuntimeException | LinkageError error) {
+                    LOGGER.warn("Skipping incompatible HVK recipe {}", recipe.id(), error);
+                }
             }
             for (var entry : com.rzy.dealt_force_skills.compat.HvkJeiRecipeCatalog.entries(level)) {
-                List<RecipeInput> inputs = entry.inputs().stream()
-                        .map(input -> new RecipeInput(Ingredient.of(input.choices().stream()), input.count())).toList();
-                addIndexedRecipe(entry.id(), new DisassemblyRecipe(entry.output(), inputs), seen, recipes, byId);
+                try {
+                    List<RecipeInput> inputs = entry.inputs().stream()
+                            .map(input -> new RecipeInput(Ingredient.of(input.choices().stream()), input.count())).toList();
+                    addIndexedRecipe(entry.id(), new DisassemblyRecipe(entry.output(), inputs), seen, recipes, byId);
+                } catch (RuntimeException | LinkageError error) {
+                    LOGGER.warn("Skipping incompatible HVK recipe {}", entry.id(), error);
+                }
             }
             recipes.sort(Comparator
                     .comparing((IndexedRecipe recipe) -> itemKey(recipe.view().result().getItem()))
@@ -644,14 +652,10 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
         private static String searchText(ResourceLocation id, DisassemblyRecipe recipe) {
             StringBuilder text = new StringBuilder(id.toString())
                     .append(' ')
-                    .append(itemKey(recipe.result().getItem()))
-                    .append(' ')
-                    .append(recipe.result().getHoverName().getString());
+                    .append(itemKey(recipe.result().getItem()));
             for (ItemStack output : previewIngredients(recipe.inputs())) {
                 text.append(' ')
-                        .append(itemKey(output.getItem()))
-                        .append(' ')
-                        .append(output.getHoverName().getString());
+                        .append(itemKey(output.getItem()));
             }
             return text.toString().toLowerCase(Locale.ROOT);
         }
@@ -668,7 +672,11 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
             Level level, RecipeType<T> type, Set<ResourceLocation> seen, List<IndexedRecipe> recipes,
             Map<ResourceLocation, DisassemblyRecipe> byId) {
         for (RecipeHolder<T> holder : level.getRecipeManager().getAllRecipesFor(type)) {
-            RecipeIndex.addIndexedRecipe(holder.id(), selectedRecipe(level, holder), seen, recipes, byId);
+            try {
+                RecipeIndex.addIndexedRecipe(holder.id(), selectedRecipe(level, holder), seen, recipes, byId);
+            } catch (RuntimeException | LinkageError error) {
+                LOGGER.warn("Skipping incompatible HVK recipe {}", holder.id(), error);
+            }
         }
     }
 
@@ -702,7 +710,7 @@ public class HvkAdvancedDisassemblyBeamEmitterBlockEntity extends BlockEntity {
                         if (mix != null && mix.getClass().getName().contains("PotionBrewing")) {
                             try {
                                 addBrewingMixRecipes(level, mix, seen, recipes);
-                            } catch (ReflectiveOperationException | RuntimeException ignored) {
+                            } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
                                 // Skip incompatible mix entries while keeping other brewing recipes visible.
                             }
                         }

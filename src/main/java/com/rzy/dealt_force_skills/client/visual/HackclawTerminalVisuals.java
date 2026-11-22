@@ -13,7 +13,6 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderArmEvent;
 import net.neoforged.neoforge.client.event.RenderHandEvent;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
@@ -27,10 +26,10 @@ public final class HackclawTerminalVisuals {
     private HackclawTerminalVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (!ClientHackclawCoreVisualState.isActive(minecraft.player)) {
+        if (!visible(minecraft.player)) {
             return;
         }
         event.setCanceled(true);
@@ -49,33 +48,19 @@ public final class HackclawTerminalVisuals {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderArm(RenderArmEvent event) {
-        if (ClientHackclawCoreVisualState.isActive(Minecraft.getInstance().player)) {
+        if (visible(Minecraft.getInstance().player)) {
             event.setCanceled(true);
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
-        Player player = event.getEntity();
-        Minecraft minecraft = Minecraft.getInstance();
-        if (!ClientHackclawCoreVisualState.isActive(player)
-                || player.isInvisible()
-                || player == minecraft.player && minecraft.options.getCameraType().isFirstPerson()) {
-            return;
-        }
-        PoseStack poseStack = event.getPoseStack();
-        poseStack.pushPose();
-        event.getRenderer().getModel().body.translateAndRotate(poseStack);
-        poseStack.translate(0.0D, 0.58D, -0.38D);
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
-        poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
-        poseStack.scale(0.42F, 0.42F, 0.42F);
-        renderTerminal(player, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()), poseStack,
-                event.getMultiBufferSource(), event.getPackedLight());
-        poseStack.popPose();
+
+    public static boolean visible(Player player) {
+        int phase = ClientHackclawCoreVisualState.phase(player);
+        return phase == ClientHackclawCoreVisualState.PHASE_CHANNEL
+                || phase == ClientHackclawCoreVisualState.PHASE_SCAN && ClientHackclawCoreVisualState.round(player) == 0;
     }
 
-    private static void renderTerminal(
+    static void renderTerminal(
             Player player,
             float partialTick,
             PoseStack poseStack,

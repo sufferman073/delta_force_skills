@@ -86,10 +86,12 @@ public final class DepartmentUndead {
             if(owner!=null&&owner==DepartmentHealing.owner(target,"undead.ritual"))
                 DepartmentTasks.signal(owner,"undead.scholar.ritual_stitch.healed",restored);
         } else {
-            float before=target.getHealth()+target.getAbsorptionAmount();target.hurt(target.damageSources().magic(),target.getMaxHealth()*0.20F);
-            if(owner!=null&&target.getPersistentData().hasUUID(RUPTURE))
-                DepartmentTasks.scoped(owner,"undead.scholar.stitch.damage",Math.max(0,before-target.getHealth()-target.getAbsorptionAmount()),
-                        target.getPersistentData().getUUID(RUPTURE).toString(),"",1200);
+            try (var receipt = DepartmentCombat.measure(target)) {
+                target.hurt(target.damageSources().magic(),target.getMaxHealth()*0.20F);
+                if(owner!=null&&target.getPersistentData().hasUUID(RUPTURE))
+                    DepartmentTasks.scoped(owner,"undead.scholar.stitch.damage",receipt.amount,
+                            target.getPersistentData().getUUID(RUPTURE).toString(),"",1200);
+            }
         }
     }
     public static void heal(ServerPlayer owner,LivingEntity target,float amount,String key) {
@@ -99,7 +101,8 @@ public final class DepartmentUndead {
         DepartmentHealing.healed(owner,target,restored);
     }
     public static void damaged(ServerPlayer owner,LivingEntity target,Runnable action,String key) {
-        float before=target.getHealth()+target.getAbsorptionAmount();action.run();
-        DepartmentTasks.signal(owner,key,Math.max(0,before-target.getHealth()-target.getAbsorptionAmount()));
+        try (var receipt = DepartmentCombat.measure(target)) {
+            action.run(); DepartmentTasks.signal(owner,key,receipt.amount);
+        }
     }
 }

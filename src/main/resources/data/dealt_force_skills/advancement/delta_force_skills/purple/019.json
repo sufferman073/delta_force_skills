@@ -2,13 +2,13 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:spider_eye"
+      "id": "minecraft:spider_eye"
     },
     "title": {
       "text": "药石无医"
     },
     "description": {
-      "text": "使用蛊时，用一次杀伤模式流萤干扰同时影响5个以上目标且至少包含1个玩家，并使其中至少1个玩家未能拔除流萤且死亡"
+      "text": "使用蛊时，用一次杀伤模式流萤干扰同时影响5个以上目标，并使其中至少1个实体未能拔除流萤且死亡"
     },
     "frame": "challenge",
     "show_toast": true,

@@ -6,9 +6,12 @@ import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.nikaidou.NikaidouHiroWitchificationStateManager;
+import com.rzy.dealt_force_skills.character.nikaidou.NikaidouHiroStateManager;
 import com.rzy.dealt_force_skills.character.saeed.SaeedGuardType;
 import com.rzy.dealt_force_skills.character.saeed.SaeedStateManager;
 import com.rzy.dealt_force_skills.character.undead.UndeadProfession;
+import com.rzy.dealt_force_skills.character.undead.UndeadUpgradeManager;
+import com.rzy.dealt_force_skills.shop.UndeadShopEntry;
 import com.rzy.dealt_force_skills.entity.DWolfSmokeCloudEntity;
 import com.rzy.dealt_force_skills.entity.GizmoSmokeCloudEntity;
 import com.rzy.dealt_force_skills.entity.SaeedGuardEntity;
@@ -47,7 +50,6 @@ public final class DfsAchievements {
     private static final String FINAL = "final";
     private static final int LEX_COOK_RECIPE_COUNT = 11;
     private static final int LEX_TOTAL_ART_COUNT = 33;
-    private static final int UNDEAD_LIMITED_SHOP_ENTRY_COUNT = 29;
     private static final int N_TWO_CONTINUOUS_FREEZE_TICKS = 15 * 20;
     private static final String NOX_FIRST_WOUND_OWNER = DATA_KEY + ".nox_first_wound_owner";
     private static final List<String> NORMAL_ADVANCEMENTS = buildNormalAdvancements();
@@ -74,6 +76,7 @@ public final class DfsAchievements {
             return;
         }
         data(player).putString("selected.current", characterId);
+        if (ModCharacters.UNDEAD_ID.equals(characterId)) trackMaxedShopEntries(player);
         if (ModCharacters.CHAMBER_ID.equals(characterId)) {
             data(player).putInt("chamber.clean_player_kills", 0);
         }
@@ -87,8 +90,6 @@ public final class DfsAchievements {
         CompoundTag data = data(player);
         long now = gameTime(player);
         recordDWolfKillSkillSequence(player, characterId, slot, now);
-        recordLunaToolCycle(player, characterId, slot, now);
-        recordUndeadMechanismUse(player, characterId, slot, now);
         tryAwardFinal(player);
     }
 
@@ -124,7 +125,7 @@ public final class DfsAchievements {
         recordNoxStealthKill(killer, victim, characterId, now);
         recordStingerCombatViolation(killer, characterId);
         recordTempestEmergencyKill(killer, victim, characterId, now);
-        recordNikaidouCoreKill(killer, characterId, now);
+        recordNikaidouCoreKill(killer, characterId);
         recordGhrothNoonKill(killer, victim, characterId, now);
         recordUndeadLowHealthSwitchKill(killer, characterId, now);
         recordToxikAdrenalineAction(killer, "kill");
@@ -133,9 +134,7 @@ public final class DfsAchievements {
         recordChamberCleanPlayerKill(killer, victim, characterId);
         recordSelfExplosionOtherKill(killer, victim, source);
         recordNoHealKill(killer, data);
-        if (victim instanceof ServerPlayer targetPlayer) {
-            recordBaitPropLookKill(killer, targetPlayer);
-        }
+        recordBaitPropLookKill(killer, victim);
         tryAwardFinal(killer);
     }
 
@@ -215,6 +214,13 @@ public final class DfsAchievements {
         if (player == null || amount <= 0.0F) {
             return;
         }
+        if (source != null && sourcePlayer(source) == player && isExplosiveSkillSource(source)) {
+            String key = selfExplosionKey(source);
+            long now = gameTime(player);
+            CompoundTag progress = data(player);
+            progress.putLong("self_explosion.hurt." + key, now + 4L * 20L);
+            if (progress.getLong("self_explosion.kills_until." + key) >= now && progress.getInt("self_explosion.kills." + key) >= 2) award(player, purple(49));
+        }
         if (isSelected(player, ModCharacters.CHAMBER_ID)) {
             data(player).putInt("chamber.clean_player_kills", 0);
         }
@@ -243,19 +249,20 @@ public final class DfsAchievements {
     }
 
     public static void onShopPurchase(ServerPlayer player, String shop, String entryId) {
-        if (player == null || shop == null || entryId == null) {
-            return;
+        if (player == null || !"undead".equals(shop) || !isSelected(player, ModCharacters.UNDEAD_ID)) return;
+        trackMaxedShopEntries(player);
+    }
+
+    private static void trackMaxedShopEntries(ServerPlayer player) {
+        CompoundTag progress = data(player);
+        String group = "undead.maxed_entries";
+        int required = 0;
+        for (UndeadShopEntry entry : UndeadShopEntry.values()) {
+            if (entry.isUnlimited()) continue;
+            required++;
+            if (UndeadUpgradeManager.level(player, entry) >= entry.maxLevel()) markUnique(progress, group, entry.id());
         }
-        CompoundTag data = data(player);
-        String normalizedShop = normalizeId(shop);
-        String normalizedEntry = normalizeId(entryId);
-        int bought = markUnique(data, "shop." + normalizedShop, normalizedEntry);
-        if ("undead".equals(normalizedShop)
-                && isSelected(player, ModCharacters.UNDEAD_ID)
-                && bought >= UNDEAD_LIMITED_SHOP_ENTRY_COUNT) {
-            award(player, green(36));
-        }
-        tryAwardFinal(player);
+        if (required > 0 && progress.getCompound(group).getAllKeys().size() >= required) award(player, green(36));
     }
 
     public static void onLexArtEquipped(ServerPlayer player, String artId) {
@@ -330,7 +337,7 @@ public final class DfsAchievements {
     }
 
     public static void recordVyronStickyBombKill(ServerPlayer player, LivingEntity target) {
-        if (player != null && target instanceof ServerPlayer && isSelected(player, ModCharacters.VYRON_ID)) {
+        if (player != null && target != null && isSelected(player, ModCharacters.VYRON_ID)) {
             award(player, green(4));
         }
     }
@@ -398,7 +405,7 @@ public final class DfsAchievements {
     }
 
     public static void recordCorpsLoyaltyExecution(ServerPlayer owner, LivingEntity target) {
-        if (owner != null && target instanceof ServerPlayer && isSelected(owner, ModCharacters.CORPS_ID)) {
+        if (owner != null && target != null && isSelected(owner, ModCharacters.CORPS_ID)) {
             award(owner, green(53));
         }
     }
@@ -546,7 +553,7 @@ public final class DfsAchievements {
     }
 
     public static void recordGizmoTrapKill(ServerPlayer player, LivingEntity victim) {
-        if (player != null && victim instanceof ServerPlayer && isSelected(player, ModCharacters.GIZMO_ID)) {
+        if (player != null && victim != null && isSelected(player, ModCharacters.GIZMO_ID)) {
             award(player, green(13));
         }
     }
@@ -621,19 +628,9 @@ public final class DfsAchievements {
         }
         CompoundTag data = data(player);
         long now = gameTime(player);
-        long start = data.getLong("toxik.firefly_lethal_targets.start");
-        if (start <= 0L || now - start > 12L * 20L) {
-            data.put("toxik.firefly_lethal_players", new CompoundTag());
-        }
         int affectedTargets = windowUnique(data, "toxik.firefly_lethal_targets", target.getStringUUID(), now, 12 * 20);
-        int affectedPlayers = data.contains("toxik.firefly_lethal_players", Tag.TAG_COMPOUND)
-                ? data.getCompound("toxik.firefly_lethal_players").getAllKeys().size()
-                : 0;
-        if (target instanceof ServerPlayer) {
-            affectedPlayers = windowUnique(data, "toxik.firefly_lethal_players", target.getStringUUID(), now, 12 * 20);
-            data.putLong("toxik.firefly_unremoved." + target.getUUID(), now + 60L * 20L);
-        }
-        if (affectedTargets >= 5 && affectedPlayers >= 1) {
+        data.putLong("toxik.firefly_unremoved." + target.getUUID(), now + 60L * 20L);
+        if (affectedTargets >= 5) {
             data.putLong("toxik.firefly_lethal_swarm_until", now + 60L * 20L);
         }
     }
@@ -644,7 +641,7 @@ public final class DfsAchievements {
         }
     }
 
-    public static void recordToxikFireflyUnremovedDeath(ServerPlayer player, ServerPlayer target) {
+    public static void recordToxikFireflyUnremovedDeath(ServerPlayer player, LivingEntity target) {
         if (player == null || target == null || !isSelected(player, ModCharacters.TOXIK_ID)) {
             return;
         }
@@ -652,16 +649,6 @@ public final class DfsAchievements {
         long now = gameTime(player);
         if (data.getLong("toxik.firefly_lethal_swarm_until") >= now
                 && data.getLong("toxik.firefly_unremoved." + target.getUUID()) >= now) {
-            award(player, purple(19));
-        }
-    }
-
-    public static void recordToxikFireflyTargets(ServerPlayer player, int affectedTargets, boolean includedPlayer,
-                                                 boolean lethalMode, boolean unremovedPlayerDied) {
-        if (player == null || !isSelected(player, ModCharacters.TOXIK_ID)) {
-            return;
-        }
-        if (lethalMode && affectedTargets >= 5 && includedPlayer && unremovedPlayerDied) {
             award(player, purple(19));
         }
     }
@@ -716,7 +703,7 @@ public final class DfsAchievements {
     }
 
     public static void recordLunaShockFixedKill(ServerPlayer player, LivingEntity target, boolean bounced, boolean fixed) {
-        if (player != null && target instanceof ServerPlayer && isSelected(player, ModCharacters.LUNA_ID)
+        if (player != null && target != null && isSelected(player, ModCharacters.LUNA_ID)
                 && bounced && fixed) {
             data(player).putLong("luna.shock_fixed." + target.getUUID(), gameTime(player) + 10L * 20L);
         }
@@ -789,13 +776,13 @@ public final class DfsAchievements {
         }
     }
 
-    public static void recordRaptorHummingbirdKill(ServerPlayer player, ServerPlayer target) {
+    public static void recordRaptorHummingbirdKill(ServerPlayer player, LivingEntity target) {
         if (player != null && target != null && isSelected(player, ModCharacters.RAPTOR_ID)) {
             award(player, purple(28));
         }
     }
 
-    public static void recordRaptorPulseThenFalconKill(ServerPlayer player, ServerPlayer target) {
+    public static void recordRaptorPulseThenFalconKill(ServerPlayer player, LivingEntity target) {
         if (player != null && target != null && isSelected(player, ModCharacters.RAPTOR_ID)) {
             award(player, purple(29));
         }
@@ -902,14 +889,14 @@ public final class DfsAchievements {
         }
     }
 
-    public static void recordBaitPropLookKill(ServerPlayer player, ServerPlayer target) {
+    public static void recordBaitPropLookKill(ServerPlayer player, LivingEntity target) {
         if (player != null && target != null
                 && data(player).getLong("global.bait_look." + target.getUUID()) >= gameTime(player)) {
             award(player, purple(44));
         }
     }
 
-    public static void recordBaitPropLook(ServerPlayer player, ServerPlayer target) {
+    public static void recordBaitPropLook(ServerPlayer player, LivingEntity target) {
         if (player != null && target != null && player != target) {
             data(player).putLong("global.bait_look." + target.getUUID(), gameTime(player) + 20L * 20L);
         }
@@ -1018,6 +1005,8 @@ public final class DfsAchievements {
         String key = selfExplosionKey(source);
         int kills = windowUnique(data, "self_explosion.unique_kills." + key, victim.getStringUUID(), now, 4 * 20);
         data.putInt("self_explosion.kills." + key, kills);
+        data.putLong("self_explosion.kills_until." + key, now + 4L * 20L);
+        if (kills >= 2 && data.getLong("self_explosion.hurt." + key) >= now) award(player, purple(49));
         if (data.getLong("self_explosion.death." + key) >= now) {
             award(player, green(49));
             if (kills >= 2) {
@@ -1084,9 +1073,6 @@ public final class DfsAchievements {
         if (isMsg(msg, "shepherd_sonic") && ModCharacters.SHEPHERD_ID.equals(characterId)) {
             award(attacker, green(15));
         }
-        if (isMsg(msg, "toxik_firefly") && ModCharacters.TOXIK_ID.equals(characterId)) {
-            recordToxikFireflyTargets(attacker, 1, target instanceof ServerPlayer, false, false);
-        }
         if (isMsg(msg, "raptor_pulse") && ModCharacters.RAPTOR_ID.equals(characterId)) {
             data.putLong("raptor.pulsed." + target.getUUID(), now + 12L * 20L);
         }
@@ -1124,13 +1110,7 @@ public final class DfsAchievements {
 
     private static void recordKillDamageSourceMilestones(ServerPlayer killer, LivingEntity victim, DamageSource source,
                                                          String msg, long now, CompoundTag data, String characterId) {
-        if (isMsg(msg, "vyron_magnetic_bomb") && ModCharacters.VYRON_ID.equals(characterId) && victim instanceof ServerPlayer) {
-            award(killer, green(4));
-        }
-        if (isMsg(msg, "uluru_missile") && ModCharacters.ULURU_ID.equals(characterId)) {
-            if (data.getLong("uluru.high_kills_start") <= 0L) {
-                data.putLong("uluru.high_kills_start", now);
-            }
+        if (ModCharacters.ULURU_ID.equals(characterId)) {
             if (killer.getY() - victim.getY() >= 16.0D) {
                 int kills = increment(data, "uluru.high_kills", 1);
                 if (kills >= 12) {
@@ -1147,7 +1127,7 @@ public final class DfsAchievements {
         }
         if (isMsg(msg, "raptor_falcon") && ModCharacters.RAPTOR_ID.equals(characterId)) {
             if (data.getLong("raptor.pulsed." + victim.getUUID()) >= now) {
-                recordRaptorPulseThenFalconKill(killer, victim instanceof ServerPlayer player ? player : null);
+                recordRaptorPulseThenFalconKill(killer, victim);
             }
         }
         if (isMsg(msg, "department_core") && ModCharacters.DEPARTMENT_OF_TRANSPORTATION_ID.equals(characterId)) {
@@ -1161,11 +1141,6 @@ public final class DfsAchievements {
         }
         if (isMsg(msg, "manba_duel_execute") && ModCharacters.MANBA_ID.equals(characterId)) {
             return;
-        }
-        if (isMsg(msg, "nikaidou_weapon") || isMsg(msg, "nikaidou_decay")) {
-            if (ModCharacters.NIKAIDOU_HIRO_ID.equals(characterId) && has(killer, ModEffects.NIKAIDOU_CORE)) {
-                recordNikaidouCoreKill(killer, characterId, now);
-            }
         }
     }
 
@@ -1196,13 +1171,14 @@ public final class DfsAchievements {
             markDeathDebuff(killer, victim, "interference", now);
         }
         int deathDebuffs = countRecentDeathDebuffs(data, victim.getUUID(), now);
-        if (deathDebuffs >= 3) {
+        if (deathDebuffs >= 2) {
             award(killer, purple(50));
         }
         if (has(victim, ModEffects.RAPTOR_HUMMINGBIRD_MARKED) && ModCharacters.RAPTOR_ID.equals(characterId)) {
-            recordRaptorHummingbirdKill(killer, victim instanceof ServerPlayer player ? player : null);
+            recordRaptorHummingbirdKill(killer, victim);
         }
-        if (data.getLong("luna.armor_break." + victim.getUUID()) + 5L * 20L >= now
+        if (data.contains("luna.armor_break." + victim.getUUID())
+                && data.getLong("luna.armor_break." + victim.getUUID()) + 5L * 20L >= now
                 && ModCharacters.LUNA_ID.equals(characterId)) {
             award(killer, purple(23));
         }
@@ -1271,7 +1247,7 @@ public final class DfsAchievements {
     }
 
     private static void recordVyronLowHealthKill(ServerPlayer killer, LivingEntity victim, String characterId, long now) {
-        if (ModCharacters.VYRON_ID.equals(characterId) && killer.getHealth() <= killer.getMaxHealth() * 0.25F && victim instanceof ServerPlayer) {
+        if (ModCharacters.VYRON_ID.equals(characterId) && killer.getHealth() <= killer.getMaxHealth() * 0.25F) {
             int kills = incrementWindow(data(killer), "vyron.low_health_player_kills", now, 30 * 20);
             if (kills >= 3) {
                 award(killer, purple(4));
@@ -1289,11 +1265,9 @@ public final class DfsAchievements {
                 award(killer, green(5));
             }
         }
-        if (victim instanceof ServerPlayer) {
-            int playerKills = incrementWindow(data(killer), "nox.stealth_player_kills", now, 35 * 20);
-            if (playerKills >= 2) {
-                award(killer, purple(5));
-            }
+        int playerKills = incrementWindow(data(killer), "nox.stealth_player_kills", now, 35 * 20);
+        if (playerKills >= 2) {
+            award(killer, purple(5));
         }
     }
 
@@ -1305,8 +1279,7 @@ public final class DfsAchievements {
 
     private static void recordTempestEmergencyKill(ServerPlayer killer, LivingEntity victim, String characterId, long now) {
         if (ModCharacters.TEMPEST_ID.equals(characterId)
-                && data(killer).getLong("tempest.emergency_until") >= now
-                && victim instanceof ServerPlayer) {
+                && data(killer).getLong("tempest.emergency_until") >= now) {
             int kills = incrementWindow(data(killer), "tempest.emergency_cooldown_kills", now, 8 * 20);
             if (kills >= 3) {
                 award(killer, purple(8));
@@ -1329,7 +1302,7 @@ public final class DfsAchievements {
     }
 
     private static void recordChamberCleanPlayerKill(ServerPlayer killer, LivingEntity victim, String characterId) {
-        if (!ModCharacters.CHAMBER_ID.equals(characterId) || !(victim instanceof ServerPlayer)) {
+        if (!ModCharacters.CHAMBER_ID.equals(characterId)) {
             return;
         }
         int kills = increment(data(killer), "chamber.clean_player_kills", 1);
@@ -1338,15 +1311,11 @@ public final class DfsAchievements {
         }
     }
 
-    private static void recordNikaidouCoreKill(ServerPlayer killer, String characterId, long now) {
-        if (!ModCharacters.NIKAIDOU_HIRO_ID.equals(characterId)) {
-            return;
-        }
-        award(killer, green(40));
-        int kills = incrementWindow(data(killer), "nikaidou.core_kills", now, 20 * 20);
-        if (kills >= 6) {
-            data(killer).putInt("nikaidou.core_kills", kills);
-        }
+    private static void recordNikaidouCoreKill(ServerPlayer killer, String characterId) {
+        if (!ModCharacters.NIKAIDOU_HIRO_ID.equals(characterId)) return;
+        if (NikaidouHiroStateManager.isCoreActive(killer) || NikaidouHiroStateManager.doomedRemainingTicks(killer) > 0)
+            award(killer, green(40));
+        if (NikaidouHiroStateManager.doomedRemainingTicks(killer) > 0) increment(data(killer), "nikaidou.core_kills", 1);
     }
 
     private static void recordNikaidouWitchPostRemnantKill(ServerPlayer killer, LivingEntity victim,
@@ -1436,24 +1405,17 @@ public final class DfsAchievements {
         }
     }
 
-    private static void recordLunaToolCycle(ServerPlayer player, String characterId, SkillSlot slot, long now) {
-        if (!ModCharacters.LUNA_ID.equals(characterId)) {
-            return;
-        }
-        int tools = windowUnique(data(player), "luna.tool_cycle", slot.name(), now, 25 * 20);
-        if (tools >= 4) {
-            award(player, green(24));
-        }
-    }
-
-    private static void recordUndeadMechanismUse(ServerPlayer player, String characterId, SkillSlot slot, long now) {
-        if (!ModCharacters.UNDEAD_ID.equals(characterId) || slot == SkillSlot.PASSIVE) {
-            return;
-        }
-        int mechanisms = windowUnique(data(player), "undead.slot_mechanisms", slot.name(), now, 35 * 20);
-        if (mechanisms >= 6) {
-            award(player, purple(32));
-        }
+    public static void recordLunaToolUse(ServerPlayer player) {
+        if (!isSelected(player, ModCharacters.LUNA_ID)) return;
+        CompoundTag progress = data(player);
+        long now = gameTime(player);
+        long[] previous = progress.getLongArray("luna.last_uses");
+        if (previous.length == 3 && now - previous[0] <= 25L * 20L) award(player, green(24));
+        int retained = Math.min(previous.length, 2);
+        long[] latest = new long[retained + 1];
+        System.arraycopy(previous, previous.length - retained, latest, 0, retained);
+        latest[retained] = now;
+        progress.putLongArray("luna.last_uses", latest);
     }
 
     private static void recordUndeadLowHealthSwitchKill(ServerPlayer player, String characterId, long now) {
@@ -1555,6 +1517,10 @@ public final class DfsAchievements {
         data.putFloat("no_heal.last_health", player.getHealth());
     }
 
+    public static void recordConsumableUse(ServerPlayer player) {
+        data(player).remove("no_heal.kills");
+    }
+
     private static void recordNoHealKill(ServerPlayer killer, CompoundTag data) {
         int kills = data.getInt("no_heal.kills") + 1;
         data.putInt("no_heal.kills", kills);
@@ -1612,6 +1578,13 @@ public final class DfsAchievements {
         data.putInt("stinger.clean_rescue_chain", 0);
         data.putBoolean("stinger.rescue_chain_damaged", false);
         data.remove("d_wolf.sequence_award_at");
+        data.remove("shepherd.frag_survive_until");
+        data.remove("tempest.self_save_survive_until");
+        data.remove("undead.rogue_theft_until");
+        data.remove("chamber.clean_player_kills");
+        data.remove("nikaidou.core_kills");
+        data.remove("uluru.high_kills");
+        data.remove("no_heal.kills");
         data.remove("d_wolf.sequence_until");
         data.putInt("d_wolf.sequence_step", 0);
     }

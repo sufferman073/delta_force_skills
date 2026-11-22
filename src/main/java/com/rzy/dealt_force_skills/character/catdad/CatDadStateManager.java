@@ -218,6 +218,8 @@ public final class CatDadStateManager {
         SkillDamageHelper.hurtUnscaled(living,
                 SkillDamageHelper.catDadReflect(player.serverLevel(), player, player),
                 amount * 0.5F);
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(living, "counter");
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(player, 1);
         play(player, ModSounds.CATDAD_REFLECT.get(), 0.75F, 1.05F);
         return true;
     }
@@ -443,7 +445,9 @@ public final class CatDadStateManager {
         Vec3 start = snapToGround(level, center.subtract(direction.scale(33.0D)));
         CatDadRoadTruckEntity entity = new CatDadRoadTruckEntity(level, player, start, direction, 66.0F, 16.0F,
                 truckBreakBlocks(player));
-        level.addFreshEntity(entity);
+        if (level.addFreshEntity(entity)) {
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.ROAD_SIGNAL.play(player);
+        }
     }
 
     private static boolean canEnterFatalDowned(ServerPlayer player, DamageSource source) {

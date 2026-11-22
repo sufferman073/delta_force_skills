@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/green",
   "display": {
     "icon": {
-      "item": "minecraft:fire_charge"
+      "id": "minecraft:fire_charge"
     },
     "title": {
       "text": "烽火连天"

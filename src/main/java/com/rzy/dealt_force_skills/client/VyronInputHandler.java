@@ -59,6 +59,7 @@ public final class VyronInputHandler {
             return;
         }
 
+        ClientVyronToolAnimationState.observeEquipped(ClientVyronHudState.equippedTool());
         if (active1Owned && ClientVyronHudState.dashTicks() > 0
                 && ClientCommanderState.ownsBranchUpgrade(CommanderBranchUpgrade.VYRON_PROPULSION_MOD)) {
             Vec3 direction = movementDirection(minecraft);
@@ -66,7 +67,7 @@ public final class VyronInputHandler {
         }
 
         if (active1Owned) {
-            while (KeybindRegister.ACTIVE_SKILL_1 != null && KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+            while (KeybindRegister.activeKey(1) != null && KeybindRegister.activeKey(1).consumeClick()) {
                 if (canDashWithStamina(minecraft.player)) {
                     Vec3 direction = movementDirection(minecraft);
                     NetworkHandler.sendToServer(new C2S_VyronDash(direction.x, direction.z));
@@ -161,20 +162,20 @@ public final class VyronInputHandler {
     }
 
     private static void handleActive2Key(boolean active2Owned) {
-        if (!active2Owned || KeybindRegister.ACTIVE_SKILL_2 == null) {
+        if (!active2Owned || KeybindRegister.activeKey(2) == null) {
             resetActive2();
             return;
         }
         if (pendingBombThrowTicks > 0) {
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
+            while (KeybindRegister.activeKey(2).consumeClick()) {
             }
             return;
         }
 
-        boolean down = KeybindRegister.ACTIVE_SKILL_2.isDown();
+        boolean down = KeybindRegister.activeKey(2).isDown();
         if (down) {
             active2WasDown = true;
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
+            while (KeybindRegister.activeKey(2).consumeClick()) {
             }
             if (canceledBombHold) {
                 return;

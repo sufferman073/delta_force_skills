@@ -1,0 +1,22 @@
+{
+  "textures": {"sheet":"dealt_force_skills:item/refresh_kits/field_materials","particle":"#sheet"},
+  "display": {
+    "ground": {"rotation":[7,5,-9],"translation":[0,2.9,0],"scale":[0.58,0.58,0.58]},
+    "fixed": {"rotation":[10,-17,3],"translation":[0,0,-0.2],"scale":[0.94,0.94,0.94]},
+    "firstperson_righthand":{"rotation":[12,-24,9],"translation":[-0.5,1.6,0.1],"scale":[0.72,0.72,0.72]},
+    "firstperson_lefthand":{"rotation":[15,-31,5],"translation":[-0.3,1.9,0.3],"scale":[0.72,0.72,0.72]},
+    "thirdperson_righthand":{"rotation":[86,4,7],"translation":[0,1.4,-2.6],"scale":[0.62,0.62,0.62]},
+    "thirdperson_lefthand":{"rotation":[82,9,4],"translation":[0.15,1.4,-2.45],"scale":[0.62,0.62,0.62]}
+  },
+  "elements": [
+{"name":"soft_drybag","from":[4.7,3.1,6.3],"to":[11.3,11.9,9.7],"faces":{"north":{"uv":[0,2,2,4],"texture":"#sheet"},"east":{"uv":[0,2,2,4],"texture":"#sheet"},"south":{"uv":[10,8,12,10],"texture":"#sheet"},"west":{"uv":[0,2,2,4],"texture":"#sheet"},"up":{"uv":[0,2,2,4],"texture":"#sheet"},"down":{"uv":[0,2,2,4],"texture":"#sheet"}}},
+    {"name":"bottom_gusset","from":[4.95,2.65,6.57],"to":[11.06,3.1,9.48],"faces":{"north":{"uv":[4,2,6,4],"texture":"#sheet"},"east":{"uv":[4,2,6,4],"texture":"#sheet"},"south":{"uv":[4,2,6,4],"texture":"#sheet"},"west":{"uv":[4,2,6,4],"texture":"#sheet"},"up":{"uv":[4,2,6,4],"texture":"#sheet"},"down":{"uv":[4,2,6,4],"texture":"#sheet"}}},
+    {"name":"left_weld","from":[4.45,3.55,6.67],"to":[4.72,11.5,9.34],"faces":{"north":{"uv":[4,2,6,4],"texture":"#sheet"},"east":{"uv":[4,2,6,4],"texture":"#sheet"},"south":{"uv":[4,2,6,4],"texture":"#sheet"},"west":{"uv":[4,2,6,4],"texture":"#sheet"},"up":{"uv":[4,2,6,4],"texture":"#sheet"},"down":{"uv":[4,2,6,4],"texture":"#sheet"}}},
+    {"name":"right_weld","from":[11.28,3.48,6.75],"to":[11.59,11.27,9.3],"faces":{"north":{"uv":[0,2,2,4],"texture":"#sheet"},"east":{"uv":[0,2,2,4],"texture":"#sheet"},"south":{"uv":[0,2,2,4],"texture":"#sheet"},"west":{"uv":[0,2,2,4],"texture":"#sheet"},"up":{"uv":[0,2,2,4],"texture":"#sheet"},"down":{"uv":[0,2,2,4],"texture":"#sheet"}}},
+    {"name":"pinched_neck","from":[4.96,11.9,6.73],"to":[11.07,12.73,9.26],"faces":{"north":{"uv":[2,2,4,4],"texture":"#sheet"},"east":{"uv":[2,2,4,4],"texture":"#sheet"},"south":{"uv":[2,2,4,4],"texture":"#sheet"},"west":{"uv":[2,2,4,4],"texture":"#sheet"},"up":{"uv":[2,2,4,4],"texture":"#sheet"},"down":{"uv":[2,2,4,4],"texture":"#sheet"}}},
+    {"name":"rolled_mouth","from":[4.85,12.73,7.3],"to":[11.19,13.56,8.9],"faces":{"north":{"uv":[0,2,2,4],"texture":"#sheet"},"east":{"uv":[0,2,2,4],"texture":"#sheet"},"south":{"uv":[0,2,2,4],"texture":"#sheet"},"west":{"uv":[0,2,2,4],"texture":"#sheet"},"up":{"uv":[0,2,2,4],"texture":"#sheet"},"down":{"uv":[0,2,2,4],"texture":"#sheet"}}},
+    {"name":"closure_tape","from":[5.24,12.65,8.85],"to":[10.75,13.17,9.15],"faces":{"north":{"uv":[10,0,12,2],"texture":"#sheet"},"east":{"uv":[10,0,12,2],"texture":"#sheet"},"south":{"uv":[10,0,12,2],"texture":"#sheet"},"west":{"uv":[10,0,12,2],"texture":"#sheet"},"up":{"uv":[10,0,12,2],"texture":"#sheet"},"down":{"uv":[10,0,12,2],"texture":"#sheet"}}},
+    {"name":"snap_buckle","from":[7.14,12.28,9.06],"to":[8.7,13.39,9.53],"faces":{"north":{"uv":[8,0,10,2],"texture":"#sheet"},"east":{"uv":[8,0,10,2],"texture":"#sheet"},"south":{"uv":[14,10,16,12],"texture":"#sheet"},"west":{"uv":[8,0,10,2],"texture":"#sheet"},"up":{"uv":[8,0,10,2],"texture":"#sheet"},"down":{"uv":[8,0,10,2],"texture":"#sheet"}}},
+    {"name":"gusset_crease","from":[5.22,3.47,9.67],"to":[7.22,3.79,9.83],"rotation":{"origin":[5.55,3.57,9.72],"axis":"z","angle":22.5},"faces":{"north":{"uv":[0,2,2,4],"texture":"#sheet"},"east":{"uv":[0,2,2,4],"texture":"#sheet"},"south":{"uv":[0,2,2,4],"texture":"#sheet"},"west":{"uv":[0,2,2,4],"texture":"#sheet"},"up":{"uv":[0,2,2,4],"texture":"#sheet"},"down":{"uv":[0,2,2,4],"texture":"#sheet"}}}
+  ]
+}

@@ -13,7 +13,6 @@ import net.minecraft.world.InteractionHand;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderArmEvent;
 import net.neoforged.neoforge.client.event.RenderHandEvent;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
@@ -27,7 +26,7 @@ public final class LunaPlaceholderVisuals {
     private LunaPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         boolean bowVisual = ClientLunaBowVisualState.isActive(minecraft.player);
@@ -87,32 +86,6 @@ public final class LunaPlaceholderVisuals {
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (!ClientLunaBowVisualState.isActive(event.getEntity())
-                || event.getEntity().isInvisible()
-                || event.getEntity() == minecraft.player && minecraft.options.getCameraType().isFirstPerson()) {
-            return;
-        }
-        PoseStack poseStack = event.getPoseStack();
-        poseStack.pushPose();
-        event.getRenderer().getModel().leftArm.translateAndRotate(poseStack);
-        poseStack.translate(0.02D, 0.42D, 0.0D);
-        poseStack.mulPose(Axis.ZP.rotationDegrees(-90.0F));
-        poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
-        poseStack.scale(0.55F, 0.55F, 0.55F);
-        String animation = ClientLunaBowVisualState.phase(event.getEntity())
-                == ClientLunaBowVisualState.PHASE_RELEASE ? "release" : "draw";
-        BlockbenchAnimatedModelRenderer.render(
-                BOW_MODEL,
-                animation,
-                ClientLunaBowVisualState.animationSeconds(event.getEntity(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())),
-                poseStack,
-                event.getMultiBufferSource(),
-                event.getPackedLight());
-        poseStack.popPose();
-    }
 
     private static ResourceLocation modelFor(LunaTool tool) {
         return switch (tool) {

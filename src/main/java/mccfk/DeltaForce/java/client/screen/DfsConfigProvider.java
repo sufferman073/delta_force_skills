@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Uses the core editor's server-authorized snapshot/apply protocol. */
-public final class DfsConfigProvider implements IConfigProvider {
+public class DfsConfigProvider implements IConfigProvider {
     private final Map<String, ConfigEntryData> entries = new LinkedHashMap<>();
     private final Map<String, String> dirty = new LinkedHashMap<>();
     private final Map<String, String> submitted = new LinkedHashMap<>();
@@ -25,13 +25,20 @@ public final class DfsConfigProvider implements IConfigProvider {
     private boolean awaitingSnapshot;
     private String status = "";
 
-    public DfsConfigProvider() {
-        ClientHudLayout.snapshotEntries().forEach(this::putEntry);
+    void refreshHud() {
+        ClientHudLayout.snapshotEntries().forEach(entry -> { if (!dirty.containsKey(key(entry))) putEntry(entry); });
+    }
+
+    private final boolean dropsOnly;
+    public DfsConfigProvider() { this(false); }
+    protected DfsConfigProvider(boolean dropsOnly) {
+        this.dropsOnly = dropsOnly;
+        if (!dropsOnly) refreshHud();
         Minecraft mc = Minecraft.getInstance();
         if (mc.getConnection() == null) {
             canEditServer = true;
             ConfigAccess.snapshotAllServerFiles().forEach(this::putEntry);
-        } else {
+        } else if (!dropsOnly && mc.player != null && mc.player.hasPermissions(2)) {
             // 始终向服务端请求配置快照，由服务端检查权限决定是否授权
             // 避免客户端缓存hasPermission导致刚获得OP时无法获取服务器配置
             awaitingSnapshot = true;
@@ -45,7 +52,7 @@ public final class DfsConfigProvider implements IConfigProvider {
     }
 
     private void putEntry(ConfigEntryData entry) {
-        entries.put(key(entry), entry);
+        if (dropsOnly == (entry.file() == ConfigFileId.BASE && entry.path().equals("customdrop.enabled"))) entries.put(key(entry), entry);
     }
 
     ConfigEntryData entry(String path) {
@@ -58,7 +65,8 @@ public final class DfsConfigProvider implements IConfigProvider {
         awaitingSnapshot = false;
         canEditServer = allowed;
         entries.values().removeIf(entry -> !entry.file().clientLocal());
-        if (allowed) snapshot.forEach(this::putEntry);
+        if (allowed) snapshot.stream().filter(entry -> !entry.file().clientLocal()).forEach(this::putEntry);
+        dirty.keySet().removeIf(key -> !entries.containsKey(key));
         status = Component.translatable(allowed
                 ? "config.dealt_force_skills.status.server_op"
                 : "config.dealt_force_skills.status.server_denied", snapshot.size()).getString();
@@ -117,7 +125,7 @@ public final class DfsConfigProvider implements IConfigProvider {
 
     @Override
     public boolean validate() {
-        if (!submitted.isEmpty() || awaitingSnapshot) return false;
+        if (!submitted.isEmpty() || awaitingSnapshot && dirty.keySet().stream().anyMatch(key -> !isClientLocal(key))) return false;
         for (var change : dirty.entrySet()) {
             ConfigEntryData entry = entries.get(change.getKey());
             try {
@@ -158,7 +166,7 @@ public final class DfsConfigProvider implements IConfigProvider {
                     saved.add(change.getKey());
                 }
             }
-            if (!inWorld && !saved.isEmpty()) ConfigHotReload.reloadAll();
+            if (!inWorld && saved.stream().anyMatch(key -> !entries.get(key).file().clientLocal())) ConfigHotReload.reloadAll();
             for (String key : saved) {
                 ConfigEntryData entry = entries.get(key);
                 entries.put(key, new ConfigEntryData(entry.file(), entry.path(), entry.kind(), dirty.remove(key), entry.comment()));

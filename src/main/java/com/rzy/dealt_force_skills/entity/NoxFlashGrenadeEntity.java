@@ -76,6 +76,7 @@ public class NoxFlashGrenadeEntity extends Projectile implements ItemSupplier, c
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "nox.skill.flash_grenade", (RADIUS));
       if (allegiance.active() && level() instanceof ServerLevel level
               && (++nativeAge > DEFAULT_FUSE_TICKS || !allegiance.withinOrders(level, position()))) {
           discard(); return;

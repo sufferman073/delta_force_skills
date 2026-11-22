@@ -43,6 +43,12 @@ public record C2S_SelectCharacter(String characterId) implements CustomPacketPay
             if (player.isSpectator()) return;
 
             var currentCharacterId = CharacterSelectionManager.getSelectedCharacterId(player);
+            var raid = com.rzy.dealt_force_skills.raid.RaidMatches.match(player);
+            if (raid != null && raid.phase == com.rzy.dealt_force_skills.raid.RaidMatchLedger.Phase.PREPARING) {
+                NetworkHandler.sendToPlayer(new S2C_SyncSelectedCharacter(currentCharacterId.orElse("")), player);
+                player.displayClientMessage(Component.translatable("message.dealt_force_skills.raid_preparing_character"), false);
+                return;
+            }
             if (player.hasEffect(ModEffects.STUN) || player.hasEffect(ModEffects.WEBBED) || StingerStateManager.isDowned(player)) {
                 NetworkHandler.sendToPlayer(new S2C_SyncSelectedCharacter(currentCharacterId.orElse("")), player);
                 player.displayClientMessage(Component.translatable("message.dealt_force_skills.stunned"), true);

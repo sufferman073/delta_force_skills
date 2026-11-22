@@ -81,13 +81,7 @@ public final class GenericSkillHudOverlay {
                 ModCharacters.WILDFIRE_ID.equals(character.id()) ? WildfireClient.detail(slot) : Component.translatable(skill.implemented()
                         ? "hud.dealt_force_skills.generic.ready"
                         : "hud.dealt_force_skills.generic.placeholder").getString());
-        if(ModCharacters.WILDFIRE_ID.equals(character.id())) {
-            var state=WildfireClient.local();
-            int recharge=slot==SkillSlot.CORE?0:state.getInt(slot==SkillSlot.ACTIVE_1?"SmokeRecharge":"GrenadeRecharge");
-            if(recharge>0)try(var ignored=ClientHudLayout.scaleButton(graphics,x,y,SLOT)) {
-                drawCenteredClipped(graphics,font,(recharge+19)/20+"s",x+SLOT/2,y+SLOT+2,SLOT,0xFFFFE6A6);
-            }
-        }
+
     }
 
     private static void drawSlot(
@@ -100,19 +94,7 @@ public final class GenericSkillHudOverlay {
             Component icon,
             String detail
     ) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA101216);
-            graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-            graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-            graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-            graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-            graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xDD171A20);
-            drawCenteredClipped(graphics, font, icon.getString(), x + SLOT / 2, y + 12, 32, 0xFFFFFFFF);
-            drawCenteredClipped(graphics, font, detail, x + SLOT / 2, y + 22, 34, 0xFFE0E4EA);
-
-            String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            drawCenteredClipped(graphics, font, keyName, x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, 0, detail);
     }
 
     private static boolean hasDedicatedHud(String selectedId) {

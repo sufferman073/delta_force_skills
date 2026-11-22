@@ -73,7 +73,7 @@ public final class SaeedInputHandler {
                     NetworkHandler.sendToServer(new C2S_OpenSaeedMonitor());
                 } else {
                     // 长按特勤处
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
         } else if (selectionWasDown) {

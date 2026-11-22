@@ -122,6 +122,7 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
                 else targetId = target.getId();
             }
         }
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.active(getOwner(), "sineva.skill.grapple", 0);
         if (isReturning()) {
             tickReturning();
             return;
@@ -172,6 +173,7 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
                     "summons.grapple_hook_entity.skill_hurt.0.damage", 10.0F);
             SkillDamageHelper.hurt(living, SkillDamageHelper.sinevaGrapple(host.serverLevel(), this, host.body()), host.body(), damage);
             targetId = living.getId(); targetUUID = living.getUUID(); hookedAtTick = tickCount;
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.countdown(living, this, "grapple", PULL_DELAY_TICKS, PULL_DELAY_TICKS);
             initialPullDistance = host.body().distanceTo(living); dragSoundPlayed = false;
             setDeltaMovement(Vec3.ZERO);
             level().playSound(null, blockPosition(), ModSounds.SINEVA_GRAPPLE_HIT.get(), SoundSource.NEUTRAL, 1, 1);
@@ -196,7 +198,8 @@ public class GrappleHookEntity extends Projectile implements ItemSupplier {
                      DealtForceConfig.floatValue("summons.grapple_hook_entity.skill_hurt.0.damage", 10.0F)
                   );
                   this.targetId = target.getId();
-                  this.hookedAtTick = this.tickCount;
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.countdown(target, this, "grapple", PULL_DELAY_TICKS, PULL_DELAY_TICKS);
+            hookedAtTick = tickCount;
                   this.initialPullDistance = (double)sp.distanceTo(target);
             if (getPersistentData().hasUUID("DepartmentLockedTarget") && getPersistentData().getUUID("DepartmentLockedTarget").equals(target.getUUID()))
                 com.rzy.dealt_force_skills.department.DepartmentTasks.signal(sp,"sineva.grapple.locked_hit");

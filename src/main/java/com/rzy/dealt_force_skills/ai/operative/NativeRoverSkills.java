@@ -100,7 +100,7 @@ public final class NativeRoverSkills implements OperativeSkills {
                 yield injectors > 0 && destination != null && !covered(host, destination, false)
                         && (destination == host.body() || shot(host, destination, false, patient != null) != null) ? patient != null ? 125 : 100 : 0;
             }
-            case CORE -> dog == null && coreCooldown == 0 && valid(host, target, false) ? 110 : 0;
+            case CORE -> dog == null && coreCooldown == 0 && OperativeHearing.knownContact(host, target) && host.body().distanceToSqr(target) <= 24 * 24 ? 110 : 0;
             case PASSIVE -> 0;
         };
     }

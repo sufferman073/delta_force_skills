@@ -22,6 +22,9 @@ public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
             DeferredRegister.create(Registries.BLOCK, DealtForceSkillsMod.MODID);
 
+    public static final java.util.List<DeferredHolder<Block, Block>> PERSONAL_DIMENSIONS = java.util.stream.IntStream.rangeClosed(0, 5)
+            .mapToObj(tier -> BLOCKS.<Block>register("personal_dimension_" + tier, () -> new com.rzy.dealt_force_skills.home.PersonalDimensionBlock(tier))).toList();
+
     public static final DeferredHolder<Block, Block> BLADE_WIRE =
             BLOCKS.register("blade_wire", () -> new BladeWireBlock(false));
 

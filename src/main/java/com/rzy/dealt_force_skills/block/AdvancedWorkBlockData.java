@@ -20,6 +20,9 @@ public record AdvancedWorkBlockData(BlockPos pos, int blockType, int mode, Strin
     public static final int ACTION_PRIMARY = 0;
     public static final int ACTION_SECONDARY = 1;
     public static final int PAGE_SIZE = 80;
+    // Internal requests reuse the existing query packet; user text stays on the client.
+    public static final String CATALOG_QUERY = "#dfs:catalog";
+    public static final String PREVIEW_QUERY = "#dfs:entry";
 
     public AdvancedWorkBlockData {
         query = query == null ? "" : query;

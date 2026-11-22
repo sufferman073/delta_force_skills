@@ -104,6 +104,7 @@ public final class SinevaPlaceholderVisuals {
     public static void onRenderHand(RenderHandEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         boolean shieldMode = shouldHideHeldHands(minecraft.player);
+        if (!shieldMode && ClientToolHandMotion.ownsFirstPerson(event.getPartialTick())) return;
         boolean bladeWireMode = SinevaInputHandler.isBladeWireHeld();
         boolean grappleMode = ClientToolModelAnimationState.isActive(GRAPPLE_GUN_KEY)
                 || SinevaInputHandler.isGrappleCharging()
@@ -127,6 +128,7 @@ public final class SinevaPlaceholderVisuals {
             poseStack.mulPose(Axis.YP.rotationDegrees(-80.0f));
             poseStack.mulPose(Axis.XP.rotationDegrees(-15.0f));
             poseStack.scale(0.65f, 0.65f, 0.65f);
+            ClientToolFirstPerson.attachedHand(event,true,0,-3,0);
             boolean rendered = BlockbenchAnimatedModelRenderer.render(
                     BLADE_WIRE_MODEL, null, 0.0F, poseStack,
                     event.getMultiBufferSource(), event.getPackedLight());
@@ -161,25 +163,32 @@ public final class SinevaPlaceholderVisuals {
         }
 
         if (grappleMode) {
-            poseStack.pushPose();
-            poseStack.translate(-0.48D, -0.36D, -0.68D);
-            poseStack.mulPose(Axis.YP.rotationDegrees(-90.0F));
-            poseStack.mulPose(Axis.XP.rotationDegrees(-9.0F));
-            poseStack.scale(0.72F, 0.72F, 0.72F);
-            ClientToolModelAnimationState.AnimationFrame frame = ClientToolModelAnimationState.frame(
-                    GRAPPLE_GUN_KEY, GRAPPLE_GUN_MODEL, null, 0.0F);
-            boolean rendered = BlockbenchAnimatedModelRenderer.render(
-                    GRAPPLE_GUN_MODEL, frame.animation(), frame.seconds(), poseStack,
-                    event.getMultiBufferSource(), event.getPackedLight());
-            if (!rendered) {
-                minecraft.getItemRenderer().renderStatic(
-                        minecraft.player, new ItemStack(Items.CROSSBOW),
-                        ItemDisplayContext.FIRST_PERSON_LEFT_HAND, true, poseStack,
-                        event.getMultiBufferSource(), minecraft.level, event.getPackedLight(),
-                        OverlayTexture.NO_OVERLAY, 0);
-            }
-            poseStack.popPose();
+            var frame = ClientToolModelAnimationState.frame(GRAPPLE_GUN_KEY, GRAPPLE_GUN_MODEL, null, 0.0F);
+            drawGrapple(event, frame.animation(), frame.seconds());
         }
+    }
+
+    static void drawGrapple(RenderHandEvent event, String clip, float seconds) {
+        Minecraft minecraft = Minecraft.getInstance();
+        boolean offRight = minecraft.player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT;
+        PoseStack poseStack = event.getPoseStack();
+        poseStack.pushPose();
+        poseStack.translate(offRight ? 0.48D : -0.48D, -0.36D, -0.68D);
+        poseStack.mulPose(Axis.YP.rotationDegrees(-90.0F));
+        poseStack.mulPose(Axis.XP.rotationDegrees(-9.0F));
+        poseStack.scale(0.72F, 0.72F, 0.72F);
+        ClientToolFirstPerson.attachedHand(event,offRight,-5.7F,-4.2F,0);
+        boolean rendered = BlockbenchAnimatedModelRenderer.render(
+                GRAPPLE_GUN_MODEL, clip, seconds, poseStack,
+                event.getMultiBufferSource(), event.getPackedLight());
+        if (!rendered) {
+            minecraft.getItemRenderer().renderStatic(
+                    minecraft.player, new ItemStack(Items.CROSSBOW),
+                    offRight ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND : ItemDisplayContext.FIRST_PERSON_LEFT_HAND, !offRight, poseStack,
+                    event.getMultiBufferSource(), minecraft.level, event.getPackedLight(),
+                    OverlayTexture.NO_OVERLAY, 0);
+        }
+        poseStack.popPose();
     }
 
     private static boolean hasActiveLocalGrapple(Minecraft minecraft) {
@@ -232,25 +241,6 @@ public final class SinevaPlaceholderVisuals {
         if (saved != null) {
             player.getInventory().items.set(player.getInventory().selected, saved);
         }
-
-        Minecraft minecraft = Minecraft.getInstance();
-        if (!hasActiveGrapple(minecraft, player)
-                || player.isInvisible()
-                || player == minecraft.player && minecraft.options.getCameraType().isFirstPerson()) {
-            return;
-        }
-
-        PoseStack poseStack = event.getPoseStack();
-        poseStack.pushPose();
-        event.getRenderer().getModel().leftArm.translateAndRotate(poseStack);
-        poseStack.translate(0.04D, 0.43D, 0.0D);
-        poseStack.mulPose(Axis.ZP.rotationDegrees(-90.0F));
-        poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
-        poseStack.scale(0.55F, 0.55F, 0.55F);
-        BlockbenchAnimatedModelRenderer.render(
-                GRAPPLE_GUN_MODEL, null, 0.0F, poseStack,
-                event.getMultiBufferSource(), event.getPackedLight());
-        poseStack.popPose();
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)

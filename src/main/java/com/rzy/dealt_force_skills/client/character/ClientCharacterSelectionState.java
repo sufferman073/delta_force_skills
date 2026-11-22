@@ -25,10 +25,13 @@ import com.rzy.dealt_force_skills.client.visual.ManbaFlashlightBeamRenderer;
 import com.rzy.dealt_force_skills.client.visual.SinevaPlaceholderVisuals;
 import net.minecraft.client.Minecraft;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public final class ClientCharacterSelectionState {
     private static String selectedCharacterId;
@@ -247,11 +250,39 @@ public final class ClientCharacterSelectionState {
     }
 
     public static void syncSelectionCatalog(List<CharacterBranch> branches) {
-        selectionCatalog = branches == null ? List.of() : List.copyOf(branches);
+        selectionCatalog = normalizeSelectionCatalog(branches);
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.screen instanceof CharacterSelectionScreen screen) {
             screen.refreshCharacterWidgets();
         }
+    }
+
+    private static List<CharacterBranch> normalizeSelectionCatalog(List<CharacterBranch> branches) {
+        if (branches == null || branches.isEmpty()) {
+            return List.of();
+        }
+        boolean hasCanonicalCorps = branches.stream()
+                .flatMap(branch -> branch.characters().stream())
+                .anyMatch(character -> ModCharacters.CORPS_ID.equals(character.id()));
+        Set<String> seenIds = new HashSet<>();
+        List<CharacterBranch> normalized = new ArrayList<>(branches.size());
+        for (CharacterBranch branch : branches) {
+            List<CharacterDefinition> characters = new ArrayList<>();
+            for (CharacterDefinition character : branch.characters()) {
+                if (hasCanonicalCorps && ModCharacters.LEGACY_CORPS_ID.equals(character.id())) {
+                    continue;
+                }
+                String uniqueId = ModCharacters.LEGACY_CORPS_ID.equals(character.id())
+                        ? ModCharacters.CORPS_ID
+                        : character.id();
+                if (seenIds.add(uniqueId)) {
+                    characters.add(character);
+                }
+            }
+            normalized.add(new CharacterBranch(branch.id(), branch.name(),
+                    branch.nameTranslationKey(), characters));
+        }
+        return List.copyOf(normalized);
     }
 
     public static List<CharacterBranch> selectionCatalog() {

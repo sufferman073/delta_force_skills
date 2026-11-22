@@ -249,7 +249,6 @@ public final class SinevaStateManager {
 
    public static void deactivateBombSuit(ServerPlayer player) {
         if (isBombSuitActive(player)) com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().recordAfter(player,"sineva.suit.equip","sineva.suit.unequip");
-        com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"sineva.shield.cancel_gun_kill",false);
       CompoundTag tag = data(player);
       tag.putBoolean("BombSuitActive", false);
       tag.putBoolean("ShieldDeployed", false);

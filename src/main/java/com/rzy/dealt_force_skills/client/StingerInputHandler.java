@@ -38,6 +38,7 @@ public final class StingerInputHandler {
     private static boolean active1WasDown;
     private static int active1HeldTicks;
     private static boolean sentSmokeEquip;
+    private static boolean throwCanceled;
     private static boolean coreWasDown;
     private static int coreHeldTicks;
     private static boolean sentCoreLong;
@@ -90,6 +91,11 @@ public final class StingerInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
+        if (sentSmokeEquip && Minecraft.getInstance().screen == null && isPrimaryOrSecondary(event.getButton())) {
+            event.setCanceled(true);
+            if (event.getAction() == GLFW.GLFW_PRESS && !throwCanceled) { throwCanceled = true; NetworkHandler.sendToServer(new C2S_StingerToolAction(StingerToolAction.STOW_TOOL)); }
+            return;
+        }
         if (!ClientStingerHudState.hasEquippedTool() || !isPrimaryOrSecondary(event.getButton())) {
             return;
         }
@@ -139,6 +145,11 @@ public final class StingerInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (sentSmokeEquip && (event.isAttack() || event.isUseItem())) {
+            event.setCanceled(true); event.setSwingHand(false);
+            if (!throwCanceled) { throwCanceled = true; NetworkHandler.sendToServer(new C2S_StingerToolAction(StingerToolAction.STOW_TOOL)); }
+            return;
+        }
         if (Minecraft.getInstance().screen != null) {
             return;
         }
@@ -178,14 +189,16 @@ public final class StingerInputHandler {
     }
 
     private static void handleActive1Key() {
-        if (KeybindRegister.ACTIVE_SKILL_1 == null) {
+        if (KeybindRegister.activeKey(1) == null) {
             return;
         }
 
-        boolean down = KeybindRegister.ACTIVE_SKILL_1.isDown();
+        boolean clicked = false;
+        while (KeybindRegister.activeKey(1).consumeClick()) clicked = true;
+        boolean down = KeybindRegister.activeKey(1).isDown();
         if (down) {
             active1WasDown = true;
-            while (KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+            while (KeybindRegister.activeKey(1).consumeClick()) {
             }
             active1HeldTicks++;
             if (active1HeldTicks >= SMOKE_EQUIP_HOLD_TICKS && !sentSmokeEquip) {
@@ -195,8 +208,11 @@ public final class StingerInputHandler {
             return;
         }
 
-        if (active1WasDown && active1HeldTicks < SMOKE_EQUIP_HOLD_TICKS) {
+        if ((active1WasDown || clicked) && !throwCanceled && active1HeldTicks < SMOKE_EQUIP_HOLD_TICKS) {
             beginSmokeThrow(false);
+        }
+        if (active1WasDown && sentSmokeEquip && !throwCanceled) {
+            beginSmokeThrow(true);
         }
         resetActive1();
     }
@@ -215,7 +231,7 @@ public final class StingerInputHandler {
     private static void beginStimFire() {
         ClientToolReleaseAction.begin(
                 ClientToolReleaseAction.Action.STINGER_STIM_PRIME,
-                STIM_PRIME_TICKS,
+                Math.max(1, (STIM_PRIME_TICKS + 1) / 2),
                 () -> {
                     ClientToolReleaseAction.play(ClientToolReleaseAction.Action.STINGER_STIM_FIRE);
                     NetworkHandler.sendToServer(new C2S_StingerToolAction(StingerToolAction.FIRE_STIM_GUN));
@@ -223,14 +239,14 @@ public final class StingerInputHandler {
     }
 
     private static void handleActive2Key() {
-        if (KeybindRegister.ACTIVE_SKILL_2 == null) {
+        if (KeybindRegister.activeKey(2) == null) {
             return;
         }
 
-        boolean down = KeybindRegister.ACTIVE_SKILL_2.isDown();
+        boolean down = KeybindRegister.activeKey(2).isDown();
         if (down) {
             active2WasDown = true;
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
+            while (KeybindRegister.activeKey(2).consumeClick()) {
             }
             active2HeldTicks++;
             if (active2HeldTicks >= DRONE_GUIDED_HOLD_TICKS && !sentDroneGuidedLaunch) {
@@ -292,6 +308,7 @@ public final class StingerInputHandler {
     }
 
     private static void resetActive1() {
+        throwCanceled = false;
         active1WasDown = false;
         active1HeldTicks = 0;
         sentSmokeEquip = false;

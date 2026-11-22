@@ -52,6 +52,7 @@ public record C2S_DfWarehouseAction(Action action, int index, int target, int co
             if (!(ctx.player() instanceof ServerPlayer player)) {
                 return;
             }
+            if (com.rzy.dealt_force_skills.raid.RaidAccess.externalItemsBlocked(player)) return;
             if (msg.action() != Action.OPEN && (msg.count() < 0 || msg.count() > MAX_TRANSFER_COUNT)) {
                 return;
             }

@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:book"
+      "id": "minecraft:book"
     },
     "title": {
       "text": "天下武功，唯快不破"

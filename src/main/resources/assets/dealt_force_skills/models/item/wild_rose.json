@@ -1,1 +1,24 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/wild_rose"}}
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "textures": {
+    "particle": "dealt_force_skills:item/wild_rose"
+  },
+  "base": {
+    "parent": "dealt_force_skills:item/refresh_drinks/wild_rose"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/wild_rose"
+      }
+    },
+    "ground": {
+      "parent": "dealt_force_skills:item/refresh_drinks/wild_rose",
+      "visibility": {
+        "service": true
+      }
+    }
+  }
+}

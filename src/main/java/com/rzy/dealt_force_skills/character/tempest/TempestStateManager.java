@@ -182,6 +182,7 @@ public final class TempestStateManager {
         if (player.onGround()) {
             startRollBoost(player);
             tag.putInt(FALL_PROTECTION_TICKS, 8);
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.TUCK_ROLL.play(player);
         } else {
             tag.putBoolean(PENDING_LANDING_ROLL, true);
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.tempest.roll_prepared"), true);
@@ -214,11 +215,13 @@ public final class TempestStateManager {
         if (!tag.getBoolean(PENDING_LANDING_ROLL) && tag.getInt(FALL_PROTECTION_TICKS) <= 0) {
             return false;
         }
+        boolean prepared = tag.getBoolean(PENDING_LANDING_ROLL);
         tag.putBoolean(PENDING_LANDING_ROLL, false);
         tag.putInt(FALL_PROTECTION_TICKS, 8);
         player.fallDistance = 0.0F;
         player.clearFire();
         startRollBoost(player);
+        if (prepared) com.rzy.dealt_force_skills.skill.BareSkillPulse.TUCK_ROLL.play(player);
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.TEMPEST_TACTICAL_ROLL_START.get(),
                 SoundSource.PLAYERS, 0.85F, 1.0F, 32.0D);
         return true;
@@ -497,7 +500,9 @@ public final class TempestStateManager {
         TempestRecallAnchorEntity anchorEntity = new TempestRecallAnchorEntity(
                 ModEntities.TEMPEST_RECALL_ANCHOR.get(), player.level(), player);
         anchorEntity.setPos(anchor.x, anchor.y + 0.04D, anchor.z);
-        player.level().addFreshEntity(anchorEntity);
+        if (player.level().addFreshEntity(anchorEntity)) {
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.ANCHOR_SET.play(player);
+        }
         tag.putUUID(ANCHOR_ENTITY, anchorEntity.getUUID());
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.TEMPEST_RECALL_ANCHOR_PLACE.get(),
                 SoundSource.PLAYERS, 0.9F, 1.0F, 32.0D);
@@ -513,6 +518,7 @@ public final class TempestStateManager {
         ListTag path = tag.getList(PATH, Tag.TAG_COMPOUND);
         tag.putBoolean(RECALLING, true);
         tag.putBoolean(AUTO_RECALL, automatic);
+        if (!automatic) com.rzy.dealt_force_skills.skill.BareSkillPulse.RECALL_PULL.play(player);
         tag.putInt(RECALL_INDEX, Math.max(0, path.size() - 2));
         tag.putInt(RECALL_TICKS, 0);
         tag.putInt(RECALL_STALLED_TICKS, 0);

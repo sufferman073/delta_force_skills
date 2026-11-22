@@ -31,7 +31,7 @@ public final class NoxPlaceholderVisuals {
     private NoxPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         boolean flashAction = ClientToolReleaseAction.isActive(
                 ClientToolReleaseAction.Action.NOX_FLASH_GRENADE);

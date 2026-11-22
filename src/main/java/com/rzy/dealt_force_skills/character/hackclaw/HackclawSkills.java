@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.hackclaw;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.electronics.ElectronicInterferenceManager;
@@ -106,7 +109,7 @@ public final class HackclawSkills {
                 .add(0.0D, heldThrow ? HELD_KNIFE_THROW_LIFT : QUICK_THROW_LIFT, 0.0D));
         knife.setYRot(player.getYRot());
         knife.setXRot(player.getXRot());
-        if (level.addFreshEntity(knife)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"hackclaw.knife");
+        if (ToolHandRelease.spawned(level.addFreshEntity(knife), player, ToolHandCue.HACKCLAW_HACKING_KNIFE)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"hackclaw.knife");
         HackclawStateManager.stowTool(player);
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.HACKCLAW_KNIFE_THROW.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f, 16.0D, 5, 3.0D);
@@ -131,7 +134,7 @@ public final class HackclawSkills {
         drone.setGuidedTargetId(guidedTargetId);
         drone.setYRot(player.getYRot());
         drone.setXRot(player.getXRot());
-        if (level.addFreshEntity(drone)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"hackclaw.flash_drone");
+        if (ToolHandRelease.spawned(level.addFreshEntity(drone), player, ToolHandCue.HACKCLAW_FLASH_DRONE)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"hackclaw.flash_drone");
         HackclawStateManager.stowTool(player);
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.HACKCLAW_FLASH_DRONE_THROW.get(),
                 SoundSource.PLAYERS, 0.85f, 1.0f, 18.0D, 5, 3.0D);

@@ -62,7 +62,7 @@ public final class UndeadInputHandler {
                     UndeadProfessionScreen.open();
                 } else {
                     // 长按特勤处
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
         } else if (wasDown) {

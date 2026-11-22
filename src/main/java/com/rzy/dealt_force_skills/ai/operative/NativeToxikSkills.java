@@ -35,7 +35,7 @@ public final class NativeToxikSkills implements OperativeSkills {
                 || target == null || !target.isAlive() || target.level() != host.body().level()
                 || !host.parallelNativeAi() && !valid(host, target, prepared == SkillSlot.ACTIVE_1 || amplify,
                     prepared == SkillSlot.ACTIVE_1 ? ToxikStateManager.ADRENALINE_RADIUS
-                        : prepared == SkillSlot.ACTIVE_2 ? 24 : ToxikStateManager.FIREFLY_RANGE)) {
+                        : prepared == SkillSlot.ACTIVE_2 ? 24 : ToxikStateManager.FIREFLY_RANGE, prepared != SkillSlot.ACTIVE_2)) {
             clear(); return;
         }
         host.aimAt(target);
@@ -53,7 +53,7 @@ public final class NativeToxikSkills implements OperativeSkills {
         if (busy() || !host.withinOrders(host.body().position()) || OperativeSupport.downed(host.body())) return 0;
         return switch (slot) {
             case ACTIVE_1 -> adrenalineCooldown == 0 && injectionTarget(host, enemy) != null ? 115 : 0;
-            case ACTIVE_2 -> gas > 0 && valid(host, enemy, false, 24) && !enemy.hasEffect(ModEffects.TOXIK_TEAR_GAS_BLIND)
+            case ACTIVE_2 -> gas > 0 && valid(host, enemy, false, 24, false) && !enemy.hasEffect(ModEffects.TOXIK_TEAR_GAS_BLIND)
                     && gasShot(host, enemy) != null ? 80 : 0;
             case CORE -> fireflyCooldown > 0 ? 0 : supportTarget(host, enemy) != null ? 105
                     : valid(host, enemy, false, ToxikStateManager.FIREFLY_RANGE)
@@ -85,10 +85,14 @@ public final class NativeToxikSkills implements OperativeSkills {
     }
 
     private boolean valid(OperativeHost host, LivingEntity target, boolean ally, double range) {
+        return valid(host, target, ally, range, true);
+    }
+
+    private boolean valid(OperativeHost host, LivingEntity target, boolean ally, double range, boolean sight) {
         return target != null && target.isAlive() && !OperativeSupport.downed(target)
                 && host.withinOrders(host.body().position()) && host.withinCombatRange(target.position())
                 && host.body().distanceToSqr(target) <= Math.max(0, range) * Math.max(0, range)
-                && (target == host.body() || host.canSee(target))
+                && (target == host.body() || (sight ? host.canSee(target) : OperativeHearing.knownContact(host, target)))
                 && (ally ? OperativeSupport.ally(host.body(), target) : host.isEnemy(target));
     }
     private boolean harmful(LivingEntity target) {
@@ -125,7 +129,7 @@ public final class NativeToxikSkills implements OperativeSkills {
         if (applied) { adrenalineCooldown = Math.max(1, ToxikStateManager.ADRENALINE_COOLDOWN_TICKS); sound(host, ModSounds.TOXIK_ADRENALINE_RELEASE.get()); }
     }
     private OperativeBallistics.Shot gasShot(OperativeHost host, LivingEntity target) {
-        return OperativeBallistics.solve(host, target.position().add(0, 0.1, 0), 1.08, 0.08, 0.58, 0.1,
+        return OperativeBallistics.lob(host, target.position().add(0, 0.1, 0), 1.08, 0.08, 0.58, 0.1,
                 0.045, 0.985, 80, 1.5, true);
     }
     private void throwGas(OperativeHost host, LivingEntity target) {

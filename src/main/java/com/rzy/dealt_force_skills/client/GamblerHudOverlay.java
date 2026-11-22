@@ -35,8 +35,10 @@ public final class GamblerHudOverlay {
         int x = ClientHudLayout.x(8);
         int y = ClientHudLayout.y(Math.max(8, graphics.guiHeight() - 68));
 
-        drawResourceBar(graphics, font, x, y - 22);
-        drawStatus(graphics, font, x, y - 36);
+        try (var ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
+            drawResourceBar(graphics, font, x, y - 22);
+            drawStatus(graphics, font, x, y - 36);
+        }
         drawSlot(graphics, font, x, y, 0xFFFFD35A, KeybindRegister.CORE_SKILL,
                 Component.translatable("character.dealt_force_skills.gambler.skill.killing_gambler"),
                 0, coreDetail());
@@ -93,23 +95,7 @@ public final class GamblerHudOverlay {
 
     private static void drawSlot(GuiGraphics graphics, Font font, int x, int y, int accentColor, KeyMapping key,
                                  Component icon, int cooldownTicks, String detail) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA101216);
-            graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-            graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-            graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-            graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-            graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xDD171A20);
-            HudTextHelper.drawCenteredFitted(graphics, font, icon.getString(), x + SLOT / 2, y + 12, 32, 0xFFFFFFFF);
-            if (cooldownTicks > 0) {
-                graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xCC000000);
-                HudTextHelper.drawCenteredFitted(graphics, font, cooldownText(cooldownTicks), x + SLOT / 2, y + 14, 34, 0xFFFFE6A6);
-            } else {
-                HudTextHelper.drawCenteredFitted(graphics, font, detail, x + SLOT / 2, y + 22, 34, 0xFFE0E4EA);
-            }
-            String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            HudTextHelper.drawCenteredFitted(graphics, font, keyName, x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, cooldownTicks, detail);
     }
 
     private static String cooldownText(int ticks) {

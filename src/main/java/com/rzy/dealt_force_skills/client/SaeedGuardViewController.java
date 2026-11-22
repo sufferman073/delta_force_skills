@@ -81,6 +81,15 @@ public final class SaeedGuardViewController {
             minecraft.setCameraEntity(entity);
         }
         syncLocalGuardRotation(entity, minecraft.player.getYRot(), minecraft.player.getXRot());
+        if (minecraft.player.tickCount % 10 == 0) {
+            for (var target : minecraft.level.players()) {
+                if (target == minecraft.player || !target.isAlive() || target.isSpectator()
+                        || entity.distanceToSqr(target) > 160 * 160) continue;
+                var direction = target.getEyePosition().subtract(entity.getEyePosition()).normalize();
+                if (direction.dot(minecraft.player.getLookAngle()) >= .5D && ((LivingEntity) entity).hasLineOfSight(target))
+                    NetworkHandler.sendToServer(new com.rzy.dealt_force_skills.network.C2S_SkillObservation(entity.getId(), target.getId()));
+            }
+        }
         if (consumeClick(KeybindRegister.ACTIVE_SKILL_1)) {
             sendCommand(minecraft, SkillSlot.ACTIVE_1);
         }

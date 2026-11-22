@@ -14,18 +14,21 @@ import java.util.Map;
  * 自定义掉落物配置提供者
  * 在 DeltaForce 主类中注册，使得设置界面可以编辑自定义掉落物配置
  */
-public class CustomDropConfigProvider implements IConfigProvider {
+public class CustomDropConfigProvider extends mccfk.DeltaForce.java.client.screen.DfsConfigProvider {
 
     private final Map<String, String> dirtyValues = new HashMap<>();
     private String status = "";
 
     public CustomDropConfigProvider() {
+        super(true);
     }
 
     @Override
     public List<ConfigEntry> getConfigEntries() {
         List<ConfigEntry> entries = new ArrayList<>();
         CommentedFileConfig config = CustomDropConfig.rawConfig();
+        for (ConfigEntry entry : super.getConfigEntries()) entries.add(new ConfigEntry(entry.path(), entry.key(), entry.currentValue(), entry.defaultValue(),
+                entry.description(), entry.kind(), "customdrop", "rules"));
         if (config == null) return entries;
         flatten(config, "", entries);
         // 按层级排序：父项在前，子项在后（父→子→孙）
@@ -35,6 +38,7 @@ public class CustomDropConfigProvider implements IConfigProvider {
 
     @Override
     public String getValue(String path) {
+        if (serverSetting(path)) return super.getValue(path);
         if (dirtyValues.containsKey(path)) return dirtyValues.get(path);
         CommentedFileConfig config = CustomDropConfig.rawConfig();
         if (config == null) return "";
@@ -44,6 +48,7 @@ public class CustomDropConfigProvider implements IConfigProvider {
 
     @Override
     public boolean setValue(String path, String value) {
+        if (serverSetting(path)) return super.setValue(path, value);
         dirtyValues.put(path, value);
         return true;
     }
@@ -51,6 +56,7 @@ public class CustomDropConfigProvider implements IConfigProvider {
     @Override
     public void save() {
         if (!validate()) return;
+        if (super.isDirty()) super.save();
         CommentedFileConfig config = CustomDropConfig.rawConfig();
         if (config != null) {
             Map<String, Object> before = new HashMap<>();
@@ -93,6 +99,7 @@ public class CustomDropConfigProvider implements IConfigProvider {
 
     @Override
     public boolean validate() {
+        if (!super.validate()) return false;
         for (Map.Entry<String, String> dirty : dirtyValues.entrySet()) {
             String path = dirty.getKey();
             try {
@@ -131,24 +138,29 @@ public class CustomDropConfigProvider implements IConfigProvider {
 
     @Override
     public boolean isBusy() {
-        return false;
+        return super.isBusy();
     }
 
     @Override
     public String status() {
-        return status;
+        return status.isEmpty() ? super.status() : status;
     }
 
     @Override
     public void cancel() {
+        super.cancel();
         dirtyValues.clear();
         status = "";
     }
 
     @Override
     public boolean isDirty() {
-        return !dirtyValues.isEmpty();
+        return super.isDirty() || !dirtyValues.isEmpty();
     }
+
+    private static boolean serverSetting(String path) { return "BASE|customdrop.enabled".equals(path); }
+    @Override public boolean isClientLocal(String path) { return !serverSetting(path); }
+    @Override public boolean canEdit(String path) { return !serverSetting(path) || super.canEdit(path); }
 
     private void flatten(UnmodifiableConfig source, String prefix, List<ConfigEntry> out) {
         for (Map.Entry<String, Object> entry : source.valueMap().entrySet()) {

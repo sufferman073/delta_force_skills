@@ -48,15 +48,18 @@ public final class NativeNikaidouSkills implements OperativeSkills {
         return !available(host) || OperativeElectronics.blocked(host, ModCharacters.NIKAIDOU_HIRO_ID, slot);
     }
     private boolean wantsCore(OperativeHost host, LivingEntity target) {
-        if (core || doomedTicks > 0 || coreCooldown > 0 || !valid(host, target, 8)) return false;
+        if (core || doomedTicks > 0 || coreCooldown > 0 || !contact(host, target, 8)) return false;
         return host.body().getHealth() <= host.body().getMaxHealth() * .55F
                 || host.serverLevel().getEntitiesOfClass(LivingEntity.class, host.body().getBoundingBox().inflate(5), e -> valid(host,e,5)).size() >= 3;
+    }
+    private static boolean contact(OperativeHost host, LivingEntity target, double range) {
+        return OperativeHearing.knownContact(host, target) && host.body().distanceToSqr(target) <= range * range;
     }
     @Override public double score(OperativeHost host, SkillSlot slot, LivingEntity target) {
         if (blocked(host,slot) || busy()) return 0;
         return switch(slot) {
-            case ACTIVE_1 -> correctionCooldown == 0 && correctionTicks == 0 && valid(host,target,16) ? 72 : 0;
-            case ACTIVE_2 -> !core && doomedTicks == 0 && (hotIron ? wantsCore(host,target) : valid(host,target,8)) ? 78 : 0;
+            case ACTIVE_1 -> correctionCooldown == 0 && correctionTicks == 0 && contact(host,target,16) ? 72 : 0;
+            case ACTIVE_2 -> !core && doomedTicks == 0 && (hotIron ? wantsCore(host,target) : contact(host,target,8)) ? 78 : 0;
             case CORE -> !hotIron && wantsCore(host,target) ? 100 : 0;
             default -> 0;
         };

@@ -61,27 +61,29 @@ public final class UndeadHudOverlay {
         drawSlot(graphics, font, x + (SLOT + GAP) * 2, y, 0xFF447DCC, KeybindRegister.ACTIVE_SKILL_1,
                 Component.translatable(prefix + "active1"), 0, active1Detail(profession));
 
-        int barWidth = SLOT * 3 + GAP * 2;
-        int barY = y - 15;
-        float ratio = Math.min(1.0F, ClientUndeadHudState.energy() / ClientUndeadHudState.maxEnergy());
-        graphics.fill(x, barY, x + barWidth, barY + 8, 0xBB101827);
-        graphics.fill(x + 1, barY + 1, x + 1 + Math.round((barWidth - 2) * ratio), barY + 7, 0xFF3E8CFF);
-        graphics.drawCenteredString(font,
-                Component.translatable("hud.dealt_force_skills.undead.energy",
-                        Math.round(ClientUndeadHudState.energy()),
-                        Math.round(ClientUndeadHudState.maxEnergy())),
-                x + barWidth / 2, barY - 1, 0xFFFFFFFF);
+        try (var ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
+            int barWidth = SLOT * 3 + GAP * 2;
+            int barY = y - 15;
+            float ratio = Math.min(1.0F, ClientUndeadHudState.energy() / ClientUndeadHudState.maxEnergy());
+            graphics.fill(x, barY, x + barWidth, barY + 8, 0xBB101827);
+            graphics.fill(x + 1, barY + 1, x + 1 + Math.round((barWidth - 2) * ratio), barY + 7, 0xFF3E8CFF);
+            graphics.drawCenteredString(font,
+                    Component.translatable("hud.dealt_force_skills.undead.energy",
+                            Math.round(ClientUndeadHudState.energy()),
+                            Math.round(ClientUndeadHudState.maxEnergy())),
+                    x + barWidth / 2, barY - 1, 0xFFFFFFFF);
 
-        int statusY = barY - 13;
-        String status = Component.translatable(profession.translationKey()).getString()
-                + "  "
-                + Component.translatable("hud.dealt_force_skills.undead.souls",
-                ClientUndeadHudState.souls()).getString();
-        if (ClientUndeadHudState.disorientedTicks() > 0) {
-            status += "  " + Component.translatable("hud.dealt_force_skills.undead.disoriented",
-                    cooldownText(ClientUndeadHudState.disorientedTicks())).getString();
+            int statusY = barY - 13;
+            String status = Component.translatable(profession.translationKey()).getString()
+                    + "  "
+                    + Component.translatable("hud.dealt_force_skills.undead.souls",
+                    ClientUndeadHudState.souls()).getString();
+            if (ClientUndeadHudState.disorientedTicks() > 0) {
+                status += "  " + Component.translatable("hud.dealt_force_skills.undead.disoriented",
+                        cooldownText(ClientUndeadHudState.disorientedTicks())).getString();
+            }
+            graphics.drawString(font, status, x, statusY, 0xFF9BC5FF, true);
         }
-        graphics.drawString(font, status, x, statusY, 0xFF9BC5FF, true);
         renderHoldGuide(graphics, font, minecraft, profession);
     }
 
@@ -232,25 +234,7 @@ public final class UndeadHudOverlay {
             int cooldownTicks,
             String detail
     ) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA10131A);
-        graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-        graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-        graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-        HudTextHelper.drawCenteredFitted(graphics, font, label.getString(), x + SLOT / 2, y + 11, 38, 0xFFFFFFFF);
-        if (cooldownTicks > 0) {
-            graphics.fill(x + 5, y + 5, x + 41, y + 31, 0xCC000000);
-            HudTextHelper.drawCenteredFitted(graphics, font, cooldownText(cooldownTicks),
-                    x + SLOT / 2, y + 15, 34, 0xFFFFE6A6);
-        } else if (!detail.isEmpty()) {
-            HudTextHelper.drawCenteredFitted(graphics, font, detail,
-                    x + SLOT / 2, y + 23, 36, 0xFFC8D9F0);
-        }
-        String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-        HudTextHelper.drawCenteredFitted(graphics, font, keyName,
-            x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, label, cooldownTicks, detail);
     }
 
     private static String cooldownText(int ticks) {

@@ -1,1 +1,14 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/elastic_bandage"}}
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "textures": {"particle":"dealt_force_skills:item/elastic_bandage"},
+  "base": {"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/elastic_bandage"}},
+  "perspectives": {
+    "ground": {"parent":"dealt_force_skills:item/refresh_kits/elastic_bandage"},
+    "fixed": {"parent":"dealt_force_skills:item/refresh_kits/elastic_bandage"},
+    "firstperson_righthand": {"parent":"dealt_force_skills:item/refresh_kits/elastic_bandage"},
+    "firstperson_lefthand": {"parent":"dealt_force_skills:item/refresh_kits/elastic_bandage"},
+    "thirdperson_righthand": {"parent":"dealt_force_skills:item/refresh_kits/elastic_bandage"},
+    "thirdperson_lefthand": {"parent":"dealt_force_skills:item/refresh_kits/elastic_bandage"}
+  }
+}

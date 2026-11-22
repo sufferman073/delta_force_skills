@@ -92,7 +92,7 @@ public final class GamblerInputHandler {
                     GamblerPowerScreen.open();
                 } else {
                     // 长按特勤处
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
             return;

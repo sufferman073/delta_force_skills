@@ -1,0 +1,175 @@
+package com.rzy.dealt_force_skills.client;
+
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.resources.ResourceLocation;
+import java.util.Set;
+
+/** Stable translation-key mapping; independent of the client's selected language. */
+public final class SkillIcons {
+    private SkillIcons() {}
+    public enum State { NORMAL, ACTIVE, DISABLED }
+    private static final Set<String> SKILLS = Set.of(
+            "catdad.skill.bully",
+            "catdad.skill.highway",
+            "catdad.skill.spine_block",
+            "catdad.skill.triple_hiss",
+            "chamber.skill.headhunter",
+            "chamber.skill.rendezvous",
+            "chamber.skill.spare_cash",
+            "chamber.skill.tour_de_force",
+            "chamber.skill.trademark",
+            "commander.skill.tactical_command",
+            "corps.skill.forceful_baton",
+            "corps.skill.loyalty",
+            "corps.skill.unrestricted_fighting_tournament",
+            "corps.skill.warm_enforcement",
+            "d_wolf.skill.hand_cannon",
+            "d_wolf.skill.overload",
+            "d_wolf.skill.smoke",
+            "d_wolf.skill.tactical_slide",
+            "department.skill.armor",
+            "department.skill.contingency",
+            "department.skill.overheat_laser",
+            "department.skill.traffic_booth",
+            "gambler.skill.final_bet",
+            "gambler.skill.hakko_ichiu",
+            "gambler.skill.killing_gambler",
+            "gambler.skill.super_shield",
+            "ghroth.skill.demigod_brain",
+            "ghroth.skill.justice",
+            "ghroth.skill.noon",
+            "ghroth.skill.stars_orbit",
+            "gizmo.skill.defensive_vanguard",
+            "gizmo.skill.smoke_trap",
+            "gizmo.skill.spider_nest",
+            "gizmo.skill.t_boy",
+            "hackclaw.skill.advanced_hack",
+            "hackclaw.skill.flash_drone",
+            "hackclaw.skill.hacking_knife",
+            "hackclaw.skill.silent_movement",
+            "lex_ninjia.skill.blade",
+            "lex_ninjia.skill.hand",
+            "lex_ninjia.skill.harmony",
+            "lex_ninjia.skill.leicra",
+            "luna.skill.composite_grenade",
+            "luna.skill.recon_arrow",
+            "luna.skill.shock_arrow",
+            "luna.skill.target_trace",
+            "manba.skill.elbow",
+            "manba.skill.evil_talent",
+            "manba.skill.flashlight",
+            "manba.skill.la_legend",
+            "morse.skill.alert_hearing",
+            "morse.skill.composite_flash",
+            "morse.skill.shock_orb",
+            "morse.skill.sonar_detector",
+            "nikaidou_hiro.skill.correct_error",
+            "nikaidou_hiro.skill.erase_sin",
+            "nikaidou_hiro.skill.only_i",
+            "nikaidou_hiro.skill.remove_gap",
+            "nikaidou_hiro_witchification.skill.erase_error",
+            "nikaidou_hiro_witchification.skill.save_everyone",
+            "nikaidou_hiro_witchification.skill.time_rewind",
+            "nikaidou_hiro_witchification.skill.witchification",
+            "nox.skill.delayed_wound",
+            "nox.skill.flash_grenade",
+            "nox.skill.rotor",
+            "nox.skill.silent_step",
+            "ntwo.skill.condensed_launcher",
+            "ntwo.skill.dewar_canister",
+            "ntwo.skill.frost_reaction",
+            "ntwo.skill.tracking_stun",
+            "raptor.skill.falcon_drone",
+            "raptor.skill.field_experience",
+            "raptor.skill.hummingbird_camera",
+            "raptor.skill.pulse_grenade",
+            "rover.skill.dog",
+            "rover.skill.injector",
+            "rover.skill.smoke",
+            "rover.skill.survivor",
+            "saeed.skill.command_order",
+            "saeed.skill.fire_arrow",
+            "saeed.skill.red_sky_hunt",
+            "saeed.skill.tactical_roll",
+            "shepherd.skill.drone_stun",
+            "shepherd.skill.frag_grenade",
+            "shepherd.skill.reflex_field",
+            "shepherd.skill.sonic_trap",
+            "sineva.skill.blade_wire",
+            "sineva.skill.bomb_suit",
+            "sineva.skill.grapple",
+            "sineva.skill.rear_guard",
+            "stinger.skill.professional_rescue",
+            "stinger.skill.smoke_drone",
+            "stinger.skill.smoke_grenade",
+            "stinger.skill.stim_gun",
+            "tempest.skill.emergency_recall",
+            "tempest.skill.explosive_spine",
+            "tempest.skill.tactical_roll",
+            "tempest.skill.wall_drill_stinger",
+            "toxik.skill.adrenaline",
+            "toxik.skill.efficient_treatment",
+            "toxik.skill.firefly_swarm",
+            "toxik.skill.tear_gas",
+            "uluru.skill.incendiary",
+            "uluru.skill.loitering_missile",
+            "uluru.skill.quick_cover",
+            "uluru.skill.veteran",
+            "undead.explorer.skill.active1",
+            "undead.explorer.skill.active2",
+            "undead.explorer.skill.core",
+            "undead.explorer.skill.passive",
+            "undead.hunter.skill.active1",
+            "undead.hunter.skill.active2",
+            "undead.hunter.skill.core",
+            "undead.hunter.skill.passive",
+            "undead.knight.skill.active1",
+            "undead.knight.skill.active2",
+            "undead.knight.skill.core",
+            "undead.knight.skill.passive",
+            "undead.rogue.skill.active1",
+            "undead.rogue.skill.active2",
+            "undead.rogue.skill.core",
+            "undead.rogue.skill.passive",
+            "undead.scholar.skill.active1",
+            "undead.scholar.skill.active2",
+            "undead.scholar.skill.core",
+            "undead.scholar.skill.passive",
+            "undead.warrior.skill.active1",
+            "undead.warrior.skill.active2",
+            "undead.warrior.skill.core",
+            "undead.warrior.skill.passive",
+            "vlinder.skill.active_defense_drone",
+            "vlinder.skill.medical_drone",
+            "vlinder.skill.remote_smoke",
+            "vlinder.skill.vital_monitoring",
+            "vyron.skill.jet_dash",
+            "vyron.skill.magnetic_bomb",
+            "vyron.skill.powered_landing",
+            "vyron.skill.tiger_cannon",
+            "wildfire.skill.battle_hardened",
+            "wildfire.skill.he_grenade",
+            "wildfire.skill.ring_smoke",
+            "wildfire.skill.shield_breaker");
+    private static final Set<String> PORTRAITS = Set.of(
+"d_wolf", "gizmo", "hackclaw", "luna", "morse", "nox", "ntwo", "raptor", "rover", "saeed", "shepherd", "sineva", "stinger", "tempest", "toxik", "uluru", "vlinder", "vyron");
+    public static String key(Component name) {
+        return name.getContents() instanceof TranslatableContents text
+                ? text.getKey().replace("character.dealt_force_skills.", "") : "";
+    }
+    public static ResourceLocation skill(String key, State state) {
+        return texture(SKILLS.contains(key) ? key.replace('.', '/') : "fallback", state);
+    }
+    public static ResourceLocation talent(com.rzy.dealt_force_skills.character.manba.ManbaTalent talent, State state) {
+        return texture("manba/talent/" + talent.name().toLowerCase(java.util.Locale.ROOT), state);
+    }
+    public static ResourceLocation notification(String character, String skill) {
+        return PORTRAITS.contains(character) ? texture("portraits/" + character, State.NORMAL)
+                : skill(skill, State.NORMAL);
+    }
+    private static ResourceLocation texture(String path, State state) {
+        return ResourceLocation.fromNamespaceAndPath("dealt_force_skills", "textures/gui/skills/" + path + "_"
+                + state.name().toLowerCase(java.util.Locale.ROOT) + ".png");
+    }
+}

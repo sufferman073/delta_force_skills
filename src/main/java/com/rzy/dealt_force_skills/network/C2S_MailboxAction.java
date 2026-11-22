@@ -41,6 +41,7 @@ public record C2S_MailboxAction(int action, UUID id, int page,String recipient,S
     public static void handle(C2S_MailboxAction msg,IPayloadContext ctx) {
         ctx.enqueueWork(()->{
             var player=ctx.player() instanceof net.minecraft.server.level.ServerPlayer server ? server : null;
+            if (player != null && com.rzy.dealt_force_skills.raid.RaidAccess.externalItemsBlocked(player)) return;
             if(player==null || !player.isAlive() || player.isSpectator() || !MailboxManager.allowRequest(player)) return;
             if(msg.action<0||msg.action>3)return;
             if(msg.action==2)MailboxManager.read(player,msg.id);

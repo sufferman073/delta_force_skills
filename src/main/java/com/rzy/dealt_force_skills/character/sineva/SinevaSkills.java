@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.sineva;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
@@ -21,6 +24,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import com.rzy.dealt_force_skills.skill.HeldToolVisualSync;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -190,7 +194,6 @@ public final class SinevaSkills {
                 != StaminaManager.ConsumeResult.SUCCESS) return false;
         SinevaStateManager.setChargeCooldown(player, CHARGE_COOLDOWN_TICKS);
         CHARGING_PLAYERS.put(player.getUUID(), new ChargeData(horizontal.normalize(), 14));
-        com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"sineva.shield.cancel_gun_kill",false);
         if (!player.onGround()) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"sineva.shield.air_dash");
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.SINEVA_SHIELD_BASH_CHARGE.get(),
                 SoundSource.PLAYERS, 1.0f, 0.8f, 32.0D);
@@ -208,6 +211,8 @@ public final class SinevaSkills {
                 iterator.remove();
                 continue;
             }
+
+            if (player.level() != level) continue;
 
             ChargeData data = entry.getValue();
             if (!canUseShieldAction(player) || data.ticksRemaining-- <= 0 || player.horizontalCollision) {
@@ -240,6 +245,15 @@ public final class SinevaSkills {
                 DfsAchievements.recordSinevaShieldBashTargets(player, data.hitEntities.size(), false);
             }
         }
+    }
+
+    /** Called only from a confirmed server death; one success per active shield charge. */
+    public static void recordShieldChargeKill(ServerPlayer player) {
+        ChargeData charge = CHARGING_PLAYERS.get(player.getUUID());
+        if (charge == null || charge.taskKillRecorded || !SinevaStateManager.isBombSuitActive(player)
+                || !canUseShieldAction(player) || player.horizontalCollision) return;
+        charge.taskKillRecorded = true;
+        com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player, "sineva.shield.charge_kill");
     }
 
     private static boolean applyShieldBashControl(ServerPlayer player, LivingEntity target) {
@@ -337,6 +351,16 @@ public final class SinevaSkills {
         GRAPPLE_CHARGE_SOUNDS.clear();
     }
 
+    public static boolean grapplePreparing(ServerPlayer player) {
+        GrappleChargeSoundData charge = GRAPPLE_CHARGE_SOUNDS.get(player.getUUID());
+        return charge != null && charge.visible && charge.playerId == player.getId() && charge.dimension == player.level().dimension();
+    }
+
+    public static void hidePreparingGrapple(ServerPlayer player) {
+        GrappleChargeSoundData charge = GRAPPLE_CHARGE_SOUNDS.get(player.getUUID());
+        if (charge != null) charge.visible = false;
+    }
+
     public static void beginGrappleChargeSound(ServerPlayer player) {
         if (!SinevaStateManager.isSineva(player) || !SinevaStateManager.isGrappleReady(player)) {
             return;
@@ -344,9 +368,16 @@ public final class SinevaSkills {
         long now = SkillCooldownHelper.now(player);
         GrappleChargeSoundData current = GRAPPLE_CHARGE_SOUNDS.get(player.getUUID());
         if (current != null && now - current.startedAt <= GRAPPLE_CHARGE_SOUND_STALE_TICKS) {
+            if (!grapplePreparing(player)) {
+                current.visible = true;
+                current.playerId = player.getId();
+                current.dimension = player.level().dimension();
+                HeldToolVisualSync.changed(player);
+            }
             return;
         }
-        GRAPPLE_CHARGE_SOUNDS.put(player.getUUID(), new GrappleChargeSoundData(now));
+        GRAPPLE_CHARGE_SOUNDS.put(player.getUUID(), new GrappleChargeSoundData(now, player));
+        HeldToolVisualSync.changed(player);
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.SINEVA_GRAPPLE_CHARGE.get(),
                 SoundSource.PLAYERS, 0.85F, 1.0F, 32.0D);
     }
@@ -366,12 +397,13 @@ public final class SinevaSkills {
         if (GRAPPLE_CHARGE_SOUNDS.remove(player.getUUID()) == null) {
             return;
         }
+        HeldToolVisualSync.changed(player);
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.SINEVA_GRAPPLE_RETRACT.get(),
                 SoundSource.PLAYERS, 0.8F, 1.0F, 32.0D);
     }
 
     public static void finishGrappleChargeSound(ServerPlayer player) {
-        GRAPPLE_CHARGE_SOUNDS.remove(player.getUUID());
+        if (GRAPPLE_CHARGE_SOUNDS.remove(player.getUUID()) != null) HeldToolVisualSync.changed(player);
     }
 
     private static boolean useBladeWire(ServerPlayer player, boolean heldThrow) {
@@ -388,7 +420,7 @@ public final class SinevaSkills {
         projectile.setDeltaMovement(heldThrow ? look.scale(2.25D).add(0.0D, 0.14D, 0.0D) : look.scale(1.25D));
         projectile.setYRot(player.getYRot());
         projectile.setXRot(player.getXRot());
-        level.addFreshEntity(projectile);
+        ToolHandRelease.spawned(level.addFreshEntity(projectile), player, ToolHandCue.SINEVA_WIRE);
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.SINEVA_BARBED_WIRE_THROW.get(),
                 SoundSource.PLAYERS, 0.9F, 1.0F, 32.0D);
         return true;
@@ -432,7 +464,7 @@ public final class SinevaSkills {
         hook.setDeltaMovement(look.scale(2.2));
         alignGrappleRotation(hook, look, player);
         if (target != null) hook.getPersistentData().putUUID("DepartmentLockedTarget",target.getUUID());
-        if (level.addFreshEntity(hook)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        if (ToolHandRelease.spawned(level.addFreshEntity(hook), player, ToolHandCue.SINEVA_HOOK)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
     }
 
     private static void alignGrappleRotation(GrappleHookEntity hook, Vec3 direction, ServerPlayer player) {
@@ -463,8 +495,6 @@ public final class SinevaSkills {
                     return true;
                 }
                 boolean deployed = !SinevaStateManager.isShieldDeployed(player);
-                if (deployed) com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"sineva.shield.cancel_gun_kill",false);
-                else if (CHARGING_PLAYERS.containsKey(player.getUUID())) com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"sineva.shield.cancel_gun_kill",true);
                 SinevaStateManager.setShieldDeployed(player, deployed);
                 RangedSoundHelper.playFollowingPlayer(player, ModSounds.SINEVA_SHIELD_TOGGLE.get(),
                         SoundSource.PLAYERS, 0.85f, deployed ? 1.08f : 0.82f, 32.0D);
@@ -499,9 +529,10 @@ public final class SinevaSkills {
         AABB box = new AABB(corePos).inflate(4.0);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box,
                 entity -> entity != owner && entity.isAlive() && entity.distanceToSqr(center) <= 16.0)) {
-            float questBefore = target.getHealth()+target.getAbsorptionAmount();
-            SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(level, null, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.sineva.sineva_skills.skill_hurt.2.damage", 12.0f));
-            com.rzy.dealt_force_skills.department.DepartmentCombat.wireDamage(level,corePos,owner,Math.max(0,questBefore-target.getHealth()-target.getAbsorptionAmount()));
+            try (var receipt = com.rzy.dealt_force_skills.department.DepartmentCombat.measure(target)) {
+                SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(level, null, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.sineva.sineva_skills.skill_hurt.2.damage", 12.0f));
+                com.rzy.dealt_force_skills.department.DepartmentCombat.wireDamage(level,corePos,owner,receipt.amount);
+            }
             if (target instanceof ServerPlayer player) {
                 InjuryManager.applyBladeWireBurst(player);
             }
@@ -531,6 +562,7 @@ public final class SinevaSkills {
         private final Set<LivingEntity> hitEntities = new HashSet<>();
         private final Set<UUID> reflectedProjectiles = new HashSet<>();
         private boolean controlVoicePlayed;
+        private boolean taskKillRecorded;
         private int ticksRemaining;
 
         private ChargeData(Vec3 direction, int ticksRemaining) {
@@ -543,7 +575,13 @@ public final class SinevaSkills {
         private final long startedAt;
         private boolean readyPlayed;
 
-        private GrappleChargeSoundData(long startedAt) {
+        private boolean visible = true;
+        private int playerId;
+        private net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension;
+
+        private GrappleChargeSoundData(long startedAt, ServerPlayer player) {
+            playerId = player.getId();
+            dimension = player.level().dimension();
             this.startedAt = startedAt;
         }
     }

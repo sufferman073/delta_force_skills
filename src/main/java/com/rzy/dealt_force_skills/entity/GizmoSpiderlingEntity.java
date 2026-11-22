@@ -48,7 +48,7 @@ public class GizmoSpiderlingEntity extends Entity implements OperativeAreaSource
    private static final int CRAWL_SOUND_INTERVAL_TICKS = 13;
    private static volatile double SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmospiderlingentity.speed", 0.2));
    private static volatile double EXPLOSION_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("EXPLOSION_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmospiderlingentity.explosion_radius", 1.5));
-   private static volatile double PLAYER_TARGET_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PLAYER_TARGET_RADIUS", () -> Math.max(6.0, com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmospiderlingentity.player_target_radius", 6.0)));
+   private static volatile double PLAYER_TARGET_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PLAYER_TARGET_RADIUS", () -> Math.max(5.0, com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmospiderlingentity.player_target_radius", 5.0)));
    private static volatile double WALL_CLIMB_MAX_HEIGHT = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WALL_CLIMB_MAX_HEIGHT", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmo_spiderling.wall_climb_max_height", 7.5));
    private static final DustParticleOptions RED_MARKER = new DustParticleOptions(new Vector3f(1.0F, 0.05F, 0.02F), 1.0F);
    private final OperativeAllegiance allegiance = new OperativeAllegiance();
@@ -185,10 +185,13 @@ public class GizmoSpiderlingEntity extends Entity implements OperativeAreaSource
       this.hurtMarked = true;
    }
 
+   public static double nativeClimbHeight() { return WALL_CLIMB_MAX_HEIGHT; }
+
    private void handleWallCollision(Vec3 direction) {
       for (double up = 0.35; up <= WALL_CLIMB_MAX_HEIGHT; up += 0.35) {
          AABB targetBox = this.getBoundingBox().move(direction.x * 0.25, up, direction.z * 0.25);
-         if (this.level().noCollision(this, targetBox)) {
+         if (this.level().noCollision(this, targetBox) && (!allegiance.active()
+               || com.rzy.dealt_force_skills.ai.operative.OperativeCrawlerPath.clearClimb(level(), getBoundingBox(), direction.scale(0.25), up))) {
             Vec3 climbMotion = new Vec3(direction.x * SPEED * 0.35, 0.32, direction.z * SPEED * 0.35);
             this.setDeltaMovement(climbMotion);
             this.move(MoverType.SELF, climbMotion);
@@ -275,6 +278,7 @@ public class GizmoSpiderlingEntity extends Entity implements OperativeAreaSource
                     ? com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.gizmospiderlingentity.player_damage", 10.0F)
                     : com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.gizmospiderlingentity.non_player_damage", 40.0F);
             this.addCorrosion(target);
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(target, this, "gizmo.skill.spider_nest", "spider_nest");
             var questCorrosion = target.getEffect(ModEffects.CORROSION);
             if (ownerPlayer != null && questCorrosion != null)
                 com.rzy.dealt_force_skills.department.DepartmentTasks.signal(ownerPlayer,"gizmo.corrosion.level",questCorrosion.getAmplifier()+1);

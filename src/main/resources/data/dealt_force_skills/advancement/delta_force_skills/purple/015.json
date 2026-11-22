@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:note_block"
+      "id": "minecraft:note_block"
     },
     "title": {
       "text": "玉石俱焚，片甲不留"

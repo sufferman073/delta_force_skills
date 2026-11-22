@@ -57,9 +57,19 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
         super(type, level);
         setPersistenceRequired();
         xpReward = 0;
-        getNavigation().setCanFloat(true);
+        setPathfindingMalus(net.minecraft.world.level.pathfinder.PathType.WATER, -1.0F);
+        getNavigation().setCanFloat(false);
         moveControl = new net.minecraft.world.entity.ai.control.MoveControl(this) {
             @Override public void tick() {
+                var route = mob.getNavigation().getPath();
+                if (mob.onClimbable() && !mob.isInWater() && route != null && !route.isDone()) {
+                    Vec3 step = route.getNextEntityPos(mob).subtract(mob.position());
+                    if (Math.abs(step.y) > 0.12 && step.horizontalDistanceSqr() < 0.36) {
+                        mob.setSpeed(0); mob.setZza(0); mob.setXxa(0);
+                        mob.setDeltaMovement(step.x * 0.3, net.minecraft.util.Mth.clamp(step.y, -0.15, 0.2), step.z * 0.3);
+                        return;
+                    }
+                }
                 if (mob.isInWater() && !mob.getNavigation().isDone()) {
                     // Steer continuously through water, independently of the land jump state.
                     operation = Operation.MOVE_TO;
@@ -235,6 +245,7 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
     }
 
     public void setOwnerUUID(UUID id) {
+        brain.resetPerception();
         skills.cancel(this);
         gun.cancel(this);
         setTarget(null);
@@ -262,6 +273,7 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
 
     @Override
     public void die(net.minecraft.world.damagesource.DamageSource source) {
+        if (!level().isClientSide && skills instanceof com.rzy.dealt_force_skills.raid.ai.NativeRaidGamblerSkills gambler && gambler.preventsDeath(this)) return;
         if (!level().isClientSide && com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(skills, com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills tempest
                 && tempest.preventDeath(this, source)) return;
         if (!level().isClientSide && skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeCatDadSkills catdad
@@ -300,6 +312,9 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
             amount = ghroth.incoming(this, source, amount);
             if (amount <= 0) return false;
         }
+        if (skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeWildfireSkills wildfire && wildfire.shieldActive())
+            amount = com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.shieldDefense(this, source, amount);
+        if (amount <= 0) return false;
         boolean hurt = super.hurt(source, amount);
         if (hurt && !level().isClientSide && amount > 0 && isAlive()
                 && com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(skills, com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills tempest) tempest.triggerSpine(this);
@@ -335,6 +350,7 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
         if (com.rzy.dealt_force_skills.ai.operative.NativeCommanderSkills.inherited(skills, com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills.class) instanceof com.rzy.dealt_force_skills.ai.operative.NativeTempestSkills tempest) tempest.clearDowned(this);
         if (skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeCatDadSkills catdad) catdad.clearDowned(this);
         entityData.set(CHARACTER, id);
+        brain.resetPerception();
         if (skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeNikaidouSkills hiro) hiro.clear(this);
         if (skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeWitchSkills witch) witch.clear(this);
         if (skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeCorpsSkills corps) corps.clear(this);
@@ -342,6 +358,7 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
         if (skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeChamberSkills chamber) chamber.clear(this);
         if (skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeManbaSkills manba) manba.clear(this);
         if (skills instanceof com.rzy.dealt_force_skills.ai.operative.NativeLexSkills lex) lex.clear(this);
+        if (skills instanceof com.rzy.dealt_force_skills.raid.ai.NativeRaidGamblerSkills gambler) gambler.clear(this);
         com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.clear(this);
         skills = com.rzy.dealt_force_skills.ai.operative.NativeOperativeSkills.create(id);
         getNavigation().stop();
@@ -352,6 +369,7 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
     public boolean isGuarding() { return entityData.get(GUARDING); }
 
     public void setGuarding(boolean guarding) {
+        brain.resetPerception();
         skills.cancel(this);
         gun.cancel(this);
         entityData.set(GUARDING, guarding);
@@ -361,6 +379,8 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
     }
 
     public Vec3 orderPosition() {
+        Vec3 raidOrder = com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.order(this);
+        if (raidOrder != null) return raidOrder;
         if (com.rzy.dealt_force_skills.ai.operative.NativeCorpsArena.hasTicket(this))
             return com.rzy.dealt_force_skills.ai.operative.NativeCorpsArena.center(this);
         if (guardPosition == null) guardPosition = position();
@@ -372,6 +392,7 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
     }
 
     public boolean withinLeash(Vec3 position) {
+        if (com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.isAi(this)) return com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.inside(this, position);
         if (com.rzy.dealt_force_skills.ai.operative.NativeCorpsArena.hasTicket(this)) {
             Vec3 arena = com.rzy.dealt_force_skills.ai.operative.NativeCorpsArena.center(this);
             return Math.abs(arena.x - position.x) <= 48.5 && Math.abs(arena.z - position.z) <= 48.5
@@ -384,12 +405,13 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
     @Override
     public boolean withinOrders(Vec3 position) { return withinLeash(position); }
 
-    public double acquisitionRange() { return com.rzy.dealt_force_skills.ai.operative.OperativeGun.acquisitionRange(this); }
+    public double acquisitionRange() { return getAttributeValue(Attributes.FOLLOW_RANGE); }
 
     @Override
     public boolean withinCombatRange(Vec3 position) {
+        if (!com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.inside(this, position)) return false;
         if (com.rzy.dealt_force_skills.ai.operative.NativeCorpsArena.hasTicket(this)) return withinLeash(position);
-        double range = acquisitionRange() + 40;
+        double range = Math.max(acquisitionRange(), com.rzy.dealt_force_skills.ai.operative.OperativeGun.effectiveRange(this));
         return position.distanceToSqr(position()) <= range * range;
     }
 
@@ -437,7 +459,23 @@ public class OperativeEntity extends PathfinderMob implements OwnableEntity, Ope
 
     @Override
     public boolean isEnemy(LivingEntity candidate) {
-        if (candidate == this || !TargetingUtil.isHostileLivingFor(this, candidate)) return false;
+        return candidate != this && TargetingUtil.isHostileLivingFor(this, candidate) && hostileAffiliation(candidate);
+    }
+
+    /** Explorer space prevents damage, but an audible enemy can still be pursued. */
+    public boolean isHearingEnemy(LivingEntity candidate) {
+        if (isEnemy(candidate)) return true;
+        return candidate instanceof net.minecraft.server.level.ServerPlayer player && player.isAlive()
+                && !player.isSpectator() && !player.getAbilities().instabuild
+                && com.rzy.dealt_force_skills.character.undead.UndeadStateManager.isUndead(player)
+                && com.rzy.dealt_force_skills.character.undead.UndeadStateManager.explorerSpaceActive(player)
+                && !com.rzy.dealt_force_skills.character.department.DepartmentOfTransportationStateManager.isFullyConcealed(player)
+                && !TargetingUtil.shouldSkipFriendlyControl(this, player) && hostileAffiliation(player);
+    }
+
+    private boolean hostileAffiliation(LivingEntity candidate) {
+        Boolean raid = com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.hostility(this, candidate);
+        if (raid != null) return raid && !com.rzy.dealt_force_skills.ai.operative.NativeGhrothSkills.ceasefire(this, candidate);
         if (com.rzy.dealt_force_skills.ai.operative.NativeGhrothSkills.ceasefire(this, candidate)) return false;
         if (com.rzy.dealt_force_skills.ai.operative.NativeCorpsArena.selectedOpponent(this, candidate)) return true;
         if (hostileTo != null && (hostileTo.equals(candidate.getUUID())

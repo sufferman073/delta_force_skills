@@ -95,7 +95,7 @@ public final class SkillDamageHelper {
             ACTIVE_SKILL_PLAYER.set(commander);
             COMMANDER_SKILL_DAMAGE.set(true);
             try {
-                boolean applied = target.hurt(appliedSource, scaled);
+                boolean applied = com.rzy.dealt_force_skills.department.DepartmentCombat.skillHit(target, appliedSource, source, scaled);
                 CommanderStateManager.onSkillDamage(commander, target, appliedSource, scaled, applied);
                 return applied;
             } finally {

@@ -43,8 +43,10 @@ public final class NoxInputHandler {
     private static boolean active2WasDown;
     private static int active2HeldTicks;
     private static boolean sentFlashEquip;
+    private static boolean throwCanceled;
     private static boolean coreWasDown;
     private static boolean rotorMouseHolding;
+    private static boolean rotorKeyDown;
     private static int rotorLockTicks;
     private static int rotorLockTargetId = -1;
     private static String rotorLockTargetName = "";
@@ -65,6 +67,7 @@ public final class NoxInputHandler {
                 && !ClientNoxHudState.hasEquippedTool())) {
             resetActive2();
             resetCore();
+            rotorKeyDown = false;
             resetRotorLock();
             return;
         }
@@ -84,7 +87,7 @@ public final class NoxInputHandler {
         }
         if (rotorMouseHolding && ClientNoxHudState.equippedTool() == NoxTool.ROTOR) {
             updateRotorLock(minecraft);
-        } else if (ClientNoxHudState.equippedTool() != NoxTool.ROTOR) {
+        } else if (!rotorKeyDown && ClientNoxHudState.equippedTool() != NoxTool.ROTOR) {
             resetRotorLock();
         }
 
@@ -121,6 +124,11 @@ public final class NoxInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
+        if (sentFlashEquip && Minecraft.getInstance().screen == null && isPrimaryOrSecondary(event.getButton())) {
+            event.setCanceled(true);
+            if (event.getAction() == GLFW.GLFW_PRESS && !throwCanceled) { throwCanceled = true; NetworkHandler.sendToServer(new C2S_NoxToolAction(NoxToolAction.STOW_TOOL)); }
+            return;
+        }
         if (!ClientNoxHudState.hasEquippedTool() || !isPrimaryOrSecondary(event.getButton())) {
             return;
         }
@@ -146,6 +154,11 @@ public final class NoxInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (sentFlashEquip && (event.isAttack() || event.isUseItem())) {
+            event.setCanceled(true); event.setSwingHand(false);
+            if (!throwCanceled) { throwCanceled = true; NetworkHandler.sendToServer(new C2S_NoxToolAction(NoxToolAction.STOW_TOOL)); }
+            return;
+        }
         if (Minecraft.getInstance().screen != null) {
             return;
         }
@@ -180,23 +193,34 @@ public final class NoxInputHandler {
     }
 
     private static void handleActive1Key() {
-        if (KeybindRegister.ACTIVE_SKILL_1 == null) {
-            return;
-        }
-        while (KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+        var key = KeybindRegister.activeKey(1);
+        if (key == null) return;
+        boolean clicked = false;
+        while (key.consumeClick()) clicked = true;
+        boolean down = key.isDown();
+        if (!rotorKeyDown && (down || clicked)) {
+            resetRotorLock();
             ClientCommanderState.useNativeOrInherited(ModCharacters.NOX_ID, SkillSlot.ACTIVE_1, false);
         }
+        if (down) updateRotorLock(Minecraft.getInstance());
+        else if (rotorKeyDown || clicked) {
+            NetworkHandler.sendToServer(new C2S_NoxToolAction(NoxToolAction.THROW_ROTOR, rotorLockComplete() ? rotorLockTargetId : -1, false));
+            resetRotorLock();
+        }
+        rotorKeyDown = down;
     }
 
     private static void handleActive2Key() {
-        if (KeybindRegister.ACTIVE_SKILL_2 == null) {
+        if (KeybindRegister.activeKey(2) == null) {
             return;
         }
 
-        boolean down = KeybindRegister.ACTIVE_SKILL_2.isDown();
+        boolean clicked = false;
+        while (KeybindRegister.activeKey(2).consumeClick()) clicked = true;
+        boolean down = KeybindRegister.activeKey(2).isDown();
         if (down) {
             active2WasDown = true;
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
+            while (KeybindRegister.activeKey(2).consumeClick()) {
             }
             active2HeldTicks++;
             if (active2HeldTicks >= FLASH_EQUIP_HOLD_TICKS && !sentFlashEquip) {
@@ -206,8 +230,11 @@ public final class NoxInputHandler {
             return;
         }
 
-        if (active2WasDown && !sentFlashEquip) {
+        if ((active2WasDown || clicked) && !throwCanceled && !sentFlashEquip) {
             beginFlashThrow(false);
+        }
+        if (active2WasDown && sentFlashEquip && !throwCanceled) {
+            beginFlashThrow(true);
         }
         resetActive2();
     }
@@ -325,6 +352,7 @@ public final class NoxInputHandler {
     }
 
     private static void resetActive2() {
+        throwCanceled = false;
         active2WasDown = false;
         active2HeldTicks = 0;
         sentFlashEquip = false;

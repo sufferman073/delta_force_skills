@@ -24,7 +24,7 @@ public final class NativeCorpsSkills implements OperativeSkills {
     private int priorWarm,priorBaton;
     private boolean engaged,executing,executionAttempted;
     private static int cooldown(String key,int fallback){return Math.max(1,DealtForceConfig.intValue("characters.corps.corps_state_manager."+key,fallback));}
-    private static boolean valid(OperativeHost host,LivingEntity target,double range){return target!=null && target.level()==host.body().level() && target.isAlive() && host.isEnemy(target) && host.withinCombatRange(target.position()) && host.body().distanceToSqr(target)<=range*range;}
+    private static boolean valid(OperativeHost host,LivingEntity target,double range){return target!=null && target.level()==host.body().level() && target.isAlive() && host.isEnemy(target) && host.withinCombatRange(target.position()) && host.body().distanceToSqr(target)<=range*range && OperativeHearing.knownContact(host,target);}
     @Override public double score(OperativeHost host,SkillSlot slot,LivingEntity target) {
         if(!NativeRaptorSkills.available(host) || NativeCorpsArena.hasTicket(host.body()) || OperativeElectronics.blocked(host,ModCharacters.CORPS_ID,slot))return 0;
         return switch(slot){

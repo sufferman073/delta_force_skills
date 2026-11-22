@@ -1,1 +1,14 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/simple_injector"}}
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "textures": {"particle":"dealt_force_skills:item/simple_injector"},
+  "base": {"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/simple_injector"}},
+  "perspectives": {
+    "firstperson_righthand": {"parent":"dealt_force_skills:item/refresh_pharma/simple_injector"},
+    "firstperson_lefthand": {"parent":"dealt_force_skills:item/refresh_pharma/simple_injector"},
+    "thirdperson_righthand": {"parent":"dealt_force_skills:item/refresh_pharma/simple_injector"},
+    "thirdperson_lefthand": {"parent":"dealt_force_skills:item/refresh_pharma/simple_injector"},
+    "ground": {"parent":"dealt_force_skills:item/refresh_pharma/simple_injector","display":{"ground":{"rotation":[10,18,62],"translation":[0,0,0],"scale":[0.68,0.68,0.68]}}},
+    "fixed": {"parent":"dealt_force_skills:item/refresh_pharma/simple_injector","display":{"fixed":{"rotation":[0,166,-14],"translation":[0,0,1.2],"scale":[1.02,1.02,1.02]}}}
+  }
+}

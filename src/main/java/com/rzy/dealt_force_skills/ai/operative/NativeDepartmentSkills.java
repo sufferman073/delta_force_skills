@@ -61,7 +61,10 @@ public final class NativeDepartmentSkills implements OperativeSkills {
         Vec3 pos=host.body().position().add(direction.scale(Math.min(2,host.body().distanceTo(target))));
         var floor=net.minecraft.core.BlockPos.containing(pos).below();
         return host.withinOrders(pos) && host.serverLevel().getBlockState(floor).isFaceSturdy(host.serverLevel(),floor,Direction.UP)
-                && host.serverLevel().noCollision(new AABB(pos.x-.2,pos.y,pos.z-.2,pos.x+.2,pos.y+.4,pos.z+.2)) ? pos:null;
+                && host.serverLevel().noCollision(new AABB(pos.x-.2,pos.y,pos.z-.2,pos.x+.2,pos.y+.4,pos.z+.2))
+                && host.serverLevel().clip(new net.minecraft.world.level.ClipContext(host.body().getEyePosition(),pos.add(0,.2,0),
+                        net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,host.body())).getType()
+                    == net.minecraft.world.phys.HitResult.Type.MISS ? pos:null;
     }
     private static int trapCount(OperativeHost host) {
         return host.serverLevel().getEntitiesOfClass(DepartmentExplosiveTrapEntity.class,host.body().getBoundingBox().inflate(56),e->e.isOwnedBy(host.body().getUUID())).size();
@@ -70,7 +73,7 @@ public final class NativeDepartmentSkills implements OperativeSkills {
         if(!NativeRaptorSkills.available(host) || busy() || blocked(host,slot))return 0;
         return switch(slot) {
             case ACTIVE_1 -> laserCooldown==0 && valid(host,target,14) ? 100:0;
-            case ACTIVE_2 -> readyTrap()>=0 && valid(host,target,6) && trapCount(host)<DepartmentOfTransportationStateManager.TRAP_ACTIVE_LIMIT && trapPosition(host,target)!=null ? 90:0;
+            case ACTIVE_2 -> readyTrap()>=0 && OperativeHearing.knownContact(host,target) && host.body().distanceToSqr(target)<=36 && trapCount(host)<DepartmentOfTransportationStateManager.TRAP_ACTIVE_LIMIT && trapPosition(host,target)!=null ? 90:0;
             case CORE -> coreCooldown==0 && hasExecutableEnemy(host) ? 110:0;
             case PASSIVE -> 0;
         };

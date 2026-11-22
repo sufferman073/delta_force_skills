@@ -21,7 +21,21 @@ public abstract class TacticalPlayerRendererMixin {
     @WrapMethod(method = "render(Lnet/minecraft/client/player/AbstractClientPlayer;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V")
     private void dfs$playerSlideInputs(AbstractClientPlayer player, float yaw, float partial, PoseStack stack,
                                       MultiBufferSource buffers, int light, Operation<Void> original) {
-        SlideRenderState.render(player, partial, () -> original.call(player, yaw, partial, stack, buffers, light));
+        dfs$model().dfs$renderIsolated(() -> SlideRenderState.render(player, partial,
+                () -> com.rzy.dealt_force_skills.client.visual.HeldToolThirdPersonVisuals.withSegmentedArm(player,
+                        ((PlayerRenderer)(Object)this).getModel(), partial,
+                        () -> original.call(player, yaw, partial, stack, buffers, light))), false);
+    }
+
+    @org.spongepowered.asm.mixin.Unique
+    private com.rzy.dealt_force_skills.client.visual.TacticalPoseRestorer dfs$model() {
+        return (com.rzy.dealt_force_skills.client.visual.TacticalPoseRestorer)((PlayerRenderer)(Object)this).getModel();
+    }
+
+    @WrapMethod(method = "renderHand")
+    private void dfs$isolateHand(PoseStack stack, MultiBufferSource buffers, int light, AbstractClientPlayer player,
+                                 net.minecraft.client.model.geom.ModelPart arm, net.minecraft.client.model.geom.ModelPart sleeve, Operation<Void> original) {
+        dfs$model().dfs$renderIsolated(() -> original.call(stack, buffers, light, player, arm, sleeve), true);
     }
 
     @ModifyExpressionValue(method = "setupRotations", at = @At(value = "INVOKE",

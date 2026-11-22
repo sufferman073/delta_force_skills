@@ -78,7 +78,7 @@ public final class PriceFileLoader {
 
                 PriceData priceData = parsePriceFile(content);
                 if (priceData != null) {
-                    HAVOC_PRICE_CACHE.put(itemId, priceData.havocPrice);
+                    if (priceData.havocPrice > 0 || priceData.havocPrice == -1) HAVOC_PRICE_CACHE.put(itemId, priceData.havocPrice);
                     if (priceData.deltaPrice > 0) {
                         DELTA_PRICE_CACHE.put(itemId, priceData.deltaPrice);
                     }

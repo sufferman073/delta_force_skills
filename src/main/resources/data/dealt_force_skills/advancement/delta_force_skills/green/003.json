@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/green",
   "display": {
     "icon": {
-      "item": "minecraft:firework_rocket"
+      "id": "minecraft:firework_rocket"
     },
     "title": {
       "text": "龙战于野"

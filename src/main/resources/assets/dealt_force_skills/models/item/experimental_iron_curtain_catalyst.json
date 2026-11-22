@@ -1,1 +1,14 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/experimental_iron_curtain_catalyst"}}
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "textures": {"particle":"dealt_force_skills:item/experimental_iron_curtain_catalyst"},
+  "base": {"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/experimental_iron_curtain_catalyst"}},
+  "perspectives": {
+    "firstperson_righthand": {"parent":"dealt_force_skills:item/refresh_pharma/experimental_iron_curtain_catalyst"},
+    "firstperson_lefthand": {"parent":"dealt_force_skills:item/refresh_pharma/experimental_iron_curtain_catalyst"},
+    "thirdperson_righthand": {"parent":"dealt_force_skills:item/refresh_pharma/experimental_iron_curtain_catalyst"},
+    "thirdperson_lefthand": {"parent":"dealt_force_skills:item/refresh_pharma/experimental_iron_curtain_catalyst"},
+    "ground": {"parent":"dealt_force_skills:item/refresh_pharma/experimental_iron_curtain_catalyst","display":{"ground":{"rotation":[10,18,62],"translation":[0,0,0],"scale":[0.68,0.68,0.68]}}},
+    "fixed": {"parent":"dealt_force_skills:item/refresh_pharma/experimental_iron_curtain_catalyst","display":{"fixed":{"rotation":[0,166,-14],"translation":[0,0,1.2],"scale":[1.02,1.02,1.02]}}}
+  }
+}

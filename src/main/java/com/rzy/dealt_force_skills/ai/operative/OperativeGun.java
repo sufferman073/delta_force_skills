@@ -67,7 +67,10 @@ public final class OperativeGun {
                 || host.distanceToSqr(target) > Math.pow(effectiveRange(host), 2) || !clearShot(host, target)) {
             operator.aim(false); return;
         }
-        if (!target.getUUID().equals(aimTarget)) { aimTarget = target.getUUID(); preferHead = host.getRandom().nextBoolean(); }
+        if (!target.getUUID().equals(aimTarget)) {
+            aimTarget = target.getUUID();
+            preferHead = host.getRandom().nextDouble() < OperativeSettings.value(host, "head_aim_chance");
+        }
         Vec3 aim = firingPoint(host, host.getEyePosition(), target, preferHead);
         if (aim == null) { operator.aim(false); return; }
         var offset = aim.subtract(host.getEyePosition());
@@ -82,7 +85,7 @@ public final class OperativeGun {
         operator.aim(true);
         if (operator.getSynReloadState().getStateType().isReloading()) return;
         lastResult = operator.shoot(() -> pitch, () -> yaw);
-        if (lastResult == ShootResult.SUCCESS) { NativeLexEvents.action(host); preferHead = host.getRandom().nextBoolean(); }
+        if (lastResult == ShootResult.SUCCESS) { NativeLexEvents.action(host); aimTarget = null; }
         if (lastResult == ShootResult.NEED_BOLT) operator.bolt();
         else if (lastResult == ShootResult.NO_AMMO && reserve(host, gun, stack)
                 && host.tickCount >= nextReloadAttempt) { operator.reload(); nextReloadAttempt = host.tickCount + 10; }

@@ -75,6 +75,7 @@ public class DWolfHandCannonGrenadeEntity extends Projectile implements ItemSupp
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "d_wolf.skill.hand_cannon", (com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.radius(getOwner(), com.rzy.dealt_force_skills.character.commander.CommanderStateManager.skillRadius(getOwner() instanceof net.minecraft.world.entity.player.Player p ? p : null, RADIUS))));
       if (!this.level().isClientSide) {
          this.fuseRemaining--;
          if (this.fuseRemaining <= 0) {

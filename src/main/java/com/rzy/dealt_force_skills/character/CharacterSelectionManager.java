@@ -86,6 +86,7 @@ public final class CharacterSelectionManager {
     }
 
     public static Optional<CharacterDefinition> selectCharacter(ServerPlayer player, String characterId) {
+        if (com.rzy.dealt_force_skills.raid.RaidMatches.lockedCharacter(player)) return Optional.empty();
         if (hasSelectedCharacter(player)) {
             return Optional.empty();
         }
@@ -100,6 +101,7 @@ public final class CharacterSelectionManager {
     }
 
     public static Optional<CharacterDefinition> replaceCharacter(ServerPlayer player, String characterId) {
+        if (com.rzy.dealt_force_skills.raid.RaidMatches.lockedCharacter(player)) return Optional.empty();
         return CharacterBranchPackManager.findCharacter(characterId).map(character -> {
             getSelectedCharacter(player).ifPresent(oldCharacter ->
                     CharacterEffectHooks.onCharacterDeselected(player, oldCharacter));
@@ -112,6 +114,7 @@ public final class CharacterSelectionManager {
     }
 
     public static boolean forceReselectionIfSelected(ServerPlayer player, String characterId, Component reason) {
+        if (com.rzy.dealt_force_skills.raid.RaidMatches.lockedCharacter(player)) return false;
         Optional<CharacterDefinition> selected = getSelectedCharacter(player);
         if (selected.isEmpty() || !selected.get().id().equals(characterId)) {
             return false;

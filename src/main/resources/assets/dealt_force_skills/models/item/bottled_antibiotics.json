@@ -1,1 +1,14 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/bottled_antibiotics"}}
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "textures": {"particle":"dealt_force_skills:item/bottled_antibiotics"},
+  "base": {"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/bottled_antibiotics"}},
+  "perspectives": {
+    "firstperson_righthand": {"parent":"dealt_force_skills:item/refresh_pharma/bottled_antibiotics"},
+    "firstperson_lefthand": {"parent":"dealt_force_skills:item/refresh_pharma/bottled_antibiotics"},
+    "thirdperson_righthand": {"parent":"dealt_force_skills:item/refresh_pharma/bottled_antibiotics"},
+    "thirdperson_lefthand": {"parent":"dealt_force_skills:item/refresh_pharma/bottled_antibiotics"},
+    "ground": {"parent":"dealt_force_skills:item/refresh_pharma/bottled_antibiotics","display":{"ground":{"rotation":[6,22,-6],"translation":[0,0.45,0],"scale":[0.57,0.57,0.57]}}},
+    "fixed": {"parent":"dealt_force_skills:item/refresh_pharma/bottled_antibiotics","display":{"fixed":{"rotation":[0,166,0],"translation":[0,0.35,2.65],"scale":[1,1,1]}}}
+  }
+}

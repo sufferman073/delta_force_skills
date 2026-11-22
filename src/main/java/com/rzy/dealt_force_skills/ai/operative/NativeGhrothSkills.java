@@ -50,11 +50,14 @@ public final class NativeGhrothSkills implements OperativeSkills {
     }
     private static LivingEntity living(OperativeHost host,UUID id) { return id!=null && host.serverLevel().getEntity(id) instanceof LivingEntity target ? target:null; }
     private static boolean blocked(OperativeHost host,SkillSlot slot) { return OperativeElectronics.blocked(host,ModCharacters.GHROTH_ID,slot); }
+    private static boolean contact(OperativeHost host, LivingEntity target, double range) {
+        return OperativeHearing.knownContact(host, target) && host.body().distanceToSqr(target) <= range * range;
+    }
     @Override public double score(OperativeHost host,SkillSlot slot,LivingEntity target) {
         if (!NativeRaptorSkills.available(host) || busy() || blocked(host,slot)) return 0;
         return switch(slot) {
-            case ACTIVE_1 -> starsCooldown==0 && starsTicks==0 && valid(host,target,6) ? 100:0;
-            case ACTIVE_2 -> justiceCooldown==0 && justiceTicks==0 && valid(host,target,16) ? 95:0;
+            case ACTIVE_1 -> starsCooldown==0 && starsTicks==0 && contact(host,target,6) ? 100:0;
+            case ACTIVE_2 -> justiceCooldown==0 && justiceTicks==0 && contact(host,target,16) ? 95:0;
             case CORE -> noonCooldown==0 && noonTicks==0 && valid(host,target,32) ? 90:0;
             case PASSIVE -> 0;
         };

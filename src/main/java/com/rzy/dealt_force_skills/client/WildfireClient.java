@@ -63,8 +63,8 @@ public final class WildfireClient {
         });
         if(mc.player==null||!mc.player.isAlive()||mc.player.isSpectator()||!selected()){resetKeys();return;}
         if(mc.screen!=null){resetKeys();return;}
-        handleKey(0,KeybindRegister.ACTIVE_SKILL_1,SkillSlot.ACTIVE_1);
-        handleKey(1,KeybindRegister.ACTIVE_SKILL_2,SkillSlot.ACTIVE_2);
+        handleKey(0,KeybindRegister.activeKey(1),SkillSlot.ACTIVE_1);
+        handleKey(1,KeybindRegister.activeKey(2),SkillSlot.ACTIVE_2);
         if(KeybindRegister.CORE_SKILL!=null)while(KeybindRegister.CORE_SKILL.consumeClick())ClientCharacterSelectionState.useSkill(SkillSlot.CORE);
         if(blocksItems())for(KeyMapping key:List.of(mc.options.keyAttack,mc.options.keyUse,mc.options.keyPickItem,mc.options.keyDrop,mc.options.keySwapOffhand)){
             key.setDown(false);while(key.consumeClick()){}
@@ -77,17 +77,18 @@ public final class WildfireClient {
     private static void handleKey(int i,KeyMapping key,SkillSlot slot){
         if(key==null)return;boolean clicked=false;while(key.consumeClick())clicked=true;
         if(key.isDown()){
-            DOWN[i]=true;HELD[i]++;
+            DOWN[i]=true;if(HELD[i]<0)return;HELD[i]++;
             if(HELD[i]>=WildfireConfig.ticks("input.equip_hold_ticks",8)&&!EQUIPPED[i]){EQUIPPED[i]=true;ClientCharacterSelectionState.useSkill(slot,true);}
         }else{
-            if((DOWN[i]||clicked)&&!EQUIPPED[i]){
+            if(DOWN[i] && EQUIPPED[i] && HELD[i] >= 0) NetworkHandler.sendToServer(new C2S_WildfireAction(1));
+            else if((DOWN[i]||clicked)&&!EQUIPPED[i]){
                 if(local().getInt("Tool")!=0)NetworkHandler.sendToServer(new C2S_WildfireAction(0));else ClientCharacterSelectionState.useSkill(slot);
             }
             DOWN[i]=false;HELD[i]=0;EQUIPPED[i]=false;
         }
     }
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void mouse(InputEvent.MouseButton.Pre event){
-        if(!blocksItems()||Minecraft.getInstance().screen!=null||(event.getButton()!=0&&event.getButton()!=1))return;
+        if(!(blocksItems()||EQUIPPED[0]||EQUIPPED[1])||Minecraft.getInstance().screen!=null||(event.getButton()!=0&&event.getButton()!=1))return;
         event.setCanceled(true);if(event.getAction()==GLFW.GLFW_PRESS)action(event.getButton()==0);
     }
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void interaction(InputEvent.InteractionKeyMappingTriggered event){
@@ -95,7 +96,7 @@ public final class WildfireClient {
         // Mouse events own physical buttons; this covers keyboard-bound attack/use mappings.
         if(event.isAttack())action(true);else if(event.isUseItem())action(false);
     }
-    private static void action(boolean left){int phase=local().getInt("Phase");if(phase==1&&left)NetworkHandler.sendToServer(new C2S_WildfireAction(2));else if(phase==0)NetworkHandler.sendToServer(new C2S_WildfireAction(left?1:0));}
+    private static void action(boolean left){int phase=local().getInt("Phase");if(phase==1&&left)NetworkHandler.sendToServer(new C2S_WildfireAction(2));else if(phase==0){for(int i=0;i<EQUIPPED.length;i++)if(EQUIPPED[i])HELD[i]=-1;NetworkHandler.sendToServer(new C2S_WildfireAction(0));}}
     public static String detail(SkillSlot slot){
         CompoundTag s=local();if(slot==SkillSlot.CORE){int phase=s.getInt("Phase");return phase==1?String.format(Locale.ROOT,"%.1fs",s.getInt("Prepare")/20D):phase>=2?"∞":s.getInt("Cooldown")>0?(int)Math.ceil(s.getInt("Cooldown")/20D)+"s":"✓";}
         String key=slot==SkillSlot.ACTIVE_1?"Smoke":"Grenade";return s.getInt(key)+"/"+s.getInt(key+"Max");
@@ -125,8 +126,14 @@ public final class WildfireClient {
                 graphics.pose(),graphics.bufferSource(),15728880);
         graphics.flush();graphics.pose().popPose();
     }
-    private static ResourceLocation toolModel(int tool){
-        return ResourceLocation.fromNamespaceAndPath("dealt_force_skills",tool==1?"stinger_smoke_grenade":"shared_hand_grenade");
+    private static final ResourceLocation RING_SMOKE=ResourceLocation.fromNamespaceAndPath("dealt_force_skills","wildfire_ring_smoke");
+    private static final ResourceLocation HE_GRENADE=ResourceLocation.fromNamespaceAndPath("dealt_force_skills","wildfire_he_grenade");
+    private static final ResourceLocation SHIELD=ResourceLocation.fromNamespaceAndPath("dealt_force_skills","wildfire_shield_breaker");
+
+    public static ResourceLocation toolModel(int tool){return tool==1?RING_SMOKE:HE_GRENADE;}
+    public static int trackedTool(int entityId){
+        CompoundTag state=STATES.get(entityId);
+        return state==null?0:state.getInt("Tool");
     }
 
     @SubscribeEvent public static void renderShield(RenderLevelStageEvent event){
@@ -134,17 +141,16 @@ public final class WildfireClient {
         Minecraft mc=Minecraft.getInstance();if(mc.level==null)return;
         var buffer=mc.renderBuffers().bufferSource();Vec3 camera=event.getCamera().getPosition();
         for(var entry:STATES.entrySet()){
-            if(entry.getValue().getInt("Phase")<2||!(mc.level.getEntity(entry.getKey()) instanceof Player player)||!player.isAlive())continue;
+            int phase=entry.getValue().getInt("Phase");
+            if(phase<1||phase>3||!(mc.level.getEntity(entry.getKey()) instanceof Player player)||!player.isAlive())continue;
             float partial=event.getPartialTick().getGameTimeDeltaPartialTick(false);Vec3 pos=player.getPosition(partial);Vec3 forward=player.getLookAngle().multiply(1,0,1).normalize();
             PoseStack pose=event.getPoseStack();pose.pushPose();pose.translate(pos.x-camera.x+forward.x*.8,pos.y-camera.y+1,pos.z-camera.z+forward.z*.8);
             pose.mulPose(Axis.YP.rotationDegrees(-player.getYRot()));
-            var pane=net.minecraft.world.level.block.Blocks.GLASS_PANE.defaultBlockState()
-                    .setValue(net.minecraft.world.level.block.IronBarsBlock.EAST,true)
-                    .setValue(net.minecraft.world.level.block.IronBarsBlock.WEST,true);
-            // One native pane covers the former 2 x 2 area without internal tile borders.
-            pose.translate(-1,-.55,-.5);
-            pose.scale(2,2,1);
-            mc.getBlockRenderer().renderSingleBlock(pane,pose,buffer,15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+            String clip=phase==1?"prepare":phase==2?"charge":"leap";
+            float seconds=phase==1?net.minecraft.util.Mth.clamp(1.0F-(entry.getValue().getInt("Prepare")-partial)
+                    /Math.max(1.0F,WildfireConfig.ticks("core.prepare_ticks",40)),0.0F,1.0F):(player.tickCount+partial)/20.0F;
+            com.rzy.dealt_force_skills.client.renderer.BlockbenchAnimatedModelRenderer.render(
+                    SHIELD,clip,seconds,pose,buffer,15728880);
             pose.popPose();
         }
     }

@@ -2,13 +2,13 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:feather"
+      "id": "minecraft:feather"
     },
     "title": {
       "text": "飞升者行动"
     },
     "description": {
-      "text": "使用交通亭时，用一次飞升击杀至少两名除自身外的其它玩家"
+      "text": "使用交通亭时，用一次飞升击杀至少两个除自身外的实体"
     },
     "frame": "challenge",
     "show_toast": true,

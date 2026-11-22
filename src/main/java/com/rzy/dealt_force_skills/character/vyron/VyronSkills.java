@@ -38,6 +38,7 @@ public final class VyronSkills {
         if (!VyronStateManager.startDash(player, direction)) {
             return true;
         }
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.THRUST.play(player);
         return true;
     }
 

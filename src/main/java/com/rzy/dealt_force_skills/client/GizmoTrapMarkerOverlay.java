@@ -75,6 +75,11 @@ public final class GizmoTrapMarkerOverlay {
         font.drawInBatch(text, -font.width(text) / 2.0F, 0.0F, color, false,
                 poseStack.last().pose(), buffers, Font.DisplayMode.SEE_THROUGH,
                 0x66000000, LightTexture.FULL_BRIGHT);
+        OwnerMarkerIcon.draw(poseStack, buffers, switch (marker.type()) {
+            case SMOKE -> "gizmo.skill.smoke_trap";
+            case SPIDER_NEST, SPIDERLING -> "gizmo.skill.spider_nest";
+            case T_BOY -> "gizmo.skill.t_boy";
+        }, distance);
         poseStack.popPose();
     }
 

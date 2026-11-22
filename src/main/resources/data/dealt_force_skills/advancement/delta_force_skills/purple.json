@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/root",
   "display": {
     "icon": {
-      "item": "minecraft:amethyst_shard"
+      "id": "minecraft:amethyst_shard"
     },
     "title": {
       "text": "三角洲技艺：进阶"

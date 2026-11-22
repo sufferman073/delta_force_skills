@@ -35,61 +35,67 @@ public final class LexNinjiaHudOverlay {
     }
 
     private static void render(GuiGraphics graphics, Font font) {
-        int barWidth = 172;
-        int x = ClientHudLayout.x(8);
-        int skillY = Math.max(8, graphics.guiHeight() - SKILL_HUD_BOTTOM_OFFSET);
-        int y = ClientHudLayout.y(Math.max(8, skillY - LEX_HUD_HEIGHT - LEX_HUD_GAP));
-        float ratio = Math.min(1.0F, ClientLexNinjiaHudState.leicra() / ClientLexNinjiaHudState.maxLeicra());
-        graphics.fill(x, y, x + barWidth, y + 10, 0xBB10131A);
-        graphics.fill(x + 1, y + 1, x + 1 + Math.round((barWidth - 2) * ratio), y + 9, 0xFF66D5FF);
-        graphics.drawCenteredString(font,
-                Component.translatable("hud.dealt_force_skills.lex_ninjia.leicra",
-                        Math.round(ClientLexNinjiaHudState.leicra()),
-                        Math.round(ClientLexNinjiaHudState.maxLeicra())),
-                x + barWidth / 2, y + 1, 0xFFFFFFFF);
+        int sx = ClientHudLayout.x(8), sy = ClientHudLayout.y(Math.max(8, graphics.guiHeight() - 68));
+        SkillIconHud.draw(graphics, font, sx, sy, 46, KeybindRegister.CORE_SKILL, Component.translatable("character.dealt_force_skills.lex_ninjia.skill.harmony"), 0, "");
+        SkillIconHud.draw(graphics, font, sx + 50, sy, 46, KeybindRegister.ACTIVE_SKILL_2, Component.translatable("character.dealt_force_skills.lex_ninjia.skill.blade"), 0, "");
+        SkillIconHud.draw(graphics, font, sx + 100, sy, 46, KeybindRegister.ACTIVE_SKILL_1, Component.translatable("character.dealt_force_skills.lex_ninjia.skill.hand"), 0, "");
+        try (var ignored = ClientHudLayout.scaleButton(graphics, sx, sy, 46)) {
+            int barWidth = 172;
+            int x = ClientHudLayout.x(8);
+            int skillY = Math.max(8, graphics.guiHeight() - SKILL_HUD_BOTTOM_OFFSET);
+            int y = ClientHudLayout.y(Math.max(8, skillY - LEX_HUD_HEIGHT - LEX_HUD_GAP));
+            float ratio = Math.min(1.0F, ClientLexNinjiaHudState.leicra() / ClientLexNinjiaHudState.maxLeicra());
+            graphics.fill(x, y, x + barWidth, y + 10, 0xBB10131A);
+            graphics.fill(x + 1, y + 1, x + 1 + Math.round((barWidth - 2) * ratio), y + 9, 0xFF66D5FF);
+            graphics.drawCenteredString(font,
+                    Component.translatable("hud.dealt_force_skills.lex_ninjia.leicra",
+                            Math.round(ClientLexNinjiaHudState.leicra()),
+                            Math.round(ClientLexNinjiaHudState.maxLeicra())),
+                    x + barWidth / 2, y + 1, 0xFFFFFFFF);
 
-        int infoY = y + 14;
-        graphics.drawString(font,
-                Component.translatable("hud.dealt_force_skills.lex_ninjia.stacks",
-                        ClientLexNinjiaHudState.handStacks(),
-                        ClientLexNinjiaHudState.bladeStacks(),
-                        ClientLexNinjiaHudState.harmonyStacks()),
-                x, infoY, 0xFFB8E9FF, true);
-        int mindUsed = ClientLexNinjiaHudState.mindUsed();
-        int mindCapacity = ClientLexNinjiaHudState.mindCapacity();
-        int mindColor = mindUsed > mindCapacity ? 0xFFFF7272 : 0xFFE8D68A;
-        graphics.drawString(font,
-                Component.translatable("hud.dealt_force_skills.lex_ninjia.mind",
-                        mindUsed,
-                        mindCapacity,
-                        ClientLexNinjiaHudState.lotusBoxes()),
-                x, infoY + 10, mindColor, true);
-
-        int centerX = graphics.guiWidth() / 2;
-        int centerWidth = Math.min(260, graphics.guiWidth() - 20);
-        int comboY = Math.max(40, graphics.guiHeight() - 70);
-        HudTextHelper.drawCenteredFitted(graphics, font, localizedComboText(), centerX, comboY, centerWidth, 0xFFFFFFFF);
-
-        if (ClientLexNinjiaHudState.hasPreparedArt()) {
-            Component art = Component.translatable("lex_ninjia.art.dealt_force_skills."
-                    + ClientLexNinjiaHudState.preparedArtId() + ".name");
-            int color = ClientLexNinjiaHudState.preparedAffordable() ? 0xFF8EFFA8 : 0xFFFF8A80;
-            Component label = Component.translatable(ClientLexNinjiaHudState.preparedAffordable()
-                    ? "hud.dealt_force_skills.lex_ninjia.prepared"
-                    : "hud.dealt_force_skills.lex_ninjia.not_enough", art);
-            HudTextHelper.drawCenteredFitted(graphics, font, label.getString(), centerX, comboY + 12, centerWidth, color);
-        }
-        if (ClientLexNinjiaHudState.deathFlameTicks() > 0) {
+            int infoY = y + 14;
             graphics.drawString(font,
-                    Component.translatable("hud.dealt_force_skills.lex_ninjia.death_flame",
-                            cooldownText(ClientLexNinjiaHudState.deathFlameTicks()),
-                            Math.round(ClientLexNinjiaHudState.deathFlameOverflow())),
-                    x, infoY + 24, 0xFFFF7A50, true);
-        } else if (ClientLexNinjiaHudState.hamBerserkTicks() > 0 || ClientLexNinjiaHudState.hamPowerTicks() > 0) {
+                    Component.translatable("hud.dealt_force_skills.lex_ninjia.stacks",
+                            ClientLexNinjiaHudState.handStacks(),
+                            ClientLexNinjiaHudState.bladeStacks(),
+                            ClientLexNinjiaHudState.harmonyStacks()),
+                    x, infoY, 0xFFB8E9FF, true);
+            int mindUsed = ClientLexNinjiaHudState.mindUsed();
+            int mindCapacity = ClientLexNinjiaHudState.mindCapacity();
+            int mindColor = mindUsed > mindCapacity ? 0xFFFF7272 : 0xFFE8D68A;
             graphics.drawString(font,
-                    Component.translatable("hud.dealt_force_skills.lex_ninjia.ham",
-                            cooldownText(Math.max(ClientLexNinjiaHudState.hamBerserkTicks(), ClientLexNinjiaHudState.hamPowerTicks()))),
-                    x, infoY + 24, 0xFFFF66DD, true);
+                    Component.translatable("hud.dealt_force_skills.lex_ninjia.mind",
+                            mindUsed,
+                            mindCapacity,
+                            ClientLexNinjiaHudState.lotusBoxes()),
+                    x, infoY + 10, mindColor, true);
+
+            int centerX = x + barWidth / 2;
+            int centerWidth = barWidth;
+            int comboY = y - 28;
+            HudTextHelper.drawCenteredFitted(graphics, font, localizedComboText(), centerX, comboY, centerWidth, 0xFFFFFFFF);
+
+            if (ClientLexNinjiaHudState.hasPreparedArt()) {
+                Component art = Component.translatable("lex_ninjia.art.dealt_force_skills."
+                        + ClientLexNinjiaHudState.preparedArtId() + ".name");
+                int color = ClientLexNinjiaHudState.preparedAffordable() ? 0xFF8EFFA8 : 0xFFFF8A80;
+                Component label = Component.translatable(ClientLexNinjiaHudState.preparedAffordable()
+                        ? "hud.dealt_force_skills.lex_ninjia.prepared"
+                        : "hud.dealt_force_skills.lex_ninjia.not_enough", art);
+                HudTextHelper.drawCenteredFitted(graphics, font, label.getString(), centerX, comboY + 12, centerWidth, color);
+            }
+            if (ClientLexNinjiaHudState.deathFlameTicks() > 0) {
+                graphics.drawString(font,
+                        Component.translatable("hud.dealt_force_skills.lex_ninjia.death_flame",
+                                cooldownText(ClientLexNinjiaHudState.deathFlameTicks()),
+                                Math.round(ClientLexNinjiaHudState.deathFlameOverflow())),
+                        x, infoY + 24, 0xFFFF7A50, true);
+            } else if (ClientLexNinjiaHudState.hamBerserkTicks() > 0 || ClientLexNinjiaHudState.hamPowerTicks() > 0) {
+                graphics.drawString(font,
+                        Component.translatable("hud.dealt_force_skills.lex_ninjia.ham",
+                                cooldownText(Math.max(ClientLexNinjiaHudState.hamBerserkTicks(), ClientLexNinjiaHudState.hamPowerTicks()))),
+                        x, infoY + 24, 0xFFFF66DD, true);
+            }
         }
     }
 

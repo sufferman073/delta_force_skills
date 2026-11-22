@@ -20,7 +20,7 @@ public class NetworkHandler {
 
     @SubscribeEvent
     public static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(DealtForceSkillsMod.MODID).versioned("75");
+        PayloadRegistrar registrar = event.registrar(DealtForceSkillsMod.MODID).versioned("77");
         registrar.playToServer(C2S_HomeAction.TYPE, C2S_HomeAction.STREAM_CODEC, C2S_HomeAction::handle);
         registrar.playToClient(S2C_HomeSnapshot.TYPE, S2C_HomeSnapshot.STREAM_CODEC, S2C_HomeSnapshot::handle);
         registrar.playToClient(S2C_HomeDimension.TYPE, S2C_HomeDimension.STREAM_CODEC, S2C_HomeDimension::handle);
@@ -46,6 +46,9 @@ public class NetworkHandler {
         registrar.playToClient(S2C_StaminaState.TYPE, S2C_StaminaState.STREAM_CODEC, S2C_StaminaState::handle);
         registrar.playToServer(C2S_RoverAction.TYPE, C2S_RoverAction.STREAM_CODEC, C2S_RoverAction::handle);
         registrar.playToClient(S2C_RoverState.TYPE, S2C_RoverState.STREAM_CODEC, S2C_RoverState::handle);
+        registrar.playToClient(S2C_SkillFeedback.TYPE, S2C_SkillFeedback.STREAM_CODEC, S2C_SkillFeedback::handle);
+        registrar.playToServer(C2S_RaidShopSearch.TYPE, C2S_RaidShopSearch.STREAM_CODEC, C2S_RaidShopSearch::handle);
+        registrar.playToServer(C2S_SkillObservation.TYPE, C2S_SkillObservation.STREAM_CODEC, C2S_SkillObservation::handle);
 
         // === C2S (Client to Server) ===
         registrar.playToServer(C2S_SelectCharacter.TYPE, C2S_SelectCharacter.STREAM_CODEC, C2S_SelectCharacter::handle);
@@ -74,6 +77,7 @@ public class NetworkHandler {
         registrar.playToServer(C2S_SinevaShieldBash.TYPE, C2S_SinevaShieldBash.STREAM_CODEC, C2S_SinevaShieldBash::handle);
         registrar.playToServer(C2S_EmptyHandExtinguish.TYPE, C2S_EmptyHandExtinguish.STREAM_CODEC, C2S_EmptyHandExtinguish::handle);
         registrar.playToServer(C2S_SinevaShieldCharge.TYPE, C2S_SinevaShieldCharge.STREAM_CODEC, C2S_SinevaShieldCharge::handle);
+        registrar.playToServer(C2S_HeldToolPrep.TYPE, C2S_HeldToolPrep.STREAM_CODEC, C2S_HeldToolPrep::handle);
         registrar.playToServer(C2S_SinevaGrappleChargeSound.TYPE, C2S_SinevaGrappleChargeSound.STREAM_CODEC, C2S_SinevaGrappleChargeSound::handle);
         registrar.playToServer(C2S_UluruToolAction.TYPE, C2S_UluruToolAction.STREAM_CODEC, C2S_UluruToolAction::handle);
         registrar.playToServer(C2S_UluruMissileControl.TYPE, C2S_UluruMissileControl.STREAM_CODEC, C2S_UluruMissileControl::handle);
@@ -283,6 +287,10 @@ public class NetworkHandler {
     }
 
     private static boolean isSkillHudStatePacket(CustomPacketPayload payload) {
+        if (payload instanceof S2C_SkillFeedback feedback) {
+            String kind = feedback.data().getString("Kind");
+            return kind.equals("raptor_hummingbird") || kind.equals("nikaidou_witch");
+        }
         return payload instanceof S2C_SyncSinevaState
                 || payload instanceof S2C_SyncUluruState
                 || payload instanceof S2C_SyncDWolfState

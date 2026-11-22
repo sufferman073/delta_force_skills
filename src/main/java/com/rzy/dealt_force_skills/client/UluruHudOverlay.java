@@ -45,10 +45,11 @@ public final class UluruHudOverlay {
         Font font = minecraft.font;
         int x = ClientHudLayout.x(8);
         int y = ClientHudLayout.y(Math.max(8, graphics.guiHeight() - 68));
-        if (UluruMissileController.isControlling()) {
-            drawMissileTimeBar(graphics, font, x, Math.max(8, y - 12), SLOT * 3 + GAP * 2);
+        try (var ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
+            if (UluruMissileController.isControlling()) {
+                drawMissileTimeBar(graphics, font, x, Math.max(8, y - 12), SLOT * 3 + GAP * 2);
+            }
         }
-
         drawSlot(graphics, font, x, y, 0xFFFF7043, KeybindRegister.CORE_SKILL,
                 Component.translatable("character.dealt_force_skills.uluru.skill.loitering_missile"),
                 ClientUluruHudState.equippedTool() == UluruTool.MISSILE ? 0 : ClientUluruHudState.missileCooldownTicks(),
@@ -92,26 +93,7 @@ public final class UluruHudOverlay {
             int cooldownTicks,
             String detail
     ) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA110D0A);
-        graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-        graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-        graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-
-        graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xDD211A14);
-        drawCenteredClipped(graphics, font, icon.getString(), x + SLOT / 2, y + 12, 32, 0xFFFFFFFF);
-
-        if (cooldownTicks > 0) {
-            graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xCC000000);
-            drawCenteredClipped(graphics, font, cooldownText(cooldownTicks), x + SLOT / 2, y + 14, 34, 0xFFFFE6A6);
-        } else {
-            drawCenteredClipped(graphics, font, detail, x + SLOT / 2, y + 22, 34, 0xFFCAD1D8);
-        }
-
-        String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            drawCenteredClipped(graphics, font, keyName, x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, cooldownTicks, detail);
     }
 
     private static void drawCenteredClipped(GuiGraphics graphics, Font font, String text, int centerX, int y, int width, int color) {

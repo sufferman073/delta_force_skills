@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.uluru;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.block.QuickCoverBlock;
 import com.rzy.dealt_force_skills.block.QuickCoverBlockEntity;
 import com.rzy.dealt_force_skills.character.SkillSlot;
@@ -99,7 +102,7 @@ public final class UluruSkills {
         boolean fullHeight = hitDirection.getAxis().isHorizontal() || hitDirection == Direction.DOWN;
 
         List<CoverPiece> pieces = new ArrayList<>();
-        for (int widthOffset = -1; widthOffset <= 0; widthOffset++) {
+        for (int widthOffset = -1; widthOffset <= 1; widthOffset++) {
             BlockPos columnBase = basePos.relative(right, widthOffset);
             if (fullHeight) {
                 int minY = hitDirection == Direction.DOWN ? -2 : -1;
@@ -125,11 +128,13 @@ public final class UluruSkills {
             return false;
         }
 
-        BlockPos rootPos = pieces.get(0).pos();
+        BlockPos rootPos = pieces.stream().map(CoverPiece::pos).min(java.util.Comparator.comparingDouble(basePos::distSqr)).orElseThrow();
+        Direction wallFacing = hitDirection.getAxis() == coverFacing.getAxis() ? hitDirection.getOpposite() : coverFacing;
         for (CoverPiece piece : pieces) {
             level.setBlock(piece.pos(), ModBlocks.QUICK_COVER.get()
                     .defaultBlockState()
-                    .setValue(QuickCoverBlock.FACING, coverFacing)
+                    .setValue(QuickCoverBlock.FACING, wallFacing)
+                    .setValue(QuickCoverBlock.PACKAGE_CENTER, piece.pos().equals(rootPos))
                     .setValue(QuickCoverBlock.HALF, piece.half()), 3);
         }
 
@@ -208,7 +213,7 @@ public final class UluruSkills {
         grenade.setDeltaMovement(look.scale(2.25).add(0.0, 0.14, 0.0));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        if (level.addFreshEntity(grenade))
+        if (ToolHandRelease.spawned(level.addFreshEntity(grenade), player, ToolHandCue.ULURU_INCENDIARY))
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         level.playSound(null, player.blockPosition(), ModSounds.INCENDIARY_THROW.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
         UluruStateManager.setEquippedTool(player, UluruTool.NONE);
@@ -233,7 +238,7 @@ public final class UluruSkills {
         cover.setDeltaMovement(look.scale(1.35).add(0.0, 0.04, 0.0));
         cover.setYRot(player.getYRot());
         cover.setXRot(player.getXRot());
-        level.addFreshEntity(cover);
+        ToolHandRelease.spawned(level.addFreshEntity(cover), player, ToolHandCue.ULURU_COVER);
         level.playSound(null, player.blockPosition(), ModSounds.QUICK_COVER_THROW.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
         UluruStateManager.setEquippedTool(player, UluruTool.NONE);
         return true;
@@ -253,7 +258,7 @@ public final class UluruSkills {
         missile.setPos(start.x, start.y - 0.1, start.z);
         missile.setYRot(player.getYRot());
         missile.setXRot(player.getXRot());
-        level.addFreshEntity(missile);
+        ToolHandRelease.spawned(level.addFreshEntity(missile), player, ToolHandCue.ULURU_MISSILE);
         missile.startGuidedCameraIfNeeded();
         level.playSound(null, player.blockPosition(), ModSounds.MISSILE_FIRE.get(), SoundSource.PLAYERS, 1.2f, guided ? 0.9f : 1.05f);
         UluruStateManager.setMissileCooldown(player);

@@ -87,10 +87,7 @@ public final class ShakehandsCombatHandler {
 
     private static void applyReflect(ServerLevel level, LivingEntity target, LivingEntity attacker, float amount) {
         float reflected = Math.max(1.0F, amount) * 2.0F;
-        if (attacker instanceof ServerPlayer attackerPlayer) {
-            attackerPlayer.displayClientMessage(Component.translatable(
-                    "message.dealt_force_skills.shakehands.reflect"), true);
-        }
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(attacker, "backlash");
         reflecting = true;
         try {
             attacker.invulnerableTime = 0;

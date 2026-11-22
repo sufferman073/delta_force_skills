@@ -138,8 +138,18 @@ public class ChamberTripTrapEntity extends Entity implements ItemSupplier, com.r
     }
 
     private void trigger(ServerLevel level, ServerPlayer owner, LivingEntity target) {
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(target, this, "chamber.skill.trademark", "trademark");
+        deployField(level, owner, target.position());
+    }
+
+    public boolean triggerByOwner(ServerPlayer owner) {
+        if (!isAlive() || !isOwnedBy(owner.getUUID())) return false;
+        deployField(owner.serverLevel(), owner, position());
+        return true;
+    }
+
+    private void deployField(ServerLevel level, ServerPlayer owner, Vec3 center) {
         ChamberSlowFieldEntity field = new ChamberSlowFieldEntity(ModEntities.CHAMBER_SLOW_FIELD.get(), level, owner);
-        Vec3 center = target.position();
         field.setPos(center.x, center.y, center.z);
         if(level.addFreshEntity(field))com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"chamber.trap.triggered");
         ChamberStateManager.setTrapCooldown(owner);
@@ -149,9 +159,7 @@ public class ChamberTripTrapEntity extends Entity implements ItemSupplier, com.r
 
     private boolean hasLineOfSightTo(LivingEntity target) {
         Vec3 start = position().add(0.0D, getBbHeight() * 0.5D, 0.0D);
-        Vec3 end = target.getEyePosition();
-        return level().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this)).getType()
-                == HitResult.Type.MISS;
+        return com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper.exposed(level(), start, target);
     }
 
     private ServerPlayer owner(ServerLevel level) {

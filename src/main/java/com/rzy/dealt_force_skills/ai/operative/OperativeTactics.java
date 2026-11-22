@@ -42,6 +42,8 @@ public final class OperativeTactics {
     }
 
     private static double radius(Entity e) {
+        if (e instanceof WildfireDeviceEntity device && device.mode() == WildfireDeviceEntity.HE_GRENADE)
+            return Math.min(64, com.rzy.dealt_force_skills.character.wildfire.WildfireConfig.number("grenade.radius", 7));
         if (e instanceof net.minecraft.world.entity.item.PrimedTnt) return 7;
         if (e instanceof net.minecraft.world.entity.projectile.AbstractArrow arrow && !arrow.onGround()) return 1;
         if (e instanceof VyronMagneticBombEntity) return VyronMagneticBombEntity.blastRadius();
@@ -149,6 +151,29 @@ public final class OperativeTactics {
                     || danger(new Vec3(node.x + .5, node.y, node.z + .5)) > baseline + .1 || unsafe(new BlockPos(node.x, node.y, node.z))) return false;
         }
         return true;
+    }
+
+    void marchToward(Vec3 destination) {
+        destination = com.rzy.dealt_force_skills.raid.RaidCables.route(host, destination);
+        if (Math.abs(destination.y-host.getY()) > 2 && host.distanceToSqr(destination) < 48*48) {
+            var stairs = host.getNavigation().createPath(BlockPos.containing(destination),1);
+            if (stairs != null && stairs.canReach() && safePath(stairs,danger(host.position())) && host.getNavigation().moveTo(stairs,1.42)) return;
+        }
+        Vec3 delta = destination.subtract(host.position());
+        double distance = delta.length();
+        if (distance < 1) return;
+        double baseline = danger(host.position());
+        var navigation = host.getNavigation();
+        for (double angle : new double[]{0, .55, -.55, 1.05, -1.05}) {
+            Vec3 step = delta.scale(Math.min(16, distance) / distance).yRot((float)angle);
+            Vec3 waypoint = host.position().add(step);
+            if (!host.withinOrders(waypoint)) continue;
+            var path = navigation.createPath(BlockPos.containing(waypoint), 1);
+            if (path == null || path.getEndNode() == null || !safePath(path, baseline)) continue;
+            var end = path.getEndNode().asBlockPos();
+            if (host.position().distanceToSqr(Vec3.atBottomCenterOf(end)) < 2) continue;
+            if (navigation.moveTo(path, 1.42)) return;
+        }
     }
 
     public boolean navigate(Vec3 destination, double speed) {

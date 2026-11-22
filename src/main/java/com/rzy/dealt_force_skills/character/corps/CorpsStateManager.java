@@ -168,10 +168,11 @@ public final class CorpsStateManager {
                     Component.translatable("message.dealt_force_skills.corps.active1_cooldown"));
             return true;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.CORPS_WARM_ENFORCEMENT,
+        boolean applied = player.addEffect(new MobEffectInstance(ModEffects.CORPS_WARM_ENFORCEMENT,
                 ACTIVE_DURATION_TICKS, 0, false, true, true), player);
         tag.putLong(ACTIVE_1_COOLDOWN_UNTIL,
                 SkillCooldownHelper.until(player, now, ACTIVE_COOLDOWN_TICKS));
+        if (applied) com.rzy.dealt_force_skills.skill.BareSkillPulse.WARM_ENFORCEMENT.play(player);
         player.level().playSound(null, player.blockPosition(), ModSounds.CORPS_WARM_ENFORCEMENT.get(),
                 SoundSource.PLAYERS, 0.9F, 1.0F);
         return true;
@@ -186,17 +187,22 @@ public final class CorpsStateManager {
                     Component.translatable("message.dealt_force_skills.corps.active2_cooldown"));
             return true;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.CORPS_FORCEFUL_BATON,
+        boolean applied = player.addEffect(new MobEffectInstance(ModEffects.CORPS_FORCEFUL_BATON,
                 ACTIVE_DURATION_TICKS, 0, false, true, true), player);
         com.rzy.dealt_force_skills.department.DepartmentCorps.batonActivated(player);
         tag.putLong(ACTIVE_2_COOLDOWN_UNTIL,
                 SkillCooldownHelper.until(player, now, ACTIVE_COOLDOWN_TICKS));
+        if (applied) com.rzy.dealt_force_skills.skill.BareSkillPulse.BATON_BRACE.play(player);
         player.level().playSound(null, player.blockPosition(), ModSounds.CORPS_FORCEFUL_BATON.get(),
                 SoundSource.PLAYERS, 0.9F, 1.0F);
         return true;
     }
 
     public static boolean startDuel(ServerPlayer player, int targetEntityId) {
+        if (com.rzy.dealt_force_skills.raid.RaidMatches.belongs(player)) {
+            player.displayClientMessage(Component.literal("绝密行动中不能使用跨维度技能。"), true);
+            return false;
+        }
         initializeIfNeeded(player);
         long now = SkillCooldownHelper.now(player);
         CompoundTag tag = data(player);
@@ -238,6 +244,7 @@ public final class CorpsStateManager {
         movedTarget.setGlowingTag(true);
 
         tag.putUUID(DUEL_TARGET, movedTarget.getUUID());
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(movedTarget, "pursuit");
         tag.putLong(DUEL_END_TICK, now + DUEL_DURATION_TICKS);
         tag.putLong(DUEL_GRACE_UNTIL, now + DUEL_GRACE_TICKS);
         tag.putLong(DUEL_JOIN_GRACE_UNTIL, now + DUEL_JOIN_WAIT_TICKS);
@@ -250,6 +257,7 @@ public final class CorpsStateManager {
                 new Vec3Snapshot(-34.5D, ARENA_Y, -34.5D)));
         TARGET_TO_OWNER.put(movedTarget.getUUID(), player.getUUID());
         playDuelPrepareSound(player, movedTarget);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.CORPS_CHALLENGE.play(player);
         playDuelMusic(player, movedTarget);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.corps.duel_started",
                 movedTarget.getDisplayName()), true);

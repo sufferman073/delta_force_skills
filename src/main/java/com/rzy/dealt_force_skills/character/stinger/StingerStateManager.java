@@ -171,7 +171,17 @@ public final class StingerStateManager {
       return !isDowned(player) && !isExecutingDownedDeath(player) && downedCooldownReady(player) && hasStingerProtection(player);
    }
 
+   /** Raid fallback uses native pose/control without granting non-Stinger self-rescue. */
+   public static void enterRaidDowned(ServerPlayer player, int durationTicks) {
+      enterDowned(player);
+      data(player).putBoolean("RaidGenericDowned", true);
+      data(player).putLong(DOWNED_UNTIL, SkillCooldownHelper.now(player) + Math.max(1, durationTicks));
+      player.removeEffect(ModEffects.STINGER_DOWNED);
+      player.addEffect(new MobEffectInstance(ModEffects.STINGER_DOWNED, Math.max(1, durationTicks), 0, false, true, true));
+   }
+
    public static void enterDowned(ServerPlayer player) {
+      data(player).remove("RaidGenericDowned");
       CompoundTag tag = data(player);
       long now = SkillCooldownHelper.now(player);
       long until = now + (long)DOWNED_DURATION_TICKS;
@@ -200,6 +210,7 @@ public final class StingerStateManager {
    }
 
    public static void clearDowned(ServerPlayer player, boolean fullHeal) {
+      data(player).remove("RaidGenericDowned");
       CompoundTag tag = data(player);
       tag.putLong("DownedUntil", 0L);
       tag.putLong("DownedCooldownUntil", SkillCooldownHelper.now(player) + DOWNED_COOLDOWN_TICKS);
@@ -226,6 +237,7 @@ public final class StingerStateManager {
    }
 
    public static void clearDownedOnDeath(ServerPlayer player) {
+      data(player).remove("RaidGenericDowned");
       CompoundTag tag = data(player);
       tag.putLong("DownedUntil", 0L);
       tag.putInt("SelfRescueTicks", 0);
@@ -570,6 +582,10 @@ public final class StingerStateManager {
    }
 
    private static void tickRescue(ServerPlayer player) {
+      if (data(player).getBoolean("RaidGenericDowned") && !isStinger(player)) {
+         resetRescue(data(player));
+         return;
+      }
       CompoundTag tag = data(player);
       if (!rescueCooldownReady(player)) {
          resetRescue(tag);

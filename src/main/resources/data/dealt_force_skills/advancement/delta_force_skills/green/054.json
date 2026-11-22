@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/green",
   "display": {
     "icon": {
-      "item": "minecraft:wither_skeleton_skull"
+      "id": "minecraft:wither_skeleton_skull"
     },
     "title": {
       "text": "把她绑在架子上！"

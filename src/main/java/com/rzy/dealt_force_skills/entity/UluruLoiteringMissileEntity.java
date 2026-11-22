@@ -192,6 +192,7 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "uluru.skill.loitering_missile", (nativeRadius(getOwner())), (WARNING_RADIUS));
       if (this.level().isClientSide) {
          this.level().addParticle(ParticleTypes.SMOKE, this.getX(), this.getY(), this.getZ(), 0.0, 0.0, 0.0);
       } else {
@@ -630,7 +631,7 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
          for (ServerPlayer player : level.players()) {
             if (player.isAlive() && player != owner && !(player.distanceToSqr(this) > radiusSqr)) {
                int distance = Mth.ceil(Math.sqrt(player.distanceToSqr(this)));
-               player.displayClientMessage(Component.translatable("message.dealt_force_skills.uluru.missile_incoming", new Object[]{x, y, z, distance}), true);
+               com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(player, "missile");
             }
          }
       }

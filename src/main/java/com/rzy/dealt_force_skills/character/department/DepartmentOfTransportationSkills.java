@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.department;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.util.TrapMarkerTargeting;
 import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
 
@@ -14,7 +17,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
@@ -87,7 +89,9 @@ public final class DepartmentOfTransportationSkills {
         laser.setDeltaMovement(look.scale(1.8D));
         laser.setYRot(player.getYRot());
         laser.setXRot(player.getXRot());
-        level.addFreshEntity(laser);
+        if (level.addFreshEntity(laser)) {
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.HEAT_RELEASE.play(player);
+        }
         DepartmentOfTransportationStateManager.recoverTrafficBoothPassiveFromSkill(player);
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.DEPARTMENT_LASER_SHOOT.get(),
                 SoundSource.PLAYERS, 0.85F, 1.0F, 18.0D, 4, 3.0D);
@@ -136,7 +140,7 @@ public final class DepartmentOfTransportationSkills {
                 level, player, placement.get().face(), chargeUse.get().slot(), chargeUse.get().readyAt());
         Vec3 pos = placement.get().position();
         trap.setPos(pos.x, pos.y, pos.z);
-        level.addFreshEntity(trap);
+        ToolHandRelease.spawned(level.addFreshEntity(trap), player, ToolHandCue.DEPARTMENT_EXPLOSIVE_TRAP);
         DepartmentOfTransportationStateManager.recoverTrafficBoothPassiveFromSkill(player);
         RangedSoundHelper.playTrapSoundThrottled(level, pos, ModSounds.DEPARTMENT_TRAP_DEPLOY.get(), 0.8F, 1.0F, 5, 3.0D);
         if (triggerImmediately) {
@@ -179,7 +183,7 @@ public final class DepartmentOfTransportationSkills {
         if (entity == null || entity.distanceToSqr(player) > 50.0D * 50.0D) {
             return false;
         }
-        if (DepartmentOfTransportationStateManager.equippedTool(player) != DepartmentTool.NONE || !handsEmpty(player)) {
+        if (DepartmentOfTransportationStateManager.equippedTool(player) != DepartmentTool.NONE) {
             return false;
         }
 
@@ -187,11 +191,6 @@ public final class DepartmentOfTransportationSkills {
                 TrapMarkerTargeting.DEPARTMENT_MARKER_HEIGHT);
     }
 
-    private static boolean handsEmpty(ServerPlayer player) {
-        ItemStack main = player.getMainHandItem();
-        ItemStack off = player.getOffhandItem();
-        return main.isEmpty() && off.isEmpty();
-    }
 
     private static boolean isDuplicateToolAction(ServerPlayer player, DepartmentToolAction action, int targetEntityId) {
         long now = SkillCooldownHelper.now(player);

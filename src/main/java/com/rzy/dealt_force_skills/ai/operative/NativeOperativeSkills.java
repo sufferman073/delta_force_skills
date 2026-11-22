@@ -9,6 +9,8 @@ import java.util.function.Supplier;
 public final class NativeOperativeSkills {
     private static final Map<String, Supplier<OperativeSkills>> FACTORIES = Map.ofEntries(
             Map.entry(ModCharacters.VYRON_ID, NativeVyronSkills::new),
+            Map.entry(ModCharacters.GAMBLER_ID, com.rzy.dealt_force_skills.raid.ai.NativeRaidGamblerSkills::new),
+            Map.entry(ModCharacters.WILDFIRE_ID, NativeWildfireSkills::new),
             Map.entry(ModCharacters.LUNA_ID, NativeLunaSkills::new),
             Map.entry(ModCharacters.D_WOLF_ID, NativeDWolfSkills::new),
             Map.entry(ModCharacters.STINGER_ID, NativeStingerSkills::new),

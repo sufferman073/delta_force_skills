@@ -78,6 +78,8 @@ public final class SkillSoundFeedback {
             return;
         }
 
+        com.rzy.dealt_force_skills.ai.operative.OperativeHearing.recordAction(player);
+
         long readyAt = changedReadyAt;
         if (readyAt > now) {
             data.putLong(key, readyAt);

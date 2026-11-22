@@ -365,6 +365,14 @@ public final class RaptorStateManager {
       }
    }
 
+   public static int activeHummingbirdRemainingTicks(ServerPlayer player) {
+      Integer targetId = ACTIVE_HUMMINGBIRD_TARGETS.get(player.getUUID());
+      Entity target = targetId == null ? null : player.serverLevel().getEntity(targetId);
+      var effect = target instanceof LivingEntity living && living.isAlive()
+              && RaptorHummingbirdMarkedEffect.isOwnedBy(living, player) ? living.getEffect(ModEffects.RAPTOR_HUMMINGBIRD_MARKED) : null;
+      return effect == null ? 0 : Math.max(0, effect.getDuration());
+   }
+
    public static void syncToClient(ServerPlayer player) {
       if (isRaptor(player)) {
          initializeIfNeeded(player);
@@ -382,6 +390,11 @@ public final class RaptorStateManager {
             ),
             player
          );
+         CompoundTag details = new CompoundTag();
+         details.putString("Kind", "raptor_hummingbird");
+         details.putString("Dimension", player.level().dimension().location().toString());
+         details.putInt("Remaining", activeHummingbirdRemainingTicks(player));
+         NetworkHandler.sendToPlayer(new com.rzy.dealt_force_skills.network.S2C_SkillFeedback(details), player);
       }
    }
 
@@ -414,7 +427,10 @@ public final class RaptorStateManager {
                ),
                player
             );
-            if (questAttached) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"raptor.hummingbird.observed_target");
+            if (questAttached) {
+                com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"raptor.hummingbird.observed_target");
+                com.rzy.dealt_force_skills.skill.BareSkillPulse.HUMMINGBIRD_MARK.play(player);
+            }
         ACTIVE_HUMMINGBIRD_TARGETS.put(player.getUUID(), target.getId());
             if (ReconRevealThrottle.tryStart(target, HUMMINGBIRD_REVEAL_TICKS)) {
                NetworkHandler.sendToPlayer(

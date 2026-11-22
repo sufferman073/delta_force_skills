@@ -15,6 +15,7 @@ public record C2S_HomeAction(int action, UUID target, int amount) implements Cus
     public static void encode(C2S_HomeAction msg, FriendlyByteBuf buf) { buf.writeByte(msg.action); buf.writeUUID(msg.target); buf.writeVarInt(msg.amount); }
     public static C2S_HomeAction decode(FriendlyByteBuf buf) { return new C2S_HomeAction(buf.readUnsignedByte(), buf.readUUID(), buf.readVarInt()); }
     public static void handle(C2S_HomeAction msg, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> { var player = ctx.player() instanceof net.minecraft.server.level.ServerPlayer p ? p : null; if (player != null) HomeManager.handle(player, msg.action, msg.target, msg.amount); });
+        ctx.enqueueWork(() -> { var player = ctx.player() instanceof net.minecraft.server.level.ServerPlayer p ? p : null;
+            if (player != null && com.rzy.dealt_force_skills.raid.RaidAccess.externalItemsBlocked(player)) return; if (player != null) HomeManager.handle(player, msg.action, msg.target, msg.amount); });
     }
 }

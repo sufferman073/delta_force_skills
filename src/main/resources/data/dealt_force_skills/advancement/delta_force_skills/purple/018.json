@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:golden_apple"
+      "id": "minecraft:golden_apple"
     },
     "title": {
       "text": "再救一个"

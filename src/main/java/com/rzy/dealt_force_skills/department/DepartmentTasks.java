@@ -31,6 +31,7 @@ public final class DepartmentTasks {
 
     /** Only call once an activation really occurs. A handled/cooldown response is not success. */
     public static void activated(ServerPlayer player,String outcome) {
+        com.rzy.dealt_force_skills.ai.operative.OperativeHearing.recordAction(player);
         var context=ACTIVATION.get();
         if(context!=null&&context.player==player&&!context.reported) {
             context.reported=true;signal(player,context.key);

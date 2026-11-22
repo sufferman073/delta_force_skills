@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.vyron;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.entity.VyronMagneticBombEntity;
 import com.rzy.dealt_force_skills.entity.VyronTigerCannonEntity;
 import com.rzy.dealt_force_skills.registry.ModEntities;
@@ -19,7 +22,7 @@ public final class VyronProjectiles {
         bomb.setDeltaMovement(look.scale(highThrow ? 1.75D : 1.08D).add(0.0D, highThrow ? 0.32D : 0.06D, 0.0D));
         bomb.setYRot(owner.getYRot());
         bomb.setXRot(owner.getXRot());
-        return level.addFreshEntity(bomb);
+        return ToolHandRelease.spawned(level.addFreshEntity(bomb), owner, ToolHandCue.VYRON_MAGNETIC_BOMB);
     }
 
     public static boolean fireTigerCannon(ServerLevel level, LivingEntity owner) {
@@ -30,6 +33,6 @@ public final class VyronProjectiles {
         shell.setDeltaMovement(look.scale(1.9D).add(0.0D, 0.08D, 0.0D));
         shell.setYRot(owner.getYRot());
         shell.setXRot(owner.getXRot());
-        return level.addFreshEntity(shell);
+        return ToolHandRelease.spawned(level.addFreshEntity(shell), owner, ToolHandCue.VYRON_TIGER_CANNON);
     }
 }

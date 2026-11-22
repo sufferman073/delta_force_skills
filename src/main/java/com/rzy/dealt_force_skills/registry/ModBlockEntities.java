@@ -22,6 +22,10 @@ public class ModBlockEntities {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, DealtForceSkillsMod.MODID);
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<com.rzy.dealt_force_skills.home.HomeDevice>> PERSONAL_DIMENSION =
+            BLOCK_ENTITIES.register("personal_dimension", () -> BlockEntityType.Builder.of(com.rzy.dealt_force_skills.home.HomeDevice::new,
+                    ModBlocks.PERSONAL_DIMENSIONS.stream().map(java.util.function.Supplier::get).toArray(net.minecraft.world.level.block.Block[]::new)).build(null));
+
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BladeWireBlockEntity>> BLADE_WIRE =
             BLOCK_ENTITIES.register("blade_wire",
                     () -> BlockEntityType.Builder.of(

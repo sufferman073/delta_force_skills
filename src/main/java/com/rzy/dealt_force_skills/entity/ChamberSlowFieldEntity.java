@@ -66,8 +66,10 @@ public class ChamberSlowFieldEntity extends Entity implements ItemSupplier, com.
         if (allegiance.active()) {
             if (tickCount >= LIFE_TICKS) { discard(); return; }
             if (tickCount % 10 == 0) for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(RADIUS), LivingEntity::isAlive)) {
-                if (target.distanceToSqr(this) <= RADIUS * RADIUS && allegiance.isEnemy(level, target))
+                if (target.distanceToSqr(this) <= RADIUS * RADIUS && allegiance.isEnemy(level, target)) {
                     target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 16, 2, false, true, true));
+                    com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(target, this, "chamber.skill.trademark", "trademark");
+                }
             }
             return;
         }
@@ -81,6 +83,7 @@ public class ChamberSlowFieldEntity extends Entity implements ItemSupplier, com.
             for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
                 if (target.position().distanceTo(position()) <= RADIUS && TargetingUtil.isHostileLivingFor(owner, target)) {
                     target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 16, 2, false, true, true), owner);
+                    com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(target, this, "chamber.skill.trademark", "trademark");
                 }
             }
         }

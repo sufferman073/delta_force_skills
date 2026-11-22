@@ -2,13 +2,13 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:lead"
+      "id": "minecraft:lead"
     },
     "title": {
       "text": "致命保险"
     },
     "description": {
-      "text": "使用疾风时，在一次紧急拉回装置冷却期间击杀3名玩家"
+      "text": "使用疾风时，在一次紧急拉回装置冷却期间击杀3个实体"
     },
     "frame": "challenge",
     "show_toast": true,

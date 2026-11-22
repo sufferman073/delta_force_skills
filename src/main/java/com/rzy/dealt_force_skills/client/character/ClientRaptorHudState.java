@@ -29,6 +29,7 @@ public final class ClientRaptorHudState {
     private static int falconActiveTicks;
     private static int hummingbirdPendingTicks;
     private static int hummingbirdAttachTicks;
+    private static int hummingbirdRemainingTicks;
     private static List<RaptorFootprintMarker> footprints = List.of();
     private static int footprintTtlTicks;
     private static final Map<Integer, Integer> revealedEntityTicks = new HashMap<>();
@@ -50,6 +51,7 @@ public final class ClientRaptorHudState {
         falconActiveTicks = 0;
         hummingbirdPendingTicks = 0;
         hummingbirdAttachTicks = 0;
+        hummingbirdRemainingTicks = 0;
         footprints = List.of();
         footprintTtlTicks = 0;
     }
@@ -99,7 +101,11 @@ public final class ClientRaptorHudState {
         }
     }
 
+    public static void syncHummingbirdRemaining(int ticks) { hummingbirdRemainingTicks = Math.max(0, ticks); }
+    public static int hummingbirdRemainingTicks() { return hummingbirdRemainingTicks; }
+
     public static void tick() {
+        if (hummingbirdRemainingTicks > 0) hummingbirdRemainingTicks--;
         if (falconCooldownTicks > 0) {
             falconCooldownTicks--;
         }

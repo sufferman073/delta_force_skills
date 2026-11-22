@@ -3,6 +3,7 @@ package com.rzy.dealt_force_skills.entity;
 import com.rzy.dealt_force_skills.character.wildfire.*;
 import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
+import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import com.rzy.dealt_force_skills.util.TargetingUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
@@ -36,12 +37,14 @@ public final class WildfireDeviceEntity extends Entity implements ItemSupplier, 
     @Override public int smokeLifetimeTicks(){return Math.max(1,entityData.get(DATA).getInt("Life"));}
     @Override public boolean shouldRenderSmokeModel(){return mode()==CLOUD;}
     @Override public ItemStack getItem(){return new ItemStack(mode()==HE_GRENADE?Items.SLIME_BALL:Items.GRAY_DYE);}
-    public void configure(ServerPlayer owner,int mode){
+    public void configure(ServerPlayer owner,int mode){configure((LivingEntity)owner,mode);}
+    public void configure(LivingEntity owner,int mode){
         ownerId=owner.getUUID();CompoundTag tag=new CompoundTag();tag.putInt("Mode",mode);
         tag.putInt("Life",WildfireConfig.ticks(mode==HE_GRENADE?"grenade.fuse_ticks":"projectile.smoke_max_flight_ticks",mode==HE_GRENADE?60:100));
         entityData.set(DATA,tag);
     }
-    public static WildfireDeviceEntity smoke(ServerPlayer owner,Vec3 position,boolean ring){
+    public static WildfireDeviceEntity smoke(ServerPlayer owner,Vec3 position,boolean ring){return smoke((LivingEntity)owner,position,ring);}
+    public static WildfireDeviceEntity smoke(LivingEntity owner,Vec3 position,boolean ring){
         WildfireDeviceEntity cloud=new WildfireDeviceEntity(ModEntities.WILDFIRE_DEVICE.get(),owner.level());
         cloud.ownerId=owner.getUUID();CompoundTag tag=new CompoundTag();tag.putInt("Mode",ring?RING:CLOUD);
         tag.putInt("Life",WildfireConfig.ticks("smoke.duration_ticks",160));
@@ -52,7 +55,7 @@ public final class WildfireDeviceEntity extends Entity implements ItemSupplier, 
         tag.putDouble("Height",Math.min(64,WildfireConfig.number("smoke.height",3)));
         cloud.entityData.set(DATA,tag);
         if(ring)position=position.add(owner.getLookAngle().multiply(1,0,1).normalize().scale((front-back)/2));
-        cloud.setPos(position);cloud.noPhysics=true;owner.serverLevel().addFreshEntity(cloud);return cloud;
+        cloud.setPos(position);cloud.noPhysics=true;((ServerLevel)owner.level()).addFreshEntity(cloud);return cloud;
     }
     private void createRingClouds(){
         if(!(level() instanceof ServerLevel level)||ringCloudsCreated)return;
@@ -79,7 +82,14 @@ public final class WildfireDeviceEntity extends Entity implements ItemSupplier, 
         super.remove(reason);
     }
     @Override public void tick(){
-        super.tick();if(level().isClientSide)return;
+        super.tick();
+        if(level().isClientSide)return;
+        if(mode()==HE_GRENADE && level() instanceof ServerLevel server){
+            Entity owner=ownerId==null?null:server.getEntity(ownerId);
+            double effectRadius=Math.min(64,WildfireConfig.number("grenade.radius",7));
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "wildfire.skill.he_grenade",
+                    effectRadius, effectRadius+3, player -> player==owner || TargetingUtil.isHostileLivingFor(owner,player));
+        }
         if(mode()>=CLOUD){if(mode()==RING)createRingClouds();suppressTargets();if(tickCount>=smokeLifetimeTicks())discard();return;}
         if(mode()==HE_GRENADE&&tickCount>=smokeLifetimeTicks()){explode();return;}
         if(mode()==HE_GRENADE&&!countdownPlayed&&tickCount>=Math.max(1,smokeLifetimeTicks()-60)){
@@ -103,7 +113,7 @@ public final class WildfireDeviceEntity extends Entity implements ItemSupplier, 
         if(getY()<level().getMinBuildHeight()-32)discard();
     }
     private void burst(){
-        if(level() instanceof ServerLevel level&&ownerId!=null&&level.getPlayerByUUID(ownerId) instanceof ServerPlayer owner)
+        if(level() instanceof ServerLevel level&&ownerId!=null&&level.getEntity(ownerId) instanceof LivingEntity owner)
             smoke(owner,position(),false);
         level().playSound(null,blockPosition(),ModSounds.WILDFIRE_SMOKE_TRIGGER.get(),SoundSource.PLAYERS,1,1);discard();
     }
@@ -114,11 +124,17 @@ public final class WildfireDeviceEntity extends Entity implements ItemSupplier, 
     public void explode(){
         if(!(level() instanceof ServerLevel level))return;
         Entity owner=ownerId==null?null:level.getEntity(ownerId);double radius=Math.min(64,WildfireConfig.number("grenade.radius",7));
+        LivingEntity caster = owner instanceof LivingEntity livingOwner ? livingOwner : null;
         WildfireDamageSource source=new WildfireDamageSource(level,this,owner,false);
         for(Entity target:level.getEntities(this,getBoundingBox().inflate(radius),e->e.isAlive()&&e.distanceToSqr(this)<=radius*radius)){
             if(target instanceof LivingEntity living&&target!=owner&&!TargetingUtil.isHostileLivingFor(owner,living))continue;
             float damage=grenadeDamage(target.position().distanceTo(position()));if(damage<=0)continue;
-            if(target instanceof LivingEntity living)living.invulnerableTime=0;target.hurt(source,damage);
+            if (target instanceof LivingEntity living) {
+                living.invulnerableTime = 0;
+                SkillDamageHelper.hurt(living, source, caster, damage);
+            } else {
+                target.hurt(source, SkillDamageHelper.scale(caster, damage));
+            }
         }
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,getX(),getY(),getZ(),1,0,0,0,0);
         level.playSound(null,blockPosition(),ModSounds.WILDFIRE_GRENADE_EXPLODE.get(),SoundSource.PLAYERS,2,1);discard();

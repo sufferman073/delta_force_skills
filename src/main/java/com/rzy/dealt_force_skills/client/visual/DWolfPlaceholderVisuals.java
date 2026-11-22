@@ -17,7 +17,6 @@ import net.minecraft.world.item.Items;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderArmEvent;
 import net.neoforged.neoforge.client.event.RenderHandEvent;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
@@ -31,15 +30,11 @@ public final class DWolfPlaceholderVisuals {
             ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "d_wolf_smoke_grenade");
     private static final String HAND_CANNON_KEY = "d_wolf_hand_cannon";
     private static final String SMOKE_GRENADE_KEY = "d_wolf_smoke_grenade";
-    private static boolean savedThirdPersonArm;
-    private static float savedRightArmX;
-    private static float savedRightArmY;
-    private static float savedRightArmZ;
 
     private DWolfPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         if (!shouldRenderPlaceholder()) {
             return;
@@ -112,53 +107,7 @@ public final class DWolfPlaceholderVisuals {
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (event.getEntity() != minecraft.player || !isHandCannonVisible()) {
-            return;
-        }
-        var rightArm = event.getRenderer().getModel().rightArm;
-        savedRightArmX = rightArm.xRot;
-        savedRightArmY = rightArm.yRot;
-        savedRightArmZ = rightArm.zRot;
-        savedThirdPersonArm = true;
-        ClientToolModelAnimationState.AnimationFrame frame = handCannonFrame(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
-        if ("fire".equals(frame.animation())) {
-            float thrust = Mth.sin(Mth.clamp(frame.seconds() / 0.45F, 0.0F, 1.0F) * Mth.PI);
-            rightArm.xRot = -1.45F - thrust * 0.18F;
-            rightArm.yRot = -0.10F;
-            rightArm.zRot = -0.04F;
-        }
-    }
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (!savedThirdPersonArm || event.getEntity() != minecraft.player) {
-            return;
-        }
-        var rightArm = event.getRenderer().getModel().rightArm;
-        PoseStack poseStack = event.getPoseStack();
-        poseStack.pushPose();
-
-        if (ClientTacticalMotion.frame(event.getEntity(), com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick())) != null)
-            TacticalPlayerPose.modelSpace(event.getEntity(), poseStack, com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
-        rightArm.translateAndRotate(poseStack);
-        poseStack.translate(-0.04D, 0.43D, 0.0D);
-        poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F));
-        poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
-        poseStack.scale(0.55F, 0.55F, 0.55F);
-        ClientToolModelAnimationState.AnimationFrame frame = handCannonFrame(com.rzy.dealt_force_skills.client.ClientRenderCompat.partialTick(event.getPartialTick()));
-        BlockbenchAnimatedModelRenderer.render(
-                HAND_CANNON_MODEL, frame.animation(), frame.seconds(), poseStack,
-                event.getMultiBufferSource(), event.getPackedLight());
-        poseStack.popPose();
-        rightArm.xRot = savedRightArmX;
-        rightArm.yRot = savedRightArmY;
-        rightArm.zRot = savedRightArmZ;
-        savedThirdPersonArm = false;
-    }
 
     private static boolean shouldRenderPlaceholder() {
         return ClientDWolfHudState.hasHandCannonEquipped()
@@ -167,24 +116,14 @@ public final class DWolfPlaceholderVisuals {
                 || ClientToolModelAnimationState.isActive(SMOKE_GRENADE_KEY);
     }
 
-    private static boolean isHandCannonVisible() {
-        return ClientDWolfHudState.hasHandCannonEquipped()
-                || ClientToolModelAnimationState.isActive(HAND_CANNON_KEY);
-    }
-
-    private static ClientToolModelAnimationState.AnimationFrame handCannonFrame(float partialTick) {
-        Minecraft minecraft = Minecraft.getInstance();
-        float worldSeconds = minecraft.level == null ? 0.0F
-                : (minecraft.level.getGameTime() + partialTick) / 20.0F
-                * ClientToolModelAnimationState.FAST_PLAYBACK_SPEED;
-        return ClientToolModelAnimationState.frame(
-                HAND_CANNON_KEY, HAND_CANNON_MODEL, "idle", worldSeconds);
-    }
-
     public static void startHandCannonFire() {
         ClientToolModelAnimationState.start(
                 HAND_CANNON_KEY, HAND_CANNON_MODEL, "fire", 0.45F,
                 ClientToolModelAnimationState.FAST_PLAYBACK_SPEED);
+    }
+
+    public static void cancelSmokeQuickTrigger() {
+        ClientToolModelAnimationState.reset(SMOKE_GRENADE_KEY);
     }
 
     public static void startSmokeQuickTrigger() {

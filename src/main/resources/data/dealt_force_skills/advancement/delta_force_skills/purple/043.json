@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:diamond_sword"
+      "id": "minecraft:diamond_sword"
     },
     "title": {
       "text": "绝处逢生"

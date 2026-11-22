@@ -110,9 +110,6 @@ public class DfsEquipmentItem extends ArmorItem {
 
     @Override
     public ResourceLocation getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot, ArmorMaterial.Layer layer, boolean innerModel) {
-        if (profile.slot() == EquipmentSlot.HEAD) {
-            return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "textures/models/armor/empty_layer_1.png");
-        }
         return ResourceLocation.fromNamespaceAndPath(DealtForceSkillsMod.MODID, "textures/models/armor/" + profile.id() + "_layer_1.png");
     }
 

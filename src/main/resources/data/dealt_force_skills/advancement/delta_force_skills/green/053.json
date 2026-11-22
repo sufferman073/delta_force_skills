@@ -2,13 +2,13 @@
   "parent": "dealt_force_skills:delta_force_skills/green",
   "display": {
     "icon": {
-      "item": "minecraft:orange_dye"
+      "id": "minecraft:orange_dye"
     },
     "title": {
       "text": "忠橙"
     },
     "description": {
-      "text": "使用军团时，在决斗中通过忠橙达到上限杀死一名玩家"
+      "text": "使用军团时，在决斗中通过忠橙达到上限杀死一个实体"
     },
     "frame": "task",
     "show_toast": true,

@@ -226,6 +226,22 @@ public final class LexNinjiaStateManager {
         syncToClient(player);
     }
 
+    /** End generated equipment and transient casts without death rewards or permanent resource resets. */
+    public static void clearRaidTransient(ServerPlayer player) {
+        RuntimeState state = RUNTIME.get(player.getUUID());
+        if (state != null) {
+            tickWallBlocks(player.serverLevel(), state, Long.MAX_VALUE);
+            state.clearAll();
+        }
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            if (isHandGuardShield(player.getInventory().getItem(slot))) player.getInventory().setItem(slot, ItemStack.EMPTY);
+        }
+        player.getInventory().setChanged();
+        var movement = player.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (movement != null) { movement.removeModifier(HAND_SPEED_UUID); movement.removeModifier(SPIN_SLOW_UUID); }
+        if (state != null) syncToClient(player);
+    }
+
     public static void clearRuntimeOnLogout(ServerPlayer player) {
         if (player == null) {
             return;
@@ -1765,24 +1781,25 @@ public final class LexNinjiaStateManager {
         for (int x = -2; x <= 2; x++) {
             for (int y = 0; y < 5; y++) {
                 BlockPos pos = BlockPos.containing(center.getX() + right.x * x, center.getY() + y, center.getZ() + right.z * x);
-                if (level.isEmptyBlock(pos)) {
+                if (level.isEmptyBlock(pos) && com.rzy.dealt_force_skills.ai.operative.NativeLexTerrain.ownsWall(
+                        level, pos, com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(player))) {
                     level.setBlockAndUpdate(pos, Blocks.SANDSTONE.defaultBlockState());
-                    state.wallBlocks.add(new TimedBlock(pos.immutable(), now + 30L * 20L));
+                    state.wallBlocks.add(new TimedBlock(level.dimension(), com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(player), pos.immutable(), now + 30L * 20L));
                 }
             }
         }
     }
 
-    private static void tickWallBlocks(ServerLevel level, RuntimeState state, long now) {
+    private static void tickWallBlocks(ServerLevel currentLevel, RuntimeState state, long now) {
         Iterator<TimedBlock> iterator = state.wallBlocks.iterator();
         while (iterator.hasNext()) {
             TimedBlock block = iterator.next();
-            if (now < block.expireTick()) {
-                continue;
+            ServerLevel level = currentLevel.getServer().getLevel(block.dimension());
+            if (level == null || !com.rzy.dealt_force_skills.ai.operative.NativeLexTerrain.ownsWall(level, block.pos(), block.instance())) {
+                iterator.remove(); continue;
             }
-            if (level.getBlockState(block.pos()).is(Blocks.SANDSTONE)) {
-                level.removeBlock(block.pos(), false);
-            }
+            if (now < block.expireTick() || !level.hasChunkAt(block.pos())) continue;
+            if (level.getBlockState(block.pos()).is(Blocks.SANDSTONE)) level.removeBlock(block.pos(), false);
             iterator.remove();
         }
     }
@@ -1809,7 +1826,7 @@ public final class LexNinjiaStateManager {
         return shield;
     }
 
-    private static boolean isHandGuardShield(ItemStack stack) {
+    public static boolean isHandGuardShield(ItemStack stack) {
         return !stack.isEmpty() && stack.is(Items.SHIELD)
                 && stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
                 .copyTag().getBoolean(HAND_GUARD_SHIELD_TAG);
@@ -2430,7 +2447,7 @@ public final class LexNinjiaStateManager {
     private record InputEntry(LexNinjiaComboInput input, long tick) {
     }
 
-    private record TimedBlock(BlockPos pos, long expireTick) {
+    private record TimedBlock(net.minecraft.resources.ResourceKey<Level> dimension, UUID instance, BlockPos pos, long expireTick) {
     }
 
     private record PendingSlash(UUID target, long tick, float damage, SlashVisual visual, double sideOffset, boolean[] burning) {

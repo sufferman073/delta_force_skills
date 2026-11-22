@@ -15,6 +15,8 @@ public abstract class LivingEntityTeamEffectMixin {
     @Inject(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z",
             at = @At("HEAD"), cancellable = true, remap = false)
     private void dfs$checkEffectSource(MobEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> cir) {
+        if (com.rzy.dealt_force_skills.raid.RaidInstances.crossInstanceDamage(source, (LivingEntity) (Object) this))
+            { cir.setReturnValue(false); return; }
         if (!((LivingEntity) (Object) this).level().isClientSide
                 && TeamCombatRules.shouldBlockPlayerEffect((LivingEntity) (Object) this, source, effect))
             { cir.setReturnValue(false); return; }

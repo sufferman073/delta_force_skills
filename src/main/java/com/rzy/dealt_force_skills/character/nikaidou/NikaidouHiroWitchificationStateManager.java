@@ -298,6 +298,7 @@ public final class NikaidouHiroWitchificationStateManager {
         tag.putDouble(ANCHOR_Z, player.getZ());
         tag.putFloat(ANCHOR_YAW, player.getYRot());
         tag.putFloat(ANCHOR_PITCH, player.getXRot());
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.TIME_ANCHOR.play(player);
         player.level().playSound(null, player.blockPosition(), SoundEvents.RESPAWN_ANCHOR_CHARGE,
                 SoundSource.PLAYERS, 0.75F, 1.15F);
         syncToClient(player);
@@ -322,6 +323,7 @@ public final class NikaidouHiroWitchificationStateManager {
         }
         updateTransientModifiers(player);
         play(player, ModSounds.NIKAIDOU_WITCH_ERROR_CAST.get(), 1.0F, 1.0F);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.ERASE_ERROR.play(player);
         syncToClient(player);
         return true;
     }
@@ -660,7 +662,7 @@ public final class NikaidouHiroWitchificationStateManager {
                 anchorActive ? 1 : 0,
                 Math.max(0, REWIND_MAX_TRIGGERS - tag.getInt(RESCUE_TRIGGERS)),
                 active1CooldownRemainingTicks(player),
-                Math.max(active2RemainingTicks(player), active2CooldownRemainingTicks(player)),
+                active2RemainingTicks(player),
                 equippedTool(player).ordinal(),
                 isCoreActive(player) ? 0 : coreCooldownRemainingTicks(player),
                 isCoreActive(player),
@@ -673,6 +675,13 @@ public final class NikaidouHiroWitchificationStateManager {
                 anchorActive ? tag.getDouble(ANCHOR_Y) : 0.0D,
                 anchorActive ? tag.getDouble(ANCHOR_Z) : 0.0D
         ), player);
+        CompoundTag details = new CompoundTag();
+        details.putString("Kind", "nikaidou_witch");
+        details.putString("Dimension", player.level().dimension().location().toString());
+        details.putInt("Active2Cooldown", active2CooldownRemainingTicks(player));
+        details.putInt("CorePhase", tag.getInt(PHASE));
+        details.putInt("CoreLockTicks", remainingTicks(player, LOCK_UNTIL));
+        NetworkHandler.sendToPlayer(new com.rzy.dealt_force_skills.network.S2C_SkillFeedback(details), player);
     }
 
     public static void handleDeath(ServerPlayer player) {
@@ -935,6 +944,7 @@ public final class NikaidouHiroWitchificationStateManager {
                 target -> TargetingUtil.isHostileLivingFor(player, target)
                         && target.distanceTo(player) < ERROR_REVEAL_RANGE)) {
             visibleToPlayer.add(target.getId());
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "witch");
             if (target instanceof ServerPlayer targetPlayer) {
                 NetworkHandler.sendToPlayer(new S2C_NTwoRevealEntities(List.of(player.getId())), targetPlayer);
             }

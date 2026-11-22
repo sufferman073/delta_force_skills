@@ -31,6 +31,7 @@ public final class ClientHudLayout {
     private static final long FILE_CHECK_INTERVAL_NANOS = 1_000_000_000L;
     private static final Set<String> COMMENTED_PATHS = new HashSet<>();
     private static CommentedFileConfig config;
+    private static Path profileFile;
     private static long nextFileCheckNanos;
     private static long observedModifiedMillis = Long.MIN_VALUE;
 
@@ -84,7 +85,7 @@ public final class ClientHudLayout {
      * 与体力条一致，使用guiWidth/guiHeight自适应，不额外乘以补偿系数。
      */
     public static int x(int defaultX) {
-        return defaultX + offset("x_offset", 208);
+        return defaultX + offset("x_offset", 25);
     }
 
     /**
@@ -92,7 +93,7 @@ public final class ClientHudLayout {
      * 与体力条一致，使用guiWidth/guiHeight自适应，不额外乘以补偿系数。
      */
     public static int y(int defaultY) {
-        return defaultY + offset("y_offset", -10);
+        return defaultY + offset("y_offset", 15);
     }
 
     /**
@@ -172,7 +173,8 @@ public final class ClientHudLayout {
     private static synchronized int offset(String axis, int fallback) {
         ensureFresh();
         // 暂时移除角色特定偏移叠加，仅使用全局配置
-        return intValue("global." + axis, fallback);
+        String profile = ClientCharacterSelectionState.selectedCharacterId();
+        return intValue("global." + axis, fallback) + (profile.isEmpty() ? 0 : intValue("hud." + profile + "." + axis, 0));
     }
 
     private static int intValue(String path, int defaultValue) {
@@ -292,13 +294,14 @@ public final class ClientHudLayout {
     }
 
     private static Path configPath() {
-        return FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
+        if (profileFile == null) profileFile = HudProfileFiles.local(FMLPaths.CONFIGDIR.get().resolve(FILE_NAME));
+        return profileFile;
     }
 
     private static void ensureDefaultsPresent() {
-        intValue("global.x_offset", 0);
-        intValue("global.y_offset", 0);
-        floatValue("global.button_scale", 0.8F);
+        intValue("global.x_offset", 25);
+        intValue("global.y_offset", 15);
+        floatValue("global.button_scale", 0.6F);
         ensureStaminaDefaults("global");
         staminaFeatureMask();
         staminaFeatureEnabled("stamina_features.show_bar");

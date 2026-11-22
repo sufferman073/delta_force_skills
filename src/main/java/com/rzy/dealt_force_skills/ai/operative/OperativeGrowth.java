@@ -49,7 +49,7 @@ public final class OperativeGrowth {
     }
     public static void applyCommanderGrowth(LivingEntity body) {
         var speed = body.getAttribute(Attributes.MOVEMENT_SPEED);
-        double amount = OperativeSettings.value("commander_speed_multiplier") - 1;
+        double amount = OperativeSettings.value(body, "commander_speed_multiplier") - 1;
         if (body instanceof com.rzy.dealt_force_skills.entity.OperativeEntity && speed != null && (speed.getModifier(COMMANDER_SPEED) == null || speed.getModifier(COMMANDER_SPEED).amount() != amount)) {
             speed.removeModifier(COMMANDER_SPEED);
             speed.addTransientModifier(new AttributeModifier(COMMANDER_SPEED, amount, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));

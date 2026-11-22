@@ -67,6 +67,7 @@ public class HackclawInterferenceFieldEntity extends Entity implements ItemSuppl
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "hackclaw.skill.hacking_knife", RADIUS, RADIUS + 3, player -> !protects(player) && com.rzy.dealt_force_skills.util.TargetingUtil.isHostilePlayerFor(ownerPlayer((ServerLevel)level()), player));
         age++;
 
         if (level().isClientSide) {

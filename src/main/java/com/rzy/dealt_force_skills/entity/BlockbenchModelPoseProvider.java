@@ -12,6 +12,10 @@ public interface BlockbenchModelPoseProvider {
         return null;
     }
 
+    default float blockbenchWorldYOffset() {
+        return 0.0F;
+    }
+
     default float blockbenchYawOffsetDegrees() {
         return 0.0F;
     }

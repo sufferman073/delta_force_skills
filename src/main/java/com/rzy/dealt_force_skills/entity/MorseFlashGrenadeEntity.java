@@ -79,6 +79,7 @@ public class MorseFlashGrenadeEntity extends Projectile implements ItemSupplier 
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "morse.skill.composite_flash", (RADIUS));
         if (nativeAllegiance.active() && level() instanceof ServerLevel level && fuseRemaining <= 3) NativeMorseSkills.turnAwayFromFlash(owner(level), position());
       if (!this.level().isClientSide && --this.fuseRemaining <= 0) {
          this.explode(this.position());

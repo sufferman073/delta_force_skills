@@ -150,6 +150,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.GLAND_EXTRACT.get());
                         output.accept(ModItems.ARAMID_FIBER.get());
                         output.accept(ModItems.SCREWDRIVER.get());
+                        ModItems.MAP_EDITOR_TOOLS.values().forEach(item -> output.accept(item.get()));
                         output.accept(ModItems.DANCING_LADY.get());
                         output.accept(ModItems.LENS.get());
                         output.accept(ModItems.BLUEPRINT.get());
@@ -182,6 +183,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.HVK_TREASURE_CHEST_BOX.get());
                         output.accept(ModItems.HVK_UNIVERSAL_GLUE.get());
                         output.accept(ModItems.INTERDIMENSIONAL_BLOCK.get());
+                        ModItems.PERSONAL_DIMENSIONS.forEach(item -> output.accept(item.get()));
                         output.accept(ModItems.GTI_SPECIAL_OPERATIONS.get());
                         if (com.rzy.dealt_force_skills.compat.SophisticatedBackpackCompat.isLoaded()) {
                             output.accept(ModItems.AUTO_SELL_UPGRADE.get());

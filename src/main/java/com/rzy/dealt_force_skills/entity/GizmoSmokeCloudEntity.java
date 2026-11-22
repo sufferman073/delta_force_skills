@@ -104,12 +104,14 @@ public class GizmoSmokeCloudEntity extends Entity implements OperativeAreaSource
                   true
                )
             );
+            if (smokeApplied) com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(livingentity, this, "gizmo.skill.smoke_trap", "smoke_trap");
             if (this.ownerId != null && level.getEntity(this.ownerId) instanceof ServerPlayer serverplayer) {
                DfsAchievements.recordGizmoComboTarget(serverplayer, livingentity, "smoke");
                if (smokeApplied) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(serverplayer,"gizmo.smoke.affected");
             }
 
             if (livingentity.hasEffect(ModEffects.CORROSION)) {
+               com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(livingentity, "gizmo_reveal");
                list.add(livingentity.getId());
                if (allegiance.active() && entity instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() != null) bot.skills().remember(livingentity, 20);
             }

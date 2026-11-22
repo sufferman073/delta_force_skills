@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.tempest;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.electronics.ElectronicInterferenceManager;
@@ -76,7 +79,7 @@ public final class TempestSkills {
         double speed = highThrow ? 1.55D : 1.05D;
         double lift = highThrow ? 0.30D : 0.08D;
         stinger.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
-        if(level.addFreshEntity(stinger)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"tempest.drill");
+        if(ToolHandRelease.spawned(level.addFreshEntity(stinger), player, ToolHandCue.TEMPEST_WALL_DRILL_STINGER)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"tempest.drill");
         level.playSound(null, player.blockPosition(), ModSounds.TEMPEST_WALL_DRILL_THROW.get(),
                 SoundSource.PLAYERS, 0.85F, highThrow ? 1.08F : 0.92F);
         TempestStateManager.setEquippedTool(player, TempestTool.NONE);

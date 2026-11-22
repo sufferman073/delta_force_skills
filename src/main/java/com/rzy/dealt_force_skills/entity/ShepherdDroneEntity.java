@@ -90,6 +90,7 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier, com.rzy
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "shepherd.skill.drone_stun", (STUN_RADIUS), (Math.max(SEEK_RADIUS, STUN_RADIUS + 3)), player -> allegiance.active() ? nativeEnemy(player) : TargetingUtil.isHostilePlayerFor(owner((ServerLevel)level()), player));
         if (level().isClientSide) {
             spawnClientParticles();
             return;
@@ -99,6 +100,7 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier, com.rzy
             return;
         }
         Entity owner = owner(serverLevel);
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.active(owner, "shepherd.skill.drone_stun", 0);
         if (allegiance.active() ? tickCount >= nativeLifetime() : owner == null || !owner.isAlive()) {
             discard();
             return;
@@ -224,6 +226,18 @@ public class ShepherdDroneEntity extends Entity implements ItemSupplier, com.rzy
             RangedSoundHelper.playThrottled(level, position(), ModSounds.SHEPHERD_DRONE_COUNTDOWN.get(),
                     SoundSource.PLAYERS, 0.55f, 1.0f + (phaseTicks / 20) * 0.04f, 18.0D, 18, 5.0D);
         }
+    }
+
+    @Override public boolean isPickable() { return !isRemoved(); }
+
+    @Override public boolean hurt(net.minecraft.world.damagesource.DamageSource source, float amount) {
+        if (amount <= 0 || isRemoved() || isInvulnerableTo(source)) return false;
+        if (level() instanceof ServerLevel server) {
+            pulse(server, TAP_STUN_DURATION_TICKS);
+            server.sendParticles(ParticleTypes.EXPLOSION, getX(), getY(), getZ(), 1, 0, 0, 0, 0);
+            discard();
+        }
+        return true;
     }
 
     private void pulse(ServerLevel level, int durationTicks) {

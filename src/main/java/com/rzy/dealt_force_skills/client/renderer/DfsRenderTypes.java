@@ -30,6 +30,15 @@ public final class DfsRenderTypes extends RenderType {
 
     public static RenderType trajectoryQuads() { return TRAJECTORY_QUADS; }
 
+    static RenderType glassPane(net.minecraft.resources.ResourceLocation texture) {
+        return create("dfs_glass_pane", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true,
+                CompositeState.builder().setShaderState(RENDERTYPE_ENTITY_TRANSLUCENT_SHADER)
+                        .setTextureState(new TextureStateShard(texture, false, false))
+                        .setTransparencyState(TRANSLUCENT_TRANSPARENCY).setCullState(NO_CULL)
+                        .setLightmapState(LIGHTMAP).setOverlayState(OVERLAY).setWriteMaskState(COLOR_WRITE)
+                        .createCompositeState(false));
+    }
+
     private static final RenderType EQUIPMENT_SOLID_QUADS = RenderType.create(
             "dfs_equipment_solid_quads",
             DefaultVertexFormat.POSITION_COLOR,

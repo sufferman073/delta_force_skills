@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/root",
   "display": {
     "icon": {
-      "item": "minecraft:nether_star"
+      "id": "minecraft:nether_star"
     },
     "title": {
       "text": "不论神明或人类，一切皆承认你的肘性"

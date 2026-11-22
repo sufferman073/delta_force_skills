@@ -19,13 +19,13 @@ import net.neoforged.fml.common.EventBusSubscriber;
 
 @EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class NTwoPlaceholderVisuals {
-    private static final ResourceLocation DEWAR_MODEL = model("shared_hand_grenade");
-    private static final ResourceLocation CONDENSER_MODEL = model("uluru_missile_launcher");
+    private static final ResourceLocation DEWAR_MODEL = model("n_two_dewar_canister");
+    private static final ResourceLocation CONDENSER_MODEL = model("n_two_condensation_focus");
 
     private NTwoPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         if (!ClientNTwoHudState.hasEquippedTool()) {
             return;
@@ -67,7 +67,7 @@ public final class NTwoPlaceholderVisuals {
     }
 
     private static String animationFor(NTwoTool tool) {
-        return tool == NTwoTool.CONDENSER_LAUNCHER ? null : "idle";
+        return tool == NTwoTool.CONDENSER_LAUNCHER ? "aurora" : "idle";
     }
 
     private static float animationSeconds(float partialTick) {

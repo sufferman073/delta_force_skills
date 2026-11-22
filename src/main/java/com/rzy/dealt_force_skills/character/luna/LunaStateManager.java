@@ -19,6 +19,7 @@ import com.rzy.dealt_force_skills.util.ReconRevealThrottle;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.nbt.CompoundTag;
+import com.rzy.dealt_force_skills.skill.HeldToolVisualSync;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
@@ -88,6 +89,7 @@ public final class LunaStateManager {
    }
 
    public static void clearState(Player player) {
+        if (player instanceof ServerPlayer serverPlayer) LunaSkills.endDraw(serverPlayer);
       player.getPersistentData().remove("dealt_force_skills.luna");
    }
 
@@ -131,6 +133,10 @@ public final class LunaStateManager {
    }
 
    public static void setEquippedTool(Player player, LunaTool tool) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            LunaSkills.endDraw(serverPlayer);
+            HeldToolVisualSync.changed(serverPlayer);
+        }
       data(player).putInt("EquippedTool", tool.ordinal());
       if (tool != LunaTool.COMPOSITE_GRENADE) {
          clearGrenadeCook(player);
@@ -222,8 +228,10 @@ public final class LunaStateManager {
          targetData.putLong(WEAK_POINT_UNTIL, ReconRevealThrottle.activeUntil(target));
       }
       if (!revealStarted) {
-         return false;
-      }
+            return false;
+        }
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, requireActiveLuna ? "luna_passive" : "recon");
+        if (requireActiveLuna) com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(owner, 1);
       com.rzy.dealt_force_skills.util.PositionRevealHelper.sendToCasterAndTeammates(
          owner, new S2C_LunaRevealEntities(List.of(target.getId()), effectiveTicks));
       if (target instanceof ServerPlayer) {

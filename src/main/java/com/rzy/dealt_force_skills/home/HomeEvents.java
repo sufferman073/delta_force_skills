@@ -14,6 +14,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 @EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class HomeEvents {
     private HomeEvents() { }
+    @SubscribeEvent public static void machines(net.neoforged.neoforge.event.tick.LevelTickEvent.Post event) {
+        if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) HomeAcceleration.flush(level);
+    }
     @SubscribeEvent public static void starting(ServerStartingEvent event) { HomeDimensions.restore(event.getServer()); }
     @SubscribeEvent public static void tick(ServerTickEvent.Post event) {
         HomeManager.maintain(event.getServer());

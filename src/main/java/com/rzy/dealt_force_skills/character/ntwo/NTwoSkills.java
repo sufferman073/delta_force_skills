@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.ntwo;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.entity.NTwoCondensedGrenadeEntity;
 import com.rzy.dealt_force_skills.entity.NTwoDewarCanisterEntity;
@@ -70,7 +73,7 @@ public final class NTwoSkills {
         Vec3 start = player.getEyePosition().add(look.scale(0.7D));
         grenade.setPos(start.x, start.y - 0.12D, start.z);
         grenade.setDeltaMovement(look.scale(0.72D));
-        if (level.addFreshEntity(grenade))
+        if (ToolHandRelease.spawned(level.addFreshEntity(grenade), player, ToolHandCue.N_TWO_TRACKER))
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         NTwoStateManager.setTrackingCooldown(player);
         level.playSound(null, player.blockPosition(), ModSounds.N_TWO_TRACKING_STUN.get(),
@@ -136,7 +139,7 @@ public final class NTwoSkills {
         Vec3 start = player.getEyePosition().add(look.scale(0.7D));
         canister.setPos(start.x, start.y - 0.12D, start.z);
         canister.setDeltaMovement(look.scale(1.1D).add(0.0D, 0.22D, 0.0D));
-        if (level.addFreshEntity(canister))
+        if (ToolHandRelease.spawned(level.addFreshEntity(canister), player, ToolHandCue.N_TWO_DEWAR_CANISTER))
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         NTwoStateManager.setEquippedTool(player, NTwoTool.NONE);
         level.playSound(null, player.blockPosition(), ModSounds.N_TWO_DEWAR_PIN.get(),
@@ -156,7 +159,7 @@ public final class NTwoSkills {
         Vec3 start = player.getEyePosition().add(look.scale(0.75D));
         grenade.setPos(start.x, start.y - 0.12D, start.z);
         grenade.setDeltaMovement(look.scale(3.25D).add(0.0D, 0.18D, 0.0D));
-        level.addFreshEntity(grenade);
+        ToolHandRelease.spawned(level.addFreshEntity(grenade), player, ToolHandCue.N_TWO_CONDENSER_LAUNCHER);
         NTwoStateManager.consumeCoreShot(player);
         level.playSound(null, player.blockPosition(), ModSounds.N_TWO_CONDENSED_FIRE.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f);

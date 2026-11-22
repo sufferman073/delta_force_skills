@@ -62,6 +62,7 @@ public class SaeedFireArrowEntity extends Projectile implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "saeed.skill.fire_arrow", (FIELD_RADIUS));
         if (level().isClientSide) {
             level().addParticle(ParticleTypes.FLAME, getX(), getY(), getZ(), 0.0D, 0.01D, 0.0D);
             return;

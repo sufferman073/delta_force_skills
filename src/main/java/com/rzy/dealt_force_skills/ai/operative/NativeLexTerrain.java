@@ -16,7 +16,7 @@ import java.util.UUID;
 @EventBusSubscriber(modid="dealt_force_skills")
 public final class NativeLexTerrain {
     private static final String KEY="dealt_force_skills_native_lex_walls";
-    private record Cell(BlockPos pos,UUID caster,long expires) { }
+    private record Cell(BlockPos pos,UUID caster,long expires,UUID instance) { }
     private static Data data(ServerLevel level){return level.getDataStorage().computeIfAbsent(new SavedData.Factory<>(Data::new,(tag,provider)->Data.load(tag),null),KEY);}
     static void create(OperativeHost h){
         var level=h.serverLevel();var data=data(level);var forward=h.body().getDirection();var side=forward.getClockWise();
@@ -25,19 +25,29 @@ public final class NativeLexTerrain {
             var pos=center.relative(side,x).above(y);
             if(data.cells.size()>=10000 || !level.hasChunkAt(pos) || !h.withinOrders(net.minecraft.world.phys.Vec3.atCenterOf(pos)) || !level.getBlockState(pos).isAir()
                     || !level.getEntities(null,new net.minecraft.world.phys.AABB(pos)).isEmpty())continue;
-            if(level.setBlock(pos,Blocks.SANDSTONE.defaultBlockState(),3)){data.cells.add(new Cell(pos,h.body().getUUID(),level.getGameTime()+600));data.setDirty();}
+            if(level.setBlock(pos,Blocks.SANDSTONE.defaultBlockState(),3)){data.cells.add(new Cell(pos,h.body().getUUID(),level.getGameTime()+600,com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(h.body())));data.setDirty();}
         }
     }
-    static void expire(OperativeHost h){var d=data(h.serverLevel());for(int i=0;i<d.cells.size();i++){var c=d.cells.get(i);if(c.caster.equals(h.body().getUUID())){d.cells.set(i,new Cell(c.pos,c.caster,0));d.setDirty();}}tick(h.serverLevel());}
+    static void expire(OperativeHost h){var d=data(h.serverLevel());for(int i=0;i<d.cells.size();i++){var c=d.cells.get(i);if(c.caster.equals(h.body().getUUID())){d.cells.set(i,new Cell(c.pos,c.caster,0,c.instance));d.setDirty();}}tick(h.serverLevel());}
+    /** Stale timers may be forgotten, but must never edit a recycled slot or another dimension. */
+    public static boolean ownsWall(ServerLevel level, BlockPos pos, UUID instance) {
+        boolean raid = level.dimension().equals(com.rzy.dealt_force_skills.raid.RaidInstances.DIMENSION);
+        if (instance == null) return !raid;
+        if (!raid) return false;
+        var owner = com.rzy.dealt_force_skills.raid.RaidInstanceData.get(level.getServer()).instance(instance);
+        return owner != null && owner.phase == com.rzy.dealt_force_skills.raid.RaidInstanceData.Phase.READY
+                && owner.contains(net.minecraft.world.phys.Vec3.atCenterOf(pos), 0)
+                && pos.getY() >= owner.origin().getY() && pos.getY() < owner.origin().getY() + owner.sizeY;
+    }
     private static void tick(ServerLevel level){var d=data(level);boolean changed=false;
-        for(var it=d.cells.iterator();it.hasNext();){var c=it.next();if(c.expires>level.getGameTime() || !level.hasChunkAt(c.pos))continue;
+        for(var it=d.cells.iterator();it.hasNext();){var c=it.next();if(!ownsWall(level,c.pos,c.instance)){it.remove();changed=true;continue;}if(c.expires>level.getGameTime() || !level.hasChunkAt(c.pos))continue;
             if(level.getBlockState(c.pos).is(Blocks.SANDSTONE))level.removeBlock(c.pos,false);it.remove();changed=true;}
         if(changed)d.setDirty();
     }
     @SubscribeEvent public static void levelTick(LevelTickEvent.Post e){if(e.getLevel() instanceof ServerLevel level && level.getGameTime()%20==0)tick(level);}
     public static final class Data extends SavedData {
         private final ArrayList<Cell> cells=new ArrayList<>();
-        static Data load(CompoundTag tag){var d=new Data();var list=tag.getList("Cells",10);for(int i=0;i<list.size() && i<10000;i++){var t=list.getCompound(i);if(t.hasUUID("Caster"))d.cells.add(new Cell(BlockPos.of(t.getLong("Pos")),t.getUUID("Caster"),t.getLong("Expires")));}return d;}
-        @Override public CompoundTag save(CompoundTag tag,net.minecraft.core.HolderLookup.Provider provider){var list=new ListTag();for(var c:cells){var t=new CompoundTag();t.putLong("Pos",c.pos.asLong());t.putUUID("Caster",c.caster);t.putLong("Expires",c.expires);list.add(t);}tag.put("Cells",list);return tag;}
+        static Data load(CompoundTag tag){var d=new Data();var list=tag.getList("Cells",10);for(int i=0;i<list.size() && i<10000;i++){var t=list.getCompound(i);if(t.hasUUID("Caster"))d.cells.add(new Cell(BlockPos.of(t.getLong("Pos")),t.getUUID("Caster"),t.getLong("Expires"),t.hasUUID("Instance")?t.getUUID("Instance"):null));}return d;}
+        @Override public CompoundTag save(CompoundTag tag,net.minecraft.core.HolderLookup.Provider provider){var list=new ListTag();for(var c:cells){var t=new CompoundTag();t.putLong("Pos",c.pos.asLong());t.putUUID("Caster",c.caster);t.putLong("Expires",c.expires);if(c.instance!=null)t.putUUID("Instance",c.instance);list.add(t);}tag.put("Cells",list);return tag;}
     }
 }

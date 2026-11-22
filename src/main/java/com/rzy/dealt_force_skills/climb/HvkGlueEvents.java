@@ -53,6 +53,10 @@ public final class HvkGlueEvents {
         }
     }
 
+    public static void syncLevel(ServerLevel level) {
+        NetworkHandler.sendToDimension(syncPacket(level), level);
+    }
+
     private static S2C_SyncGluedPositions syncPacket(ServerLevel level) {
         return new S2C_SyncGluedPositions(level.dimension(), HvkClimbGlueManager.allGluedPositions(level), HvkClimbGlueManager.skillBlockedLinks(level));
     }

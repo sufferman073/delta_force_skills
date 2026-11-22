@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.rover;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.SkillSlot;
@@ -165,6 +168,7 @@ public final class RoverStateManager {
         if (action == 2 && tool == 2 && consume(player, "Injector", INJECTOR_COOLDOWN)) {
             spawnProjectile(player, false, data(player).getBoolean("Bounce"), INJECTOR_SPEED, 0);
             sound(player, RoverSounds.INJECTOR_FIRE);
+            equip(player, 0);
         }
         if (action == 3 && tool == 2) {
             data(player).putBoolean("Bounce", !data(player).getBoolean("Bounce"));
@@ -201,7 +205,7 @@ public final class RoverStateManager {
         Vec3 look = player.getLookAngle();
         projectile.setPos(player.getEyePosition().add(look.scale(0.35)).add(0, -0.1, 0));
         projectile.setDeltaMovement(look.scale(Math.max(0.1, speed)).add(0, lift, 0));
-        if (player.serverLevel().addFreshEntity(projectile)) {
+        if (ToolHandRelease.spawned(player.serverLevel().addFreshEntity(projectile), player, smoke ? ToolHandCue.ROVER_IRRITANT_SMOKE : ToolHandCue.ROVER_AEROSOL_INJECTOR)) {
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
             com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         }
@@ -220,6 +224,7 @@ public final class RoverStateManager {
             if (recall) {
                 data(player).remove("Waypoint");
                 sound(player, RoverSounds.DOG_RECALL);
+                com.rzy.dealt_force_skills.skill.HeldToolVisualSync.showRoverWhistle(player);
                 com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"rover.dog.command");
             } else {
                 Vec3 from = player.getEyePosition();
@@ -230,6 +235,7 @@ public final class RoverStateManager {
                 waypoint.putDouble("X", point.x); waypoint.putDouble("Y", point.y); waypoint.putDouble("Z", point.z);
                 data(player).put("Waypoint", waypoint);
                 sound(player, RoverSounds.DOG_COMMAND);
+                com.rzy.dealt_force_skills.skill.HeldToolVisualSync.showRoverWhistle(player);
                 com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"rover.dog.command");
             }
             return;
@@ -254,6 +260,7 @@ public final class RoverStateManager {
             data(player).putLong("DogUntil", wolf.getPersistentData().getLong("RoverExpires"));
             data(player).remove("Waypoint");
             sound(player, RoverSounds.DOG_SUMMON);
+            com.rzy.dealt_force_skills.skill.HeldToolVisualSync.showRoverWhistle(player);
             player.level().playSound(null, wolf.blockPosition(), RoverSounds.DOG_SPAWN, SoundSource.PLAYERS, 0.85F, 1.0F);
         }
     }

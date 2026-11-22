@@ -93,6 +93,7 @@ public class ShepherdFragGrenadeEntity extends Projectile implements ItemSupplie
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "shepherd.skill.frag_grenade", (com.rzy.dealt_force_skills.character.commander.CommanderStateManager.skillRadius(getOwner() instanceof net.minecraft.world.entity.player.Player p ? p : null, RADIUS)));
 
         if (!level().isClientSide) {
             fuseRemaining--;

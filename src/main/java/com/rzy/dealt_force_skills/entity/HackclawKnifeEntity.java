@@ -59,6 +59,7 @@ public class HackclawKnifeEntity extends Projectile implements ItemSupplier, com
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.hostileThreat(this, "hackclaw.skill.hacking_knife", HackclawInterferenceFieldEntity.RADIUS);
         if (!level().isClientSide && allegiance.active() && tickCount >= MAX_FLIGHT_TICKS) { discard(); return; }
 
         Vec3 motion = getDeltaMovement();

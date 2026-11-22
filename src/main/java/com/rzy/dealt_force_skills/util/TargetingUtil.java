@@ -125,6 +125,8 @@ public final class TargetingUtil {
     }
 
     public static boolean shouldSkipFriendlyControl(Entity owner, LivingEntity target) {
+        Boolean raid = com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.hostility(com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.identity(owner), target);
+        if (raid != null) return !raid;
         if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost && isSelf(owner, target)
                 || areOperativeAllies(owner, target)) {
             return true;
@@ -136,6 +138,8 @@ public final class TargetingUtil {
     }
 
     public static boolean shouldSkipFriendlyExceptSelf(Entity owner, LivingEntity target) {
+        Boolean raid = com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.hostility(com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.identity(owner), target);
+        if (raid != null) return !isSelf(owner, target) && !raid;
         if (isSelf(owner, target)) return false;
         if (areOperativeAllies(owner, target)) return true;
         if (!(owner instanceof Player) || !(target instanceof Player)) {
@@ -154,6 +158,7 @@ public final class TargetingUtil {
                 || gameMode == GameType.SPECTATOR;
     }
     public static boolean areOperativeAllies(Entity owner, LivingEntity target) {
+        if (com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(owner) != null || com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(target) != null) return com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.allies(owner, target);
         if (owner instanceof Projectile projectile) return areOperativeAllies(projectile.getOwner(), target);
         if (owner instanceof com.rzy.dealt_force_skills.entity.OperativeEntity firstBot
                 && target instanceof com.rzy.dealt_force_skills.entity.OperativeEntity secondBot

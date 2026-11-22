@@ -46,7 +46,7 @@ public final class GhrothInputHandler {
             if (!longTriggered && heldTicks >= LONG_HOLD_TICKS && minecraft.screen == null) {
                 longTriggered = true;
                 // 长按→特勤处
-                DFGUI_MAIN.openToLogistics();
+                DFGUI_MAIN.openToStart();
             }
         } else if (wasDown) {
             if (!longTriggered && minecraft.screen == null) {

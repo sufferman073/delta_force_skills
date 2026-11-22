@@ -57,6 +57,9 @@ public class C2S_LunaToolAction implements CustomPacketPayload {
     public static void handle(C2S_LunaToolAction msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) ctx.player();
+            if (player != null && (msg.action == LunaToolAction.FIRE_SHOCK_ARROW || msg.action == LunaToolAction.FIRE_RECON_ARROW)) {
+                LunaSkills.endDraw(player);
+            }
             if (com.rzy.dealt_force_skills.climb.HvkZiplineManager.blocksToolAction(player, msg.action)) return;
             if (player == null || player.isSpectator() || UluruLoiteringMissileEntity.isPlayerControlling(player)) {
                 return;

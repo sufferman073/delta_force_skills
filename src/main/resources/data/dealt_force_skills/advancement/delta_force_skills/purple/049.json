@@ -2,13 +2,13 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:diamond_sword"
+      "id": "minecraft:diamond_sword"
     },
     "title": {
       "text": "宁为玉碎，不为瓦全"
     },
     "description": {
-      "text": "一次技能期间，当自身受到自身的技能伤害时，这个技能伤害也击杀了至少两名其它玩家"
+      "text": "一次技能期间，当自身受到自身的技能伤害时，这个技能伤害也击杀了至少两个其它实体"
     },
     "frame": "challenge",
     "show_toast": true,

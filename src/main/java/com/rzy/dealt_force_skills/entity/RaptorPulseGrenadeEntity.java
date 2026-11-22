@@ -72,6 +72,7 @@ public class RaptorPulseGrenadeEntity extends Projectile implements ItemSupplier
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "raptor.skill.pulse_grenade", (RADIUS));
         if (!level().isClientSide && allegiance.active()) {
             if (level() instanceof ServerLevel server && !allegiance.withinOrders(server, position())) { discard(); return; }
             // Expire before block-hit early returns; age survives repeated save/load.

@@ -232,11 +232,13 @@ public final class RoverWolfEntity extends Wolf implements com.rzy.dealt_force_s
         if (isRecovering() || owner == null || !(entity instanceof LivingEntity target)
                 || (allegiance.active() ? !com.rzy.dealt_force_skills.ai.operative.NativeRoverSkills.dogAvailable(owner, position(), getUUID()) || !isValidTarget(target)
                     : !(owner instanceof ServerPlayer player) || !TargetingUtil.isHostileLivingFor(player, target))) return false;
-        float questBefore = target.getHealth() + target.getAbsorptionAmount();
-        boolean applied = SkillDamageHelper.hurt(target, damageSources().mobAttack(this), owner,
-                (float) Math.max(0, RoverConfig.DOG_DAMAGE));
+        boolean applied;
+        try (var receipt = com.rzy.dealt_force_skills.department.DepartmentCombat.measure(target)) {
+            applied = SkillDamageHelper.hurt(target, damageSources().mobAttack(this), owner,
+                    (float) Math.max(0, RoverConfig.DOG_DAMAGE));
+            if (applied) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"rover.dog.damage",receipt.amount);
+        }
         if (applied) {
-            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"rover.dog.damage",Math.max(0,questBefore-target.getHealth()-target.getAbsorptionAmount()));
             if (owner instanceof ServerPlayer player) NetworkHandler.sendToPlayer(new S2C_LunaRevealEntities(java.util.List.of(target.getId()),
                     Math.max(1, RoverConfig.DOG_REVEAL_DURATION)), player);
             else if (owner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() != null) {

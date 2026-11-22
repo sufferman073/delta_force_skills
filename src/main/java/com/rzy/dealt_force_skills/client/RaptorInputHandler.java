@@ -34,6 +34,7 @@ public final class RaptorInputHandler {
     private static boolean active2WasDown;
     private static int active2HeldTicks;
     private static boolean sentActive2HoldAction;
+    private static boolean throwCanceled;
     private static boolean coreWasDown;
     private static int coreHeldTicks;
 
@@ -81,6 +82,11 @@ public final class RaptorInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
+        if (sentActive2HoldAction && ClientRaptorHudState.falconActiveTicks() <= 0 && Minecraft.getInstance().screen == null && isPrimaryOrSecondary(event.getButton())) {
+            event.setCanceled(true);
+            if (event.getAction() == GLFW.GLFW_PRESS && !throwCanceled) { throwCanceled = true; NetworkHandler.sendToServer(new C2S_RaptorToolAction(RaptorToolAction.STOW_TOOL)); }
+            return;
+        }
         if (!ClientRaptorHudState.hasEquippedTool() || !isPrimaryOrSecondary(event.getButton())) {
             return;
         }
@@ -111,6 +117,11 @@ public final class RaptorInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (sentActive2HoldAction && ClientRaptorHudState.falconActiveTicks() <= 0 && (event.isAttack() || event.isUseItem())) {
+            event.setCanceled(true); event.setSwingHand(false);
+            if (!throwCanceled) { throwCanceled = true; NetworkHandler.sendToServer(new C2S_RaptorToolAction(RaptorToolAction.STOW_TOOL)); }
+            return;
+        }
         if (Minecraft.getInstance().screen != null) {
             return;
         }
@@ -143,14 +154,14 @@ public final class RaptorInputHandler {
     }
 
     private static void handleActive1Key() {
-        if (KeybindRegister.ACTIVE_SKILL_1 == null) {
+        if (KeybindRegister.activeKey(1) == null) {
             return;
         }
-        boolean down = KeybindRegister.ACTIVE_SKILL_1.isDown();
+        boolean down = KeybindRegister.activeKey(1).isDown();
         if (down) {
             active1WasDown = true;
             active1HeldTicks++;
-            while (KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+            while (KeybindRegister.activeKey(1).consumeClick()) {
             }
             return;
         }
@@ -165,14 +176,16 @@ public final class RaptorInputHandler {
     }
 
     private static void handleActive2Key() {
-        if (KeybindRegister.ACTIVE_SKILL_2 == null) {
+        if (KeybindRegister.activeKey(2) == null) {
             return;
         }
-        boolean down = KeybindRegister.ACTIVE_SKILL_2.isDown();
+        boolean clicked = false;
+        while (KeybindRegister.activeKey(2).consumeClick()) clicked = true;
+        boolean down = KeybindRegister.activeKey(2).isDown();
         if (down) {
             active2WasDown = true;
             active2HeldTicks++;
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
+            while (KeybindRegister.activeKey(2).consumeClick()) {
             }
             if (active2HeldTicks >= PULSE_EQUIP_HOLD_TICKS && !sentActive2HoldAction) {
                 sentActive2HoldAction = true;
@@ -182,12 +195,15 @@ public final class RaptorInputHandler {
             }
             return;
         }
-        if (active2WasDown && !sentActive2HoldAction) {
+        if ((active2WasDown || clicked) && !throwCanceled && !sentActive2HoldAction) {
             if (ClientRaptorHudState.falconActiveTicks() > 0) {
                 ClientCommanderState.useNativeOrInherited(ModCharacters.RAPTOR_ID, SkillSlot.ACTIVE_2, false);
             } else {
                 beginPulseThrow(false);
             }
+        }
+        if (active2WasDown && sentActive2HoldAction && !throwCanceled && ClientRaptorHudState.falconActiveTicks() <= 0) {
+            beginPulseThrow(true);
         }
         resetActive2();
     }
@@ -228,6 +244,7 @@ public final class RaptorInputHandler {
     }
 
     private static void resetActive2() {
+        throwCanceled = false;
         active2WasDown = false;
         active2HeldTicks = 0;
         sentActive2HoldAction = false;

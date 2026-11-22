@@ -57,14 +57,14 @@ public final class NativeSaeedSkills implements OperativeSkills {
     @Override public double score(OperativeHost host,SkillSlot slot,LivingEntity target) {
         if(busy() || !NativeRaptorSkills.available(host) || OperativeSupport.downed(host.body())
                 || OperativeElectronics.blocked(host,ModCharacters.SAEED_ID,slot))return 0;
-        boolean threat=target!=null && target.level()==host.body().level() && host.isEnemy(target) && host.withinCombatRange(target.position());
+        boolean threat=OperativeHearing.knownContact(host,target);
         return switch(slot){
             case ACTIVE_1 -> rollCooldown==0 && host.body().onGround() && !host.body().isInWaterOrBubble()
                     && threat && (host.body().distanceToSqr(target)>=36 || host.body().getHealth()<host.body().getMaxHealth()*0.5F)
                     && safeRoll(host,rollVector(host,target))?65:0;
             case ACTIVE_2 -> ammo>0 && shotCooldown==0 && threat && shot(host,target)!=null?85:0;
             case CORE -> !coreActive() && host.serverLevel().getGameTime()>=coreReadyAt && threat
-                    && host.body().distanceToSqr(target)<=48*48 && host.canSee(target)?110:0;
+                    && host.body().distanceToSqr(target)<=48*48?110:0;
             case PASSIVE -> 0;
         };
     }

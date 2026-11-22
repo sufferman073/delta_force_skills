@@ -14,6 +14,18 @@ import net.neoforged.fml.common.EventBusSubscriber;
 @EventBusSubscriber(modid=DealtForceSkillsMod.MODID)
 public final class DepartmentEvents {
     private DepartmentEvents() { }
+
+    @SubscribeEvent
+    public static void traded(net.neoforged.neoforge.event.entity.player.TradeWithVillagerEvent event) {
+        // The event is emitted by AbstractVillager after a successful payment.
+        if (event.getEntity() instanceof ServerPlayer player && event.getAbstractVillager() != null) {
+            var result = event.getMerchantOffer().getResult();
+            if (result.is(net.minecraft.world.item.Items.EMERALD)) {
+                DepartmentTasks.signal(player, "trade.emerald", result.getCount());
+            }
+        }
+    }
+
     @SubscribeEvent(priority=EventPriority.LOWEST)
     public static void projectile(net.neoforged.neoforge.event.entity.EntityJoinLevelEvent event) {
         DepartmentGunCombat.spawned(event.getEntity());

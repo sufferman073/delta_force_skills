@@ -144,7 +144,10 @@ public final class VyronStateManager {
             long now = SkillCooldownHelper.now(player);
             boolean poweredBeforeDash = isPowered(player);
             com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"vyron.thrust");
-        if(tag.getInt("DashTicks")>0) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"vyron.thrust.chained");
+        long elapsed = now - tag.getLong("LastSuccessfulThrust");
+        if (tag.contains("LastSuccessfulThrust") && elapsed >= 0 && elapsed <= 60)
+            com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"vyron.thrust.chained");
+        tag.putLong("LastSuccessfulThrust", now);
         tag.putInt("DashTicks", CommanderStateManager.skillDuration(player, DASH_DURATION_TICKS));
             tag.putDouble("DashDirX", normalized.x);
             tag.putDouble("DashDirZ", normalized.z);

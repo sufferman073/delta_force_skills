@@ -1,13 +1,11 @@
 package mccfk.DeltaForce.java.command;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import mccfk.DeltaForce.java.DeltaForce;
 import mccfk.DeltaForce.java.Eeconomy.CurrencyType;
 import mccfk.DeltaForce.java.Eeconomy.EeconomyManager;
-import mccfk.DeltaForce.java.client.DFClientConfig;
 import mccfk.DeltaForce.java.data.PlayerCharacterStore;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -30,7 +28,6 @@ public class DFCommand {
                 return 1;
             })
             .then(buildEconomy())
-            .then(buildConfig())
             .then(buildDfs())
         );
 
@@ -128,46 +125,6 @@ public class DFCommand {
         };
     }
 
-    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> buildConfig() {
-        return Commands.literal("config")
-            .requires(DFCommand::isDfPermitted)
-            .executes(ctx -> {
-                DFClientConfig cfg = DFClientConfig.getInstance();
-                ctx.getSource().sendSuccess(() ->
-                    Component.literal("§e=== 顶栏偏移配置 ===\n" +
-                        "§6/df config x <值> (设置X偏移)\n" +
-                        "§6/df config y <值> (设置Y偏移)\n" +
-                        "§7当前 X偏移: " + cfg.getTabXOffset() + "  Y偏移: " + cfg.getTabYOffset()), false);
-                return 1;
-            })
-            .then(Commands.literal("x")
-                .then(Commands.argument("value", IntegerArgumentType.integer(-500, 500))
-                    .executes(ctx -> {
-                        int value = IntegerArgumentType.getInteger(ctx, "value");
-                        DFClientConfig cfg = DFClientConfig.getInstance();
-                        cfg.setTabXOffset(value);
-                        cfg.save();
-                        ctx.getSource().sendSuccess(() ->
-                            Component.literal("§a顶栏X偏移已设置为: " + value + "（重新打开界面生效）"), true);
-                        return 1;
-                    })
-                )
-            )
-            .then(Commands.literal("y")
-                .then(Commands.argument("value", IntegerArgumentType.integer(-500, 500))
-                    .executes(ctx -> {
-                        int value = IntegerArgumentType.getInteger(ctx, "value");
-                        DFClientConfig cfg = DFClientConfig.getInstance();
-                        cfg.setTabYOffset(value);
-                        cfg.save();
-                        ctx.getSource().sendSuccess(() ->
-                            Component.literal("§a顶栏Y偏移已设置为: " + value + "（重新打开界面生效）"), true);
-                        return 1;
-                    })
-                )
-            );
-    }
-
     /**
      * DFS 配置管理指令（指令版配置界面）
      * 用法: /df dfs (详细帮助)
@@ -245,47 +202,6 @@ public class DFCommand {
                     )
                 )
             )
-            .then(Commands.literal("x")
-                .then(Commands.argument("value", IntegerArgumentType.integer(-1000, 1000))
-                    .executes(ctx -> {
-                        int value = IntegerArgumentType.getInteger(ctx, "value");
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.setValue("global.x_offset", value);
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.flush();
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.forceReload();
-                        ctx.getSource().sendSuccess(() ->
-                            Component.literal("§a技能按钮X偏移已设置为: " + value + "，当前生效位置 X=" +
-                                com.rzy.dealt_force_skills.client.ClientHudLayout.x(8)), true);
-                        return 1;
-                    })
-                )
-            )
-            .then(Commands.literal("y")
-                .then(Commands.argument("value", IntegerArgumentType.integer(-1000, 1000))
-                    .executes(ctx -> {
-                        int value = IntegerArgumentType.getInteger(ctx, "value");
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.setValue("global.y_offset", value);
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.flush();
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.forceReload();
-                        ctx.getSource().sendSuccess(() ->
-                            Component.literal("§a技能按钮Y偏移已设置为: " + value + "，立即生效"), true);
-                        return 1;
-                    })
-                )
-            )
-            .then(Commands.literal("scale")
-                .then(Commands.argument("value", DoubleArgumentType.doubleArg(0.25, 3.0))
-                    .executes(ctx -> {
-                        float value = (float) DoubleArgumentType.getDouble(ctx, "value");
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.setValue("global.button_scale", (double) value);
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.flush();
-                        com.rzy.dealt_force_skills.client.ClientHudLayout.forceReload();
-                        ctx.getSource().sendSuccess(() ->
-                            Component.literal(String.format("§a技能按钮缩放已设置为: %.2f，当前生效缩放=%.2f",
-                                value, com.rzy.dealt_force_skills.client.ClientHudLayout.buttonScale())), true);
-                        return 1;
-                    })
-                )
-            )
             .then(Commands.literal("reload")
                 .executes(ctx -> {
                     boolean ok;
@@ -295,7 +211,6 @@ public class DFCommand {
                     } catch (RuntimeException error) {
                         ok = false;
                     }
-                    com.rzy.dealt_force_skills.client.ClientHudLayout.forceReload();
                     boolean finalOk = ok;
                     ctx.getSource().sendSuccess(() ->
                         Component.literal(finalOk ? "§a已重新加载全部 DFS 配置" : "§c部分配置重载失败，详见日志"), true);
@@ -304,12 +219,8 @@ public class DFCommand {
             );
     }
 
-    /** DFS 全部配置项（HUD + 服务器配置） */
     private static java.util.List<com.rzy.dealt_force_skills.config.ConfigEntryData> dfsAllEntries() {
-        java.util.List<com.rzy.dealt_force_skills.config.ConfigEntryData> all = new java.util.ArrayList<>();
-        all.addAll(com.rzy.dealt_force_skills.client.ClientHudLayout.snapshotEntries());
-        all.addAll(com.rzy.dealt_force_skills.config.ConfigAccess.snapshotAllServerFiles());
-        return all;
+        return com.rzy.dealt_force_skills.config.ConfigAccess.snapshotAllServerFiles();
     }
 
     private static String dfsList(String fileFilter) {
@@ -359,12 +270,8 @@ public class DFCommand {
             }
             StringBuilder sb = new StringBuilder();
             sb.append("§e=== ").append(path).append(" ===\n");
-            try {
-                sb.append(com.rzy.dealt_force_skills.client.config.ConfigLabelHelper.entryTooltip(entry).getString());
-            } catch (Throwable ignored) {
-                sb.append("§7文件: ").append(entry.file().fileName()).append("\n");
-                sb.append("§7类型: ").append(entry.kind()).append("  当前值: ").append(entry.valueText());
-            }
+            sb.append("§7文件: ").append(entry.file().fileName()).append("\n");
+            sb.append("§7类型: ").append(entry.kind()).append("  当前值: ").append(entry.valueText());
             return sb.toString();
         }
         return "§c未找到配置项: " + path;
@@ -380,14 +287,6 @@ public class DFCommand {
                 parsed = com.rzy.dealt_force_skills.config.ConfigEntryData.parse(entry.kind(), value);
             } catch (RuntimeException error) {
                 return -2;
-            }
-            if (entry.file() == com.rzy.dealt_force_skills.config.ConfigFileId.HUD) {
-                if (com.rzy.dealt_force_skills.client.ClientHudLayout.setValue(path, parsed)) {
-                    com.rzy.dealt_force_skills.client.ClientHudLayout.flush();
-                    com.rzy.dealt_force_skills.client.ClientHudLayout.forceReload();
-                    return 0;
-                }
-                return -1;
             }
             if (com.rzy.dealt_force_skills.config.ConfigAccess.applyChange(entry.file(), path, entry.kind(), value)) {
                 com.rzy.dealt_force_skills.config.ConfigAccess.flush(entry.file());
@@ -414,6 +313,7 @@ public class DFCommand {
     private static SuggestionProvider<CommandSourceStack> dfsFileSuggester() {
         return (ctx, builder) -> {
             for (com.rzy.dealt_force_skills.config.ConfigFileId file : com.rzy.dealt_force_skills.config.ConfigFileId.values()) {
+                if (file.clientLocal()) continue;
                 builder.suggest(file.name().toLowerCase(java.util.Locale.ROOT));
                 builder.suggest(file.fileName());
             }

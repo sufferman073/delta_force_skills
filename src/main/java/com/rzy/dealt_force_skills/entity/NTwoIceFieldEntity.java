@@ -9,6 +9,9 @@ import com.rzy.dealt_force_skills.skill.SkillDamageHelper;
 import java.util.UUID;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.network.syncher.SynchedEntityData.Builder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,6 +28,8 @@ import net.minecraft.world.phys.Vec3;
 public class NTwoIceFieldEntity extends Entity implements ItemSupplier, com.rzy.dealt_force_skills.ai.operative.OperativeSkillSource {
    public static final String ACHIEVEMENT_SOURCE_CONDENSED = "condensed";
    public static final String ACHIEVEMENT_SOURCE_DEWAR = "dewar";
+   private static final EntityDataAccessor<Boolean> DEPLOYED_CANISTER =
+      SynchedEntityData.defineId(NTwoIceFieldEntity.class, EntityDataSerializers.BOOLEAN);
    private UUID ownerId;
     private final com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance allegiance = new com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance();
     @Override public UUID operativeOwnerUUID() { return allegiance.owner(); }
@@ -69,10 +74,16 @@ public class NTwoIceFieldEntity extends Entity implements ItemSupplier, com.rzy.
    }
 
    protected void defineSynchedData(Builder builder) {
+      builder.define(DEPLOYED_CANISTER, false);
+   }
+
+   public boolean hasDeployedCanister() {
+      return entityData.get(DEPLOYED_CANISTER);
    }
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "ntwo.skill.dewar_canister", (radius), radius + 3, player -> com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(owner((ServerLevel)level()), player));
         if (allegiance.active() && level() instanceof ServerLevel server) { tickNative(server); return; }
       if (!this.level().isClientSide) {
          if (this.level() instanceof ServerLevel level) {
@@ -111,6 +122,8 @@ public class NTwoIceFieldEntity extends Entity implements ItemSupplier, com.rzy.
       this.damage = tag.contains("Damage") ? tag.getFloat("Damage") : this.damage;
       this.ignoreLineOfSight = tag.getBoolean("IgnoreLineOfSight");
       this.achievementSource = tag.getString("AchievementSource");
+      entityData.set(DEPLOYED_CANISTER, ACHIEVEMENT_SOURCE_DEWAR.equals(achievementSource)
+              || (allegiance.active() && achievementSource.isEmpty() && intervalTicks == 10));
       this.achievementSourceId = tag.getString("AchievementSourceId");
         if (allegiance.active()) {
             lifeTicks = Math.max(1, Math.min(320, lifeTicks)); intervalTicks = Math.max(1, Math.min(320, intervalTicks));
@@ -139,6 +152,7 @@ public class NTwoIceFieldEntity extends Entity implements ItemSupplier, com.rzy.
 
    public void configureAchievementSource(String source, String sourceId) {
       this.achievementSource = source == null ? "" : source;
+      entityData.set(DEPLOYED_CANISTER, ACHIEVEMENT_SOURCE_DEWAR.equals(achievementSource));
       this.achievementSourceId = sourceId == null ? "" : sourceId;
    }
 
@@ -190,6 +204,7 @@ public class NTwoIceFieldEntity extends Entity implements ItemSupplier, com.rzy.
 
     public void configureNative(com.rzy.dealt_force_skills.ai.operative.OperativeAllegiance source, boolean condensed) {
         allegiance.copyFrom(source); ownerId = source.caster();
+        entityData.set(DEPLOYED_CANISTER, !condensed);
         radius = condensed ? 3 : 6; lifeTicks = condensed ? 40 : 320;
         intervalTicks = condensed ? 4 : 10; coldAmount = condensed ? 5 : 10; damage = condensed ? 0 : 2;
         ignoreLineOfSight = false;

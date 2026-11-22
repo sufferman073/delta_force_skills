@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/green",
   "display": {
     "icon": {
-      "item": "minecraft:black_dye"
+      "id": "minecraft:black_dye"
     },
     "title": {
       "text": "暗度陈仓"

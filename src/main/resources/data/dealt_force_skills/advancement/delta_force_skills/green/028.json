@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/green",
   "display": {
     "icon": {
-      "item": "minecraft:echo_shard"
+      "id": "minecraft:echo_shard"
     },
     "title": {
       "text": "熄灯号"

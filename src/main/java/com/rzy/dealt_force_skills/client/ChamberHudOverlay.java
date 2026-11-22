@@ -74,23 +74,7 @@ public final class ChamberHudOverlay {
             int cooldownTicks,
             String detail
     ) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA101216);
-            graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-            graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-            graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-            graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-            graphics.fill(x + 5, y + 5, x + SLOT - 5, y + 27, 0xDD171A20);
-            HudTextHelper.drawCenteredFitted(graphics, font, icon.getString(), x + SLOT / 2, y + 11, SLOT - 10, 0xFFFFFFFF);
-            if (cooldownTicks > 0) {
-                graphics.fill(x + 5, y + 5, x + SLOT - 5, y + 27, 0xCC000000);
-                HudTextHelper.drawCenteredFitted(graphics, font, cooldownText(cooldownTicks), x + SLOT / 2, y + 14, SLOT - 10, 0xFFFFE6A6);
-            } else {
-                HudTextHelper.drawCenteredFitted(graphics, font, detail, x + SLOT / 2, y + 22, SLOT - 10, 0xFFE0E4EA);
-            }
-            String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            HudTextHelper.drawCenteredFitted(graphics, font, keyName, x + SLOT / 2, y + 31, SLOT - 8, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, cooldownTicks, detail);
     }
 
     private static String cooldownText(int ticks) {

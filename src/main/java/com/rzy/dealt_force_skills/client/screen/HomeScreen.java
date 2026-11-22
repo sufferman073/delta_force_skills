@@ -18,7 +18,10 @@ public final class HomeScreen extends Screen {
     private final Screen parent;
     private HomeManager.Snapshot snapshot = new HomeManager.Snapshot(List.of(), List.of(), false, "", false, true, true, false, false);
     private int offset, refresh;
-    private boolean visitors;
+    private boolean visitors, fromMaps;
+    public static HomeScreen fromMapSelection() {
+        HomeScreen screen = new HomeScreen(null); screen.fromMaps = true; return screen;
+    }
     private String status = "loading";
     public HomeScreen(Screen parent) { super(tr("title")); this.parent = parent; }
     private static Component tr(String key, Object... args) { return Component.translatable("home.dealt_force_skills." + key, args); }
@@ -27,7 +30,11 @@ public final class HomeScreen extends Screen {
     private int visibleRows() { return Math.max(1, (height - 126) / 68); }
     private int count() { return visitors ? snapshot.people().size() : snapshot.regions().size(); }
     private int maxOffset() { return Math.max(0, count() - visibleRows()); }
-    @Override protected void init() { widgets(); send(HomeManager.OPEN, NONE, 0); }
+    private DepartmentCanvas canvas;
+    @Override protected void init() {
+        canvas = DepartmentCanvas.fit(minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight());
+        width = canvas.width(); height = canvas.height(); widgets(); send(HomeManager.OPEN, NONE, 0);
+    }
     @Override public boolean isPauseScreen() { return false; }
     @Override public void tick() { if (++refresh >= 40) { refresh = 0; send(HomeManager.OPEN, NONE, 0); } }
     private void send(int action, UUID target, int amount) {
@@ -83,7 +90,9 @@ public final class HomeScreen extends Screen {
         }
     }
     @Override public void render(GuiGraphics g, int mx, int my, float partial) {
-        g.fill(0, 0, width, height, DepartmentUiStyle.BG);
+        g.fill(0, 0, minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight(), DepartmentUiStyle.BG);
+        g.pose().pushPose(); g.pose().translate(canvas.originX(), canvas.originY(), 0); g.pose().scale(canvas.scale(), canvas.scale(), 1);
+        mx = (int)Math.floor(canvas.localX(mx)); my = (int)Math.floor(canvas.localY(my));
         g.drawCenteredString(font, title, width / 2, 10, DepartmentUiStyle.TEXT);
         int l = left(), r = right(), end = Math.min(count(), offset + visibleRows());
         for (int i = offset; i < end; i++) {
@@ -104,11 +113,18 @@ public final class HomeScreen extends Screen {
         if (!snapshot.enabled()) status = "disabled";
         else if (status.equals("disabled")) status = "";
         if (!status.isEmpty()) g.drawString(font, font.plainSubstrByWidth(tr(status).getString(), r - l), l, height - 46, status.equals("denied") ? 0xFFFF8B82 : DepartmentUiStyle.MUTED, false);
-        super.render(g, mx, my, partial);
+        super.render(g, mx, my, partial); g.pose().popPose();
     }
     @Override public boolean mouseScrolled(double x, double y, double horizontal, double delta) {
+        y = canvas.localY(y);
         if (y < 58 || y >= height - 48) return false;
         offset = Math.max(0, Math.min(maxOffset(), offset - (int) Math.signum(delta))); widgets(); return true;
     }
-    @Override public void onClose() { Minecraft.getInstance().setScreen(parent); }
+    @Override public boolean mouseClicked(double x,double y,int button) { return super.mouseClicked(canvas.localX(x),canvas.localY(y),button); }
+    @Override public boolean mouseReleased(double x,double y,int button) { return super.mouseReleased(canvas.localX(x),canvas.localY(y),button); }
+    @Override public void onClose() {
+        var client = Minecraft.getInstance();
+        if (fromMaps && client.getConnection() != null) client.getConnection().sendCommand("raid");
+        else client.setScreen(parent);
+    }
 }

@@ -57,6 +57,7 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "uluru.skill.incendiary", (earthFire ? FIRE_RADIUS * 3.0D : FIRE_RADIUS));
         if (!level().isClientSide && nativeAllegiance.active() && tickCount > 80) { discard(); return; }
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);
@@ -151,8 +152,8 @@ public class UluruIncendiaryGrenadeEntity extends Projectile implements ItemSupp
                 earthFire ? 90 : 36, radius * 0.55, 0.35, radius * 0.55, 0.05);
 
         UluruExplosionHelper.damageRadius(serverLevel, center, this, owner, radius,
-                com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.uluruincendiarygrenadeentity.player_damage", 12.0F),
-                com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.uluruincendiarygrenadeentity.non_player_damage", 12.0F), false, true, 20, false);
+                com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.uluruincendiarygrenadeentity.player_damage", 8.0F),
+                com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.uluruincendiarygrenadeentity.non_player_damage", 8.0F), false, true, 20, false);
         UluruExplosionHelper.destroyQuickCovers(serverLevel, center, radius);
 
         UluruFireFieldEntity field = new UluruFireFieldEntity(ModEntities.ULURU_FIRE_FIELD.get(), serverLevel, owner);

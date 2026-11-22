@@ -201,17 +201,22 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
             scanned.add(target.getUUID());
             pendingMoveScans.put(target.getUUID(), new PendingScan(target.position(), MOVE_SCAN_DELAY_TICKS));
             com.rzy.dealt_force_skills.ai.operative.OperativeRecon.reveal(host, target, LunaStateManager.RECON_REVEAL_TICKS);
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "recon");
         }
         var iterator = pendingMoveScans.entrySet().iterator();
         while (iterator.hasNext()) {
             var entry = iterator.next();
             PendingScan pending = entry.getValue();
-            if (--pending.remainingTicks > 0) continue;
+            if (--pending.remainingTicks == Math.max(1, MOVE_SCAN_DELAY_TICKS - Math.min(20, MOVE_SCAN_DELAY_TICKS / 2)))
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.countdown(serverLevel.getEntity(entry.getKey()), this, "recon_scan", pending.remainingTicks, pending.remainingTicks);
+            if (pending.remainingTicks > 0) continue;
             Entity entity = serverLevel.getEntity(entry.getKey());
             if (entity instanceof LivingEntity target && host.isEnemy(target)
                     && target.position().distanceToSqr(pending.position) >= MOVE_THRESHOLD_SQR
-                    && hasLineOfSight(position(), target))
+                    && hasLineOfSight(position(), target)) {
                 com.rzy.dealt_force_skills.ai.operative.OperativeRecon.reveal(host, target, LunaStateManager.RECON_REVEAL_TICKS);
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "recon");
+            }
             iterator.remove();
         }
     }
@@ -249,7 +254,7 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
             owner.displayClientMessage(Component.translatable("message.dealt_force_skills.luna.recon_player_scanned"), true);
         }
         if (!pendingMoveScans.isEmpty() && tickCount % 20 == 0) {
-            owner.displayClientMessage(Component.translatable("message.dealt_force_skills.luna.recon_moving_scan"), true);
+            // Moving-scan notice is sent to each pending target at its scan phase.
         }
     }
 
@@ -263,6 +268,10 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
             Map.Entry<UUID, PendingScan> entry = iterator.next();
             PendingScan pending = entry.getValue();
             pending.remainingTicks--;
+            if (pending.remainingTicks == Math.max(1, MOVE_SCAN_DELAY_TICKS - Math.min(20, MOVE_SCAN_DELAY_TICKS / 2))
+                    && serverLevel.getEntity(entry.getKey()) instanceof LivingEntity pendingTarget
+                    && com.rzy.dealt_force_skills.util.TargetingUtil.isHostileLivingFor(owner, pendingTarget))
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.countdown(serverLevel.getEntity(entry.getKey()), this, "recon_scan", pending.remainingTicks, pending.remainingTicks);
             if (pending.remainingTicks > 0) {
                 continue;
             }
@@ -286,7 +295,7 @@ public class LunaReconArrowEntity extends Projectile implements ItemSupplier, Bl
 
     private void spawnClientTrail() {
         if (level().isClientSide && tickCount % 2 == 0) {
-            level().addParticle(ParticleTypes.END_ROD, getX(), getY(), getZ(), 0.0D, 0.0D, 0.0D);
+            level().addParticle(net.minecraft.core.particles.DustParticleOptions.REDSTONE, getX(), getY(), getZ(), 0.0D, 0.0D, 0.0D);
         }
     }
 

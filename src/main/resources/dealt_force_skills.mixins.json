@@ -6,6 +6,11 @@
   "minVersion": "0.8",
   "mixins": [
     "HomeServerAccess",
+    "RaidConnectionMixin",
+    "RaidPlayerTeleportMixin",
+    "RaidEntityTeleportMixin",
+    "RaidBlockProtectionMixin",
+    "RaidWeatherMixin",
     "pointblank.PlayerDataSyncPacketMixin",
     "ChamberWeaponDropMixin",
     "ChamberWeaponContainerMixin",
@@ -39,7 +44,6 @@
     "DepartmentUndeadDamageMixin",
     "DepartmentItemUseMixin",
     "DepartmentUseStopMixin",
-    "DepartmentTradeMixin",
     "DepartmentContainerLootMixin",
     "DepartmentItemMergeMixin",
     "DepartmentBrewingMixin",
@@ -59,6 +63,9 @@
     "WorkbenchProjectileWeaponMixin"
   ],
   "client": [
+    "client.ConsumableArmPoseMixin",
+    "client.ConsumablePlayerRenderMixin",
+    "client.ConsumableInHandMixin",
     "client.HelmetVisionGameRendererMixin",
     "client.HelmetThermalParticleMixin",
     "client.LivingEntityHelmetThermalMixin",
@@ -67,6 +74,7 @@
     "client.HearingSoundEngineMixin",
     "client.AbstractClientPlayerSkinMixin",
     "client.HookAuthorChargeSoundPitchMixin",
+    "client.LunaRevealColorMixin",
     "client.MinecraftSpectatorOutlineMixin",
     "client.PlayerRendererSkinMixin",
     "client.ScreenBackgroundBlurMixin",

@@ -79,6 +79,7 @@ public class ToxikFireflyEntity extends Projectile implements ItemSupplier, Bloc
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && mode != ToxikFireflyMode.AMPLIFY) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "toxik.skill.firefly_swarm", HIT_RADIUS, HIT_RADIUS + 3, player -> canAffectTarget(player) && !player.getUUID().equals(ownerId));
         if (!level().isClientSide && allegiance.active() && tickCount > LIFE_TICKS) { discard(); return; }
         Vec3 motion = getDeltaMovement();
         if (motion.lengthSqr() < 0.0001D) {

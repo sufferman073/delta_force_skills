@@ -1,1 +1,24 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/highball"}}
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "textures": {
+    "particle": "dealt_force_skills:item/highball"
+  },
+  "base": {
+    "parent": "dealt_force_skills:item/refresh_drinks/highball"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/highball"
+      }
+    },
+    "ground": {
+      "parent": "dealt_force_skills:item/refresh_drinks/highball",
+      "visibility": {
+        "service": true
+      }
+    }
+  }
+}

@@ -34,7 +34,7 @@ public final class SpecialOperationsBaseInputHandler {
                 heldTicks++;
                 if (!longTriggered && heldTicks >= LONG_HOLD_TICKS) {
                     longTriggered = true;
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
         } else if (wasDown) {

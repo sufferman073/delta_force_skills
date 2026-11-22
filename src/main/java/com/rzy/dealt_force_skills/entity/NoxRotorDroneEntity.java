@@ -76,6 +76,7 @@ public class NoxRotorDroneEntity extends Projectile implements ItemSupplier, com
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "nox.skill.rotor", (EXPLOSION_RADIUS));
       if (allegiance.active() && level() instanceof ServerLevel level
               && (++nativeAge > MAX_LIFE_TICKS || !allegiance.withinOrders(level, position()))) {
           stopFlyLoop(level); discard(); return;

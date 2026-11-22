@@ -78,6 +78,7 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier, 
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "vyron.skill.tiger_cannon", blastRadius());
       if (!this.level().isClientSide) {
          this.warnPlayers();
          this.playReadySoundIfDue();
@@ -190,7 +191,7 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier, 
             box,
             target -> com.rzy.dealt_force_skills.util.TargetingUtil.isTargetablePlayer(target) && target.distanceToSqr(var6) <= RADIUS * RADIUS
          )) {
-            player.displayClientMessage(Component.translatable("message.dealt_force_skills.vyron.tiger_warning"), true);
+            // Direction and range are shown by SkillFeedback.threat().
          }
       }
    }
@@ -230,6 +231,7 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier, 
 
                hitAny = true;
                if (questHit && target != owner) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"vyron.tiger.hit");
+            if (questHit) com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "tiger");
             knockedDownTargets++;
             }
          }

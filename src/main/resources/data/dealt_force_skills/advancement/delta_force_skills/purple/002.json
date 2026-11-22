@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:gunpowder"
+      "id": "minecraft:gunpowder"
     },
     "title": {
       "text": "三炮定乾坤"

@@ -181,6 +181,7 @@ public final class GamblerArenaManager {
         }
         applyModes(session, gambler.server);
         broadcastStart(session, gambler.server);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.ARENA_DEAL.play(gambler);
         playArenaBgm(session, gambler.server, now);
         return true;
     }

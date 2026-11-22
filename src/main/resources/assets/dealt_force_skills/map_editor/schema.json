@@ -1,0 +1,1194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dealt-force-skills.invalid/map-marker-editor-v1.schema.json",
+  "title": "DFS Stage A map marker export",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "mapId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+      "maxLength": 64
+    },
+    "sourceDimension": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+      "maxLength": 256
+    },
+    "sourceOrigin": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": -30000000,
+        "maximum": 30000000
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "markers": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "loot.common"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/loot.common"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "loot.rare"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/loot.rare"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "loot.high"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/loot.high"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "spawn.team"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/spawn.team"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "switch.evac"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/switch.evac"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "extract.timed"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/extract.timed"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "extract.conditional"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/extract.conditional"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "interact.paid_door"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/interact.paid_door"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "spawn.continuous"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/spawn.continuous"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "spawn.special_once"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/spawn.special_once"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "const": "spawn.boss_random"
+              },
+              "worldPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -30000000,
+                  "maximum": 30000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "localPos": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -60000000,
+                  "maximum": 60000000
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "config": {
+                "$ref": "#/$defs/spawn.boss_random"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "worldPos",
+              "localPos",
+              "rotation",
+              "config"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "mapId",
+    "sourceDimension",
+    "sourceOrigin",
+    "markers"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "loot.common": {
+      "type": "object",
+      "properties": {
+        "containerBlock": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "lootTable": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "spawnChance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "refresh": {
+          "type": "string",
+          "enum": [
+            "each_instance"
+          ]
+        }
+      },
+      "required": [
+        "containerBlock",
+        "lootTable",
+        "spawnChance",
+        "refresh"
+      ],
+      "additionalProperties": false
+    },
+    "loot.rare": {
+      "type": "object",
+      "properties": {
+        "containerBlock": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "lootTable": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "spawnChance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "refresh": {
+          "type": "string",
+          "enum": [
+            "each_instance"
+          ]
+        }
+      },
+      "required": [
+        "containerBlock",
+        "lootTable",
+        "spawnChance",
+        "refresh"
+      ],
+      "additionalProperties": false
+    },
+    "loot.high": {
+      "type": "object",
+      "properties": {
+        "containerBlock": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "lootTable": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "spawnChance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "refresh": {
+          "type": "string",
+          "enum": [
+            "each_instance"
+          ]
+        }
+      },
+      "required": [
+        "containerBlock",
+        "lootTable",
+        "spawnChance",
+        "refresh"
+      ],
+      "additionalProperties": false
+    },
+    "spawn.team": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "separationRadius": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "safeSpawnCheck": {
+          "type": "boolean"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "player",
+            "ai"
+          ]
+        },
+        "teamKey": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+          "maxLength": 64
+        },
+        "facingDegrees": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      },
+      "required": [
+        "size",
+        "separationRadius",
+        "safeSpawnCheck",
+        "side",
+        "teamKey",
+        "facingDegrees"
+      ],
+      "additionalProperties": false
+    },
+    "switch.evac": {
+      "type": "object",
+      "properties": {
+        "interactMode": {
+          "type": "string",
+          "enum": [
+            "right_click_block"
+          ]
+        },
+        "singleUsePerInstance": {
+          "type": "boolean"
+        },
+        "targetBlockOffset": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -1024,
+            "maximum": 1024
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "extractionIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+            "maxLength": 64
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "startCountdownOnInteract": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "interactMode",
+        "singleUsePerInstance",
+        "targetBlockOffset",
+        "extractionIds",
+        "startCountdownOnInteract"
+      ],
+      "additionalProperties": false
+    },
+    "extract.timed": {
+      "type": "object",
+      "properties": {
+        "zone": {
+          "type": "object",
+          "properties": {
+            "shape": {
+              "type": "string",
+              "enum": [
+                "cylinder",
+                "box"
+              ]
+            },
+            "radius": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 512
+            },
+            "halfHeight": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 512
+            }
+          },
+          "required": [
+            "shape",
+            "radius",
+            "halfHeight"
+          ],
+          "additionalProperties": false
+        },
+        "durationTicks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "extractAt": {
+          "type": "string",
+          "enum": [
+            "countdown_end"
+          ]
+        },
+        "switchId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+          "maxLength": 64
+        },
+        "switchIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$",
+            "maxLength": 64
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "requiredSwitchCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "default": 1,
+          "description": "Distinct linked switches required before starting this extraction countdown."
+        }
+      },
+      "required": [
+        "zone",
+        "durationTicks",
+        "extractAt"
+      ],
+      "additionalProperties": false,
+      "not": {
+        "required": [
+          "switchId",
+          "switchIds"
+        ]
+      }
+    },
+    "extract.conditional": {
+      "type": "object",
+      "properties": {
+        "zone": {
+          "type": "object",
+          "properties": {
+            "shape": {
+              "type": "string",
+              "enum": [
+                "cylinder",
+                "box"
+              ]
+            },
+            "radius": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 512
+            },
+            "halfHeight": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 512
+            }
+          },
+          "required": [
+            "shape",
+            "radius",
+            "halfHeight"
+          ],
+          "additionalProperties": false
+        },
+        "interaction": {
+          "type": "string",
+          "enum": [
+            "player_confirm"
+          ]
+        },
+        "conditionMode": {
+          "type": "string",
+          "enum": [
+            "all",
+            "any"
+          ]
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "maxLoadRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "payment": {
+              "type": "object",
+              "properties": {
+                "currencyKey": {
+                  "type": "string",
+                  "enum": [
+                    "havoc_coin",
+                    "delta_coin"
+                  ]
+                },
+                "amount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "currencyKey",
+                "amount"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "zone",
+        "interaction",
+        "conditionMode",
+        "conditions"
+      ],
+      "additionalProperties": false
+    },
+    "interact.paid_door": {
+      "type": "object",
+      "properties": {
+        "interactMode": {
+          "type": "string",
+          "enum": [
+            "right_click_block"
+          ]
+        },
+        "unlockMode": {
+          "type": "string",
+          "enum": [
+            "per_instance"
+          ]
+        },
+        "targetBlockOffset": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -1024,
+            "maximum": 1024
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "price": {
+          "type": "object",
+          "properties": {
+            "currencyKey": {
+              "type": "string",
+              "enum": [
+                "havoc_coin",
+                "delta_coin"
+              ]
+            },
+            "amount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "currencyKey",
+            "amount"
+          ],
+          "additionalProperties": false
+        },
+        "targetBlockOffsets": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -1024,
+              "maximum": 1024
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "interactMode",
+        "unlockMode",
+        "targetBlockOffset",
+        "price"
+      ],
+      "additionalProperties": false
+    },
+    "spawn.continuous": {
+      "type": "object",
+      "properties": {
+        "entity": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "countPerWave": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "maxAlive": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "intervalTicks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "activationRadius": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 512
+        }
+      },
+      "required": [
+        "entity",
+        "countPerWave",
+        "maxAlive",
+        "intervalTicks",
+        "activationRadius"
+      ],
+      "additionalProperties": false
+    },
+    "spawn.special_once": {
+      "type": "object",
+      "properties": {
+        "entity": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "activationRadius": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 512
+        },
+        "oneShot": {
+          "type": "string",
+          "enum": [
+            "per_instance"
+          ]
+        }
+      },
+      "required": [
+        "entity",
+        "count",
+        "activationRadius",
+        "oneShot"
+      ],
+      "additionalProperties": false
+    },
+    "spawn.boss_random": {
+      "type": "object",
+      "properties": {
+        "entity": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "maxLength": 256
+        },
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "roll": {
+          "type": "string",
+          "enum": [
+            "once_at_instance_creation"
+          ]
+        },
+        "activationRadius": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 512
+        }
+      },
+      "required": [
+        "entity",
+        "chance",
+        "roll",
+        "activationRadius"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

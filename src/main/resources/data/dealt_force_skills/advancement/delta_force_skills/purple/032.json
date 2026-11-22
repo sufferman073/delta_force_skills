@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:soul_lantern"
+      "id": "minecraft:soul_lantern"
     },
     "title": {
       "text": "六道轮回"

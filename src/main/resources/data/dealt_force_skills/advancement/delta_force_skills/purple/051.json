@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:packed_ice"
+      "id": "minecraft:packed_ice"
     },
     "title": {
       "text": "冰冻三尺"

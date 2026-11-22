@@ -78,7 +78,7 @@ public final class NativeShepherdSkills implements OperativeSkills {
         if (busy() || !host.body().isAlive() || host.body().isRemoved() || !host.withinOrders(host.body().position())
                 || host.body().hasEffect(ModEffects.STUN) || host.body().hasEffect(ModEffects.WEBBED)
                 || target == null || !host.isEnemy(target) || !host.withinCombatRange(target.position())
-                || slot == SkillSlot.ACTIVE_1 && !host.canSee(target) || host.body().distanceToSqr(target) > (slot == SkillSlot.ACTIVE_2 ? 40 * 40 : 24 * 24)
+                || !OperativeHearing.knownContact(host, target) || host.body().distanceToSqr(target) > (slot == SkillSlot.ACTIVE_2 ? 40 * 40 : 24 * 24)
                 || OperativeElectronics.blocked(host, ModCharacters.SHEPHERD_ID, slot)) return 0;
         return switch (slot) {
             case ACTIVE_1 -> traps > 0 && trapDelay == 0

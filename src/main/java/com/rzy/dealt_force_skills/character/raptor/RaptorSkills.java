@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.raptor;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.entity.RaptorFalconDroneEntity;
 import com.rzy.dealt_force_skills.entity.RaptorPulseGrenadeEntity;
@@ -91,7 +94,7 @@ public final class RaptorSkills {
         Vec3 look = player.getLookAngle().normalize();
         Vec3 start = player.getEyePosition().add(look.scale(0.9D));
         drone.setPos(start.x, start.y, start.z);
-        if (level.addFreshEntity(drone)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"raptor.falcon");
+        if (ToolHandRelease.spawned(level.addFreshEntity(drone), player, ToolHandCue.RAPTOR_FALCON_DRONE)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"raptor.falcon");
         drone.startControlledCameraIfNeeded();
         level.playSound(null, player.blockPosition(), ModSounds.RAPTOR_FALCON_LAUNCH.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f);
@@ -158,7 +161,7 @@ public final class RaptorSkills {
         grenade.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        if (level.addFreshEntity(grenade)) {
+        if (ToolHandRelease.spawned(level.addFreshEntity(grenade), player, ToolHandCue.RAPTOR_PULSE_GRENADE)) {
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
             com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         }

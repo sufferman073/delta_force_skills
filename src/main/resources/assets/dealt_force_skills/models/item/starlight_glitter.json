@@ -1,1 +1,24 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/starlight_glitter"}}
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "textures": {
+    "particle": "dealt_force_skills:item/starlight_glitter"
+  },
+  "base": {
+    "parent": "dealt_force_skills:item/refresh_drinks/starlight_glitter"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/starlight_glitter"
+      }
+    },
+    "ground": {
+      "parent": "dealt_force_skills:item/refresh_drinks/starlight_glitter",
+      "visibility": {
+        "service": true
+      }
+    }
+  }
+}

@@ -76,10 +76,10 @@ public final class NativeMorseSkills implements OperativeSkills {
     @Override public double score(OperativeHost host, SkillSlot slot, LivingEntity target) {
         if (!available(host) || busy() || !valid(host, target) || blocked(host, slot)) return 0;
         return switch (slot) {
-            case CORE -> sonar == null && sonarCooldown == 0 && (host.canSee(target) || isRevealed(target)) && deployment(host, target) != null ? 100 : 0;
+            case CORE -> sonar == null && sonarCooldown == 0 && OperativeHearing.knownContact(host, target) && deployment(host, target) != null ? 100 : 0;
             case ACTIVE_1 -> shocks > 0 && host.canSee(target) && !target.hasEffect(com.rzy.dealt_force_skills.registry.ModEffects.MORSE_STRONG_SHOCK)
                     && shockPlan(host, target) != null ? 90 : 0;
-            case ACTIVE_2 -> flashes > 0 && host.body().getHealth() > 1 && host.canSee(target) && !target.hasEffect(com.rzy.dealt_force_skills.registry.ModEffects.MORSE_FLASH_BLIND)
+            case ACTIVE_2 -> flashes > 0 && host.body().getHealth() > 1 && OperativeHearing.knownContact(host, target) && !target.hasEffect(com.rzy.dealt_force_skills.registry.ModEffects.MORSE_FLASH_BLIND)
                     && flashPlan(host, target) != null ? 110 : 0;
             case PASSIVE -> 0;
         };

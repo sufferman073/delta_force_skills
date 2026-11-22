@@ -2,13 +2,13 @@
   "parent": "dealt_force_skills:delta_force_skills/green",
   "display": {
     "icon": {
-      "item": "minecraft:cobweb"
+      "id": "minecraft:cobweb"
     },
     "title": {
       "text": "守株待兔"
     },
     "description": {
-      "text": "使用比特时，通过部署好的陷阱击杀一名玩家"
+      "text": "使用比特时，通过部署好的陷阱击杀一个实体"
     },
     "frame": "task",
     "show_toast": true,

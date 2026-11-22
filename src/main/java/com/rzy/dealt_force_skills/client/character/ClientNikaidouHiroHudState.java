@@ -15,6 +15,9 @@ public final class ClientNikaidouHiroHudState {
     private static int coreActiveTicks;
     private static int doomedTicks;
     private static int attackCooldownTicks;
+    private static int witchActive2CooldownTicks;
+    private static int witchCorePhase;
+    private static int witchCoreLockTicks;
     private static boolean anchorMarkerActive;
     private static String anchorMarkerDimension = "";
     private static double anchorMarkerX;
@@ -36,6 +39,7 @@ public final class ClientNikaidouHiroHudState {
         coreActiveTicks = 0;
         doomedTicks = 0;
         attackCooldownTicks = 0;
+        witchActive2CooldownTicks = witchCorePhase = witchCoreLockTicks = 0;
         anchorMarkerActive = false;
         anchorMarkerDimension = "";
         anchorMarkerX = 0.0D;
@@ -76,7 +80,23 @@ public final class ClientNikaidouHiroHudState {
         ClientNikaidouHiroHudState.anchorMarkerZ = anchorMarkerZ;
     }
 
+    public static void syncWitchDetails(int cooldown, int phase, int lockTicks) {
+        witchActive2CooldownTicks = Math.max(0, cooldown);
+        witchCorePhase = phase;
+        witchCoreLockTicks = Math.max(0, lockTicks);
+    }
+
+    public static int witchActive2CooldownTicks() { return witchActive2CooldownTicks; }
+    public static int witchCorePhase() { return witchCorePhase; }
+    public static int witchCoreDisplayTicks() {
+        if (witchCorePhase == 4) return doomedTicks;
+        if (witchCorePhase == 2) return witchCoreLockTicks;
+        return coreActiveTicks;
+    }
+
     public static void tick() {
+        if (witchActive2CooldownTicks > 0) witchActive2CooldownTicks--;
+        if (witchCoreLockTicks > 0) witchCoreLockTicks--;
         if (!isWitchificationDisplayed() && riftTicks > 0) riftTicks--;
         if (active1CooldownTicks > 0) active1CooldownTicks--;
         if (active1Ticks > 0) active1Ticks--;

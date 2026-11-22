@@ -45,6 +45,7 @@ public final class DWolfInputHandler {
     private static int overloadRewardHoldTicks;
     private static int pendingSmokeThrowTicks;
     private static boolean pendingSmokeHighThrow;
+    private static boolean smokeCanceledUntilRelease;
     private static int pendingHandCannonAnimations;
     private static int nextHandCannonAnimationTicks;
 
@@ -71,13 +72,14 @@ public final class DWolfInputHandler {
             overloadRewardHoldTicks = 0;
             pendingSmokeThrowTicks = 0;
             pendingSmokeHighThrow = false;
+            smokeCanceledUntilRelease = false;
             pendingHandCannonAnimations = 0;
             nextHandCannonAnimationTicks = 0;
             return;
         }
 
         handlePendingHandCannonAnimations();
-        handlePendingSmokeThrow();
+        if (active2Owned) handlePendingSmokeThrow();
         handleSkillKeys(active1Owned, active2Owned);
         if (nativeCharacter || passiveOwned) {
             handleSlide(minecraft);
@@ -113,7 +115,7 @@ public final class DWolfInputHandler {
 
     public static boolean isSmokeHeldForVisual() {
         return (ClientDWolfHudState.shouldRender() || ClientCommanderState.inherits(ModCharacters.D_WOLF_ID))
-                && (active2WasDown || pendingSmokeThrowTicks > 0);
+                && !smokeCanceledUntilRelease && (active2WasDown || pendingSmokeThrowTicks > 0);
     }
 
     public static boolean isSmokeHighThrowPreview() {
@@ -133,6 +135,12 @@ public final class DWolfInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
+        if (Minecraft.getInstance().screen == null && isPrimaryOrSecondary(event.getButton())
+                && event.getAction() == GLFW.GLFW_PRESS && isSmokeHeldForVisual()) {
+            event.setCanceled(true);
+            cancelSmokeThrow();
+            return;
+        }
         if (!ClientDWolfHudState.hasHandCannonEquipped() || !isPrimaryOrSecondary(event.getButton())) {
             return;
         }
@@ -158,6 +166,12 @@ public final class DWolfInputHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
         if (Minecraft.getInstance().screen != null) {
+            return;
+        }
+        if ((event.isAttack() || event.isUseItem()) && isSmokeHeldForVisual()) {
+            event.setSwingHand(false);
+            event.setCanceled(true);
+            cancelSmokeThrow();
             return;
         }
         if (!ClientDWolfHudState.hasHandCannonEquipped()) {
@@ -210,41 +224,60 @@ public final class DWolfInputHandler {
 
     private static void handleSkillKeys(boolean active1Owned, boolean active2Owned) {
         if (active1Owned) {
-            while (KeybindRegister.ACTIVE_SKILL_1 != null && KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+            while (KeybindRegister.activeKey(1) != null && KeybindRegister.activeKey(1).consumeClick()) {
                 ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_1);
             }
         }
 
-        if (!active2Owned || KeybindRegister.ACTIVE_SKILL_2 == null) {
+        if (!active2Owned || KeybindRegister.activeKey(2) == null) {
+            smokeCanceledUntilRelease = false;
+            pendingSmokeThrowTicks = 0;
+            pendingSmokeHighThrow = false;
             active2WasDown = false;
             active2HeldTicks = 0;
             return;
         }
         if (pendingSmokeThrowTicks > 0) {
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
+            while (KeybindRegister.activeKey(2).consumeClick()) {
             }
             active2WasDown = false;
             active2HeldTicks = 0;
             return;
         }
 
-        boolean active2Down = KeybindRegister.ACTIVE_SKILL_2.isDown();
+        boolean active2Down = KeybindRegister.activeKey(2).isDown();
+        boolean clicked = false;
+        while (KeybindRegister.activeKey(2).consumeClick()) clicked = true;
+        if (smokeCanceledUntilRelease) {
+            smokeCanceledUntilRelease = active2Down;
+            return;
+        }
         if (active2Down) {
             active2HeldTicks++;
             active2WasDown = true;
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
-                // D-Wolf needs release timing to distinguish quick and high smoke throws.
+            if (active2HeldTicks == SMOKE_HIGH_THROW_HOLD_TICKS) {
+                Minecraft.getInstance().player.displayClientMessage(Component.translatable(
+                        "message.dealt_force_skills.d_wolf.smoke_equipped"), true);
             }
             return;
         }
 
-        if (active2WasDown) {
+        if (active2WasDown || clicked) {
             pendingSmokeHighThrow = active2HeldTicks >= SMOKE_HIGH_THROW_HOLD_TICKS;
             pendingSmokeThrowTicks = SMOKE_TRIGGER_TICKS;
             DWolfPlaceholderVisuals.startSmokeQuickTrigger();
         }
         active2WasDown = false;
         active2HeldTicks = 0;
+    }
+
+    private static void cancelSmokeThrow() {
+        smokeCanceledUntilRelease = KeybindRegister.activeKey(2) != null && KeybindRegister.activeKey(2).isDown();
+        active2WasDown = false;
+        active2HeldTicks = 0;
+        pendingSmokeThrowTicks = 0;
+        pendingSmokeHighThrow = false;
+        DWolfPlaceholderVisuals.cancelSmokeQuickTrigger();
     }
 
     private static void handlePendingSmokeThrow() {

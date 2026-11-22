@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:compass"
+      "id": "minecraft:compass"
     },
     "title": {
       "text": "世界由我导正"

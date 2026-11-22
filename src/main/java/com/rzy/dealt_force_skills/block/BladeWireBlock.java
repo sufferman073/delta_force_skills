@@ -44,7 +44,7 @@ public class BladeWireBlock extends Block implements EntityBlock {
 
     @Override
     public RenderShape getRenderShape(BlockState state) {
-        return RenderShape.INVISIBLE;
+        return RenderShape.MODEL;
     }
 
     @Override
@@ -105,7 +105,7 @@ public class BladeWireBlock extends Block implements EntityBlock {
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        return type == ModBlockEntities.BLADE_WIRE.get()
+        return !level.isClientSide && type == ModBlockEntities.BLADE_WIRE.get()
                 ? (lvl, p, st, be) -> BladeWireBlockEntity.tick(lvl, p, st, (BladeWireBlockEntity) be)
                 : null;
     }

@@ -110,7 +110,7 @@ public final class LexNinjiaInputHandler {
                     NetworkHandler.sendToServer(C2S_LexNinjiaPresetAction.openMenu());
                 } else {
                     // 长按特勤处
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
         } else if (shopWasDown) {

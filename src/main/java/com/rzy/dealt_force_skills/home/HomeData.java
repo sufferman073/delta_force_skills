@@ -24,6 +24,7 @@ public final class HomeData extends SavedData {
         public String name;
         public int size = HomeSettings.number("initial_size");
         public boolean initialized;
+        public boolean returnFloorPending = true;
         public int depth = HomeSettings.number("island_depth");
         public boolean legacyTerrain, chestFixed, furnaceFixed;
         public final Map<UUID, Long> requests = new LinkedHashMap<>();
@@ -43,6 +44,7 @@ public final class HomeData extends SavedData {
             Home home = new Home(entry.getUUID("Owner"), entry.getString("Name"));
             home.size = entry.contains("Size") ? Math.max(32, Math.min(MAX_SIZE, entry.getInt("Size"))) : INITIAL_SIZE;
             home.initialized = entry.getBoolean("Initialized");
+            home.returnFloorPending = entry.contains("ReturnFloorPending") ? entry.getBoolean("ReturnFloorPending") : !home.initialized;
             home.depth = entry.contains("IslandDepth") ? Math.max(4, Math.min(32, entry.getInt("IslandDepth"))) : 16;
             home.legacyTerrain = entry.contains("LegacyTerrain") ? entry.getBoolean("LegacyTerrain") : home.initialized;
             home.chestFixed = entry.getBoolean("ChestFixed");
@@ -79,6 +81,7 @@ public final class HomeData extends SavedData {
             CompoundTag entry = new CompoundTag();
             entry.putUUID("Owner", home.owner); entry.putString("Name", home.name); entry.putInt("Size", home.size);
             entry.putBoolean("Initialized", home.initialized);
+            entry.putBoolean("ReturnFloorPending", home.returnFloorPending);
             entry.putInt("IslandDepth", home.depth); entry.putBoolean("LegacyTerrain", home.legacyTerrain); entry.putBoolean("ChestFixed", home.chestFixed); entry.putBoolean("FurnaceFixed", home.furnaceFixed);
             ListTag requests = new ListTag(), guests = new ListTag();
             home.requests.forEach((id, expires) -> { CompoundTag r = new CompoundTag(); r.putUUID("Player", id); r.putLong("Expires", expires); requests.add(r); });

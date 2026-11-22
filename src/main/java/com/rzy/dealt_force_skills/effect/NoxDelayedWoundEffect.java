@@ -77,6 +77,7 @@ public class NoxDelayedWoundEffect extends MobEffect {
         float healthCap = tag.contains(HEALTH_CAP) ? tag.getFloat(HEALTH_CAP) : currentHealth;
         healthCap = Math.max(0.0f, Math.min(entity.getMaxHealth(), healthCap));
         if (currentHealth > healthCap) {
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(entity, "wound");
             com.rzy.dealt_force_skills.department.DepartmentTasks.signal(com.rzy.dealt_force_skills.department.DepartmentHealing.owner(entity,"nox"),"nox.heal_prevented",currentHealth-healthCap);
             entity.setHealth(healthCap);
         } else if (currentHealth < healthCap) {

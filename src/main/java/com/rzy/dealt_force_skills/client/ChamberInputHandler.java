@@ -3,6 +3,8 @@ package com.rzy.dealt_force_skills.client;
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.chamber.ChamberToolAction;
 import com.rzy.dealt_force_skills.character.chamber.ChamberMarker;
+import com.rzy.dealt_force_skills.character.chamber.ChamberMarkerType;
+import com.rzy.dealt_force_skills.util.TrapMarkerTargeting;
 import com.rzy.dealt_force_skills.client.character.ClientChamberHudState;
 import com.rzy.dealt_force_skills.network.C2S_ChamberToolAction;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
@@ -70,10 +72,11 @@ public final class ChamberInputHandler {
             return;
         }
         Optional<ChamberMarker> marker = findLookedAtMarker(minecraft);
-        if (marker.isPresent() && handsEmpty(minecraft.player) && event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        boolean recall = event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT;
+        if (marker.isPresent() && (marker.get().type() == ChamberMarkerType.TRAP || recall && handsEmpty(minecraft.player))) {
             event.setCanceled(true);
             if (event.getAction() == GLFW.GLFW_PRESS) {
-                NetworkHandler.sendToServer(new C2S_ChamberToolAction(ChamberToolAction.RECALL_MARKER, marker.get().entityId()));
+                NetworkHandler.sendToServer(new C2S_ChamberToolAction(recall ? ChamberToolAction.RECALL_MARKER : ChamberToolAction.TRIGGER_MARKER, marker.get().entityId()));
             }
         }
     }
@@ -84,6 +87,16 @@ public final class ChamberInputHandler {
             return;
         }
         if (!ClientChamberHudState.hasEquippedTool()) {
+            Minecraft minecraft = Minecraft.getInstance();
+            if (minecraft.screen != null || !ClientChamberHudState.shouldRender() || event.getHand() != InteractionHand.MAIN_HAND
+                    || (!event.isAttack() && !event.isUseItem())) return;
+            findLookedAtMarker(minecraft).filter(marker -> marker.type() == ChamberMarkerType.TRAP
+                    || event.isAttack() && handsEmpty(minecraft.player)).ifPresent(marker -> {
+                event.setSwingHand(false);
+                event.setCanceled(true);
+                NetworkHandler.sendToServer(new C2S_ChamberToolAction(event.isAttack() ? ChamberToolAction.RECALL_MARKER
+                        : ChamberToolAction.TRIGGER_MARKER, marker.entityId()));
+            });
             return;
         }
         event.setSwingHand(false);
@@ -127,16 +140,7 @@ public final class ChamberInputHandler {
         Vec3 eye = minecraft.player.getEyePosition();
         Vec3 look = minecraft.player.getLookAngle().normalize();
         return ClientChamberHudState.markers().stream()
-                .filter(marker -> marker.position().distanceTo(eye) <= 75.0D)
-                .filter(marker -> {
-                    Vec3 toMarker = marker.position().subtract(eye);
-                    if (toMarker.lengthSqr() < 0.0001D) {
-                        return true;
-                    }
-                    double distance = toMarker.length();
-                    double alignment = look.dot(toMarker.scale(1.0D / distance));
-                    return alignment > 0.996D || Math.sqrt(Math.max(0.0D, 1.0D - alignment * alignment)) * distance < 0.45D;
-                })
+                .filter(marker -> TrapMarkerTargeting.isLookingAt(eye, look, marker.position(), TrapMarkerTargeting.MARKER_HEIGHT, 75.0D))
                 .min(Comparator.comparingDouble(marker -> marker.position().distanceToSqr(eye)));
     }
 

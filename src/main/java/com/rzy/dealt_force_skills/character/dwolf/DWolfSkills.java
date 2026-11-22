@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.dwolf;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.entity.DWolfHandCannonGrenadeEntity;
 import com.rzy.dealt_force_skills.entity.DWolfSmokeGrenadeEntity;
@@ -89,7 +92,7 @@ public final class DWolfSkills {
         grenade.setDeltaMovement(look.scale(2.05D).add(0.0D, 0.05D, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        level.addFreshEntity(grenade);
+        ToolHandRelease.spawned(level.addFreshEntity(grenade), player, ToolHandCue.D_WOLF_HAND_CANNON);
         level.playSound(null, player.blockPosition(), ModSounds.D_WOLF_HAND_CANNON_FIRE.get(),
                 SoundSource.PLAYERS, 1.0f, 1.0f);
         RangedSoundHelper.playFollowingEntity(level, grenade, ModSounds.D_WOLF_HAND_CANNON_FUSE.get(),
@@ -138,7 +141,7 @@ public final class DWolfSkills {
         smoke.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         smoke.setYRot(player.getYRot());
         smoke.setXRot(player.getXRot());
-        if (level.addFreshEntity(smoke)) {
+        if (ToolHandRelease.spawned(level.addFreshEntity(smoke), player, ToolHandCue.D_WOLF_SMOKE)) {
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
             com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"d_wolf.smoke");
         }

@@ -37,8 +37,42 @@ public final class DepartmentCombat {
         var drone=com.rzy.dealt_force_skills.entity.VlinderActiveDefenseDroneEntity.activeFor(player);
         if(drone!=null)drone.getPersistentData().putBoolean("DepartmentSurvivedDamage",true);
     }
+    public static final class Measurement implements AutoCloseable {
+        private final LivingEntity target;
+        private final Measurement previous;
+        public float amount;
+        private Measurement(LivingEntity target) { this.target = target; previous = MEASURING.get(); MEASURING.set(this); }
+        @Override public void close() { if (previous == null) MEASURING.remove(); else MEASURING.set(previous); }
+    }
+    private static final ThreadLocal<Measurement> MEASURING = new ThreadLocal<>();
+    public static Measurement measure(LivingEntity target) { return new Measurement(target); }
+    private static final ThreadLocal<SkillHit> ACTIVE_HIT = new ThreadLocal<>();
+    private static final class SkillHit {
+        final LivingEntity target;
+        final DamageSource applied, original;
+        boolean observed;
+        SkillHit(LivingEntity target, DamageSource applied, DamageSource original) {
+            this.target = target; this.applied = applied; this.original = original;
+        }
+    }
+    public static boolean skillHit(LivingEntity target, DamageSource applied, DamageSource original, float amount) {
+        SkillHit previous = ACTIVE_HIT.get(), hit = new SkillHit(target, applied, original);
+        ACTIVE_HIT.set(hit);
+        try {
+            boolean accepted = target.hurt(applied, amount);
+            if (accepted && !hit.observed) damaged(target, original, amount);
+            return accepted;
+        } finally {
+            if (previous == null) ACTIVE_HIT.remove(); else ACTIVE_HIT.set(previous);
+        }
+    }
     public static void damaged(LivingEntity target,DamageSource source,float amount) {
+        SkillHit hit = ACTIVE_HIT.get();
+        if (hit != null && hit.target == target && hit.applied == source) { hit.observed = true; source = hit.original; }
         if(target.level().isClientSide||amount<=0||!Float.isFinite(amount))return;
+        DepartmentManba.settled(target); DepartmentGhroth.settled(target);
+        Measurement measurement = MEASURING.get();
+        if (measurement != null && measurement.target == target) measurement.amount += amount;
         ServerPlayer owner=source.getEntity() instanceof ServerPlayer player?player:SkillDamageHelper.activeSkillPlayer();
         if(owner==null)return;
         if(source.is(SkillDamageHelper.CATDAD_REFLECT))DepartmentTasks.signal(owner,"catdad.passive.damage",amount);

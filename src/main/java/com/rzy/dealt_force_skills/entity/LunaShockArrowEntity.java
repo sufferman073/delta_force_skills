@@ -102,6 +102,7 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
 
    public void tick() {
       super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "luna.skill.shock_arrow", (highPressureArrow ? PULSE_RADIUS * 2.5D : PULSE_RADIUS));
       if (!level().isClientSide && !stuck && isOperativeSource() && tickCount > 160) {
          discard();
          return;
@@ -264,7 +265,7 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
             if (this.getOwner() instanceof ServerPlayer ownerx) {
                if (this.bounced && living.getHealth() + living.getAbsorptionAmount() < beforeQuestDamage)
                   com.rzy.dealt_force_skills.department.DepartmentTasks.signal(ownerx,"luna.arrow.bounce_hit");
-               DfsAchievements.recordLunaShockFixedKill(ownerx, living, this.bounced, true);
+
             }
 
             RangedSoundHelper.playThrottled(
@@ -337,6 +338,8 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
                   && entity.distanceToSqr(center) <= effectiveRadius * effectiveRadius
          )) {
             if (this.highPressureArrow || this.hasLineOfSight(center, target)) {
+               if (owner instanceof ServerPlayer player && bounced)
+                   DfsAchievements.recordLunaShockFixedKill(player, target, true, true);
                target.invulnerableTime = 0;
                SkillDamageHelper.hurt(
                   target,

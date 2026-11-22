@@ -28,6 +28,7 @@ public final class VlinderInputHandler {
     private static int active1HeldTicks;
     private static boolean sentSelfHeal;
     private static boolean coreWasDown;
+    private static boolean smokeDown;
 
     private VlinderInputHandler() {
     }
@@ -109,15 +110,15 @@ public final class VlinderInputHandler {
     }
 
     private static void handleActive1Key(boolean active1Owned) {
-        if (!active1Owned || KeybindRegister.ACTIVE_SKILL_1 == null) {
+        if (!active1Owned || KeybindRegister.activeKey(1) == null) {
             resetActive1();
             return;
         }
-        boolean down = KeybindRegister.ACTIVE_SKILL_1.isDown();
+        boolean down = KeybindRegister.activeKey(1).isDown();
         if (down) {
             active1WasDown = true;
             active1HeldTicks++;
-            while (KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+            while (KeybindRegister.activeKey(1).consumeClick()) {
             }
             if (active1HeldTicks >= SELF_HEAL_HOLD_TICKS
                     && !sentSelfHeal) {
@@ -137,12 +138,14 @@ public final class VlinderInputHandler {
     }
 
     private static void handleActive2Key(boolean active2Owned) {
-        if (!active2Owned || KeybindRegister.ACTIVE_SKILL_2 == null) {
-            return;
-        }
-        while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
-            ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_2);
-        }
+        var key = KeybindRegister.activeKey(2);
+        if (!active2Owned || key == null) { smokeDown = false; return; }
+        boolean clicked = false;
+        while (key.consumeClick()) clicked = true;
+        boolean down = key.isDown();
+        if (!smokeDown && (clicked || down)) ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_2, down);
+        if (smokeDown && !down) NetworkHandler.sendToServer(new C2S_VlinderToolAction(VlinderToolAction.RELEASE_SMOKE_GUIDE));
+        smokeDown = down;
     }
 
     private static void handleCoreKey() {

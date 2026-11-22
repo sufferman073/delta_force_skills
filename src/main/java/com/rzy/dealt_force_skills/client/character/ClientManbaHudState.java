@@ -33,6 +33,8 @@ public final class ClientManbaHudState {
     private static int[] talents = new int[0];
     private static int[] talentCooldowns = new int[0];
     private static int selfTaughtStacks;
+    private static int[] talentDurations = new int[0];
+    private static int talentActiveMask;
     private static int[] bulbs = new int[0];
     private static int lens;
     private static int[] batteries = new int[0];
@@ -60,6 +62,8 @@ public final class ClientManbaHudState {
         talents = new int[0];
         talentCooldowns = new int[0];
         selfTaughtStacks = 0;
+        talentDurations = new int[0];
+        talentActiveMask = 0;
         bulbs = new int[0];
         lens = 0;
         batteries = new int[0];
@@ -115,6 +119,8 @@ public final class ClientManbaHudState {
             duelView = new DuelView(duelView.active, duelView.ownerEntityId, duelView.targetEntityId,
                     duelView.ownerName, duelView.targetName, duelView.affection, duelView.remainingTicks - 1);
         }
+        for (int i = 0; i < talentCooldowns.length; i++) if (talentCooldowns[i] > 0) talentCooldowns[i]--;
+        for (int i = 0; i < talentDurations.length; i++) if (talentDurations[i] > 0) talentDurations[i]--;
         tickFlashProgress();
         openLoadoutIfNeeded();
     }
@@ -173,6 +179,19 @@ public final class ClientManbaHudState {
 
     public static int selfTaughtStacks() {
         return selfTaughtStacks;
+    }
+
+    public static void syncTalentDetails(int[] durations, int activeMask) {
+        talentDurations = Arrays.copyOf(durations, durations.length);
+        talentActiveMask = activeMask;
+    }
+
+    public static int talentDuration(int ordinal) {
+        return ordinal >= 0 && ordinal < talentDurations.length ? talentDurations[ordinal] : 0;
+    }
+
+    public static boolean talentActive(int ordinal) {
+        return ordinal >= 0 && ordinal < 32 && (talentActiveMask & (1 << ordinal)) != 0;
     }
 
     public static int[] talents() {

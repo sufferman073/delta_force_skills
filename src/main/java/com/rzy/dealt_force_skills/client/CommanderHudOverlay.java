@@ -52,9 +52,10 @@ public final class CommanderHudOverlay {
         Font font = minecraft.font;
         int x = ClientHudLayout.x(8);
         int y = ClientHudLayout.y(Math.max(8, graphics.guiHeight() - 68));
-        graphics.drawString(font, Component.translatable("hud.dealt_force_skills.commander.points",
-                ClientCommanderState.tacticalPoints()), x, y - 12, 0xFFFFD866, true);
-
+        try (var ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
+            graphics.drawString(font, Component.translatable("hud.dealt_force_skills.commander.points",
+                    ClientCommanderState.tacticalPoints()), x, y - 12, 0xFFFFD866, true);
+        }
         drawSlot(graphics, font, x, y, 0xFF69C5FF,
                 CommanderSkillChoice.ACTIVE_1, SkillSlot.ACTIVE_1,
                 KeybindRegister.ACTIVE_SKILL_1, false);
@@ -72,34 +73,10 @@ public final class CommanderHudOverlay {
     private static void drawSlot(GuiGraphics graphics, Font font, int x, int y, int accent,
                                  CommanderSkillChoice choice, SkillSlot slot, KeyMapping key,
                                  boolean alternateCore) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA101216);
-            graphics.fill(x, y, x + SLOT, y + 1, accent);
-            graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accent);
-            graphics.fill(x, y, x + 1, y + SLOT, accent);
-            graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accent);
-            graphics.fill(x + 5, y + 5, x + SLOT - 5, y + 27, 0xDD171A20);
-
-            String name = selectedSkillName(choice, slot).getString();
-            HudTextHelper.drawCenteredFitted(graphics, font, name, x + SLOT / 2, y + 11,
-                    SLOT - 10, 0xFFFFFFFF);
-            int cooldown = ClientCommanderState.skillCooldownTicks(choice);
-            String detail = selectedSkillDetail(choice, slot);
-            String status = cooldown > 0
-                    ? Math.max(1, (cooldown + 19) / 20) + "s" + (detail.isBlank() ? "" : " " + detail)
-                    : detail.isBlank()
-                    ? Component.translatable("hud.dealt_force_skills.commander.ready").getString()
-                    : detail;
-            HudTextHelper.drawCenteredFitted(graphics, font, status, x + SLOT / 2, y + 22,
-                    SLOT - 10, cooldown > 0 ? 0xFFFFE19A : 0xFF9BF0B8);
-            String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            if (alternateCore) {
-                keyName = Component.translatable("hud.dealt_force_skills.commander.shift_key", keyName)
-                        .getString();
-            }
-            HudTextHelper.drawCenteredFitted(graphics, font, keyName, x + SLOT / 2, y + 31,
-                    SLOT - 8, 0xFFCBD1D8);
-        }
+        String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
+        if (alternateCore) keyName = SkillIconHud.sneakKey(keyName);
+        SkillIconHud.draw(graphics, font, x, y, SLOT, keyName, selectedSkillName(choice, slot),
+                ClientCommanderState.skillCooldownTicks(choice), selectedSkillDetail(choice, slot));
     }
 
     private static Component selectedSkillName(CommanderSkillChoice choice, SkillSlot slot) {

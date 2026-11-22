@@ -256,6 +256,7 @@ public final class NoxStateManager {
             NoxDelayedWoundEffect.clearCaps(target);
          } else {
             NoxDelayedWoundEffect.resetCaps(target, healthCap);
+            if (owner instanceof ServerPlayer feedbackOwner) com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(feedbackOwner, 1);
             com.rzy.dealt_force_skills.department.DepartmentHealing.source(target,"nox",owner);
             if (CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.NOX_DEEP_WOUND)) {
                target.getActiveEffects().stream()
@@ -341,8 +342,8 @@ public final class NoxStateManager {
          }
 
          if (level.getEntity(tag.getUUID("NoxOwner")) instanceof ServerPlayer owner) {
-            ServerPlayer looker = source.getEntity() instanceof ServerPlayer player ? player : null;
-            if (looker == null && source.getDirectEntity() instanceof ServerPlayer playerx) {
+            LivingEntity looker = source.getEntity() instanceof LivingEntity player ? player : null;
+            if (looker == null && source.getDirectEntity() instanceof LivingEntity playerx) {
                looker = playerx;
             }
 
@@ -358,7 +359,7 @@ public final class NoxStateManager {
       }
    }
 
-   private static boolean isLookingAt(ServerPlayer player, Entity target) {
+   private static boolean isLookingAt(LivingEntity player, Entity target) {
       Vec3 eye = player.getEyePosition();
       Vec3 toTarget = target.getBoundingBox().getCenter().subtract(eye);
       double distance = toTarget.length();
@@ -562,16 +563,14 @@ public final class NoxStateManager {
       for (ServerPlayer target : nox.server.getPlayerList().getPlayers()) {
          if (target != nox
             && target.level() == nox.level()
-            && com.rzy.dealt_force_skills.util.TargetingUtil.isTargetablePlayer(target)
+            && com.rzy.dealt_force_skills.util.TargetingUtil.isHostilePlayerFor(nox, target)
             && !(target.distanceToSqr(nox) > rangeSqr)) {
             currentlyNear.add(target.getUUID());
             if (warned.add(target.getUUID())) {
                target.level().playSound(null, target.blockPosition(), (SoundEvent)ModSounds.NOX_STEALTH_WARNING.get(), SoundSource.PLAYERS, 0.7F, 1.0F);
             }
 
-            if (now % 40L == 0L) {
-               target.displayClientMessage(Component.translatable("message.dealt_force_skills.nox.stealth_nearby"), true);
-            }
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "stealth");
          }
       }
 

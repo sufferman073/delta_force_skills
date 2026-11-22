@@ -88,7 +88,7 @@ public final class DepartmentInputHandler {
         }
 
         Optional<DepartmentTrapMarker> marker = findLookedAtMarker(minecraft);
-        if (marker.isPresent() && handsEmpty(minecraft.player)) {
+        if (marker.isPresent()) {
             event.setCanceled(true);
             if (event.getAction() == GLFW.GLFW_PRESS) {
                 DepartmentToolAction action = event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
@@ -114,7 +114,7 @@ public final class DepartmentInputHandler {
         if (!ClientDepartmentHudState.hasEquippedTool()) {
             if (minecraft.screen != null || !ClientDepartmentHudState.shouldRender()
                     || event.getHand() != InteractionHand.MAIN_HAND
-                    || (!event.isAttack() && !event.isUseItem()) || !handsEmpty(minecraft.player)) {
+                    || (!event.isAttack() && !event.isUseItem())) {
                 return;
             }
             findLookedAtMarker(minecraft).ifPresent(marker -> {

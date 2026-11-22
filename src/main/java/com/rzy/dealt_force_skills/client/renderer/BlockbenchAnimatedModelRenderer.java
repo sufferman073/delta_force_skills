@@ -115,6 +115,17 @@ public final class BlockbenchAnimatedModelRenderer {
         return true;
     }
 
+    public static boolean renderWithGroupPlacement(ResourceLocation modelId, String animationName, float seconds,
+                                                   PoseStack pose, MultiBufferSource buffer, int light,
+                                                   String group, Runnable beforeChildren) {
+        return renderWithGroupReplacements(modelId, animationName, seconds, pose, buffer, light,
+                Set.of(), Map.of(group, new GroupPlacement(beforeChildren)));
+    }
+
+    private record GroupPlacement(Runnable operation) implements Runnable {
+        @Override public void run() { operation.run(); }
+    }
+
     public static boolean renderWithGroupReplacements(
             ResourceLocation modelId,
             String animationName,
@@ -230,7 +241,9 @@ public final class BlockbenchAnimatedModelRenderer {
                     "dynamic/blockbench/" + modelId.getPath().replace('/', '_') + "_" + index
             );
             Minecraft.getInstance().getTextureManager().register(location, new DynamicTexture(image));
-            loaded.add(new TextureData(location, translucent));
+            RenderType pane = translucent && texture.has("dfs_depth_write") && !texture.get("dfs_depth_write").getAsBoolean()
+                    ? DfsRenderTypes.glassPane(location) : null;
+            loaded.add(new TextureData(location, translucent, pane));
         }
         return List.copyOf(loaded);
     }
@@ -457,9 +470,8 @@ public final class BlockbenchAnimatedModelRenderer {
             context.poseStack().scale(animation.scale().x(), animation.scale().y(), animation.scale().z());
             rotate(context.poseStack(), group.rotation().add(animation.rotation()));
             Runnable replacement = context.groupReplacements().get(group.name());
-            if (replacement != null) {
-                replacement.run();
-            } else {
+            if (replacement != null) replacement.run();
+            if (replacement == null || replacement instanceof GroupPlacement) {
                 for (Node child : groupNode.children()) {
                     renderNode(child, group.origin(), context);
                 }
@@ -745,7 +757,8 @@ public final class BlockbenchAnimatedModelRenderer {
     private record MeshFace(List<String> vertexIds, Map<String, Uv> uvs, int texture) {
     }
 
-    private record TextureData(ResourceLocation location, boolean translucent) {
+    private record TextureData(ResourceLocation location, boolean translucent, RenderType pane) {
+        private TextureData(ResourceLocation location, boolean translucent) { this(location, translucent, null); }
     }
 
     private record ModelData(
@@ -851,6 +864,7 @@ public final class BlockbenchAnimatedModelRenderer {
     ) {
         private VertexConsumer consumer(int textureIndex) {
             TextureData texture = textures.get(Math.max(0, Math.min(textureIndex, textures.size() - 1)));
+            if (texture.pane() != null) return buffer.getBuffer(texture.pane());
             boolean translucent = texture.translucent() || (argbColor >>> 24 & 0xFF) < 255;
             RenderType renderType = translucent
                     ? RenderType.entityTranslucent(texture.location())

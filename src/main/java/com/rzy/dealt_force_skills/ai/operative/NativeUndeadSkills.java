@@ -63,6 +63,9 @@ public final class NativeUndeadSkills implements OperativeSkills {
                 && host.serverLevel().noCollision(host.body(), box.expandTowards(step).deflate(.001))
                 && !host.serverLevel().noCollision(host.body(), box.move(step).move(0,-1,0));
     }
+    private static boolean contact(OperativeHost host, LivingEntity target, double range) {
+        return OperativeHearing.knownContact(host, target) && host.body().distanceToSqr(target) <= range * range;
+    }
     @Override public double score(OperativeHost host, SkillSlot slot, LivingEntity target) {
         if (imbalance > 0 || activeCooldown > 0 || slot == SkillSlot.PASSIVE || actionCooldowns[actionIndex(slot)] > 0) return 0;
         if (profession != UndeadProfession.KNIGHT) return professionScore(host, slot, target);
@@ -73,7 +76,7 @@ public final class NativeUndeadSkills implements OperativeSkills {
                     && safeStep(host, horizontal(host,target).scale(1.25)) ? 78 : 0;
             case ACTIVE_2 -> valid(host,target,4) && (target.getLastHurtByMob()==host.body()
                     || host.body().getHealth()<host.body().getMaxHealth()*.6F) ? 85 : 0;
-            case CORE -> coreCooldown==0 && shieldTicks==0 && valid(host,target,20)
+            case CORE -> coreCooldown==0 && shieldTicks==0 && contact(host,target,20)
                     && host.body().getHealth()<host.body().getMaxHealth()*.65F ? 100 : 0;
             default -> 0;
         };
@@ -144,7 +147,7 @@ public final class NativeUndeadSkills implements OperativeSkills {
     }
     private void prepareKnight(OperativeHost host, LivingEntity target) {
         if(prepared!=null){
-            if(!valid(host,target,prepared==SkillSlot.ACTIVE_2?4:20)
+            if(!(prepared==SkillSlot.CORE ? contact(host,target,20) : valid(host,target,prepared==SkillSlot.ACTIVE_2?4:20))
                     || OperativeElectronics.blocked(host,ModCharacters.UNDEAD_ID,prepared)){cancel(host);return;}
             host.aimAt(target);
             if(--windup>0)return;
@@ -264,14 +267,14 @@ public final class NativeUndeadSkills implements OperativeSkills {
         if(!available(h) || busy() || OperativeElectronics.blocked(h,ModCharacters.UNDEAD_ID,slot)
                 || slot==SkillSlot.PASSIVE)return 0;
         double d=target==null?Double.MAX_VALUE:h.body().distanceToSqr(target);
-        boolean visible=valid(h,target,24),core=professionCooldowns[profession.ordinal()]==0;
+        boolean known=contact(h,target,24),visible=valid(h,target,24),core=professionCooldowns[profession.ordinal()]==0;
         float hp=h.body().getHealth()/h.body().getMaxHealth();
         return switch(profession){
-            case WARRIOR -> switch(slot){case ACTIVE_1 -> visible && d<=16?80:0;case ACTIVE_2 -> visible && !might && energy>50?65:0;case CORE -> visible && core && bloodlust==0 && hp>.4 && d<36?92:0;default->0;};
-            case EXPLORER -> switch(slot){case ACTIVE_1 -> visible && d>9?75:0;case ACTIVE_2 -> energy<maxEnergy()*.5 && (!visible || d>64)?95:0;case CORE -> visible && core && space==0 && hp<.55?110:0;default->0;};
-            case ROGUE -> switch(slot){case ACTIVE_1 -> visible && stealth==0 && d>9?82:0;case ACTIVE_2 -> visible && d<16 && !target.hasEffect(ModEffects.STUN)?84:0;case CORE -> visible && d<16 && core && (stealth>0 || target.hasEffect(ModEffects.STUN)) && (target instanceof Player || com.rzy.dealt_force_skills.boss.BossCombatRules.canInstantKill(target))?102:0;default->0;};
-            case SCHOLAR -> switch(slot){case ACTIVE_1 -> hp<.7?120:0;case ACTIVE_2 -> visible && d<25 && ritual==0?88:0;case CORE -> visible && records.getInt(type(target))<2 && (records.contains(type(target)) || records.size()<10)?72:0;default->0;};
-            case HUNTER -> switch(slot){case ACTIVE_1 -> visible && d>25 && d<225?78:0;case ACTIVE_2 -> energy<maxEnergy()*.5 && hp>.55 && reload==0?98:0;case CORE -> visible && !scatter && d<25 && energy>25?90:0;default->0;};
+            case WARRIOR -> switch(slot){case ACTIVE_1 -> visible && d<=16?80:0;case ACTIVE_2 -> known && !might && energy>50?65:0;case CORE -> known && core && bloodlust==0 && hp>.4 && d<36?92:0;default->0;};
+            case EXPLORER -> switch(slot){case ACTIVE_1 -> visible && d>9?75:0;case ACTIVE_2 -> energy<maxEnergy()*.5 && (!visible || d>64)?95:0;case CORE -> known && core && space==0 && hp<.55?110:0;default->0;};
+            case ROGUE -> switch(slot){case ACTIVE_1 -> known && stealth==0 && d>9?82:0;case ACTIVE_2 -> visible && d<16 && !target.hasEffect(ModEffects.STUN)?84:0;case CORE -> visible && d<16 && core && (stealth>0 || target.hasEffect(ModEffects.STUN)) && (target instanceof Player || com.rzy.dealt_force_skills.boss.BossCombatRules.canInstantKill(target))?102:0;default->0;};
+            case SCHOLAR -> switch(slot){case ACTIVE_1 -> hp<.7?120:0;case ACTIVE_2 -> known && d<25 && ritual==0?88:0;case CORE -> visible && records.getInt(type(target))<2 && (records.contains(type(target)) || records.size()<10)?72:0;default->0;};
+            case HUNTER -> switch(slot){case ACTIVE_1 -> visible && d>25 && d<225?78:0;case ACTIVE_2 -> energy<maxEnergy()*.5 && hp>.55 && reload==0?98:0;case CORE -> known && !scatter && d<25 && energy>25?90:0;default->0;};
             default->0;
         };
     }
@@ -287,7 +290,7 @@ public final class NativeUndeadSkills implements OperativeSkills {
             e.hurtMarked=true;e.addEffect(new MobEffectInstance(ModEffects.RAPTOR_ELECTROMAGNETIC_INTERFERENCE,12,0),h.body());
             if(h.body().tickCount%20==0)hit(h,e,4);
         }if(h.body().tickCount%20==0)h.body().heal(h.body().getMaxHealth()*.06F*OperativeGrowth.healing());}
-        if(scatter){if(energy<.19F || enemies(h,6).isEmpty())scatter=false;else{energy-=.19F;
+        if(scatter){if(energy<.19F || enemies(h,6).isEmpty() && !(h.body() instanceof net.minecraft.world.entity.Mob mob && contact(h,mob.getTarget(),5)))scatter=false;else{energy-=.19F;
             if(h.body().tickCount%5==0)for(var e:enemies(h,4))hit(h,e,4);}}
     }
     private void tickProfession(OperativeHost h){
@@ -318,10 +321,10 @@ public final class NativeUndeadSkills implements OperativeSkills {
     private boolean releaseValid(OperativeHost h,SkillSlot slot,LivingEntity target){
         if(slot==SkillSlot.CORE && professionCooldowns[profession.ordinal()]>0)return false;
         return switch(profession){
-            case WARRIOR -> valid(h,target,slot==SkillSlot.ACTIVE_1?4:24);
-            case ROGUE -> valid(h,target,slot==SkillSlot.ACTIVE_1?24:4) && (slot!=SkillSlot.CORE || stealth>0 || target.hasEffect(ModEffects.STUN));
-            case EXPLORER,HUNTER -> slot==SkillSlot.ACTIVE_2 || valid(h,target,24);
-            case SCHOLAR -> slot==SkillSlot.ACTIVE_1 || valid(h,target,slot==SkillSlot.ACTIVE_2?5:24);
+            case WARRIOR -> slot==SkillSlot.ACTIVE_1 ? valid(h,target,4) : contact(h,target,24);
+            case ROGUE -> (slot==SkillSlot.ACTIVE_1 ? contact(h,target,24) : valid(h,target,4)) && (slot!=SkillSlot.CORE || stealth>0 || target.hasEffect(ModEffects.STUN));
+            case EXPLORER,HUNTER -> slot==SkillSlot.ACTIVE_2 || (slot==SkillSlot.CORE ? contact(h,target,24) : valid(h,target,24));
+            case SCHOLAR -> slot==SkillSlot.ACTIVE_1 || (slot==SkillSlot.ACTIVE_2 ? contact(h,target,5) : valid(h,target,24));
             default -> false;
         };
     }

@@ -159,6 +159,10 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "raptor.skill.falcon_drone", (selfDestructing ? SELF_DESTRUCT_DAMAGE_RADIUS : REVEAL_RADIUS), (selfDestructing ? SELF_DESTRUCT_DAMAGE_RADIUS : REVEAL_RADIUS) + 3,
+                player -> allegiance.active() ? allegiance.isEnemy((ServerLevel)level(), player)
+                        : ownerId != null && !ownerId.equals(player.getUUID())
+                        && TargetingUtil.isHostileLivingFor(((ServerLevel)level()).getEntity(ownerId), player));
         if (level().isClientSide) {
             spawnClientParticles();
             return;
@@ -414,6 +418,8 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
         RaptorStateManager.revealEntities(owner, targets, REVEAL_TICKS);
         if (!targets.isEmpty()) {
             for (LivingEntity target : targets) {
+                if (TargetingUtil.isHostileLivingFor(owner, target))
+                    com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "falcon");
                 if (target instanceof ServerPlayer player) {
                     DfsAchievements.recordRaptorFalconObservation(owner, player);
                 }
@@ -1004,6 +1010,7 @@ public class RaptorFalconDroneEntity extends Entity implements ItemSupplier, Blo
                     .sorted(Comparator.comparingDouble(this::distanceToSqr)).limit(8)
                     .forEach(candidate -> {
                         com.rzy.dealt_force_skills.ai.operative.OperativeRecon.reveal(owner, candidate, REVEAL_TICKS);
+                        com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(candidate, "falcon");
                         if (hummingbirdFalcon) candidate.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                                 ModEffects.RAPTOR_HUMMINGBIRD_MARKED, 2400, 0), owner.body());
                     });

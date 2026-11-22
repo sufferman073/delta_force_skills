@@ -174,6 +174,7 @@ public final class GhrothStateManager {
         }
         tag.putLong(STARS_COOLDOWN_UNTIL, SkillCooldownHelper.until(player, now, STARS_COOLDOWN_TICKS));
         tag.putLong(STARS_ACTIVE_UNTIL, now + STARS_DURATION_TICKS);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.STARS_ORBIT.play(player);
         player.level().playSound(null, player.blockPosition(), ModSounds.GHROTH_STARS.get(), SoundSource.PLAYERS, 0.9F, 1.0F);
         syncToClient(player);
         return true;
@@ -190,6 +191,7 @@ public final class GhrothStateManager {
         }
         tag.putLong(JUSTICE_COOLDOWN_UNTIL, SkillCooldownHelper.until(player, now, JUSTICE_COOLDOWN_TICKS));
         tag.putLong(JUSTICE_ACTIVE_UNTIL, now + JUSTICE_DURATION_TICKS);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.JUSTICE_SEAL.play(player);
         player.level().playSound(null, player.blockPosition(), ModSounds.GHROTH_JUSTICE.get(), SoundSource.PLAYERS, 0.9F, 1.0F);
         syncToClient(player);
         return true;
@@ -209,6 +211,7 @@ public final class GhrothStateManager {
         tag.remove(NOON_DAMAGE_COPIES);
         tag.remove(NOON_LAST_COPY_TICK);
         clearNoonGaze(tag);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.HIGH_NOON.play(player);
         player.level().playSound(null, player.blockPosition(), ModSounds.GHROTH_NOON.get(), SoundSource.PLAYERS, 1.0F, 1.0F);
         syncToClient(player);
         return true;

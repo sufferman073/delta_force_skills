@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/green",
   "display": {
     "icon": {
-      "item": "minecraft:book"
+      "id": "minecraft:book"
     },
     "title": {
       "text": "食为天，战为道"

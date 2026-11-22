@@ -13,6 +13,8 @@ public final class ModGameRules {
     private static volatile boolean clientArmorSpecialsEnabled = true;
     private static volatile boolean clientRebuyEnabled = true;
     private static volatile boolean clientHavocValueVisible = true;
+    public static final GameRules.Key<GameRules.BooleanValue> DEALT_COMMAND_AVAILABLE =
+            GameRules.register("dealtcommandavailable", GameRules.Category.PLAYER, GameRules.BooleanValue.create(false));
     public static final GameRules.Key<GameRules.BooleanValue> DEALT_UNDEAD_STEAL =
             GameRules.register("dealtundeadsteal", GameRules.Category.PLAYER, GameRules.BooleanValue.create(true));
     public static final GameRules.Key<GameRules.BooleanValue> DEALT_BOSSES_ENABLE =

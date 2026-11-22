@@ -83,9 +83,9 @@ public final class GtiTradingHallScreen extends Screen {
     }
     private void addCategoryButton(GtiTradingHallManager.Category category, int slot) {
         int gap = 4;
-        int buttonWidth = (panelWidth() - 32) / 3;
-        int x = left() + 12 + (slot % 3) * (buttonWidth + gap);
-        int y = top() + 32 + (slot / 3) * 20;
+        int buttonWidth = (panelWidth() - 36) / 4;
+        int x = left() + 12 + (slot % 4) * (buttonWidth + gap);
+        int y = top() + 32 + (slot / 4) * 20;
         Component label = Component.translatable(category == null
                 ? "screen.dealt_force_skills.gti.category.all" : category.translationKey());
         Button button = Button.builder(label, clicked -> {

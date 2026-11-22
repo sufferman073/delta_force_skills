@@ -913,6 +913,8 @@ public class SaeedGuardEntity extends PathfinderMob implements IGunOperator, Own
     }
 
     private boolean canTarget(ServerPlayer owner, LivingEntity target) {
+        Boolean raid = com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.hostility(this, target);
+        if (raid != null) return raid && target != this && TargetingUtil.isTargetableLiving(target) && com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.inside(this, target.position());
         if (!target.isAlive() || target == owner || target == this) {
             return false;
         }

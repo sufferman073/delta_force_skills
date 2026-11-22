@@ -1,0 +1,16 @@
+{
+  "parent": "dealt_force_skills:item/refresh_drinks/glass_pose",
+  "loader": "neoforge:obj",
+  "model": "dealt_force_skills:models/item/refresh_drinks/starlight_glitter.obj",
+  "render_type": "minecraft:translucent",
+  "automatic_culling": false,
+  "emissive_ambient": false,
+  "flip_v": false,
+  "textures": {
+    "paint": "dealt_force_skills:item/refresh_drinks/starlight_glitter",
+    "particle": "dealt_force_skills:item/refresh_drinks/starlight_glitter"
+  },
+  "visibility": {
+    "service": false
+  }
+}

@@ -2,7 +2,7 @@
   "parent": "dealt_force_skills:delta_force_skills/purple",
   "display": {
     "icon": {
-      "item": "minecraft:golden_sword"
+      "id": "minecraft:golden_sword"
     },
     "title": {
       "text": "好感度爆表"

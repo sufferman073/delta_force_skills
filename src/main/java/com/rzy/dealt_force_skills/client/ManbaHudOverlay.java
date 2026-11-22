@@ -158,14 +158,40 @@ public final class ManbaHudOverlay {
     private static void drawTalents(GuiGraphics graphics, Font font) {
         int[] talents = ClientManbaHudState.talents();
         int[] cooldowns = ClientManbaHudState.talentCooldowns();
-        int x = graphics.guiWidth() - 120;
-        int y = graphics.guiHeight() - 22 - talents.length * 11;
-        for (int i = 0; i < talents.length; i++) {
-            String suffix = i < cooldowns.length && cooldowns[i] > 0 ? " " + cooldownText(cooldowns[i]) : "";
-            if (ClientManbaHudState.talentName(talents[i]).equals("自学成才")) {
-                suffix = " x" + ClientManbaHudState.selfTaughtStacks();
+        var values = com.rzy.dealt_force_skills.character.manba.ManbaTalent.values();
+        float size = (SLOT - 18) * 0.5F;
+        float cellWidth = size + 10, cellHeight = size + 11;
+        // Anchor to the hotbar, independently of the skill HUD's position.
+        var player = Minecraft.getInstance().player;
+        int offhandSpace = player != null && player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT
+                && !player.getOffhandItem().isEmpty() ? 29 : 0;
+        int left = graphics.guiWidth() / 2 + 98 + offhandSpace;
+        float scale = Math.min(ClientHudLayout.buttonScale(), Math.max(0.25F, (graphics.guiWidth() - left - 4) / (cellWidth * 2)));
+        graphics.pose().pushPose();
+        try {
+            graphics.pose().translate(left, graphics.guiHeight() - 6 - cellHeight * 2 * scale, 0);
+            graphics.pose().scale(scale, scale, 1);
+            for (int i = 0; i < Math.min(4, talents.length); i++) {
+                if (talents[i] < 0 || talents[i] >= values.length) continue;
+                var talent = values[talents[i]];
+                int cooldown = i < cooldowns.length ? cooldowns[i] : 0;
+                int duration = ClientManbaHudState.talentDuration(talents[i]);
+                boolean active = ClientManbaHudState.talentActive(talents[i]);
+                var state = active ? SkillIcons.State.ACTIVE : cooldown > 0 ? SkillIcons.State.DISABLED : SkillIcons.State.NORMAL;
+                float x = (i % 2) * cellWidth;
+                float y = (i / 2) * cellHeight;
+                SkillIconHud.icon(graphics, SkillIcons.talent(talent, state), x, y, size, 0xFFFFFFFF);
+                String detail = talent == com.rzy.dealt_force_skills.character.manba.ManbaTalent.SELF_TAUGHT
+                        ? Integer.toString(ClientManbaHudState.selfTaughtStacks())
+                        : cooldown > 0 ? cooldownText(cooldown) : duration > 0 ? cooldownText(duration) : "";
+                graphics.pose().pushPose();
+                graphics.pose().translate(x + size / 2, y + size + 2, 0);
+                graphics.pose().scale(0.6F, 0.6F, 1);
+                graphics.drawString(font, detail, -font.width(detail) / 2, 0, 0xFFFFE6A6, true);
+                graphics.pose().popPose();
             }
-            graphics.drawString(font, ClientManbaHudState.talentName(talents[i]) + suffix, x, y + i * 11, 0xFFE8D58A);
+        } finally {
+            graphics.pose().popPose();
         }
     }
 
@@ -184,25 +210,7 @@ public final class ManbaHudOverlay {
 
     private static void drawSlot(GuiGraphics graphics, Font font, int x, int y, int accentColor, KeyMapping key,
                                  Component icon, int cooldownTicks, String detail) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA101216);
-        graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-        graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-        graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xDD171A20);
-        drawCenteredClipped(graphics, font, icon.getString(), x + SLOT / 2, y + 12, 32, 0xFFFFFFFF);
-
-        if (cooldownTicks > 0) {
-            graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xCC000000);
-            drawCenteredClipped(graphics, font, cooldownText(cooldownTicks), x + SLOT / 2, y + 14, 34, 0xFFFFE6A6);
-        } else {
-            drawCenteredClipped(graphics, font, detail, x + SLOT / 2, y + 22, 34, 0xFFE0E4EA);
-        }
-
-        String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            drawCenteredClipped(graphics, font, keyName, x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, cooldownTicks, detail);
     }
 
     private static void drawCenteredClipped(GuiGraphics graphics, Font font, String text, int centerX, int y, int width, int color) {
