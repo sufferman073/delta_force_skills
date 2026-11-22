@@ -37,9 +37,82 @@ import com.rzy.dealt_force_skills.character.vyron.VyronStateManager;
 import com.rzy.dealt_force_skills.character.vyron.VyronTool;
 import com.rzy.dealt_force_skills.network.NetworkHandler;
 import com.rzy.dealt_force_skills.network.S2C_SyncHeldToolVisual;
+import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
+import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.character.SkillSlot;
+import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
+import com.rzy.dealt_force_skills.character.dwolf.DWolfStateManager;
+import com.rzy.dealt_force_skills.character.luna.LunaSkills;
+import com.rzy.dealt_force_skills.character.saeed.SaeedStateManager;
+import com.rzy.dealt_force_skills.character.sineva.SinevaSkills;
+import com.rzy.dealt_force_skills.character.sineva.SinevaStateManager;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class HeldToolVisualSync {
+    private static final java.util.Map<ServerPlayer, Integer> WHISTLE_UNTIL = new java.util.WeakHashMap<>();
+
+    public static void showRoverWhistle(ServerPlayer player) {
+        WHISTLE_UNTIL.put(player, player.tickCount + 10);
+        sync(player);
+    }
+
+    public static final int PREP_NONE = 0, PREP_SMOKE = 1, PREP_WIRE = 2, CANCEL_DRAW = 3;
+    private record Prep(int kind, int expires, ServerLevel level) {}
+    private static final java.util.Map<ServerPlayer, Prep> PREP = new java.util.WeakHashMap<>();
+
+    private static final java.util.Map<ServerPlayer, Integer> PENDING = new java.util.WeakHashMap<>();
+    private static final java.util.Set<ServerPlayer> DIRTY = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+
+    public static void queueInput(ServerPlayer player, int kind) {
+        if (kind == CANCEL_DRAW) LunaSkills.endDraw(player);
+        else if (kind >= PREP_NONE && kind <= PREP_WIRE) PENDING.put(player, kind);
+    }
+
+    public static void clearTransient(ServerPlayer player) {
+        PENDING.remove(player);
+        PREP.remove(player);
+        LunaSkills.endDraw(player);
+        SinevaSkills.hidePreparingGrapple(player);
+    }
+
+    public static void changed(ServerPlayer player) {
+        DIRTY.add(player);
+    }
+
+    public static void tick(ServerPlayer player) {
+        Integer input = PENDING.remove(player);
+        if (input != null) acceptPrep(player, input);
+        if (DIRTY.remove(player) || player.tickCount % 5 == 0) sync(player);
+    }
+
+    private static void acceptPrep(ServerPlayer player, int kind) {
+        Prep before = PREP.get(player);
+        if (kind == PREP_NONE) {
+            PREP.remove(player);
+        } else if (player.isAlive() && !player.isSpectator() && ownsPrep(player, kind)) {
+            PREP.put(player, new Prep(kind, player.tickCount + 80, player.serverLevel()));
+        }
+        Prep after = PREP.get(player);
+        if ((before == null ? PREP_NONE : before.kind()) != (after == null ? PREP_NONE : after.kind())) changed(player);
+    }
+
+    private static boolean ownsPrep(ServerPlayer player, int kind) {
+        if (kind != PREP_SMOKE && kind != PREP_WIRE) return false;
+        String role = kind == PREP_SMOKE ? ModCharacters.D_WOLF_ID : ModCharacters.SINEVA_ID;
+        return CharacterSelectionManager.getSelectedCharacterId(player).filter(role::equals).isPresent()
+                || CommanderStateManager.isCommander(player) && CommanderStateManager.sourceForSkill(player,
+                kind == PREP_SMOKE ? SkillSlot.ACTIVE_2 : SkillSlot.ACTIVE_1, false).filter(role::equals).isPresent();
+    }
+
+    private static int prep(ServerPlayer player) {
+        Prep state = PREP.get(player);
+        if (state == null) return PREP_NONE;
+        if (state.level() == player.serverLevel() && player.tickCount < state.expires() && ownsPrep(player, state.kind())) return state.kind();
+        PREP.remove(player);
+        return PREP_NONE;
+    }
+
     private HeldToolVisualSync() {
     }
 
@@ -52,17 +125,42 @@ public final class HeldToolVisualSync {
     }
 
     private static S2C_SyncHeldToolVisual packet(ServerPlayer player) {
-        return new S2C_SyncHeldToolVisual(player.getId(), current(player).ordinal());
+        HeldToolVisual visual = current(player);
+        int elapsed = -1, duration = 0;
+        if (visual == HeldToolVisual.MORSE_SONAR_DETECTOR) {
+            elapsed = MorseStateManager.visualDeployTicks(player);
+            duration = Math.max(1, MorseStateManager.SONAR_DEPLOY_TICKS);
+        } else if (visual == HeldToolVisual.LUNA_SHOCK_BOW || visual == HeldToolVisual.LUNA_RECON_BOW) {
+            elapsed = LunaSkills.drawAge(player, visual == HeldToolVisual.LUNA_RECON_BOW ? LunaTool.RECON_BOW : LunaTool.SHOCK_BOW);
+        }
+        return new S2C_SyncHeldToolVisual(player.getId(), visual.ordinal(), elapsed, duration);
     }
 
     private static HeldToolVisual current(ServerPlayer player) {
+        if (!player.isAlive() || player.isSpectator()) {
+            clearTransient(player);
+            return HeldToolVisual.NONE;
+        }
+        int preparing = prep(player);
+        if (preparing == PREP_SMOKE) return HeldToolVisual.D_WOLF_SMOKE;
+        if (DWolfStateManager.isDWolf(player) && DWolfStateManager.handCannonVisible(player)) return HeldToolVisual.D_WOLF_HAND_CANNON;
+        if (SinevaStateManager.isSineva(player) && SinevaSkills.grapplePreparing(player)) return HeldToolVisual.SINEVA_HOOK;
+        if (preparing == PREP_WIRE) return HeldToolVisual.SINEVA_WIRE;
+        if (SaeedStateManager.isSaeed(player)) return SaeedStateManager.crossbowVisual(player);
+        Integer until = WHISTLE_UNTIL.get(player);
+        if (until != null) {
+            if (player.isAlive() && player.tickCount < until && com.rzy.dealt_force_skills.character.rover.RoverStateManager.isRover(player)) {
+                return HeldToolVisual.ROVER_DOG_WHISTLE;
+            }
+            WHISTLE_UNTIL.remove(player);
+        }
         if (com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.isWildfire(player))
             return com.rzy.dealt_force_skills.character.wildfire.WildfireStateManager.heldVisual(player);
         if (com.rzy.dealt_force_skills.character.rover.RoverStateManager.isRover(player)
                 && com.rzy.dealt_force_skills.character.rover.RoverStateManager.data(player).getInt("Tool") > 0) {
             return switch (com.rzy.dealt_force_skills.character.rover.RoverStateManager.data(player).getInt("Tool")) {
-                case 1 -> HeldToolVisual.STINGER_SMOKE_GRENADE;
-                case 2 -> HeldToolVisual.STINGER_STIM_GUN;
+                case 1 -> HeldToolVisual.ROVER_IRRITANT_SMOKE;
+                case 2 -> HeldToolVisual.ROVER_AEROSOL_INJECTOR;
                 default -> HeldToolVisual.NONE;
             };
         }
@@ -160,9 +258,12 @@ public final class HeldToolVisualSync {
                     : HeldToolVisual.NONE;
         }
         if (LunaStateManager.isLuna(player)) {
-            return LunaStateManager.equippedTool(player) == LunaTool.COMPOSITE_GRENADE
-                    ? HeldToolVisual.LUNA_COMPOSITE_GRENADE
-                    : HeldToolVisual.NONE;
+            return switch (LunaStateManager.equippedTool(player)) {
+                case COMPOSITE_GRENADE -> HeldToolVisual.LUNA_COMPOSITE_GRENADE;
+                case SHOCK_BOW -> HeldToolVisual.LUNA_SHOCK_BOW;
+                case RECON_BOW -> HeldToolVisual.LUNA_RECON_BOW;
+                case NONE -> HeldToolVisual.NONE;
+            };
         }
         if (UluruStateManager.isUluru(player)) {
             return switch (UluruStateManager.equippedTool(player)) {

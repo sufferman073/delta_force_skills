@@ -171,6 +171,7 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "uluru.skill.loitering_missile", (nativeRadius(getOwner())), (WARNING_RADIUS));
         if (level().isClientSide) {
             level().addParticle(ParticleTypes.SMOKE, getX(), getY(), getZ(), 0.0, 0.0, 0.0);
             return;
@@ -571,10 +572,7 @@ public class UluruLoiteringMissileEntity extends Projectile implements ItemSuppl
                 continue;
             }
             int distance = Mth.ceil(Math.sqrt(player.distanceToSqr(this)));
-            player.displayClientMessage(Component.translatable(
-                    "message.dealt_force_skills.uluru.missile_incoming",
-                    x, y, z, distance
-            ), true);
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(player, "missile");
         }
     }
 

@@ -178,6 +178,7 @@ public final class NikaidouHiroStateManager {
         player.addEffect(new MobEffectInstance(ModEffects.NIKAIDOU_CORRECTION.get(),
                 CORRECTION_DURATION_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.nikaidou.nikaidou_hiro_state_manager.effect.nikaidou_correction.0.amplifier", 0), false, true, true));
         play(player, ModSounds.NIKAIDOU_CORRECTION_START.get(), 0.85F, 1.0F);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.CORRECTION.play(player);
         return true;
     }
 

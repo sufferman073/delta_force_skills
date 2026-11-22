@@ -10,6 +10,11 @@
     "dealt_force_skills:hvk_advanced_standard_template_constructor",
     "dealt_force_skills:hvk_advanced_disassembly_beam_emitter",
     "dealt_force_skills:hvk_asara_arena",
-    "dealt_force_skills:hvk_enchant_infusion"
+    "dealt_force_skills:hvk_enchant_infusion",
+    "dealt_force_skills:personal_dimension_1",
+    "dealt_force_skills:personal_dimension_2",
+    "dealt_force_skills:personal_dimension_3",
+    "dealt_force_skills:personal_dimension_4",
+    "dealt_force_skills:personal_dimension_5"
   ]
 }

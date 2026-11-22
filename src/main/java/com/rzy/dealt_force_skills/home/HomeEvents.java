@@ -14,6 +14,9 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID)
 public final class HomeEvents {
     private HomeEvents() { }
+    @SubscribeEvent public static void machines(TickEvent.LevelTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && event.level instanceof net.minecraft.server.level.ServerLevel level) HomeAcceleration.flush(level);
+    }
     @SubscribeEvent public static void starting(ServerStartingEvent event) { HomeDimensions.restore(event.getServer()); }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if (event.phase == TickEvent.Phase.END) HomeManager.maintain(event.getServer());

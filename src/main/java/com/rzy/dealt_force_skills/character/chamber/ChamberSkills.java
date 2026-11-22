@@ -1,9 +1,13 @@
 package com.rzy.dealt_force_skills.character.chamber;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.entity.ChamberCardProjectileEntity;
 import com.rzy.dealt_force_skills.entity.ChamberTeleportAnchorEntity;
 import com.rzy.dealt_force_skills.entity.ChamberTripTrapEntity;
+import com.rzy.dealt_force_skills.util.TrapMarkerTargeting;
 import com.rzy.dealt_force_skills.registry.ModEntities;
 import com.rzy.dealt_force_skills.registry.ModSounds;
 import com.rzy.dealt_force_skills.skill.SkillCooldownHelper;
@@ -43,6 +47,10 @@ public final class ChamberSkills {
                 yield true;
             }
             case RECALL_MARKER -> recallMarker(player, targetEntityId);
+            case TRIGGER_MARKER -> {
+                Entity entity = player.serverLevel().getEntity(targetEntityId);
+                yield entity instanceof ChamberTripTrapEntity trap && canRemoteInteract(player, trap) && trap.triggerByOwner(player);
+            }
         };
     }
 
@@ -55,6 +63,7 @@ public final class ChamberSkills {
             player.level().playSound(null, player.blockPosition(), ModSounds.CHAMBER_TELEPORT_CARD.get(),
                     SoundSource.PLAYERS, 0.85f, 1.0f);
             com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"chamber.teleported");
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.ANCHOR_BLINK.play(player);
             anchor.discard();
             ChamberStateManager.setTeleportCooldown(player);
             ChamberStateManager.syncToClient(player);
@@ -151,7 +160,7 @@ public final class ChamberSkills {
         Vec3 start = player.getEyePosition().add(look.scale(0.65D));
         projectile.setPos(start.x, start.y - 0.12D, start.z);
         projectile.setDeltaMovement(look.scale(1.65D));
-        if(level.addFreshEntity(projectile))com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        if(ToolHandRelease.spawned(level.addFreshEntity(projectile), player, tool == ChamberTool.TELEPORT_CARD ? ToolHandCue.CHAMBER_TELEPORT_CARD : ToolHandCue.CHAMBER_TRAP_CARD))com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         ChamberStateManager.setEquippedTool(player, ChamberTool.NONE);
         level.playSound(null, player.blockPosition(), SoundEvents.SNOWBALL_THROW,
                 SoundSource.PLAYERS, 0.8f, 1.25f);
@@ -183,18 +192,9 @@ public final class ChamberSkills {
     }
 
     private static boolean canRemoteInteract(ServerPlayer player, Entity entity) {
-        if (entity == null || ChamberStateManager.equippedTool(player) != ChamberTool.NONE
-                || !player.getMainHandItem().isEmpty() || !player.getOffhandItem().isEmpty()
-                || entity.distanceToSqr(player) > 75.0D * 75.0D) {
-            return false;
-        }
-        Vec3 eye = player.getEyePosition();
-        Vec3 toTarget = entity.position().add(0.0D, entity.getBbHeight() * 0.5D, 0.0D).subtract(eye);
-        if (toTarget.lengthSqr() < 0.0001D) {
-            return true;
-        }
-        double distance = toTarget.length();
-        double alignment = player.getLookAngle().normalize().dot(toTarget.scale(1.0D / distance));
-        return alignment > 0.996D || Math.sqrt(Math.max(0.0D, 1.0D - alignment * alignment)) * distance < 0.45D;
+        return entity != null && entity.isAlive() && ChamberStateManager.equippedTool(player) == ChamberTool.NONE
+                && (entity instanceof ChamberTripTrapEntity || player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty())
+                && TrapMarkerTargeting.isLookingAt(player.getEyePosition(), player.getLookAngle(), entity.position(),
+                TrapMarkerTargeting.MARKER_HEIGHT, 75.0D);
     }
 }

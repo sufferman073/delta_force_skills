@@ -71,6 +71,7 @@ public final class ShepherdTrapMarkerOverlay {
         font.drawInBatch(text, -font.width(text) / 2.0F, 0.0F, 0xFFFFD84A, false,
                 poseStack.last().pose(), buffers, Font.DisplayMode.SEE_THROUGH,
                 0x66000000, LightTexture.FULL_BRIGHT);
+        OwnerMarkerIcon.draw(poseStack, buffers, "shepherd.skill.sonic_trap", distance);
         poseStack.popPose();
     }
 }

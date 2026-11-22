@@ -69,6 +69,7 @@ public class DepartmentOverheatLaserEntity extends Entity implements ItemSupplie
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "department.skill.overheat_laser", (HIT_RADIUS), HIT_RADIUS + 3, player -> allegiance.active() ? allegiance.isEnemy((ServerLevel)level(), player) : com.rzy.dealt_force_skills.util.TargetingUtil.isHostileLivingFor(owner((ServerLevel)level()), player));
         ensureStart();
         if (level().isClientSide) {
             spawnClientParticles();

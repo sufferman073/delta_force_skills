@@ -23,7 +23,7 @@ public final class TempestHeldItemVisuals {
     private TempestHeldItemVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         if (!ClientTempestHudState.hasEquippedTool()) {
             return;

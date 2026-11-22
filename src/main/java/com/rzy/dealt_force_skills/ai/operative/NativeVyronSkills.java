@@ -62,7 +62,7 @@ public final class NativeVyronSkills implements OperativeSkills {
         }
         if (cannonWindup > 0) {
             LivingEntity target = host.serverLevel().getEntity(cannonTarget) instanceof LivingEntity living ? living : null;
-            if (!validTarget(host, target, 4.0D, 24.0D)) {
+            if (!validTarget(host, target, 4.0D, 24.0D, false)) {
                 cannonWindup = 0;
                 cannonTarget = null;
                 return;
@@ -89,9 +89,9 @@ public final class NativeVyronSkills implements OperativeSkills {
         return switch (slot) {
             case ACTIVE_1 -> dashCooldown == 0 && validTarget(host, target, 3, 56)
                     && OperativeTactics.displacement(host, target, (VyronStateManager.dashSpeed() * 0.5D) * Math.max(1, VyronStateManager.DASH_DURATION_TICKS)).lengthSqr() > .5 ? 45 : 0;
-            case ACTIVE_2 -> bombCharges > 0 && validTarget(host, target, 9, 18)
+            case ACTIVE_2 -> bombCharges > 0 && validTarget(host, target, 9, 18, false)
                     && safeShot(host, bombShot(host, target), VyronMagneticBombEntity.blastRadius()) ? 80 : 0;
-            case CORE -> coreCooldown == 0 && validTarget(host, target, 5, 24)
+            case CORE -> coreCooldown == 0 && validTarget(host, target, 5, 24, false)
                     && safeShot(host, cannonShot(host, target), VyronTigerCannonEntity.blastRadius()) ? 65 : 0;
             case PASSIVE -> 0;
         };
@@ -150,20 +150,24 @@ public final class NativeVyronSkills implements OperativeSkills {
     }
 
     private static boolean validTarget(OperativeHost host, LivingEntity target, double min, double max) {
-        if (target == null || !host.isEnemy(target) || !host.canSee(target)
+        return validTarget(host, target, min, max, true);
+    }
+
+    private static boolean validTarget(OperativeHost host, LivingEntity target, double min, double max, boolean sight) {
+        if (target == null || !host.isEnemy(target) || !(sight ? host.canSee(target) : OperativeHearing.knownContact(host, target))
                 || !host.withinCombatRange(target.position()) || !host.withinOrders(host.body().position())) return false;
         double distance = host.body().distanceToSqr(target);
         return distance >= min * min && distance <= max * max;
     }
 
     private static OperativeBallistics.Shot bombShot(OperativeHost host, LivingEntity target) {
-        return OperativeBallistics.solve(host, target.position().add(0, 0.1D, 0),
+        return OperativeBallistics.lob(host, target.position().add(0, 0.1D, 0),
                 1.08D, 0.06D, 0.62D, 0.1D, 0.04D, 0.99D, 80,
                 VyronMagneticBombEntity.blastRadius() * 0.5D, false);
     }
 
     private static OperativeBallistics.Shot cannonShot(OperativeHost host, LivingEntity target) {
-        return OperativeBallistics.solve(host, target.position().add(0, 0.1D, 0),
+        return OperativeBallistics.lob(host, target.position().add(0, 0.1D, 0),
                 1.9D, 0.08D, 0.8D, 0.08D, 0.045D, 0.992D, 55,
                 VyronTigerCannonEntity.blastRadius() * 0.5D, true);
     }

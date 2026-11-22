@@ -50,9 +50,9 @@ public class GizmoTBoyEntity extends Entity implements OperativeAreaSource, Item
     private static volatile int AIM_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("AIM_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmotboyentity.aim_ticks", 6));
     private static final int CRAWL_SOUND_INTERVAL_TICKS = 7;
     private static volatile double SPEED = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("SPEED", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmotboyentity.speed", 0.4));
-    private static volatile double CHASE_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CHASE_RADIUS", () -> Math.max(6.0, com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmotboyentity.chase_radius", 6.0)));
-    private static volatile double PLAYER_TARGET_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PLAYER_TARGET_RADIUS", () -> Math.max(6.0, com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmotboyentity.player_target_radius", 6.0)));
-    private static volatile double STOP_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("STOP_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmotboyentity.stop_radius", 1.5));
+    private static volatile double CHASE_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("CHASE_RADIUS", () -> Math.max(6.0, com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmotboyentity.chase_radius", 10.0)));
+    private static volatile double PLAYER_TARGET_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("PLAYER_TARGET_RADIUS", () -> Math.max(5.0, com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmotboyentity.player_target_radius", 5.0)));
+    private static volatile double STOP_RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("STOP_RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmotboyentity.stop_radius", 2.0));
     private static volatile double WEB_LENGTH = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WEB_LENGTH", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.gizmo_t_boy_entity.web_length", 3.5));
     private static volatile double WEB_HALF_WIDTH = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("WEB_HALF_WIDTH", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("entities.gizmo_t_boy_entity.web_half_width", 1.75));
     private static final DustParticleOptions RED_MARKER = new DustParticleOptions(new Vector3f(1.0f, 0.05f, 0.02f), 1.2f);
@@ -118,6 +118,9 @@ public class GizmoTBoyEntity extends Entity implements OperativeAreaSource, Item
             return;
         }
 
+        if (aimTicks > 0 && allegiance.active() && !validNativeAim(serverLevel)) {
+            aimTicks = 0; nativeAimTarget = null;
+        }
         if (aimTicks > 0) {
             aimTicks--;
             if (aimTicks == 0) {
@@ -126,7 +129,7 @@ public class GizmoTBoyEntity extends Entity implements OperativeAreaSource, Item
             return;
         }
 
-        Optional<LivingEntity> closeTarget = findNearestTarget(serverLevel, STOP_RADIUS);
+        Optional<LivingEntity> closeTarget = findWebTarget(serverLevel, STOP_RADIUS);
         if (closeTarget.isPresent()) {
             beginAimingAt(closeTarget.get());
             revealToNearbyPlayers(serverLevel);
@@ -151,7 +154,7 @@ public class GizmoTBoyEntity extends Entity implements OperativeAreaSource, Item
 
         crawl();
         playCrawlSound(serverLevel);
-        findNearestTarget(serverLevel, STOP_RADIUS + 0.2D).ifPresent(this::beginAimingAt);
+        findWebTarget(serverLevel, STOP_RADIUS).ifPresent(this::beginAimingAt);
         revealToNearbyPlayers(serverLevel);
     }
 
@@ -263,6 +266,21 @@ public class GizmoTBoyEntity extends Entity implements OperativeAreaSource, Item
                 .min(Comparator.comparingDouble(target -> target.distanceToSqr(this)));
     }
 
+    private Optional<LivingEntity> findWebTarget(ServerLevel level, double radius) {
+        if (!allegiance.active()) return level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(radius),
+                target -> canTarget(target) && target.distanceToSqr(this) <= radius * radius).stream()
+                .min(Comparator.comparingDouble(target -> target.distanceToSqr(this)));
+        return level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(radius),
+                target -> canTarget(target) && target.distanceToSqr(this) <= radius * radius && webClear(target))
+                .stream().min(Comparator.comparingDouble(target -> target.distanceToSqr(this)));
+    }
+
+    private boolean webClear(LivingEntity target) {
+        return level().clip(new net.minecraft.world.level.ClipContext(position().add(0, 0.22, 0), target.getEyePosition(),
+                net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, this)).getType()
+                == net.minecraft.world.phys.HitResult.Type.MISS;
+    }
+
     private boolean canTarget(LivingEntity target) {
         if (allegiance.active() && level() instanceof ServerLevel level) return allegiance.isEnemy(level, target);
         if (!target.isAlive()) {
@@ -306,7 +324,8 @@ public class GizmoTBoyEntity extends Entity implements OperativeAreaSource, Item
     private void handleWallCollision(Vec3 direction) {
         for (double up = 0.35D; up <= 2.5D; up += 0.35D) {
             AABB targetBox = getBoundingBox().move(direction.x * 0.3D, up, direction.z * 0.3D);
-            if (level().noCollision(this, targetBox)) {
+            if (level().noCollision(this, targetBox) && (!allegiance.active()
+                    || com.rzy.dealt_force_skills.ai.operative.OperativeCrawlerPath.clearClimb(level(), getBoundingBox(), direction.scale(0.3), up))) {
                 setPos(getX() + direction.x * 0.28D, getY() + up, getZ() + direction.z * 0.28D);
                 return;
             }
@@ -409,7 +428,7 @@ public class GizmoTBoyEntity extends Entity implements OperativeAreaSource, Item
 
     private boolean validNativeAim(ServerLevel level) {
         Entity target = nativeAimTarget == null ? null : level.getEntity(nativeAimTarget);
-        return target instanceof LivingEntity living && canTarget(living) && target.distanceToSqr(this) <= WEB_LENGTH * WEB_LENGTH;
+        return target instanceof LivingEntity living && canTarget(living) && webClear(living) && target.distanceToSqr(this) <= WEB_LENGTH * WEB_LENGTH;
     }
 
     private Vec3 webDirection(ServerLevel level) {

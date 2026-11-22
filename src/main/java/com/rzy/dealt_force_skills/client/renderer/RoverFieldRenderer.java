@@ -20,5 +20,6 @@ public final class RoverFieldRenderer extends EntityRenderer<RoverFieldEntity> {
         smoke.render(field, yaw, partial, pose, buffer, light);
         pose.popPose();
     }
+    public SmokeCloudRenderer<RoverFieldEntity> smokeRenderer() { return smoke; }
     @Override public ResourceLocation getTextureLocation(RoverFieldEntity field) { return smoke.getTextureLocation(field); }
 }

@@ -24,9 +24,9 @@ public final class NativeGrowthEvents {
             e.getEntity().getPersistentData().putLong("OperativeBackstabUntil", e.getEntity().level().getGameTime() + 5);
             e.setAmount(Math.max(e.getAmount(), e.getEntity().getHealth() + e.getEntity().getAbsorptionAmount() + 1));
         }
-        if (e.getEntity() instanceof OperativeEntity
+        if (e.getEntity() instanceof OperativeEntity operative
                 && !e.getSource().is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY))
-            e.setAmount((float)(e.getAmount() * (1 - OperativeSettings.value("damage_reduction"))));
+            e.setAmount((float)(e.getAmount() * (1 - OperativeSettings.value(operative, "damage_reduction"))));
         if(e.getSource().getEntity() instanceof OperativeHost bot && bot.skills() instanceof NativeCommanderSkills && bot.isEnemy(e.getEntity())){
             int gene=OperativeGrowth.gene();
             float multiplier=SkillDamageHelper.isApplyingCommanderSkillDamage()?1:1+gene*.1F;

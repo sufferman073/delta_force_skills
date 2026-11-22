@@ -1,0 +1,25 @@
+{
+  "textures": {"sheet":"dealt_force_skills:item/refresh_kits/field_materials","particle":"#sheet"},
+  "display": {
+    "ground": {"rotation":[2,2,1],"translation":[0,2.1,0],"scale":[0.61,0.61,0.61]},
+    "fixed": {"rotation":[16,-17,0],"translation":[0,0,-0.2],"scale":[0.94,0.94,0.94]},
+    "firstperson_righthand":{"rotation":[19,-24,-4],"translation":[-0.65,1.8,0.55],"scale":[0.7,0.7,0.7]},
+    "firstperson_lefthand":{"rotation":[22,-30,-1],"translation":[-0.35,2,0.65],"scale":[0.69,0.69,0.69]},
+    "thirdperson_righthand":{"rotation":[87,9,-6],"translation":[0.15,1.65,-2.85],"scale":[0.58,0.58,0.58]},
+    "thirdperson_lefthand":{"rotation":[84,13,-3],"translation":[0.25,1.75,-2.72],"scale":[0.58,0.58,0.58]}
+  },
+  "elements": [
+{"name":"box_bellows","from":[3.49,4.54,5.71],"to":[12.51,10.91,9.73],"faces":{"north":{"uv":[10,2,12,4],"texture":"#sheet"},"east":{"uv":[10,2,12,4],"texture":"#sheet"},"south":{"uv":[10,2,12,4],"texture":"#sheet"},"west":{"uv":[10,2,12,4],"texture":"#sheet"},"up":{"uv":[10,2,12,4],"texture":"#sheet"},"down":{"uv":[10,2,12,4],"texture":"#sheet"}}},
+    {"name":"armour_panel","from":[5.13,5.23,9.71],"to":[10.82,9.02,10.14],"faces":{"north":{"uv":[6,2,8,4],"texture":"#sheet"},"east":{"uv":[6,2,8,4],"texture":"#sheet"},"south":{"uv":[0,8,2,10],"texture":"#sheet"},"west":{"uv":[6,2,8,4],"texture":"#sheet"},"up":{"uv":[6,2,8,4],"texture":"#sheet"},"down":{"uv":[6,2,8,4],"texture":"#sheet"}}},
+    {"name":"canvas_storm_flap","from":[4.02,9.02,7.25],"to":[11.99,11.22,10.16],"faces":{"north":{"uv":[6,2,8,4],"texture":"#sheet"},"east":{"uv":[6,2,8,4],"texture":"#sheet"},"south":{"uv":[6,2,8,4],"texture":"#sheet"},"west":{"uv":[6,2,8,4],"texture":"#sheet"},"up":{"uv":[6,2,8,4],"texture":"#sheet"},"down":{"uv":[6,2,8,4],"texture":"#sheet"}}},
+    {"name":"side_satchel_port","from":[1.62,5.11,6.05],"to":[3.61,10.02,9.53],"faces":{"north":{"uv":[12,0,14,2],"texture":"#sheet"},"east":{"uv":[12,0,14,2],"texture":"#sheet"},"south":{"uv":[12,0,14,2],"texture":"#sheet"},"west":{"uv":[12,0,14,2],"texture":"#sheet"},"up":{"uv":[12,0,14,2],"texture":"#sheet"},"down":{"uv":[12,0,14,2],"texture":"#sheet"}}},
+    {"name":"side_satchel_starboard","from":[12.4,5.16,6.03],"to":[14.38,9.98,9.54],"faces":{"north":{"uv":[12,0,14,2],"texture":"#sheet"},"east":{"uv":[12,0,14,2],"texture":"#sheet"},"south":{"uv":[12,0,14,2],"texture":"#sheet"},"west":{"uv":[12,0,14,2],"texture":"#sheet"},"up":{"uv":[12,0,14,2],"texture":"#sheet"},"down":{"uv":[12,0,14,2],"texture":"#sheet"}}},
+    {"name":"side_pocket_lid","from":[1.46,8.69,5.98],"to":[3.64,9.73,9.72],"faces":{"north":{"uv":[12,6,14,8],"texture":"#sheet"},"east":{"uv":[12,6,14,8],"texture":"#sheet"},"south":{"uv":[12,6,14,8],"texture":"#sheet"},"west":{"uv":[12,6,14,8],"texture":"#sheet"},"up":{"uv":[12,6,14,8],"texture":"#sheet"},"down":{"uv":[12,6,14,8],"texture":"#sheet"}}},
+    {"name":"side_pocket_welt","from":[12.36,8.64,5.94],"to":[14.49,9.64,9.74],"faces":{"north":{"uv":[10,0,12,2],"texture":"#sheet"},"east":{"uv":[10,0,12,2],"texture":"#sheet"},"south":{"uv":[10,0,12,2],"texture":"#sheet"},"west":{"uv":[10,0,12,2],"texture":"#sheet"},"up":{"uv":[10,0,12,2],"texture":"#sheet"},"down":{"uv":[10,0,12,2],"texture":"#sheet"}}},
+    {"name":"sling_port","from":[4.01,4.58,5.65],"to":[5.07,11.32,10.24],"faces":{"north":{"uv":[10,0,12,2],"texture":"#sheet"},"east":{"uv":[10,0,12,2],"texture":"#sheet"},"south":{"uv":[10,0,12,2],"texture":"#sheet"},"west":{"uv":[10,0,12,2],"texture":"#sheet"},"up":{"uv":[10,0,12,2],"texture":"#sheet"},"down":{"uv":[10,0,12,2],"texture":"#sheet"}}},
+    {"name":"sling_starboard","from":[10.93,4.62,5.6],"to":[12.01,11.34,10.22],"faces":{"north":{"uv":[10,0,12,2],"texture":"#sheet"},"east":{"uv":[10,0,12,2],"texture":"#sheet"},"south":{"uv":[10,0,12,2],"texture":"#sheet"},"west":{"uv":[10,0,12,2],"texture":"#sheet"},"up":{"uv":[10,0,12,2],"texture":"#sheet"},"down":{"uv":[10,0,12,2],"texture":"#sheet"}}},
+    {"name":"trapeze_left","from":[5.72,10.86,6.83],"to":[6.44,12.64,7.91],"rotation":{"origin":[6.1,11.04,7.4],"axis":"z","angle":-22.5},"faces":{"north":{"uv":[12,0,14,2],"texture":"#sheet"},"east":{"uv":[12,0,14,2],"texture":"#sheet"},"south":{"uv":[12,0,14,2],"texture":"#sheet"},"west":{"uv":[12,0,14,2],"texture":"#sheet"},"up":{"uv":[12,0,14,2],"texture":"#sheet"},"down":{"uv":[12,0,14,2],"texture":"#sheet"}}},
+    {"name":"trapeze_right","from":[9.56,10.86,6.83],"to":[10.28,12.64,7.91],"rotation":{"origin":[9.9,11.04,7.4],"axis":"z","angle":22.5},"faces":{"north":{"uv":[12,0,14,2],"texture":"#sheet"},"east":{"uv":[12,0,14,2],"texture":"#sheet"},"south":{"uv":[12,0,14,2],"texture":"#sheet"},"west":{"uv":[12,0,14,2],"texture":"#sheet"},"up":{"uv":[12,0,14,2],"texture":"#sheet"},"down":{"uv":[12,0,14,2],"texture":"#sheet"}}},
+    {"name":"stitched_grip","from":[6.43,12.36,6.78],"to":[9.59,13.06,7.98],"faces":{"north":{"uv":[8,0,10,2],"texture":"#sheet"},"east":{"uv":[8,0,10,2],"texture":"#sheet"},"south":{"uv":[8,0,10,2],"texture":"#sheet"},"west":{"uv":[8,0,10,2],"texture":"#sheet"},"up":{"uv":[8,0,10,2],"texture":"#sheet"},"down":{"uv":[8,0,10,2],"texture":"#sheet"}}}
+  ]
+}

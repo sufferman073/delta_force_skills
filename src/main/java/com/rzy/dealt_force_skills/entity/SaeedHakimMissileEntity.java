@@ -87,6 +87,7 @@ public class SaeedHakimMissileEntity extends Projectile implements ItemSupplier 
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "saeed.skill.command_order", (EXPLOSION_RADIUS));
         if (level().isClientSide) {
             spawnClientTrail();
             return;

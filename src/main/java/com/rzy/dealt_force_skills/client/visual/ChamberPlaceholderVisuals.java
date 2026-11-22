@@ -23,7 +23,7 @@ public final class ChamberPlaceholderVisuals {
     private ChamberPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         if (!ClientChamberHudState.hasEquippedTool()) {
             return;

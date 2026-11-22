@@ -17,6 +17,10 @@ import com.rzy.dealt_force_skills.character.stinger.StingerTool;
 import com.rzy.dealt_force_skills.character.toxik.ToxikTool;
 import com.rzy.dealt_force_skills.character.uluru.UluruTool;
 import com.rzy.dealt_force_skills.character.vyron.VyronTool;
+import com.rzy.dealt_force_skills.client.DWolfInputHandler;
+import com.rzy.dealt_force_skills.client.SinevaInputHandler;
+import com.rzy.dealt_force_skills.client.character.ClientDWolfHudState;
+import com.rzy.dealt_force_skills.client.character.ClientLunaBowVisualState;
 import com.rzy.dealt_force_skills.client.character.ClientChamberHudState;
 import com.rzy.dealt_force_skills.client.character.ClientDepartmentHudState;
 import com.rzy.dealt_force_skills.client.character.ClientGizmoHudState;
@@ -40,24 +44,40 @@ import com.rzy.dealt_force_skills.client.character.ClientVyronHudState;
 import com.rzy.dealt_force_skills.client.renderer.BlockbenchAnimatedModelRenderer;
 import com.rzy.dealt_force_skills.skill.HeldToolVisual;
 import com.rzy.dealt_force_skills.skill.SkillModelVisual;
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.HumanoidArm;
+import org.joml.Vector3f;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
-public final class HeldToolThirdPersonVisuals {
-    private HeldToolThirdPersonVisuals() {
+@Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+public final class HeldToolThirdPersonVisuals extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {
+    private HeldToolThirdPersonVisuals(PlayerRenderer renderer) {
+        super(renderer);
+    }
+
+    @SubscribeEvent
+    public static void addLayers(EntityRenderersEvent.AddLayers event) {
+        for (var skin : event.getSkins()) {
+            PlayerRenderer renderer = event.getSkin(skin);
+            if (renderer != null) renderer.addLayer(new HeldToolThirdPersonVisuals(renderer));
+        }
     }
 
     public static boolean renderSpectatorFirstPerson(GuiGraphics graphics, int targetEntityId, float partialTick) {
-        ToolSpec spec = visualSpec(ClientHeldToolVisualState.visual(targetEntityId), partialTick);
+        ToolSpec spec = wildfireSpec(targetEntityId, partialTick);
+        if (spec == null) spec = visualSpec(ClientHeldToolVisualState.visual(targetEntityId), partialTick);
         if (spec == null) {
             return false;
         }
@@ -79,40 +99,214 @@ public final class HeldToolThirdPersonVisuals {
         return true;
     }
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        Player player = event.getEntity();
-        if (player.isInvisible()
-                || player == minecraft.player && minecraft.options.getCameraType().isFirstPerson()) {
+    @Override
+    public void render(PoseStack poseStack, MultiBufferSource buffers, int packedLight, AbstractClientPlayer player,
+                       float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks,
+                       float netHeadYaw, float headPitch) {
+        if (!visible(player)) return;
+        TempestRecallVisuals.render(getParentModel(), player, partialTick, poseStack, buffers, packedLight);
+        SkillModelVisual action = ClientSkillModelVisualState.visual(player);
+        if (action == SkillModelVisual.MANBA_ELBOW) {
+            var model = getParentModel();
+            HumanoidArm arm = player.getMainArm();
+            boolean right = arm == HumanoidArm.RIGHT;
+            var shoulder = ThirdPersonToolGrip.pivot(model, arm).div(16);
+            var handFrame = new PoseStack();
+            model.translateToHand(arm, handFrame);
+            var elbow = handFrame.last().pose().transformPosition(0,.39F,0,new Vector3f());
+            float phase = ClientSkillModelVisualState.ageSeconds(player, partialTick)*20 / action.durationTicks();
+            var forearm = CharacterSkillModelVisuals.elbowToFist(right, ThirdPersonSkillPose.smooth(phase/.4F)).mul(-1,-1,1);
+            ClientToolFirstPerson.foldedArm(player,right,shoulder,elbow,new Vector3f(elbow).add(forearm),poseStack,buffers,packedLight,1);
             return;
         }
-        if (isNikaidouAttackVisual(ClientSkillModelVisualState.visual(player))) {
-            return;
+        if (!ThirdPersonSkillPose.owns(action))
+            CharacterSkillModelVisuals.renderPlayerLayer(getParentModel(), player, poseStack, buffers, packedLight, partialTick);
+        var motion = ClientToolHandMotion.frame(player, partialTick);
+        ToolSpec spec = forPlayer(player, partialTick, motion);
+        if (spec == null || !ThirdPersonSkillPose.owns(action) && motion != null && motion.hidden()) return;
+        if (spec.model().getPath().equals("n_two_condensation_focus")) {
+            var local = new PoseStack();
+            ThirdPersonToolGrip.place(spec, getParentModel(), player.getMainArm(), local);
+            var sideGrip = local.last().pose().transformPosition(ThirdPersonToolGrip.launcherSideGrip().div(16));
+            var support = player.getMainArm().getOpposite();
+            var shoulder = ThirdPersonToolGrip.pivot(getParentModel(), support).div(16);
+            ClientToolFirstPerson.foldedArm(player,support == HumanoidArm.RIGHT,shoulder,launcherSupportElbow(shoulder,sideGrip),sideGrip,poseStack,buffers,packedLight,1);
         }
-        ToolSpec spec = player == minecraft.player
-                ? currentLocalSpec(player, event.getPartialTick())
-                : visualSpec(ClientHeldToolVisualState.visual(player), event.getPartialTick());
-        if (spec == null) {
-            return;
-        }
-        PoseStack poseStack = event.getPoseStack();
         poseStack.pushPose();
-        applyRightHandAnchor(event, poseStack);
-        poseStack.translate(spec.x(), spec.y(), spec.z());
-        poseStack.mulPose(Axis.XP.rotationDegrees(180.0F + spec.pitch()));
-        poseStack.mulPose(Axis.YP.rotationDegrees(spec.yaw()));
-        poseStack.mulPose(Axis.ZP.rotationDegrees(-90.0F + spec.roll()));
-        poseStack.scale(spec.scale(), spec.scale(), spec.scale());
-        BlockbenchAnimatedModelRenderer.render(spec.model(), spec.animation(), spec.seconds(),
-                poseStack, event.getMultiBufferSource(), event.getPackedLight());
-        poseStack.popPose();
+        try {
+            if (!ThirdPersonToolGrip.place(spec, getParentModel(), player.getMainArm(), poseStack))
+                spec.applyGrip(getParentModel(), player.getMainArm(), poseStack);
+            if (spec.model().getPath().equals("hackclaw_hacking_terminal")) {
+                HackclawTerminalVisuals.renderTerminal(player, partialTick, poseStack, buffers, packedLight);
+            } else if (spec.model().getPath().equals("shared_hand_grenade") && motion != null && motion.release() >= 0) {
+                ThirdPersonToolGrip.drawGrenade(spec, motion.release(), poseStack, buffers, packedLight);
+            } else if (spec.model().getPath().equals("manba_flashlight")) {
+                ManbaFlashlightBeamRenderer.renderLamp(player,spec.model(),spec.animation(),spec.seconds(),poseStack,buffers,packedLight,false);
+            } else if (spec.model().getPath().equals("luna_composite_bow")) {
+                LunaTool tool = ClientLunaBowVisualState.isActive(player) ? ClientLunaBowVisualState.tool(player)
+                        : player == Minecraft.getInstance().player ? ClientLunaHudState.equippedTool()
+                        : ClientHeldToolVisualState.visual(player) == HeldToolVisual.LUNA_RECON_BOW ? LunaTool.RECON_BOW : LunaTool.SHOCK_BOW;
+                ClientToolFirstPerson.drawBow(tool, spec.animation(), spec.seconds(), poseStack, buffers, packedLight);
+            } else {
+                BlockbenchAnimatedModelRenderer.render(spec.model(), spec.animation(), spec.seconds(), poseStack, buffers, packedLight);
+            }
+        } finally {
+            poseStack.popPose();
+        }
+    }
+
+    static Vector3f launcherSupportElbow(Vector3f shoulder, Vector3f grip) {
+        return new Vector3f(shoulder.x * 1.18F, grip.y - .04F, (shoulder.z + grip.z) * .5F);
+    }
+
+    public static void withSegmentedArm(AbstractClientPlayer player, PlayerModel<?> model, float partial, Runnable render) {
+        if (!visible(player)) { render.run(); return; }
+        boolean elbow = ClientSkillModelVisualState.visual(player) == SkillModelVisual.MANBA_ELBOW;
+        if (!elbow) {
+            var motion = ClientToolHandMotion.frame(player, partial);
+            if (motion == null || motion.cue() != com.rzy.dealt_force_skills.skill.ToolHandCue.N_TWO_CONDENSER_LAUNCHER || motion.hidden()) {
+                if (ClientHeldToolVisualState.visual(player) != HeldToolVisual.N_TWO_CONDENSER_LAUNCHER) { render.run(); return; }
+            }
+            var spec = forPlayer(player, partial, motion);
+            if (spec == null || !spec.model().getPath().equals("n_two_condensation_focus") || motion != null && motion.hidden()) { render.run(); return; }
+        }
+        boolean right = (elbow ? player.getMainArm() : player.getMainArm().getOpposite()) == HumanoidArm.RIGHT;
+        var arm = right ? model.rightArm : model.leftArm;
+        var sleeve = right ? model.rightSleeve : model.leftSleeve;
+        boolean armSkipped = arm.skipDraw, sleeveSkipped = sleeve.skipDraw;
+        try {
+            arm.skipDraw = sleeve.skipDraw = true;
+            render.run();
+        } finally {
+            arm.skipDraw = armSkipped; sleeve.skipDraw = sleeveSkipped;
+        }
+    }
+
+    private static boolean visible(Player player) {
+        Minecraft minecraft = Minecraft.getInstance();
+        return !player.isInvisible() && !player.isSpectator() && !((player == minecraft.player || player == minecraft.getCameraEntity())
+                && minecraft.options.getCameraType().isFirstPerson());
+    }
+
+    public static boolean replacesHand(Player player, HumanoidArm arm) {
+        if (!visible(player)) return false;
+        if (ThirdPersonSkillPose.owns(ClientSkillModelVisualState.visual(player))) return arm == player.getMainArm();
+        if (arm == player.getMainArm() && CharacterSkillModelVisuals.replacesHand(player)) return true;
+        var motion = ClientToolHandMotion.frame(player, 0);
+        if (motion != null && ThirdPersonSkillPose.pullsPin(motion) && arm != player.getMainArm()) return true;
+        ToolSpec spec = forPlayer(player, 0, motion);
+        return spec != null && ThirdPersonToolGrip.occupies(spec.model().getPath(), player.getMainArm(), arm);
+    }
+
+    public static void poseArms(Player player, PlayerModel<?> model, float partial) {
+        if (!visible(player)) return;
+        SkillModelVisual action = ClientSkillModelVisualState.visual(player);
+        var motion = ClientToolHandMotion.frame(player, partial);
+        boolean dedicated = ThirdPersonSkillPose.owns(action);
+        boolean posed = dedicated ? ThirdPersonSkillPose.action(model, player.getMainArm(), action,
+                ClientSkillModelVisualState.ageSeconds(player, partial) * 20F)
+                : ThirdPersonSkillPose.tool(model, player.getMainArm(), motion) || ClientToolHandMotion.poseThirdPerson(player, model, partial);
+        ToolSpec spec = forPlayer(player, partial, motion);
+        if (!dedicated && spec != null && (motion == null || !motion.hidden())) {
+            boolean timeline = motion != null && motion.release() >= 0;
+            if (!timeline || ThirdPersonToolGrip.keepContactsOnRelease(spec.model().getPath())) {
+                float deploy = ClientHeldToolVisualState.deployProgress(player, partial);
+                posed |= ThirdPersonToolGrip.pose(spec, player.getMainArm(), model, deploy,
+                        motion == null ? 1 : motion.draw(), poseWeight(motion), posed);
+            }
+        }
+        if (posed) {
+            model.leftSleeve.copyFrom(model.leftArm);
+            model.rightSleeve.copyFrom(model.rightArm);
+        }
+    }
+
+    private static float poseWeight(ClientToolHandMotion.Frame motion) {
+        return motion == null || motion.release() < 0 ? 0 : (float)Math.sin(Math.PI * ClientToolHandMotion.smooth(motion.release()));
+    }
+
+    private static ToolSpec forPlayer(Player player, float partial, ClientToolHandMotion.Frame motion) {
+        float seconds = (player.tickCount + partial) / 20F;
+        boolean local = player == Minecraft.getInstance().player;
+        SkillModelVisual action = ClientSkillModelVisualState.visual(player);
+        if (action == SkillModelVisual.MANBA_ELBOW) return null;
+        if (action == SkillModelVisual.MANBA_FLASHLIGHT_TOGGLE) return flashlight(seconds);
+        if (action == SkillModelVisual.UNDEAD_ROGUE_BATON) return spec("undead_rogue_baton", null, 0, .78F);
+        if (isNikaidouAttackVisual(action)) {
+            boolean iron = action == SkillModelVisual.NIKAIDOU_HOT_IRON || action == SkillModelVisual.NIKAIDOU_HOT_IRON_OVERHEAD;
+            return nikaidou(iron ? NikaidouHiroTool.HOT_IRON : NikaidouHiroTool.RITUAL_SWORD, seconds);
+        }
+        if (CharacterSkillModelVisuals.replacesHand(player) || ClientToolHandMotion.commandOwnsHands(player)) return null;
+        if (motion != null && motion.cue() == ToolHandCue.VYRON_TIGER_CANNON)
+            return spec(motion.cue().model, motion.clip(), motion.seconds(), .38F, 90F, -8F, 0F);
+        if (motion != null && motion.release() >= 0 && motion.cue() != com.rzy.dealt_force_skills.skill.ToolHandCue.LUNA_BOW
+                && motion.cue() != com.rzy.dealt_force_skills.skill.ToolHandCue.HACKCLAW_TERMINAL) {
+            ToolSpec equipped = visualSpec(ClientHeldToolVisualState.visual(player), partial);
+            String id = motion.cue().model;
+            if (equipped != null && equipped.model().getPath().equals(id))
+                return new ToolSpec(equipped.model(), motion.clip(), motion.seconds(), equipped.scale(), equipped.yaw(), equipped.pitch(), equipped.roll());
+            float scale = switch (id) {
+                case "d_wolf_hand_cannon" -> .86F;
+                case "d_wolf_smoke_grenade" -> .83F;
+                case "wildfire_side_launcher" -> .75F;
+                case "shared_hand_grenade" -> .44F;
+                case "uluru_quick_cover_package" -> .42F;
+                case "hackclaw_knife" -> .54F;
+                case "sineva_grapple_gun" -> .62F;
+                case "saeed_ember_crossbow" -> .79F;
+                default -> .48F;
+            };
+            return spec(id, motion.clip(), motion.seconds(), scale);
+        }
+        if (HackclawTerminalVisuals.visible(player)) return spec("hackclaw_hacking_terminal", null, seconds, .60F);
+        if (ClientLunaBowVisualState.isActive(player)) return spec("luna_composite_bow",
+                ClientLunaBowVisualState.phase(player) == ClientLunaBowVisualState.PHASE_RELEASE ? "release" : "draw",
+                ClientLunaBowVisualState.animationSeconds(player, partial), .76F);
+        if (local && ClientLunaHudState.hasEquippedTool() && ClientLunaHudState.equippedTool() != LunaTool.COMPOSITE_GRENADE)
+            return spec("luna_composite_bow", "idle", seconds, .76F);
+        if (local && (DWolfInputHandler.isSmokeHeldForVisual() || ClientToolModelAnimationState.isActive("d_wolf_smoke_grenade")))
+            return animatedLocal("d_wolf_smoke_grenade", null, seconds, .83F);
+        if (local && (ClientDWolfHudState.hasHandCannonEquipped() || ClientToolModelAnimationState.isActive("d_wolf_hand_cannon")))
+            return animatedLocal("d_wolf_hand_cannon", "idle", seconds, .86F);
+        if ((local && (SinevaInputHandler.isGrappleCharging() || ClientToolModelAnimationState.isActive("sineva_grapple_gun")))
+                || TempestRecallVisuals.hasGrapple(player))
+            return local ? animatedLocal("sineva_grapple_gun", null, seconds, .62F) : spec("sineva_grapple_gun", null, seconds, .62F);
+        if (local && SinevaInputHandler.isBladeWireHeld()) return spec("sineva_blade_wire_core", "idle", seconds, .48F);
+        if (com.rzy.dealt_force_skills.client.WildfireClient.trackedTool(player.getId()) == 1)
+            return spec("wildfire_side_launcher", "idle", seconds, .75F);
+        ToolSpec spec = wildfireSpec(player.getId(), partial);
+        if (spec != null) return spec;
+        return local ? currentLocalSpec(player, partial) : visualSpec(ClientHeldToolVisualState.visual(player), partial);
+    }
+
+    private static ToolSpec animatedLocal(String model, String idle, float seconds, float scale) {
+        var frame = ClientToolModelAnimationState.frame(model, id(model), idle, seconds);
+        return spec(model, frame.animation(), frame.seconds(), scale);
+    }
+
+    private static ResourceLocation id(String path) {
+        return new ResourceLocation(DealtForceSkillsMod.MODID, path);
+    }
+
+    private static ToolSpec wildfireSpec(int entityId, float partialTick) {
+        int tool = com.rzy.dealt_force_skills.client.WildfireClient.trackedTool(entityId);
+        if (tool != 1 && tool != 2) return null;
+        var level = Minecraft.getInstance().level;
+        var target = level == null ? null : level.getEntity(entityId);
+        if (target == null || !target.isAlive()) return null;
+        return new ToolSpec(com.rzy.dealt_force_skills.client.WildfireClient.toolModel(tool), "idle",
+                (target.tickCount + partialTick) / 20.0F, tool == 1 ? 0.69F : 0.76F, 0.0F, 0.0F, 90.0F);
     }
 
     private static ToolSpec currentLocalSpec(Player player, float partialTick) {
         float seconds = (player.tickCount + partialTick) / 20.0F;
+        String saeedClip = SaeedPlaceholderVisuals.crossbowClip();
+        if (saeedClip != null) return new ToolSpec(SaeedPlaceholderVisuals.HAND_MODEL, saeedClip,
+                seconds, 0.79F, 180.0F, -6.0F, 90.0F);
         int roverTool = com.rzy.dealt_force_skills.client.RoverClient.tool();
-        if (roverTool > 0) return stinger(roverTool == 1 ? StingerTool.SMOKE_GRENADE : StingerTool.STIM_GUN, seconds);
+        if (ClientHeldToolVisualState.visual(player) == HeldToolVisual.ROVER_DOG_WHISTLE) return visualSpec(HeldToolVisual.ROVER_DOG_WHISTLE, partialTick);
+        if (roverTool == 1) return visualSpec(HeldToolVisual.ROVER_IRRITANT_SMOKE, partialTick);
+        if (roverTool == 2) return visualSpec(HeldToolVisual.ROVER_AEROSOL_INJECTOR, partialTick);
         ClientToolReleaseAction.Action releaseAction = activeReleaseAction();
         if (releaseAction != null) {
             return release(releaseAction, seconds);
@@ -184,13 +378,11 @@ public final class HeldToolThirdPersonVisuals {
         }
         if (ClientVyronHudState.hasEquippedTool()) {
             VyronTool tool = ClientVyronHudState.equippedTool();
+            if (tool == VyronTool.TIGER_CANNON) return visualSpec(HeldToolVisual.VYRON_TIGER_CANNON, partialTick);
             ClientVyronToolAnimationState.observeEquipped(tool);
             ClientVyronToolAnimationState.AnimationFrame frame =
                     ClientVyronToolAnimationState.frame(tool, seconds);
-            return tool == VyronTool.TIGER_CANNON
-                    ? spec("vyron_tiger_cannon_launcher", frame.animation(), frame.seconds(),
-                    0.38F, 90.0F, -8.0F, 0.0F)
-                    : spec("vyron_magnetic_bomb", frame.animation(), frame.seconds(), 0.52F);
+            return spec("vyron_magnetic_bomb", frame.animation(), frame.seconds(), 0.52F);
         }
         if (ClientDepartmentHudState.hasEquippedTool()) {
             return spec("department_explosive_trap", "idle_hold", seconds, 0.52F);
@@ -202,7 +394,18 @@ public final class HeldToolThirdPersonVisuals {
         float seconds = (Minecraft.getInstance().level == null
                 ? 0.0F : (Minecraft.getInstance().level.getGameTime() + partialTick) / 20.0F);
         return switch (visual) {
-            case NONE -> null;
+            case NONE, SAEED_COMMAND -> null;
+            case D_WOLF_HAND_CANNON -> spec("d_wolf_hand_cannon", "idle", seconds, .86F);
+            case D_WOLF_SMOKE -> spec("d_wolf_smoke_grenade", null, seconds, .83F);
+            case SINEVA_WIRE -> spec("sineva_blade_wire_core", "idle", seconds, .48F);
+            case SINEVA_HOOK -> spec("sineva_grapple_gun", null, seconds, .62F);
+            case SAEED_CROSSBOW, SAEED_CROSSBOW_RICOCHET, SAEED_CROSSBOW_SPENT -> new ToolSpec(
+                    SaeedPlaceholderVisuals.HAND_MODEL, visual == HeldToolVisual.SAEED_CROSSBOW_SPENT ? "spent"
+                    : visual == HeldToolVisual.SAEED_CROSSBOW_RICOCHET ? "ricochet" : "direct", seconds, .79F, 180F, -6F, 90F);
+            case LUNA_SHOCK_BOW, LUNA_RECON_BOW -> spec("luna_composite_bow", "idle", seconds, .76F);
+            case ROVER_AEROSOL_INJECTOR -> spec("rover_aerosol_injector", null, seconds, 0.48F, 0.0F, -8.0F, 0.0F);
+            case ROVER_IRRITANT_SMOKE -> spec("rover_irritant_smoke", null, seconds, 0.52F, 8F, 0F, 80F);
+            case ROVER_DOG_WHISTLE -> spec("rover_dog_whistle", null, seconds, 0.39F);
             case MANBA_FLASHLIGHT -> flashlight(seconds);
             case NIKAIDOU_HOT_IRON -> nikaidou(NikaidouHiroTool.HOT_IRON, seconds);
             case NIKAIDOU_RITUAL_SWORD -> nikaidou(NikaidouHiroTool.RITUAL_SWORD, seconds);
@@ -237,17 +440,10 @@ public final class HeldToolThirdPersonVisuals {
             case ULURU_MISSILE -> uluru(UluruTool.MISSILE, seconds);
             case VLINDER_MEDICAL_DRONE -> spec("vlinder_medical_drone", "idle_hover", seconds, 0.42F);
             case VYRON_MAGNETIC_BOMB -> spec("vyron_magnetic_bomb", "idle", seconds, 0.52F);
-            case VYRON_TIGER_CANNON -> spec("vyron_tiger_cannon_launcher", "idle", seconds,
+            case VYRON_TIGER_CANNON -> spec("vyron_tiger_cannon_launcher", null, seconds,
                     0.38F, 90.0F, -8.0F, 0.0F);
             case DEPARTMENT_EXPLOSIVE_TRAP -> spec("department_explosive_trap", "idle_hold", seconds, 0.52F);
         };
-    }
-
-    private static void applyRightHandAnchor(RenderPlayerEvent.Post event, PoseStack poseStack) {
-        if (ClientTacticalMotion.frame(event.getEntity(), event.getPartialTick()) != null)
-            TacticalPlayerPose.modelSpace(event.getEntity(), poseStack, event.getPartialTick());
-
-        event.getRenderer().getModel().rightArm.translateAndRotate(poseStack);
     }
 
     private static ClientToolReleaseAction.Action activeReleaseAction() {
@@ -271,8 +467,7 @@ public final class HeldToolThirdPersonVisuals {
             case TOXIK_FIREFLY -> 0.48F;
             case RAPTOR_PULSE_GRENADE -> 0.42F;
         };
-        return new ToolSpec(action.model(), frame.animation(), frame.seconds(), scale,
-                -0.06D, 0.18D, -0.08D, 0.0F, 0.0F, 0.0F);
+        return new ToolSpec(action.model(), frame.animation(), frame.seconds(), scale, 0.0F, 0.0F, 0.0F);
     }
 
     private static ToolSpec nikaidou(NikaidouHiroTool tool, float seconds) {
@@ -285,8 +480,7 @@ public final class HeldToolThirdPersonVisuals {
 
     private static ToolSpec flashlight(float seconds) {
         return new ToolSpec(new ResourceLocation(DealtForceSkillsMod.MODID, "manba_flashlight"),
-                "idle_hold", seconds, 0.64F,
-                -0.02D, 0.54D, -0.06D, 0.0F, -6.0F, 0.0F);
+                "idle_hold", seconds, 0.64F, 0.0F, -6.0F, 0.0F);
     }
 
     private static ToolSpec gizmo(GizmoTool tool, float seconds) {
@@ -304,8 +498,8 @@ public final class HeldToolThirdPersonVisuals {
 
     private static ToolSpec ntwo(NTwoTool tool, float seconds) {
         return switch (tool) {
-            case DEWAR_CANISTER -> spec("shared_hand_grenade", "idle", seconds, 0.44F);
-            case CONDENSER_LAUNCHER -> spec("uluru_missile_launcher", null, seconds, 0.38F,
+            case DEWAR_CANISTER -> spec("n_two_dewar_canister", "idle", seconds, 0.64F);
+            case CONDENSER_LAUNCHER -> spec("n_two_condensation_focus", "aurora", seconds, 0.38F,
                     90.0F, -8.0F, 0.0F);
             case NONE -> null;
         };
@@ -354,10 +548,10 @@ public final class HeldToolThirdPersonVisuals {
             float roll
     ) {
         return new ToolSpec(new ResourceLocation(DealtForceSkillsMod.MODID, model),
-                animation, seconds, scale, -0.06D, 0.18D, -0.08D, yaw, pitch, roll);
+                animation, seconds, scale, yaw, pitch, roll);
     }
 
-    private static boolean isNikaidouAttackVisual(SkillModelVisual visual) {
+    static boolean isNikaidouAttackVisual(SkillModelVisual visual) {
         return visual == SkillModelVisual.NIKAIDOU_HOT_IRON
                 || visual == SkillModelVisual.NIKAIDOU_RITUAL_SWORD
                 || visual == SkillModelVisual.NIKAIDOU_HOT_IRON_OVERHEAD
@@ -365,17 +559,38 @@ public final class HeldToolThirdPersonVisuals {
                 || visual == SkillModelVisual.NIKAIDOU_RITUAL_SWORD_DIAGONAL;
     }
 
-    private record ToolSpec(
+    record ToolSpec(
             ResourceLocation model,
             String animation,
             float seconds,
             float scale,
-            double x,
-            double y,
-            double z,
             float yaw,
             float pitch,
             float roll
     ) {
+        void applyGrip(PlayerModel<?> parent, HumanoidArm mainArm, PoseStack stack) {
+            String id = model.getPath();
+            HumanoidArm arm = mainArm;
+            if (parent.young) {
+                stack.translate(0, 0.75F, 0);
+                stack.scale(0.5F, 0.5F, 0.5F);
+            }
+            parent.translateToHand(arm, stack);
+            stack.translate((arm == HumanoidArm.RIGHT ? -1 : 1) / 16.0F, 10 / 16.0F, -2 / 16.0F);
+            stack.mulPose(Axis.XP.rotationDegrees(180.0F + pitch));
+            stack.mulPose(Axis.YP.rotationDegrees(yaw));
+            stack.mulPose(Axis.ZP.rotationDegrees(-90.0F + roll));
+            stack.scale(scale, scale, scale);
+            switch (id) {
+                case "nox_flash_grenade" -> centerGrip(stack, 0, 5.5, 0);
+                case "rover_irritant_smoke" -> centerGrip(stack, 0, -1.3, 0);
+                case "uluru_quick_cover_package" -> centerGrip(stack, 0, -2.4, 1.775);
+                case "vyron_magnetic_bomb" -> centerGrip(stack, 0, 7, 0);
+            }
+        }
+
+        private static void centerGrip(PoseStack stack, double gripX, double gripY, double gripZ) {
+            stack.translate(-gripX / 16, -gripY / 16, -gripZ / 16);
+        }
     }
 }

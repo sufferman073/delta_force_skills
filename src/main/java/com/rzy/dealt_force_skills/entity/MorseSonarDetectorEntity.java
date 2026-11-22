@@ -210,6 +210,11 @@ public class MorseSonarDetectorEntity extends Entity implements ItemSupplier, Bl
     }
 
     @Override
+    public float blockbenchWorldYOffset() {
+        return 0.4F;
+    }
+
+    @Override
     public Vec3 blockbenchModelForward(float partialTick) {
         return horizontalFacing(new Vec3(entityData.get(DATA_FACING_X), 0.0D, entityData.get(DATA_FACING_Z)));
     }
@@ -259,7 +264,7 @@ public class MorseSonarDetectorEntity extends Entity implements ItemSupplier, Bl
             DfsAchievements.recordMorseSonarActionReveal(owner, actor);
             owner.displayClientMessage(Component.translatable("message.dealt_force_skills.morse.sonar_action_owner",
                     actor.getDisplayName()), true);
-            actor.displayClientMessage(Component.translatable("message.dealt_force_skills.morse.sonar_action_target"), true);
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(actor, "sonar");
             level.playSound(null, detector.blockPosition(), ModSounds.MORSE_SONAR_ACTION_REVEAL.get(),
                     SoundSource.PLAYERS, 0.7f, 1.0f);
         }
@@ -323,11 +328,9 @@ public class MorseSonarDetectorEntity extends Entity implements ItemSupplier, Bl
     private void notifyPlayersInCone(ServerLevel level, ServerPlayer owner, boolean scanning, int remaining) {
         AABB box = new AABB(position(), position()).inflate(RANGE);
         for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, box,
-                target -> target != owner && TargetingUtil.isTargetablePlayer(target) && inCone(target))) {
-            player.displayClientMessage(Component.translatable(scanning
-                            ? "message.dealt_force_skills.morse.sonar_target_scanning"
-                            : "message.dealt_force_skills.morse.sonar_target_idle",
-                    Math.max(1, (remaining + 19) / 20)), true);
+                target -> TargetingUtil.isHostilePlayerFor(owner, target) && inCone(target))) {
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.shaped(player, this, "morse.skill.sonar_detector", scanning, 12);
+            if (!scanning) com.rzy.dealt_force_skills.feedback.SkillFeedback.phaseNotice(player, this, "sonar_scan", phaseRemainingTicks(), IDLE_TICKS);
         }
     }
 
@@ -417,8 +420,8 @@ public class MorseSonarDetectorEntity extends Entity implements ItemSupplier, Bl
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, new AABB(position(), position()).inflate(RANGE))) {
             if (!host.isEnemy(target) || !host.withinOrders(target.position()) || !inCone(target)) continue;
             if (target instanceof ServerPlayer player) {
-                player.displayClientMessage(Component.translatable(scanning ? "message.dealt_force_skills.morse.sonar_target_scanning"
-                        : "message.dealt_force_skills.morse.sonar_target_idle", Math.max(1, (phaseRemainingTicks() + 19) / 20)), true);
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.shaped(player, this, "morse.skill.sonar_detector", scanning, 12);
+            if (!scanning) com.rzy.dealt_force_skills.feedback.SkillFeedback.phaseNotice(player, this, "sonar_scan", phaseRemainingTicks(), IDLE_TICKS);
             } else if (scanning) OperativeRecon.reveal(host, target, REVEAL_TICKS);
         }
     }
@@ -434,6 +437,7 @@ public class MorseSonarDetectorEntity extends Entity implements ItemSupplier, Bl
             var host = detector.nativeHost(level);
             if (host == null || !host.isEnemy(actor) || !host.withinOrders(actor.position())) continue;
             OperativeRecon.reveal(host, actor, REVEAL_TICKS);
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(actor, "sonar");
             actor.addEffect(new MobEffectInstance(ModEffects.MORSE_SONAR_REVEALED.get(),
                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.morse_sonar_detector_entity.effect.morse_sonar_revealed.0.duration_ticks", 40),
                     com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.morse_sonar_detector_entity.effect.morse_sonar_revealed.0.amplifier", 0), false, true, true), host.body());

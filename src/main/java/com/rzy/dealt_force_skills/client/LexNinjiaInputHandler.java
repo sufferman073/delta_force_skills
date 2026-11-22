@@ -107,7 +107,7 @@ public final class LexNinjiaInputHandler {
                 if ((!creative && !sneak) || (creative && sneak)) {
                     NetworkHandler.sendToServer(C2S_LexNinjiaPresetAction.openMenu());
                 } else {
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
         } else if (shopWasDown) {

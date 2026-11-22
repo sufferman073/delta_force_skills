@@ -87,7 +87,7 @@ public final class NativeRaptorSkills implements OperativeSkills {
         return switch (slot) {
             case ACTIVE_1 -> falcon == null && falconCooldown == 0 && host.canSee(target)
                     && safeDroneSpawn(host) ? 90 : 0;
-            case ACTIVE_2 -> pulses > 0 && host.canSee(target) && pulsePlan(host, host.body().getEyePosition(),
+            case ACTIVE_2 -> pulses > 0 && OperativeHearing.knownContact(host, target) && pulsePlan(host, host.body().getEyePosition(),
                     target, 1.08D, 0.08D, 0.58D, 0.1D) != null ? 85 : 0;
             case CORE -> markedTarget == null && hummingbirdCooldown == 0
                     && (host.canSee(target) || isRevealed(target)) ? 100 : 0;
@@ -162,7 +162,7 @@ public final class NativeRaptorSkills implements OperativeSkills {
         double horizontal = offset.horizontalDistance();
         if (horizontal < 1) return null;
         PulsePlan best = null; double error = Double.POSITIVE_INFINITY;
-        for (int degrees : new int[]{-65, -45, -25, -5, 15, 35}) {
+        for (int degrees : new int[]{-65, -45, -25, -5, 15, 35, 45, 55, 65, 75, 85}) {
             double angle = Math.toRadians(degrees);
             Vec3 direction = new Vec3(offset.x / horizontal * Math.cos(angle), Math.sin(angle), offset.z / horizontal * Math.cos(angle));
             Vec3 start = origin.add(direction.scale(forward)).add(0, -down, 0);

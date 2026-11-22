@@ -371,6 +371,7 @@ public final class PlayerReviveCompat {
             List<ServerPlayer> trulyDowned = new ArrayList<>();
             boolean anyCapable = false;
             for (ServerPlayer member : members) {
+                if (com.rzy.dealt_force_skills.raid.RaidMatches.belongs(member)) continue;
                 if (!member.isAlive() || member.isSpectator()) {
                     continue;
                 }

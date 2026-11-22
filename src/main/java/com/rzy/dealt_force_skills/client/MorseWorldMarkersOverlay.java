@@ -43,7 +43,7 @@ public final class MorseWorldMarkersOverlay {
             double distance = pos.distanceTo(minecraft.player.getEyePosition());
             String text = Component.translatable(markerTranslationKey(marker.type())).getString()
                     + " " + Math.round(distance) + "m";
-            renderMarker(poseStack, buffers, font, camera, cameraPos, pos, text, markerColor(marker.type()));
+            renderMarker(poseStack, buffers, font, camera, cameraPos, pos, text, markerColor(marker.type()), marker.type() == MorseMarkerType.SONAR_DETECTOR, distance);
         }
         buffers.endBatch();
         RenderSystem.enableDepthTest();
@@ -81,7 +81,7 @@ public final class MorseWorldMarkersOverlay {
             Vec3 cameraPos,
             Vec3 pos,
             String text,
-            int color
+            int color, boolean detector, double distance
     ) {
         poseStack.pushPose();
         poseStack.translate(pos.x - cameraPos.x, pos.y - cameraPos.y, pos.z - cameraPos.z);
@@ -90,6 +90,7 @@ public final class MorseWorldMarkersOverlay {
         font.drawInBatch(text, -font.width(text) / 2.0F, 0.0F, color, false,
                 poseStack.last().pose(), buffers, Font.DisplayMode.SEE_THROUGH,
                 0x66000000, LightTexture.FULL_BRIGHT);
+        if (detector) OwnerMarkerIcon.draw(poseStack, buffers, "morse.skill.sonar_detector", distance);
         poseStack.popPose();
     }
 }

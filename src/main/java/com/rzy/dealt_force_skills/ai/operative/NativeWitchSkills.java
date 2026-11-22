@@ -43,15 +43,15 @@ public final class NativeWitchSkills implements OperativeSkills {
     private static double decimal(String key,double fallback) {return DealtForceConfig.doubleValue("characters.nikaidou_hiro_witchification."+key,fallback);}
     private static boolean valid(OperativeHost host,LivingEntity target,double range,boolean sight) {
         return target!=null && target.level()==host.body().level() && target.isAlive() && host.isEnemy(target) && host.withinCombatRange(target.position())
-                && host.body().distanceToSqr(target)<=range*range && (!sight || host.canSee(target));
+                && host.body().distanceToSqr(target)<=range*range && (sight ? host.canSee(target) : OperativeHearing.knownContact(host,target));
     }
     private boolean blocked(OperativeHost host,SkillSlot slot) {return finishing || phase==2 || !NativeRaptorSkills.available(host) || OperativeElectronics.blocked(host,ModCharacters.NIKAIDOU_HIRO_WITCHIFICATION_ID,slot);}
     @Override public double score(OperativeHost host,SkillSlot slot,LivingEntity target) {
         if(blocked(host,slot) || strikeTicks>0)return 0;
         return switch(slot) {
-            case ACTIVE_1 -> phase<2 && anchor==null && spent<Math.max(0,NikaidouHiroWitchificationStateManager.REWIND_MAX_TRIGGERS) && rewindCooldown==0 && valid(host,target,20,true) ? 110 : 0;
+            case ACTIVE_1 -> phase<2 && anchor==null && spent<Math.max(0,NikaidouHiroWitchificationStateManager.REWIND_MAX_TRIGGERS) && rewindCooldown==0 && valid(host,target,20,false) ? 110 : 0;
             case ACTIVE_2 -> errorCooldown==0 && errorTicks==0 && valid(host,target,25,false) ? 76 : 0;
-            case CORE -> phase==0 && coreCooldown==0 && valid(host,target,8,true) ? 100 : phase==1 && target==null ? 40 : 0;
+            case CORE -> phase==0 && coreCooldown==0 && valid(host,target,8,false) ? 100 : phase==1 && target==null ? 40 : 0;
             default -> 0;
         };
     }

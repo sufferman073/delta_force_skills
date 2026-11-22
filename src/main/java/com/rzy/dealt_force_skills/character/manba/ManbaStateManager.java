@@ -557,6 +557,8 @@ public final class ManbaStateManager {
         player.level().playSound(null, player.blockPosition(), ModSounds.MANBA_DUEL_BGM.get(),
                 SoundSource.PLAYERS, 0.8f, 1.0f);
         rememberDuelBgmListeners(player, target);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.DUEL_BECKON.play(player);
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "duel");
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.manba.duel_started",
                 target.getDisplayName()), true);
         syncToClient(player);
@@ -891,6 +893,7 @@ public final class ManbaStateManager {
                 selectedLens(player).ordinal(),
                 ordinals(selectedBatteries(player))
         ), player);
+        syncTalentDetails(player);
         LivingEntity target = duelTarget(player);
         if (target != null) {
             syncDuelView(player, target, false);
@@ -1860,6 +1863,27 @@ public final class ManbaStateManager {
         return entity instanceof LivingEntity living ? living : null;
     }
 
+    private static void syncTalentDetails(ServerPlayer player) {
+        CompoundTag tag = data(player);
+        int[] durations = new int[ManbaTalent.values().length];
+        int mask = 0;
+        for (ManbaTalent talent : selectedTalents(player)) {
+            boolean active = switch (talent) {
+                case SELF_TAUGHT -> selfTaughtStacks(player) > 0;
+                case GOOD_REWARD -> tag.getBoolean(GOOD_REWARD_ACTIVE);
+                case DIVERSION -> tag.getBoolean(DIVERSION_READY);
+                case BRAVE_FORWARD -> tag.getInt(SNEAK_TICKS) >= 60;
+                case LIGHT_WARRIOR -> isFlashlightActive(player);
+                case UNYIELDING -> player.getHealth() < player.getMaxHealth();
+                default -> false;
+            };
+            if (active) mask |= 1 << talent.ordinal();
+            if (talent == ManbaTalent.BRAVE_FORWARD && tag.getInt(SNEAK_TICKS) > 0)
+                durations[talent.ordinal()] = Math.max(0, 60 - tag.getInt(SNEAK_TICKS));
+        }
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.talents(player, durations, mask);
+    }
+
     private static int[] talentCooldowns(Player player, int[] talentOrdinals) {
         int[] cooldowns = new int[talentOrdinals.length];
         for (int i = 0; i < talentOrdinals.length; i++) {
@@ -1872,6 +1896,7 @@ public final class ManbaStateManager {
             cooldowns[i] = switch (talent) {
                 case STEEL_BODY -> remainingTicks(player, STEEL_COOLDOWN_UNTIL);
                 case INDESTRUCTIBLE -> remainingTicks(player, INDESTRUCTIBLE_COOLDOWN_UNTIL);
+                case DURABLE -> remainingTicks(player, DURABLE_NEXT_TICK);
                 default -> 0;
             };
         }

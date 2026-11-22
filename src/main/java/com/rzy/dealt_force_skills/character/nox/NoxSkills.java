@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.nox;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.entity.NoxFlashGrenadeEntity;
 import com.rzy.dealt_force_skills.entity.NoxRotorDroneEntity;
@@ -111,7 +114,7 @@ public final class NoxSkills {
         rotor.setDeltaMovement(direction.scale(ROTOR_SPEED));
         rotor.setYRot(player.getYRot());
         rotor.setXRot(player.getXRot());
-        level.addFreshEntity(rotor);
+        ToolHandRelease.spawned(level.addFreshEntity(rotor), player, ToolHandCue.NOX_ROTOR);
         if (target != null) {
             level.playSound(null, player.blockPosition(), ModSounds.NOX_ROTOR_LOCK.get(),
                     SoundSource.PLAYERS, 0.72f, 1.0f);
@@ -163,7 +166,7 @@ public final class NoxSkills {
         grenade.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        if (level.addFreshEntity(grenade))
+        if (ToolHandRelease.spawned(level.addFreshEntity(grenade), player, ToolHandCue.NOX_FLASH_GRENADE))
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         level.playSound(null, player.blockPosition(), ModSounds.NOX_FLASH_PIN.get(),
                 SoundSource.PLAYERS, 0.7f, 1.0f);

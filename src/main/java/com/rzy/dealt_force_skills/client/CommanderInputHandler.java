@@ -51,7 +51,7 @@ public final class CommanderInputHandler {
             if (minecraft.screen == null && !selectionLongActionTriggered
                     && ++selectionHeldTicks >= LONG_HOLD_TICKS) {
                 if (minecraft.player.isShiftKeyDown() != minecraft.player.isCreative()) {
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 } else {
                     NetworkHandler.sendToServer(new C2S_OpenCommanderScreen(false));
                 }

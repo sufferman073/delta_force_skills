@@ -24,7 +24,7 @@ public final class ShepherdPlaceholderVisuals {
     private ShepherdPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         boolean grenadeAction = ClientToolReleaseAction.isActive(
                 ClientToolReleaseAction.Action.SHEPHERD_GRENADE);
@@ -57,7 +57,9 @@ public final class ShepherdPlaceholderVisuals {
                 ? ClientToolReleaseAction.frame(
                         ClientToolReleaseAction.Action.SHEPHERD_GRENADE, "idle", seconds)
                 : new ClientToolModelAnimationState.AnimationFrame("idle", seconds);
-        BlockbenchAnimatedModelRenderer.render(modelFor(tool), frame.animation(), frame.seconds(),
+        boolean wildfire = com.rzy.dealt_force_skills.client.WildfireClient.tool() == 2;
+        BlockbenchAnimatedModelRenderer.render(wildfire ? com.rzy.dealt_force_skills.client.WildfireClient.toolModel(2) : modelFor(tool),
+                wildfire ? "idle" : frame.animation(), wildfire ? seconds : frame.seconds(),
                 poseStack, event.getMultiBufferSource(), event.getPackedLight());
         poseStack.popPose();
     }

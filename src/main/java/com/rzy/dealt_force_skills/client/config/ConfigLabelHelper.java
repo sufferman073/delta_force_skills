@@ -642,7 +642,7 @@ public final class ConfigLabelHelper {
 
     public static Component entryLabel(ConfigEntryData entry) {
         String fullKey = "config.dealt_force_skills.entry." + entry.file().name().toLowerCase(Locale.ROOT)
-                + "." + entry.path().replace('.', '_');
+                + "." + entry.path().replace("operatives.raid_attributes.", "operatives.attributes.").replace('.', '_');
         if (I18n.exists(fullKey)) {
             return Component.translatable(fullKey);
         }
@@ -753,7 +753,7 @@ public final class ConfigLabelHelper {
 
     private static String buildPurpose(ConfigEntryData entry) {
         String descriptionKey = "config.dealt_force_skills.description."
-                + entry.file().name().toLowerCase(Locale.ROOT) + "." + entry.path().replace('.', '_');
+                + entry.file().name().toLowerCase(Locale.ROOT) + "." + entry.path().replace("operatives.raid_attributes.", "operatives.attributes.").replace('.', '_');
         if (I18n.exists(descriptionKey)) return I18n.get(descriptionKey);
         if (!preferChinese()) {
             return "Controls " + entry.path().replace('.', ' ');

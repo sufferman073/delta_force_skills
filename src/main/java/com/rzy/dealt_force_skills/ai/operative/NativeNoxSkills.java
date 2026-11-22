@@ -60,14 +60,14 @@ public final class NativeNoxSkills implements OperativeSkills {
                     host.body().getZ(), 8, 0.32D, 0.55D, 0.32D, 0.01D);
     }
 
-    private static boolean allowed(OperativeHost host, LivingEntity target) {
+    private static boolean allowed(OperativeHost host, LivingEntity target, SkillSlot slot) {
         return host.body().isAlive() && !host.body().isRemoved() && host.withinOrders(host.body().position())
                 && !host.body().hasEffect(ModEffects.STUN.get()) && !host.body().hasEffect(ModEffects.WEBBED.get())
                 && target != null && host.isEnemy(target) && host.withinCombatRange(target.position())
-                && host.canSee(target) && host.body().distanceToSqr(target) <= 24 * 24;
+                && (slot != SkillSlot.ACTIVE_1 ? OperativeHearing.knownContact(host, target) : host.canSee(target)) && host.body().distanceToSqr(target) <= 24 * 24;
     }
     @Override public double score(OperativeHost host, SkillSlot slot, LivingEntity target) {
-        if (preparation > 0 || stealth > 0 || !allowed(host, target)
+        if (preparation > 0 || stealth > 0 || !allowed(host, target, slot)
                 || OperativeElectronics.blocked(host, ModCharacters.NOX_ID, slot)) return 0;
         return switch (slot) {
             case ACTIVE_1 -> rotorCooldown == 0 && rotorShot(host, target) != null ? 100 : 0;
@@ -79,7 +79,7 @@ public final class NativeNoxSkills implements OperativeSkills {
         };
     }
     @Override public boolean start(OperativeHost host, SkillSlot slot, LivingEntity target) {
-        if (slot == SkillSlot.PASSIVE || preparation > 0 || !allowed(host, target)
+        if (slot == SkillSlot.PASSIVE || preparation > 0 || !allowed(host, target, slot)
                 || OperativeElectronics.blocked(host, ModCharacters.NOX_ID, slot)) return false;
         if (stealth > 0) { endStealth(host); return true; }
         if (score(host, slot, target) <= 0) return false;

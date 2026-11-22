@@ -1,5 +1,9 @@
 package com.rzy.dealt_force_skills.character.luna;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
+import com.rzy.dealt_force_skills.advancement.DfsAchievements;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.entity.LunaCompositeGrenadeEntity;
 import com.rzy.dealt_force_skills.entity.LunaReconArrowEntity;
@@ -12,6 +16,7 @@ import com.rzy.dealt_force_skills.skill.SkillAnimationScheduler;
 import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import com.rzy.dealt_force_skills.skill.HeldToolVisualSync;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.phys.Vec3;
@@ -19,6 +24,23 @@ import net.minecraft.world.phys.Vec3;
 public final class LunaSkills {
     private static volatile int BOW_RELEASE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOW_RELEASE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.luna.luna_skills.bow_release_ticks", 3));
     private static volatile int BOW_ARROW_SPAWN_TICK = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("BOW_ARROW_SPAWN_TICK", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.luna.luna_skills.bow_arrow_spawn_tick", 2));
+    private record Draw(LunaTool tool, int start, ServerLevel level) {}
+    private static final java.util.Map<ServerPlayer, Draw> DRAWS = new java.util.WeakHashMap<>();
+
+    public static void endDraw(ServerPlayer player) {
+        if (DRAWS.remove(player) != null) HeldToolVisualSync.changed(player);
+    }
+
+    public static int drawAge(ServerPlayer player, LunaTool tool) {
+        Draw draw = DRAWS.get(player);
+        if (draw == null) return -1;
+        if (draw.tool() != tool || draw.level() != player.serverLevel()) {
+            endDraw(player);
+            return -1;
+        }
+        return Math.max(0, player.tickCount - draw.start());
+    }
+
     private LunaSkills() {
     }
 
@@ -157,7 +179,10 @@ public final class LunaSkills {
         arrow.setYRot((float) (Math.atan2(look.x, look.z) * (180.0D / Math.PI)));
         arrow.setXRot((float) (Math.atan2(look.y, Math.sqrt(look.x * look.x + look.z * look.z))
                 * -(180.0D / Math.PI)));
-        if(level.addFreshEntity(arrow)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        if (level.addFreshEntity(arrow)) {
+            DfsAchievements.recordLunaToolUse(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player, "");
+        }
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.LUNA_ARROW_RELEASE.get(),
                 SoundSource.PLAYERS, 0.95f, power > 2.8D ? 1.16f : 1.0f, 18.0D, 4, 3.0D);
     }
@@ -195,8 +220,10 @@ public final class LunaSkills {
         grenade.setDeltaMovement(look.scale(1.55D).add(0.0D, 0.18D, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        if (level.addFreshEntity(grenade))
+        if (ToolHandRelease.spawned(level.addFreshEntity(grenade), player, ToolHandCue.LUNA_COMPOSITE_GRENADE)) {
+            DfsAchievements.recordLunaToolUse(player);
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
+        }
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.LUNA_GRENADE_THROW.get(),
                 SoundSource.PLAYERS, 0.9f, 1.0f, 16.0D, 5, 3.0D);
         LunaStateManager.setEquippedTool(player, LunaTool.NONE);
@@ -234,7 +261,10 @@ public final class LunaSkills {
         arrow.setYRot((float) (Math.atan2(look.x, look.z) * (180.0D / Math.PI)));
         arrow.setXRot((float) (Math.atan2(look.y, Math.sqrt(look.x * look.x + look.z * look.z))
                 * -(180.0D / Math.PI)));
-        if(level.addFreshEntity(arrow)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        if (level.addFreshEntity(arrow)) {
+            DfsAchievements.recordLunaToolUse(player);
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player, "");
+        }
         RangedSoundHelper.playThrottled(level, player.position(), ModSounds.LUNA_ARROW_RELEASE.get(),
                 SoundSource.PLAYERS, 1.0f, 0.95f, 18.0D, 4, 3.0D);
     }
@@ -245,6 +275,13 @@ public final class LunaSkills {
     }
 
     private static void syncBowVisual(ServerPlayer player, int phase, LunaTool tool, int remainingTicks) {
+        if (phase == S2C_LunaBowVisualStatePhase.DRAW) {
+            if (drawAge(player, tool) >= 0) return;
+            DRAWS.put(player, new Draw(tool, player.tickCount, player.serverLevel()));
+            HeldToolVisualSync.changed(player);
+        } else {
+            endDraw(player);
+        }
         NetworkHandler.sendToTrackingAndSelf(new S2C_LunaBowVisualState(
                 player.getId(),
                 phase,

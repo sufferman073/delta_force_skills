@@ -17,7 +17,8 @@ public final class BlockbenchProjectileRenderer<T extends Entity & ItemSupplier>
     public enum Alignment {
         NONE,
         MOTION_X,
-        MOTION_Z
+        MOTION_Z,
+        LEVEL_DISC
     }
 
     private final ThrownItemRenderer<T> fallback;
@@ -72,6 +73,9 @@ public final class BlockbenchProjectileRenderer<T extends Entity & ItemSupplier>
         AnimationSample sample = animationAt(entity, poseProvider, ageSeconds);
 
         poseStack.pushPose();
+        if (poseProvider != null && poseProvider.blockbenchWorldYOffset() != 0.0F) {
+            poseStack.translate(0, poseProvider.blockbenchWorldYOffset(), 0);
+        }
         Direction attachedFace = poseProvider == null ? null : poseProvider.blockbenchAttachedFace();
         if (attachedFace != null) {
             alignAttachedFace(poseStack, attachedFace);
@@ -155,6 +159,10 @@ public final class BlockbenchProjectileRenderer<T extends Entity & ItemSupplier>
     }
 
     private void align(PoseStack poseStack, Vec3 motion) {
+        if (alignment == Alignment.LEVEL_DISC) {
+            poseStack.mulPose(Axis.XP.rotationDegrees(90.0F));
+            return;
+        }
         if (alignment == Alignment.NONE || motion.lengthSqr() < 0.000001D) {
             return;
         }

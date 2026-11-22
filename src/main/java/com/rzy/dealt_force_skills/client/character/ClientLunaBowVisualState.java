@@ -1,6 +1,7 @@
 package com.rzy.dealt_force_skills.client.character;
 
 import com.rzy.dealt_force_skills.character.luna.LunaTool;
+import com.rzy.dealt_force_skills.skill.HeldToolVisual;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 
@@ -32,6 +33,18 @@ public final class ClientLunaBowVisualState {
         STATES.put(entityId, new State(phase, tool, Math.max(0, remainingTicks), 0));
     }
 
+    static void heldSnapshot(int entityId, HeldToolVisual held, int elapsed, int ttl) {
+        State previous = STATES.get(entityId);
+        if (elapsed >= 0 && (held == HeldToolVisual.LUNA_RECON_BOW || held == HeldToolVisual.LUNA_SHOCK_BOW)) {
+            LunaTool tool = held == HeldToolVisual.LUNA_RECON_BOW ? LunaTool.RECON_BOW : LunaTool.SHOCK_BOW;
+            int age = Math.min(DRAW_TICKS, elapsed);
+            if (previous != null && previous.phase == PHASE_DRAW && previous.tool == tool) age = Math.max(age, previous.ageTicks);
+            STATES.put(entityId, new State(PHASE_DRAW, tool, ttl, age));
+        } else if (previous != null && previous.phase == PHASE_DRAW) {
+            STATES.remove(entityId);
+        }
+    }
+
     public static void startLocal(Player player, int phase, LunaTool tool, int remainingTicks) {
         if (player != null) {
             sync(player.getId(), phase, tool.ordinal(), remainingTicks);
@@ -45,8 +58,7 @@ public final class ClientLunaBowVisualState {
         }
         STATES.replaceAll((id, state) -> state.tick());
         STATES.entrySet().removeIf(entry ->
-                entry.getValue().remainingTicks() <= 0
-                        || minecraft.level.getEntity(entry.getKey()) == null);
+                entry.getValue().remainingTicks() <= 0);
     }
 
     public static void reset() {

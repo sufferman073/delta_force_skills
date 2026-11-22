@@ -12,7 +12,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Both classes implement actuallyHurt; count only the health/absorption loss that really happened. */
 @Mixin({LivingEntity.class, Player.class})
 public abstract class DepartmentDamageMixin {
     @Unique private java.util.ArrayDeque<Object[]> dfs$departmentHealth;
@@ -20,13 +19,19 @@ public abstract class DepartmentDamageMixin {
     private void dfs$beforeDamage(DamageSource source,float amount,CallbackInfo ci) {
         if(dfs$departmentHealth==null)dfs$departmentHealth=new java.util.ArrayDeque<>();
         LivingEntity entity=(LivingEntity)(Object)this;
-        dfs$departmentHealth.push(new Object[]{entity.getHealth()+entity.getAbsorptionAmount(),entity.getAbsorptionAmount(),com.rzy.dealt_force_skills.department.DepartmentCorps.damageStarted(source)});
+        dfs$departmentHealth.push(new Object[]{0.0F,entity.getAbsorptionAmount(),com.rzy.dealt_force_skills.department.DepartmentCorps.damageStarted(source)});
+    }
+    @org.spongepowered.asm.mixin.injection.ModifyArg(method="actuallyHurt", at=@At(value="INVOKE",
+            target="Lnet/minecraft/world/damagesource/CombatTracker;recordDamage(Lnet/minecraft/world/damagesource/DamageSource;F)V"), index=1)
+    private float dfs$settledDamage(float damage) {
+        dfs$departmentHealth.peek()[0] = damage;
+        return damage;
     }
     @Inject(method="actuallyHurt",at=@At("RETURN"))
     private void dfs$afterDamage(DamageSource source,float amount,CallbackInfo ci) {
         LivingEntity entity=(LivingEntity)(Object)this;
         Object[] before=dfs$departmentHealth.pop();
-        float lost=Math.max(0,(float)before[0]-entity.getHealth()-entity.getAbsorptionAmount());
+        float lost=(float)before[0]+Math.max(0,(float)before[1]-entity.getAbsorptionAmount());
         com.rzy.dealt_force_skills.department.DepartmentCombat.absorbed(entity,Math.max(0,(float)before[1]-entity.getAbsorptionAmount()));
         com.rzy.dealt_force_skills.department.DepartmentCombat.damaged(entity,source,lost);
         com.rzy.dealt_force_skills.department.DepartmentCorps.damageApplied(entity,(com.rzy.dealt_force_skills.department.DepartmentCorps.Hit)before[2],lost);

@@ -8,7 +8,7 @@
       "text": "咬紧牙关"
     },
     "description": {
-      "text": "在没有使用任何消耗品且生命值没有任何恢复的情况下，击杀两名玩家"
+      "text": "在没有使用任何消耗品且生命值没有任何恢复的情况下，击杀两个实体"
     },
     "frame": "challenge",
     "show_toast": true,

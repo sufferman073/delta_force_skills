@@ -404,6 +404,7 @@ public class CommonEvents {
         }
 
         if (StingerStateManager.isDowned(player)
+                && !com.rzy.dealt_force_skills.raid.RaidActors.isGenericDowned(player)
                 && !StingerStateManager.isExecutingDownedDeath(player)
                 && !ManbaStateManager.isExecutingDuelTarget(player)) {
             event.setCanceled(true);
@@ -476,6 +477,7 @@ public class CommonEvents {
                 && Util.isFromBehind(player, sourcePos, 70.0f)
                 && Util.isUpperBodySource(player, attacker)) {
             com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"sineva.passive.absorbed",event.getAmount());
+            if (player instanceof ServerPlayer feedbackPlayer) com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(feedbackPlayer, 1);
             event.setCanceled(true);
         }
     }
@@ -500,9 +502,13 @@ public class CommonEvents {
 
     @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.LOWEST)
     public static void recordOwnerAttack(net.minecraftforge.event.entity.living.LivingDamageEvent event) {
+        if (event.getEntity() instanceof ServerPlayer target)
+            DfsAchievements.onDamageTaken(target, event.getSource(), event.getAmount());
         if (event.getAmount() > 0 && event.getSource().getEntity() instanceof ServerPlayer owner
-                && event.getEntity() != owner && !TeamCombatRules.shouldCancelFriendlyDamage(event.getEntity(), event.getSource()))
+                && event.getEntity() != owner && !TeamCombatRules.shouldCancelFriendlyDamage(event.getEntity(), event.getSource())) {
+            DfsAchievements.onDamage(owner, event.getEntity(), event.getSource(), event.getAmount());
             owner.setLastHurtMob(event.getEntity());
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -724,6 +730,7 @@ public class CommonEvents {
         }
 
         if (StingerStateManager.isDowned(player)
+                && !com.rzy.dealt_force_skills.raid.RaidActors.isGenericDowned(player)
                 && !StingerStateManager.isExecutingDownedDeath(player)
                 && !ManbaStateManager.isExecutingDuelTarget(player)) {
             event.setAmount(0.0f);
@@ -783,6 +790,7 @@ public class CommonEvents {
             }
             if (NikaidouHiroWitchificationStateManager.tryHandleFatalDamage(
                     serverPlayer, source, incomingAmount)) {
+                DfsAchievements.recordFatalAvoidance(serverPlayer);
                 event.setAmount(0.0f);
                 return;
             }
@@ -811,6 +819,7 @@ public class CommonEvents {
                 return;
             }
             if (NikaidouHiroStateManager.shouldPreventFatalDamage(serverPlayer, source, adjustedAmount)) {
+                DfsAchievements.recordFatalAvoidance(serverPlayer);
                 event.setAmount(0.0f);
                 return;
             }
@@ -834,6 +843,7 @@ public class CommonEvents {
         }
 
         if (ShepherdStateManager.isShepherd(player) && isExplosionDamage(source)) {
+            if (player instanceof ServerPlayer feedbackPlayer) com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(feedbackPlayer, 1);
             event.setAmount(event.getAmount() * 0.7f);
         }
 
@@ -899,6 +909,7 @@ public class CommonEvents {
             TempestStateManager.triggerExplosiveSpine(serverPlayer, ModSounds.TEMPEST_EXPLOSIVE_SPINE_ACTIVATE.get());
             if (TempestStateManager.shouldPreventFatalDamage(serverPlayer, event.getAmount())) {
                 event.setAmount(0.0f);
+                DfsAchievements.recordFatalAvoidance(serverPlayer);
                 TempestStateManager.triggerEmergencyRecall(serverPlayer);
                 return;
             }
@@ -914,14 +925,21 @@ public class CommonEvents {
             event.setAmount(Math.min(event.getAmount(), Math.max(0.0F, serverPlayer.getHealth() - 1.0F)));
         }
 
+        if (player instanceof ServerPlayer defender && VlinderStateManager.shouldLetActiveDefenseAbsorbFatal(defender, event.getAmount())) {
+            DfsAchievements.recordVlinderActiveDefenseFatalSave(defender, true);
+            DfsAchievements.recordFatalAvoidance(defender);
+            return;
+        }
         if (player instanceof ServerPlayer serverPlayer && StingerStateManager.shouldEnterDowned(serverPlayer, event.getAmount())) {
             event.setAmount(0.0f);
+            DfsAchievements.recordFatalAvoidance(serverPlayer);
             StingerStateManager.enterDowned(serverPlayer);
             return;
         }
 
         if (player instanceof ServerPlayer serverPlayer && VlinderStateManager.shouldEnterDowned(serverPlayer, event.getAmount())) {
             event.setAmount(0.0f);
+            DfsAchievements.recordFatalAvoidance(serverPlayer);
             VlinderStateManager.enterDowned(serverPlayer);
             return;
         }
@@ -1083,6 +1101,7 @@ public class CommonEvents {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingHeal(LivingHealEvent event) {
         if (event.getEntity().hasEffect(ModEffects.NOX_DELAYED_WOUND.get())) {
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(event.getEntity(), "wound");
             com.rzy.dealt_force_skills.department.DepartmentHealing.prevented(event.getEntity(),event.getAmount());
             event.setCanceled(true);
             return;
@@ -1108,6 +1127,8 @@ public class CommonEvents {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onLivingUseItemFinish(LivingEntityUseItemEvent.Finish event) {
         LivingEntity entity = event.getEntity();
+        if (entity instanceof ServerPlayer player && (event.getItem().getUseAnimation() == net.minecraft.world.item.UseAnim.EAT
+                || event.getItem().getUseAnimation() == net.minecraft.world.item.UseAnim.DRINK)) DfsAchievements.recordConsumableUse(player);
         if (!entity.level().isClientSide && entity.hasEffect(ModEffects.NOX_DELAYED_WOUND.get())) {
             NoxDelayedWoundEffect.enforceCaps(entity);
         }
@@ -1561,6 +1582,7 @@ public class CommonEvents {
             return;
         }
         if (event.player instanceof ServerPlayer player) {
+            DfsAchievements.tick(player);
             HaffCoinManager.awardSurvivalMinute(player);
             UndeadSoulManager.awardSurvivalMinute(player);
             LexNinjiaCurrencyManager.awardSurvivalMinute(player);
@@ -1611,6 +1633,7 @@ public class CommonEvents {
     @SubscribeEvent
     public static void onLivingDeath(LivingDeathEvent event) {
         LivingEntity entity = event.getEntity();
+        if (com.rzy.dealt_force_skills.raid.RaidActors.staleOrBodyDeath(entity)) return;
         if (!com.rzy.dealt_force_skills.character.rover.RoverStateManager.executingDeath(entity)
                 && !CorpsStateManager.isExecutingLoyaltyTarget(entity)) {
         if (entity instanceof ServerPlayer target
@@ -1644,7 +1667,8 @@ public class CommonEvents {
                 && !StingerStateManager.isExecutingDownedDeath(protectedPlayer)
                 && !VlinderStateManager.isExecutingDownedDeath(protectedPlayer)
                 && !ManbaStateManager.isExecutingDuelTarget(protectedPlayer)) {
-            if (StingerStateManager.isDowned(protectedPlayer)) {
+            if (StingerStateManager.isDowned(protectedPlayer)
+                    && !com.rzy.dealt_force_skills.raid.RaidActors.isGenericDowned(protectedPlayer)) {
                 event.setCanceled(true);
                 protectedPlayer.setHealth(Math.max(1.0f, protectedPlayer.getHealth()));
                 return;
@@ -1661,11 +1685,13 @@ public class CommonEvents {
             }
             if (StingerStateManager.canEnterDowned(protectedPlayer)) {
                 event.setCanceled(true);
+                DfsAchievements.recordFatalAvoidance(protectedPlayer);
                 StingerStateManager.enterDowned(protectedPlayer);
                 return;
             }
             if (VlinderStateManager.canEnterDowned(protectedPlayer)) {
                 event.setCanceled(true);
+                DfsAchievements.recordFatalAvoidance(protectedPlayer);
                 VlinderStateManager.enterDowned(protectedPlayer);
                 return;
             }
@@ -1673,10 +1699,35 @@ public class CommonEvents {
                 event.setCanceled(true);
                 return;
             }
-            recordRedOwlRevengeOnDeath(protectedPlayer, event.getSource());
+            if (!com.rzy.dealt_force_skills.raid.RaidActors.defersDeath(entity))
+                recordRedOwlRevengeOnDeath(protectedPlayer, event.getSource());
         }
         // Clear control effects on death so players can click Respawn and move after respawn.
         }
+        if (com.rzy.dealt_force_skills.raid.RaidActors.defersDeath(entity)) return;
+        completeLivingDeath(entity, event.getSource());
+    }
+
+    /** Called only after the raid ledger has committed a final death, before survival restoration. */
+    public static void confirmRaidDeath(LivingEntity entity, net.minecraft.world.damagesource.DamageSource source) {
+        if (entity instanceof ServerPlayer player
+                && !com.rzy.dealt_force_skills.character.rover.RoverStateManager.executingDeath(entity)
+                && !CorpsStateManager.isExecutingLoyaltyTarget(entity)
+                && !StingerStateManager.isExecutingDownedDeath(player)
+                && !VlinderStateManager.isExecutingDownedDeath(player)
+                && !ManbaStateManager.isExecutingDuelTarget(player)) recordRedOwlRevengeOnDeath(player, source);
+        completeLivingDeath(entity, source);
+    }
+
+    private static void completeLivingDeath(LivingEntity entity, net.minecraft.world.damagesource.DamageSource source) {
+        if (source.getEntity() instanceof ServerPlayer killer && killer != entity)
+            DfsAchievements.onKill(killer, entity, source);
+        if (entity.level() instanceof ServerLevel level) {
+            DfsAchievements.recordNoxDelayedWoundAssistDeath(level, entity, source);
+            if (entity.hasEffect(ModEffects.TOXIK_FIREFLY_INTERFERENCE.get()))
+                ToxikFireflyInterferenceEffect.owner(level, entity).ifPresent(owner -> DfsAchievements.recordToxikFireflyUnremovedDeath(owner, entity));
+        }
+        if (entity instanceof ServerPlayer victim) ManbaStateManager.recordDuelDeathAchievement(victim, source);
         entity.removeEffect(ModEffects.STUN.get());
         entity.removeEffect(ModEffects.WEBBED.get());
         entity.removeEffect(ModEffects.CORROSION.get());
@@ -1762,15 +1813,16 @@ public class CommonEvents {
             WEBBED_LOOK_LOCKS.remove(serverPlayer.getUUID());
         }
 
-        ModItemEffectHelper.handleLivingDeath(entity, event.getSource());
+        ModItemEffectHelper.handleLivingDeath(entity, source);
         if (entity instanceof ServerPlayer deadPlayer) {
+            DfsAchievements.onDeath(deadPlayer, source);
             HaffCoinManager.awardDeath(deadPlayer);
             UndeadSoulManager.awardDeath(deadPlayer);
             LexNinjiaCurrencyManager.awardDeath(deadPlayer);
         }
 
-        Entity attacker = event.getSource().getEntity();
-        if (damageSourceRootPlayer(event.getSource()) instanceof ServerPlayer commanderKiller
+        Entity attacker = source.getEntity();
+        if (damageSourceRootPlayer(source) instanceof ServerPlayer commanderKiller
                 && CommanderStateManager.isCommander(commanderKiller)
                 && commanderKiller != entity) {
             CommanderStateManager.addTacticalPoints(commanderKiller,
@@ -1786,9 +1838,12 @@ public class CommonEvents {
             LexNinjiaStateManager.onHamBeastKill(owner, wolf);
         }
         if (attacker instanceof SaeedGuardEntity guard) {
-            guard.owner().ifPresent(owner -> SaeedStateManager.awardKill(owner, entity));
+            guard.owner().ifPresent(owner -> {
+                SaeedStateManager.awardKill(owner, entity);
+                DfsAchievements.onSummonKill(owner, guard, entity);
+            });
         }
-        if (!(attacker instanceof ServerPlayer player) || attacker == event.getEntity()) {
+        if (!(attacker instanceof ServerPlayer player) || attacker == entity) {
             return;
         }
         HaffCoinManager.awardKill(player, entity);
@@ -2015,6 +2070,7 @@ public class CommonEvents {
 
     @SubscribeEvent
     public static void onLexNinjiaBlockPlaced(BlockEvent.EntityPlaceEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) DfsAchievements.recordToxikAdrenalineAction(player, "place");
         LexNinjiaStateManager.handleBlockPlaced(event);
     }
 
@@ -2115,6 +2171,7 @@ public class CommonEvents {
             ((com.rzy.dealt_force_skills.mixin.OperativeEffectAccessor)effect).dealt_force_skills$setDuration(reducedDuration);
             player.forceAddEffect(effect,null);
             com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"uluru.passive.duration_saved",currentDuration-reducedDuration);
+            if (player instanceof ServerPlayer feedbackPlayer) com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(feedbackPlayer, 1);
             tracked.put(type, new TrackedEffect(reducedDuration, effect.getAmplifier()));
         }
         tracked.keySet().removeIf(type -> !activeTypes.contains(type));
@@ -2146,8 +2203,6 @@ public class CommonEvents {
             return;
         }
 
-        boolean webbedLeftClick = effectApplies(player, ModEffects.WEBBED.get())
-                && event instanceof PlayerInteractEvent.LeftClickBlock;
         if (effectApplies(player, ModEffects.MORSE_STRONG_SHOCK.get()) && shouldMorseShockSkipAction(player)) {
             cancelPlayerInteract(event);
             return;
@@ -2157,8 +2212,7 @@ public class CommonEvents {
             return;
         }
         if (effectApplies(player, ModEffects.STUN.get())
-                || effectApplies(player, ModEffects.RAPTOR_ACTION_PAUSE.get())
-                || (effectApplies(player, ModEffects.WEBBED.get()) && !webbedLeftClick)) {
+                || effectApplies(player, ModEffects.RAPTOR_ACTION_PAUSE.get())) {
             cancelPlayerInteract(event);
             return;
         }
@@ -2461,14 +2515,7 @@ public class CommonEvents {
         if (effectApplies(player, ModEffects.WEBBED.get())) {
             Vec3 velocity = player.getDeltaMovement();
             player.setDeltaMovement(0.0D, Math.min(0.0D, velocity.y), 0.0D);
-            player.stopUsingItem();
-            if (!player.level().isClientSide && player.containerMenu != player.inventoryMenu) {
-                player.closeContainer();
-            }
             if (player instanceof ServerPlayer webbedPlayer) {
-                lockWebbedHotbar(webbedPlayer);
-                lockWebbedLook(webbedPlayer);
-                cancelOptionalTaczReload(webbedPlayer);
                 UluruLoiteringMissileEntity.stopPlayerControl(webbedPlayer);
                 RaptorFalconDroneEntity.stopPlayerControl(webbedPlayer);
             }
@@ -2916,6 +2963,7 @@ public class CommonEvents {
                 replaceGhrothTaczDamageSources(event, attacker);
             }
             float floor = headshot ? newBaseAmount * newHeadshotMultiplier : newBaseAmount;
+            if (GhrothStateManager.isNoonActive(attacker)) DfsAchievements.recordGhrothNoonTaczDamage(attacker, target);
             recordGhrothDamageFloor(target, attacker, floor, GhrothStateManager.isStarsActive(attacker));
         } catch (ReflectiveOperationException | LinkageError ignored) {
             // TaCZ event internals differ between versions; Ghroth falls back to LivingHurt handling.
@@ -3749,8 +3797,7 @@ public class CommonEvents {
         try {
             Object entityObject = event.getClass().getMethod("getEntity").invoke(event);
             if (entityObject instanceof LivingEntity entity
-                    && (effectApplies(entity, ModEffects.WEBBED.get())
-                    || effectApplies(entity, ModEffects.TEMPEST_DISARMED.get()))) {
+                    && effectApplies(entity, ModEffects.TEMPEST_DISARMED.get())) {
                 event.setCanceled(true);
             }
         } catch (ReflectiveOperationException ignored) {
@@ -3849,6 +3896,7 @@ public class CommonEvents {
         boolean broken = viewportHit
                 ? SinevaStateManager.damageViewport(player, amount)
                 : SinevaStateManager.damageShield(player, amount);
+        if (player instanceof ServerPlayer owner) DfsAchievements.recordSinevaShieldBlock(owner, amount, viewportHit, viewportHit && broken);
         if (!player.level().isClientSide) {
             if (viewportHit) {
                 SoundEvent glassSound = broken
@@ -5430,6 +5478,7 @@ public class CommonEvents {
     }
 
     private static void spawnEquipmentSupport(ServerPlayer player, LivingEntity target, int count, boolean boosted, boolean ironOnly) {
+        if (player.level().dimension().equals(com.rzy.dealt_force_skills.raid.RaidInstances.DIMENSION)) return;
         if (!(player.level() instanceof ServerLevel serverLevel)) {
             return;
         }

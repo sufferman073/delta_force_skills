@@ -94,6 +94,8 @@ public final class DealtValueCommand {
     private static int reload(CommandSourceStack source) {
         ConfigHotReload.Result result = ConfigHotReload.reloadAll();
         if (result.success()) {
+            DealtItemsHavocConfig.populate(source.getServer());
+            ModGameRules.syncToAll(source.getServer());
             source.sendSuccess(() -> Component.translatable(
                     "commands.dealt_force_skills.dealtvalue.reload.success"), true);
             return 1;

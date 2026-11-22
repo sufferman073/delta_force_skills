@@ -201,23 +201,23 @@ public final class MorseInputHandler {
     }
 
     private static void handleActive1Key() {
-        if (KeybindRegister.ACTIVE_SKILL_1 == null) {
+        if (KeybindRegister.activeKey(1) == null) {
             return;
         }
-        while (KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+        while (KeybindRegister.activeKey(1).consumeClick()) {
             ClientCommanderState.useNativeOrInherited(ModCharacters.MORSE_ID, SkillSlot.ACTIVE_1, false);
         }
     }
 
     private static void handleActive2Key() {
-        if (KeybindRegister.ACTIVE_SKILL_2 == null) {
+        if (KeybindRegister.activeKey(2) == null) {
             return;
         }
-        boolean down = KeybindRegister.ACTIVE_SKILL_2.isDown();
+        boolean down = KeybindRegister.activeKey(2).isDown();
         if (down) {
             active2WasDown = true;
             active2HeldTicks++;
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
+            while (KeybindRegister.activeKey(2).consumeClick()) {
             }
             if (active2HeldTicks >= FLASH_EQUIP_HOLD_TICKS && !sentFlashEquip) {
                 sentFlashEquip = true;

@@ -211,6 +211,7 @@ public class SettingsScreen extends Screen {
             // 无论设置界面是否打开，都应更新DfsConfigProvider的权限状态
             // 防止玩家登录时设置界面未打开导致权限信息丢失
             dfs.acceptSnapshot(entries, canEdit);
+            if (DeltaForce.getConfigProvider("deltaforce") instanceof DfsConfigProvider drops) drops.acceptSnapshot(entries, canEdit);
         }
         if (active != null) {
             active.refreshCategories();
@@ -222,6 +223,7 @@ public class SettingsScreen extends Screen {
         var provider = DeltaForce.getConfigProvider("dealt_force_skills");
         if (provider instanceof DfsConfigProvider dfs) {
             dfs.acceptApplyResult(success, count, code);
+            if (DeltaForce.getConfigProvider("deltaforce") instanceof DfsConfigProvider drops) drops.acceptApplyResult(success, count, code);
         }
         if (active != null && success) {
             active.dirtyValues.clear();
@@ -297,7 +299,8 @@ public class SettingsScreen extends Screen {
 
         // 每次打开设置界面时向服务端请求最新配置权限快照
         // 确保玩家获得/失去OP后立即反映，无需重进服务器
-        if (Minecraft.getInstance().getConnection() != null) {
+        if (DeltaForce.getConfigProvider("dealt_force_skills") instanceof DfsConfigProvider dfs) dfs.refreshHud();
+        if (minecraft.player != null && minecraft.player.hasPermissions(2)) {
             NetworkHandler.sendToServer(new C2S_RequestConfigSnapshot());
         }
     }
@@ -1698,8 +1701,8 @@ public class SettingsScreen extends Screen {
         if (target == HUD_DRAG_SKILLS) {
             xPath = "HUD|global.x_offset";
             yPath = "HUD|global.y_offset";
-            defaultX = 208;
-            defaultY = -10;
+            defaultX = 25;
+            defaultY = 15;
         } else {
             xPath = "HUD|global.stamina_x_offset";
             yPath = "HUD|global.stamina_y_offset";

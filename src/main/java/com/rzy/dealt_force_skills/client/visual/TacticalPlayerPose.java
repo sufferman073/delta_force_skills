@@ -17,6 +17,11 @@ public final class TacticalPlayerPose {
     private record ArmFrame(Quaternionf torso, float rootPitch, float resetWeight) { }
     private static final java.util.Map<ModelPart, ArmFrame> GUN_ARMS = new java.util.WeakHashMap<>();
 
+    public static void clearArmRoots(PlayerModel<?> model) {
+        for (ModelPart arm : new ModelPart[]{model.leftArm, model.rightArm, model.leftSleeve, model.rightSleeve})
+            GUN_ARMS.remove(arm);
+    }
+
     /** Applied after all pose writers, for both drawing arms and translateToHand attachments. */
     public static void armRoot(ModelPart arm, PoseStack stack) {
         ArmFrame frame = GUN_ARMS.get(arm);
@@ -42,8 +47,7 @@ public final class TacticalPlayerPose {
 
     public static void apply(PlayerModel<?> model, net.minecraft.world.entity.LivingEntity player, float ageInTicks,
                              ClientTacticalMotion.Frame frame, boolean holdingGun, boolean holdingTool) {
-        for (ModelPart arm : new ModelPart[]{model.leftArm, model.rightArm, model.leftSleeve, model.rightSleeve})
-            GUN_ARMS.remove(arm);
+        clearArmRoots(model);
         if (com.rzy.dealt_force_skills.character.sineva.SinevaKnockdownState.active(player)) return;
         if (ageInTicks <= 0) return; // Vanilla first-person hand setup has no world animation time.
         float partial = Mth.clamp(ageInTicks - player.tickCount, 0, 1);

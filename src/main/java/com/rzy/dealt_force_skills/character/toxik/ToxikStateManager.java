@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.toxik;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
@@ -242,6 +245,7 @@ public final class ToxikStateManager {
                         && target.distanceTo(player) <= radius)) {
             applyAdrenaline(player, target, ADRENALINE_BASE_DURATION_TICKS);
         }
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.ADRENALINE.play(player);
         player.level().playSound(null, player.blockPosition(), ModSounds.TOXIK_ADRENALINE_RELEASE.get(),
                 SoundSource.PLAYERS, 0.95f, 1.0f);
         return true;
@@ -456,6 +460,7 @@ public final class ToxikStateManager {
         }
         right = right.normalize();
         Vec3 up = right.cross(forward).normalize();
+        boolean emitted = false;
         for (int i = 0; i < FIREFLY_SWARM_COUNT; i++) {
             double angle = Math.toRadians(i * 137.5D);
             double ring = 0.12D + (i % 6) * 0.045D;
@@ -471,7 +476,7 @@ public final class ToxikStateManager {
                     .add(up.scale(vertical - 0.08D));
             ToxikFireflyEntity firefly = new ToxikFireflyEntity(ModEntities.TOXIK_FIREFLY.get(), level, owner, mode, direction);
             firefly.setPos(start.x, start.y, start.z);
-            level.addFreshEntity(firefly);
+            if (level.addFreshEntity(firefly) && !emitted) emitted = ToolHandRelease.spawned(true, owner, ToolHandCue.TOXIK_FIREFLY_SWARM);
         }
     }
 

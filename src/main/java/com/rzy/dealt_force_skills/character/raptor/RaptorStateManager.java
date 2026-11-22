@@ -381,6 +381,14 @@ public final class RaptorStateManager {
         }
     }
 
+    public static int activeHummingbirdRemainingTicks(ServerPlayer player) {
+        Integer targetId = ACTIVE_HUMMINGBIRD_TARGETS.get(player.getUUID());
+        Entity target = targetId == null ? null : player.serverLevel().getEntity(targetId);
+        var effect = target instanceof LivingEntity living && living.isAlive()
+                && RaptorHummingbirdMarkedEffect.isOwnedBy(living, player) ? living.getEffect(ModEffects.RAPTOR_HUMMINGBIRD_MARKED.get()) : null;
+        return effect == null ? 0 : Math.max(0, effect.getDuration());
+    }
+
     public static void syncToClient(ServerPlayer player) {
         if (!isRaptor(player)) {
             return;
@@ -397,6 +405,11 @@ public final class RaptorStateManager {
                 hummingbirdPendingTicks(player),
                 HUMMINGBIRD_ATTACH_TICKS
         ), player);
+        CompoundTag details = new CompoundTag();
+        details.putString("Kind", "raptor_hummingbird");
+        details.putString("Dimension", player.level().dimension().location().toString());
+        details.putInt("Remaining", activeHummingbirdRemainingTicks(player));
+        NetworkHandler.sendToPlayer(new com.rzy.dealt_force_skills.network.S2C_SkillFeedback(details), player);
     }
 
     private static void tickHummingbirdAttach(ServerPlayer player) {
@@ -428,7 +441,10 @@ public final class RaptorStateManager {
         boolean questAttached = target.addEffect(new MobEffectInstance(ModEffects.RAPTOR_HUMMINGBIRD_MARKED.get(),
                 CommanderStateManager.skillDuration(player, HUMMINGBIRD_DURATION_TICKS),
                 hummingbirdAmplifier(player), false, true, true), player);
-        if (questAttached) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"raptor.hummingbird.observed_target");
+        if (questAttached) {
+            com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"raptor.hummingbird.observed_target");
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.HUMMINGBIRD_MARK.play(player);
+        }
         ACTIVE_HUMMINGBIRD_TARGETS.put(player.getUUID(), target.getId());
         if (ReconRevealThrottle.tryStart(target, HUMMINGBIRD_REVEAL_TICKS)) {
             NetworkHandler.sendToPlayer(new S2C_RaptorRevealEntities(List.of(

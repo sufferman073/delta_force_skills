@@ -26,7 +26,7 @@ public final class GizmoPlaceholderVisuals {
     private GizmoPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         if (!GizmoInputHandler.shouldRenderPlaceholder()) {
             return;

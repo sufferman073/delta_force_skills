@@ -244,10 +244,10 @@ public final class RaptorFalconController {
         if (consumeClick(KeybindRegister.CORE_SKILL)) {
             return RaptorFalconControlAction.SELF_DESTRUCT;
         }
-        if (consumeClick(KeybindRegister.ACTIVE_SKILL_2)) {
+        if (consumeClick(KeybindRegister.activeKey(2))) {
             action = RaptorFalconControlAction.PULSE;
         }
-        if (consumeClick(KeybindRegister.ACTIVE_SKILL_1)) {
+        if (consumeClick(KeybindRegister.activeKey(1))) {
             action = RaptorFalconControlAction.EXIT;
         }
         if (consumeClick(minecraft.options.keyUse) && action == RaptorFalconControlAction.NONE) {

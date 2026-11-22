@@ -37,8 +37,10 @@ public final class RoverClient {
     private static int smokeHeld;
     private static int coreHeld;
     private static boolean equipped;
+    private static boolean smokeCanceled;
     private static boolean recalled;
     private RoverClient() {}
+    static int hudValue(String key) { return state.getInt(key); }
     public static void sync(CompoundTag snapshot) { state = snapshot.copy(); }
     public static boolean selected() { return ClientCharacterSelectionState.isSelectedCharacter(ModCharacters.ROVER_ID); }
     public static int tool() { return selected() || ClientCommanderState.inherits(ModCharacters.ROVER_ID) ? state.getInt("Tool") : 0; }
@@ -55,7 +57,7 @@ public final class RoverClient {
             default -> 0;
         };
     }
-    public static void reset() { state = new CompoundTag(); smokeHeld = coreHeld = 0; equipped = recalled = false; }
+    public static void reset() { state = new CompoundTag(); smokeHeld = coreHeld = 0; smokeCanceled = equipped = recalled = false; }
 
     public static void tick(Minecraft mc) {
         if (mc.player == null) { reset(); return; }
@@ -67,7 +69,7 @@ public final class RoverClient {
         boolean coreOwned = ownsCoreSkill();
         if (mc.screen != null || mc.player.hasEffect(ModEffects.ROVER_DOWNED.get())) {
             if (coreOwned) drain(KeybindRegister.CORE_SKILL);
-            smokeHeld = coreHeld = 0; equipped = recalled = false; return;
+            smokeHeld = coreHeld = 0; smokeCanceled = equipped = recalled = false; return;
         }
         if (smokeOwned && KeybindRegister.ACTIVE_SKILL_1.isDown()) {
             drain(KeybindRegister.ACTIVE_SKILL_1);
@@ -75,8 +77,9 @@ public final class RoverClient {
                 equipped = true; ClientCommanderState.useNativeOrInherited(ModCharacters.ROVER_ID, SkillSlot.ACTIVE_1, true);
             }
         } else if (smokeHeld > 0) {
+            if (smokeOwned && equipped && !smokeCanceled) NetworkHandler.sendToServer(new C2S_RoverAction(1));
             if (smokeOwned && !equipped) ClientCommanderState.useNativeOrInherited(ModCharacters.ROVER_ID, SkillSlot.ACTIVE_1, false);
-            smokeHeld = 0; equipped = false;
+            smokeHeld = 0; smokeCanceled = equipped = false;
         }
         while (injectorOwned && KeybindRegister.ACTIVE_SKILL_2.consumeClick())
             ClientCommanderState.useNativeOrInherited(ModCharacters.ROVER_ID, SkillSlot.ACTIVE_2, false);
@@ -110,13 +113,14 @@ public final class RoverClient {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST) public static void mouse(InputEvent.MouseButton.Pre event) {
         Minecraft mc = Minecraft.getInstance();
-        if (tool() == 0 || mc.screen != null || mc.player == null) return;
+        if (tool() == 0 && !equipped || mc.screen != null || mc.player == null) return;
         if (!mc.player.hasEffect(ModEffects.ROVER_DOWNED.get()) && refreshItemHasPriority(mc)) return;
         if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT && event.getButton() != GLFW.GLFW_MOUSE_BUTTON_RIGHT) return;
         event.setCanceled(true);
         if (event.getAction() != GLFW.GLFW_PRESS) return;
         boolean left = event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT;
-        int action = state.getInt("Tool") == 1 ? (left ? 1 : 0) : (left ? 2 : 3);
+        if (equipped) smokeCanceled = true;
+        int action = equipped || state.getInt("Tool") == 1 ? 0 : (left ? 2 : 3);
         NetworkHandler.sendToServer(new C2S_RoverAction(action));
     }
 

@@ -89,7 +89,7 @@ public final class NativeDWolfSkills implements OperativeSkills {
             return;
         }
         LivingEntity target = host.serverLevel().getEntity(preparedTarget) instanceof LivingEntity living ? living : null;
-        if (!NativeRaptorSkills.committedTarget(host, target) || !host.parallelNativeAi() && !valid(host, target, prepared == SkillSlot.ACTIVE_1 ? 8 : 2, 24)) {
+        if (!NativeRaptorSkills.committedTarget(host, target) || !host.parallelNativeAi() && !valid(host, target, prepared == SkillSlot.ACTIVE_1 ? 8 : 2, 24, false)) {
             clearPreparation(); return;
         }
         host.aimAt(target);
@@ -109,7 +109,7 @@ public final class NativeDWolfSkills implements OperativeSkills {
 
     @Override
     public double score(OperativeHost host, SkillSlot slot, LivingEntity target) {
-        if (busy() || !valid(host, target, slot == SkillSlot.ACTIVE_1 ? 8 : 2, 24)) return 0;
+        if (busy() || !valid(host, target, slot == SkillSlot.ACTIVE_1 ? 8 : 2, 24, false)) return 0;
         return switch (slot) {
             case ACTIVE_1 -> cannon > 0 && safeCannon(host, cannonShot(host, target)) ? 80 : 0;
             case ACTIVE_2 -> smoke > 0 && needsSmoke(host) && smokeShot(host, target) != null ? 95 : 0;
@@ -137,7 +137,7 @@ public final class NativeDWolfSkills implements OperativeSkills {
         var shot = detachedShot != null ? detachedShot : cannonShot(host, target);
         if ((!burstCommitted && cannon <= 0) || shot == null || detachedShot == null && !safeCannon(host, shot)) return false;
         var projectile = new DWolfHandCannonGrenadeEntity(ModEntities.D_WOLF_HAND_CANNON_GRENADE.get(), host.serverLevel(), host.body());
-        launch(host, projectile, shot.direction(), 2.05D, 0.05D, 0.75D, 0.12D);
+        launch(host, projectile, shot.direction(), shot.launchSpeed(2.05D), 0.05D, 0.75D, 0.12D);
         if (detachedOrigin != null) projectile.setPos(detachedOrigin.add(shot.direction().scale(.75)).add(0, -.12, 0));
         if (!host.serverLevel().addFreshEntity(projectile)) return false;
         if (!burstCommitted) {
@@ -166,14 +166,18 @@ public final class NativeDWolfSkills implements OperativeSkills {
     }
 
     private static boolean valid(OperativeHost host, LivingEntity target, double min, double max) {
-        if (target == null || !host.isEnemy(target) || !host.canSee(target)
+        return valid(host, target, min, max, true);
+    }
+
+    private static boolean valid(OperativeHost host, LivingEntity target, double min, double max, boolean sight) {
+        if (target == null || !host.isEnemy(target) || !(sight ? host.canSee(target) : OperativeHearing.knownContact(host, target))
                 || !host.withinCombatRange(target.position()) || !host.withinOrders(host.body().position())) return false;
         double distance = host.body().distanceToSqr(target);
         return distance >= min * min && distance <= max * max;
     }
 
     private static OperativeBallistics.Shot cannonShot(OperativeHost host, LivingEntity target) {
-        var shot = OperativeBallistics.solve(host, target.position().add(0, 0.1D, 0),
+        var shot = OperativeBallistics.lobWithSpeed(host, target.position().add(0, 0.1D, 0),
                 2.05D, 0.05D, 0.75D, 0.12D, 0.045D, 0.985D, 55, 1.5D, true);
         return shot != null && shot.flightTicks() < DWolfHandCannonGrenadeEntity.fuseTicks() ? shot : null;
     }

@@ -132,6 +132,9 @@ public final class HomeManager {
             if (old == null) data.visits.remove(player.getUUID()); else data.visits.put(player.getUUID(), old);
             data.setDirty(); return false;
         }
+        if (home.returnFloorPending && destination.setBlockAndUpdate(safe.below(), com.rzy.dealt_force_skills.registry.ModBlocks.PERSONAL_DIMENSIONS.get(0).get().defaultBlockState())) {
+            home.returnFloorPending = false; data.setDirty();
+        }
         int carried = HomeMobTransport.carry(player, passengers, source, destination, safe);
         var transport = data.transport(player.getUUID());
         if (source != destination && HomeSettings.flag("allow_mob_transport") && (transport.targeted() || transport.nearby()))

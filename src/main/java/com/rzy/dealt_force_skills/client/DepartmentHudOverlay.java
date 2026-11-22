@@ -70,18 +70,20 @@ public final class DepartmentHudOverlay {
                 ClientDepartmentHudState.laserCooldownTicks(),
                 Component.translatable("hud.dealt_force_skills.department.laser.ready").getString());
 
-        int statusY = y - 14;
-        String passive = ClientDepartmentHudState.reductionSteps() > 0
-                ? Component.translatable("hud.dealt_force_skills.department.reduction",
-                ClientDepartmentHudState.reductionSteps()).getString()
-                : Component.translatable("hud.dealt_force_skills.department.vulnerable",
-                ClientDepartmentHudState.vulnerabilityStacks()).getString();
-        int color = ClientDepartmentHudState.concealed() ? 0xFFB8F0FF : 0xFFFFE0A8;
-        graphics.drawString(font, passive + "  "
-                        + Component.translatable(ClientDepartmentHudState.concealed()
-                        ? "hud.dealt_force_skills.department.concealed"
-                        : "hud.dealt_force_skills.department.exposed").getString(),
-                x, statusY, color, true);
+        try (var ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
+            int statusY = y - 14;
+            String passive = ClientDepartmentHudState.reductionSteps() > 0
+                    ? Component.translatable("hud.dealt_force_skills.department.reduction",
+                    ClientDepartmentHudState.reductionSteps()).getString()
+                    : Component.translatable("hud.dealt_force_skills.department.vulnerable",
+                    ClientDepartmentHudState.vulnerabilityStacks()).getString();
+            int color = ClientDepartmentHudState.concealed() ? 0xFFB8F0FF : 0xFFFFE0A8;
+            graphics.drawString(font, passive + "  "
+                            + Component.translatable(ClientDepartmentHudState.concealed()
+                            ? "hud.dealt_force_skills.department.concealed"
+                            : "hud.dealt_force_skills.department.exposed").getString(),
+                    x, statusY, color, true);
+        }
     }
 
     private static void drawSlot(
@@ -95,28 +97,7 @@ public final class DepartmentHudOverlay {
             int cooldownTicks,
             String detail
     ) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA101012);
-        graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-        graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-        graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xDD1B1718);
-        drawCenteredClipped(graphics, font, icon.getString(), x + SLOT / 2, y + 12, 32, 0xFFFFFFFF);
-
-        if (cooldownTicks > 0) {
-            graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xCC000000);
-            drawCenteredClipped(graphics, font, cooldownText(cooldownTicks), x + SLOT / 2, y + 12, 34, 0xFFFFE6A6);
-            if (!detail.isEmpty()) {
-                drawCenteredClipped(graphics, font, detail, x + SLOT / 2, y + 23, 34, 0xFFE0E4EA);
-            }
-        } else {
-            drawCenteredClipped(graphics, font, detail, x + SLOT / 2, y + 22, 34, 0xFFE0E4EA);
-        }
-
-        String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            drawCenteredClipped(graphics, font, keyName, x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, cooldownTicks, detail);
     }
 
     private static void renderCalibrationOverlay(GuiGraphics graphics, Font font, Minecraft minecraft, MobEffectInstance effect) {

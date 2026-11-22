@@ -91,6 +91,9 @@ public final class AsaraTrooperEntity extends SaeedGuardEntity {
         if (source == null) {
             return false;
         }
+        Entity attacker = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
+        Boolean raid = attacker == null ? null : com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.hostility(com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.identity(attacker), target);
+        if (raid != null) return !raid;
         return sourceIsAsara(source) && isAsaraAlly(target)
                 || target instanceof AsaraTrooperEntity
                 && (isAsaraAlly(source.getEntity()) || isAsaraAlly(source.getDirectEntity()));
@@ -98,11 +101,15 @@ public final class AsaraTrooperEntity extends SaeedGuardEntity {
 
     @Override
     public boolean isAlliedTo(Entity entity) {
+        if (com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(this) != null || com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(entity) != null) return com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.allies(this, entity);
         return isAsaraAlly(entity) || super.isAlliedTo(entity);
     }
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
+        Entity attacker = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
+        Boolean raid = attacker == null ? null : com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.hostility(com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.identity(attacker), this);
+        if (raid != null) return raid && super.hurt(source, amount);
         if (isAsaraAlly(source.getEntity()) || isAsaraAlly(source.getDirectEntity())) {
             return false;
         }

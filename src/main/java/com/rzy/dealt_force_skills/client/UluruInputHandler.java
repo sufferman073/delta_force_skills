@@ -49,6 +49,10 @@ public final class UluruInputHandler {
             return;
         }
 
+        if (ClientUluruHudState.equippedTool() == UluruTool.INCENDIARY && event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            if (event.getAction() == GLFW.GLFW_RELEASE) beginPrimaryUse();
+            return;
+        }
         if (event.getAction() != GLFW.GLFW_PRESS) {
             return;
         }

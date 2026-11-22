@@ -53,6 +53,11 @@ public class DfsEquipmentItem extends ArmorItem {
         this.defaultModifiers = buildModifiers(profile);
     }
 
+    @Override
+    public void initializeClient(Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
+        consumer.accept(com.rzy.dealt_force_skills.client.visual.DfsEquipmentModelVisuals.ARMOR_EXTENSION);
+    }
+
     public DfsItemQuality quality() {
         return quality;
     }
@@ -93,9 +98,6 @@ public class DfsEquipmentItem extends ArmorItem {
 
     @Override
     public String getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot, String type) {
-        if (profile.slot() == EquipmentSlot.HEAD) {
-            return DealtForceSkillsMod.MODID + ":textures/models/armor/empty_layer_1.png";
-        }
         return DealtForceSkillsMod.MODID + ":textures/models/armor/" + profile.id() + "_layer_1.png";
     }
 

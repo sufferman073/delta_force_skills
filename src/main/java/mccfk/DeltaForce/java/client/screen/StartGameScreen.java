@@ -144,6 +144,7 @@ public class StartGameScreen {
     }
 
     public static void requestSnapshot() {
+        if (Minecraft.getInstance().getConnection() == null) return;
         NetworkHandler.sendToServer(C2S_StartPageAction.refresh());
     }
 
@@ -1188,7 +1189,6 @@ public class StartGameScreen {
             hovered = -2;
         }
         // 玩法模式面板无实际功能，绘制红叉遮罩
-        renderWipOverlay(guiGraphics, preX, preY, PRE_BATTLE_REP_W, PRE_BATTLE_REP_H, mouseX, mouseY);
 
         // no_target（缩放到0.4倍）
         int noX = preX;

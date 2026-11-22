@@ -216,6 +216,34 @@ public class EeconomyManager {
         } finally {Files.deleteIfExists(temporary);}
     }
 
+    /** Balance and raid debit receipt commit together; retries never charge a player twice. */
+    public synchronized boolean debitRaid(String playerName, java.util.UUID transactionId, long amount) {
+        if (transactionId == null || amount < 0) return false;
+        CurrencyType type = CurrencyType.HAVOC_COIN;
+        Path directory = currencyDirs.get(type);
+        if (directory == null) return false;
+        Path file = directory.resolve(playerName + ".json");
+        try {
+            JsonObject document = readCurrencyDocument(file);
+            JsonObject receipts = document.has("raidDebits") ? document.getAsJsonObject("raidDebits") : new JsonObject();
+            String key = transactionId.toString();
+            if (receipts.has(key)) return receipts.get(key).getAsLong() == amount;
+            // Read the durable balance strictly; malformed asset data must never reset to defaults.
+            long current = document.has("") ? Long.parseLong(document.get("").getAsString()) : getInitialQuantity(type);
+            if (current < amount || current - amount < getMin(type)) return false;
+            long next = current - amount;
+            document.addProperty("", Long.toString(next));
+            receipts.addProperty(key, Long.toString(amount));
+            document.add("raidDebits", receipts);
+            writeCurrencyDocument(file, document);
+            playerBalances.computeIfAbsent(playerName, ignored -> new HashMap<>()).put(type, next);
+            return true;
+        } catch (IOException | RuntimeException failure) {
+            LOGGER.error("Unable to debit raid purchase for {}", playerName, failure);
+            return false;
+        }
+    }
+
     /** Balance and mail receipt share one atomic file, so restoring older player NBT cannot credit twice. */
     public synchronized boolean creditMail(String playerName,java.util.UUID mailId,long amount) {
         if(amount<=0)return true;

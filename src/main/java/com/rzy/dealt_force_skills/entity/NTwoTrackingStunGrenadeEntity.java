@@ -76,6 +76,9 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "ntwo.skill.tracking_stun", BURST_RADIUS, HOME_RADIUS,
+                player -> allegiance.active() ? allegiance.isEnemy((ServerLevel)level(), player)
+                        : owner() != null && TargetingUtil.isHostilePlayerFor(owner(), player));
         if (!level().isClientSide && allegiance.active() && tickCount > MAX_LIFE_TICKS) { burst(position()); return; }
         if (tickCount == 1) {
             startPos = position();
@@ -211,6 +214,7 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
                 if (target.getBoundingBox().getCenter().distanceToSqr(center) > BURST_RADIUS * BURST_RADIUS) continue;
                 target.addEffect(new MobEffectInstance(ModEffects.N_TWO_DISRUPTED.get(), STUN_DURATION_TICKS, 0, false, true, true), source);
                 if (source instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() != null) bot.skills().remember(target, STUN_DURATION_TICKS);
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "tracking");
             }
         }
         ServerPlayer owner = owner();
@@ -224,6 +228,7 @@ public class NTwoTrackingStunGrenadeEntity extends Projectile implements ItemSup
             target.addEffect(new MobEffectInstance(ModEffects.N_TWO_DISRUPTED.get(), STUN_DURATION_TICKS,
                     0, false, true, true), owner);
             revealed.add(target.getId());
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "tracking");
         }
         if (owner != null && !revealed.isEmpty()) {
             NetworkHandler.sendToPlayer(new S2C_NTwoRevealEntities(revealed), owner);

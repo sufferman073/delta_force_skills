@@ -16,7 +16,8 @@ import java.nio.file.StandardCopyOption;
 public final class DFClientConfig {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = Paths.get(".MCCFK_ALL_MODCONFIG", "deltaforce", "deltaforce-client.json");
+    private static final Path CONFIG_PATH = com.rzy.dealt_force_skills.client.HudProfileFiles.local(
+            Paths.get(".MCCFK_ALL_MODCONFIG", "deltaforce", "deltaforce-client.json"));
 
     /**
      * 界面放大倍数的默认值与上下限。

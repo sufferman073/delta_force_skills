@@ -224,6 +224,10 @@ public final class GamblerStateManager {
     }
 
     public static boolean useFinalBet(ServerPlayer player, boolean alternate) {
+        if (com.rzy.dealt_force_skills.raid.RaidMatches.belongs(player)) {
+            player.displayClientMessage(Component.literal("绝密行动中不能使用跨维度技能。"), true);
+            return false;
+        }
         initializeIfNeeded(player);
         int remaining = alternate ? active1CooldownRemainingTicks(player) : 0;
         if (alternate && remaining > 0) {
@@ -361,8 +365,11 @@ public final class GamblerStateManager {
         initializeIfNeeded(player);
         long now = SkillCooldownHelper.now(player);
         if (isFullyInvulnerable(player)) {
-            if (isSuperShieldActive(player))
+            if (isSuperShieldActive(player)) {
                 com.rzy.dealt_force_skills.department.DepartmentGambler.shieldBlocked(player);
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(source.getEntity(), "shield");
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(player, 1);
+            }
             return 0.0F;
         }
         if (isCoveredByOrangeShield(player)) {
@@ -399,6 +406,8 @@ public final class GamblerStateManager {
             playShieldSound(player);
             com.rzy.dealt_force_skills.department.DepartmentGambler.shieldBlocked(player);
             syncToClient(player);
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(source.getEntity(), "shield");
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(player, 1);
             return 0.0F;
         }
 
@@ -738,6 +747,7 @@ public final class GamblerStateManager {
         }
         tag.putLong(ACTIVE2_EXPIRES, now + ACTIVE2_IDLE_TICKS);
         applyDrawEffect(player, effect, depth);
+        if (countsAsUse && depth == 0) com.rzy.dealt_force_skills.skill.BareSkillPulse.HAKKO_DRAW.play(player);
         if (effect.isHakko())com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"gambler.card.hakko");
         playDrawSound(player);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.gambler.draw_result_detailed",

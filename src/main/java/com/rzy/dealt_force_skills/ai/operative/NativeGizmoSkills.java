@@ -67,7 +67,7 @@ public final class NativeGizmoSkills implements OperativeSkills {
         if (!host.body().isAlive() || host.body().isRemoved() || !host.withinOrders(host.body().position())
                 || host.body().hasEffect(ModEffects.STUN.get()) || host.body().hasEffect(ModEffects.WEBBED.get())
                 || target == null || !host.isEnemy(target) || !host.withinCombatRange(target.position())
-                || !host.canSee(target) || host.body().distanceToSqr(target) > 24 * 24
+                || !OperativeHearing.knownContact(host, target) || host.body().distanceToSqr(target) > 24 * 24
                 || OperativeElectronics.blocked(host, ModCharacters.GIZMO_ID, slot)) return 0;
         return switch (slot) {
             case ACTIVE_1 -> host.body().distanceToSqr(target) <= 10 * 10 && smoke > 0 && trapDelay == 0 && smokeCount(host) < smokeActiveLimit()
@@ -97,6 +97,8 @@ public final class NativeGizmoSkills implements OperativeSkills {
             var trap = new GizmoSpiderNestTrapEntity(ModEntities.GIZMO_SPIDER_NEST_TRAP.get(), host.serverLevel(), host.body());
             trap.setPos(p);
             if (!host.serverLevel().addFreshEntity(trap)) return false;
+            // The native operator can actively release its nest, just as the player can.
+            trap.trigger(target.position().subtract(p));
             nests--; trapDelay = 60;
             sound = ModSounds.GIZMO_SPIDER_NEST_DEPLOY.get();
         } else {
@@ -149,6 +151,9 @@ public final class NativeGizmoSkills implements OperativeSkills {
             if (!host.serverLevel().noCollision(bounds) || !host.serverLevel().getEntitiesOfClass(LivingEntity.class, bounds.inflate(0.1D), LivingEntity::isAlive).isEmpty()) continue;
             if (!host.serverLevel().getEntitiesOfClass(GizmoSmokeTrapEntity.class, bounds.inflate(0.6D)).isEmpty()
                     || !host.serverLevel().getEntitiesOfClass(GizmoSpiderNestTrapEntity.class, bounds.inflate(0.6D)).isEmpty()) continue;
+            if (nest && !OperativeCrawlerPath.canReach(host,
+                    p.add(toward.normalize().scale(0.42)).add(0, 0.08, 0), target.position(), 0.4,
+                    com.rzy.dealt_force_skills.entity.GizmoSpiderlingEntity.nativeClimbHeight())) continue;
             return p;
         }
         return null;
@@ -160,7 +165,8 @@ public final class NativeGizmoSkills implements OperativeSkills {
         Vec3 p = host.body().position().add(direction.scale(0.85D)).add(0, 0.05D, 0);
         AABB box = new AABB(p.x - 0.18D, p.y, p.z - 0.18D, p.x + 0.18D, p.y + 0.3D, p.z + 0.18D);
         return host.withinOrders(p) && host.serverLevel().noCollision(box)
-                && host.serverLevel().getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive).isEmpty() ? p : null;
+                && host.serverLevel().getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive).isEmpty()
+                && OperativeCrawlerPath.canReach(host, p, target.position(), 0.35, 2.45) ? p : null;
     }
 
     private static void updatePassive(OperativeHost host, boolean active) {

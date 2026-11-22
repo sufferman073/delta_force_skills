@@ -8,7 +8,7 @@
       "text": "疾走如龙"
     },
     "description": {
-      "text": "使用威龙时，生命值低于25%的情况下30秒内连续击杀3名玩家"
+      "text": "使用威龙时，生命值低于25%的情况下30秒内连续击杀3个实体"
     },
     "frame": "challenge",
     "show_toast": true,

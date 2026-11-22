@@ -40,6 +40,13 @@ public class HvkConstructorScreen extends Screen {
 
     private final BlockPos pos;
     private String query;
+    // Reuse bounded server pages; names are resolved only on the physical client.
+    private final List<RecipeView> catalog = new ArrayList<>();
+    private final Map<ResourceLocation, String> catalogText = new HashMap<>();
+    private int catalogTotal = -1;
+    private int nextCatalogPage;
+    private boolean catalogRequestPending;
+    private boolean catalogReady;
     private int page;
     private int totalRecipes;
     private List<RecipeView> recipes;
@@ -74,6 +81,9 @@ public class HvkConstructorScreen extends Screen {
         this.disassembler = disassembler;
         this.selectedId = this.recipes.isEmpty() ? null : this.recipes.get(0).id();
         this.detail = null;
+        if (normalizeQuery(query).isEmpty() && page == 0) {
+            acceptCatalogPage(0, totalRecipes, this.recipes);
+        }
         collapseAllTreeRows();
     }
 
@@ -96,10 +106,9 @@ public class HvkConstructorScreen extends Screen {
         if (Minecraft.getInstance().screen instanceof HvkConstructorScreen screen
                 && screen.pos.equals(pos)
                 && screen.disassembler == disassembler) {
-            if (!normalizeQuery(query).equals(normalizeQuery(screen.query))) {
-                return;
+            if (normalizeQuery(query).isEmpty()) {
+                screen.acceptCatalogPage(page, totalRecipes, recipes);
             }
-            screen.setRecipes(query, page, totalRecipes, recipes);
         }
     }
 
@@ -158,6 +167,16 @@ public class HvkConstructorScreen extends Screen {
         collapseAllTreeRows();
     }
 
+    public void reloadCatalog() {
+        catalog.clear();
+        catalogText.clear();
+        catalogTotal = -1;
+        nextCatalogPage = 0;
+        catalogRequestPending = false;
+        catalogReady = false;
+        setRecipes(query, 0, 0, List.of());
+    }
+
     @Override
     public boolean isPauseScreen() {
         return false;
@@ -166,6 +185,10 @@ public class HvkConstructorScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        if (!catalogReady && !catalogRequestPending) {
+            catalogRequestPending = true;
+            NetworkHandler.sendToServer(new C2S_HvkConstructorQuery(pos, "", nextCatalogPage));
+        }
         if (pendingSearchTicks >= 0 && --pendingSearchTicks <= 0) {
             int page = pendingSearchPage;
             pendingSearchTicks = -1;
@@ -323,7 +346,37 @@ public class HvkConstructorScreen extends Screen {
     }
 
     private void requestPageNow(int requestedPage) {
-        NetworkHandler.sendToServer(new C2S_HvkConstructorQuery(pos, query, clamp(requestedPage, 0, maxPage())));
+        List<RecipeView> matches = new ArrayList<>();
+        String key = normalizeQuery(query);
+        for (RecipeView recipe : catalog) {
+            String text = catalogText.computeIfAbsent(recipe.id(),
+                    ignored -> HvkRecipeSearch.text(recipe, disassembler));
+            if (com.rzy.dealt_force_skills.compat.JustEnoughCharactersCompat.matches(text, key)) {
+                matches.add(recipe);
+            }
+        }
+        int size = HvkAdvancedStandardTemplateConstructorBlockEntity.RECIPE_PAGE_SIZE;
+        int selectedPage = clamp(requestedPage, 0, Math.max(0, (matches.size() - 1) / size));
+        int from = selectedPage * size;
+        setRecipes(query, selectedPage, matches.size(), matches.subList(from, Math.min(matches.size(), from + size)));
+    }
+
+    private void acceptCatalogPage(int receivedPage, int total, List<RecipeView> incoming) {
+        if (catalogTotal >= 0 && catalogTotal != total) {
+            // A datapack reload changed the directory during collection. Start a fresh snapshot.
+            catalog.clear();
+            catalogText.clear();
+            nextCatalogPage = 0;
+            catalogReady = false;
+            catalogRequestPending = false;
+        }
+        catalogTotal = total;
+        if (receivedPage != nextCatalogPage) return;
+        catalogRequestPending = false;
+        catalog.addAll(incoming);
+        nextCatalogPage++;
+        catalogReady = catalog.size() >= total || incoming.isEmpty();
+        requestPageNow(page);
     }
 
     private void scheduleSelectedDetail() {
@@ -373,6 +426,7 @@ public class HvkConstructorScreen extends Screen {
                 query.isBlank() ? 0xFF7D8791 : 0xFFFFFF);
         Component resultText = Component.translatable(screenKey("results"),
                 recipes.size(), totalRecipes, page + 1, maxPage() + 1);
+        if (!catalogReady) resultText = Component.translatable("screen.dealt_force_skills.advanced_work.loading");
         graphics.drawString(font, fit(resultText, searchWidth() - 94), x, y + 24, 0xFFBFC7D0);
         drawPageButton(graphics, pageButtonLeft(), y + 21, -1, mouseX, mouseY);
         drawPageButton(graphics, pageButtonLeft() + 44, y + 21, 1, mouseX, mouseY);

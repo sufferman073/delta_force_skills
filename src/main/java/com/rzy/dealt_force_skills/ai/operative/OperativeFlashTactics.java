@@ -22,7 +22,7 @@ public final class OperativeFlashTactics {
         Vec3 offset = point.subtract(eye); double distance = offset.horizontalDistance();
         if (distance < 1) return null;
         OperativeBallistics.Shot best = null; double error = 1.0D;
-        for (int degrees = -70; degrees <= 70; degrees++) {
+        for (int degrees = -70; degrees <= 85; degrees++) {
             double angle = Math.toRadians(degrees);
             Vec3 direction = new Vec3(offset.x / distance * Math.cos(angle), Math.sin(angle), offset.z / distance * Math.cos(angle));
             Vec3 p = eye.add(direction.scale(0.58D)).add(0, -0.1D, 0);

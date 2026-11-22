@@ -162,9 +162,19 @@ public class VlinderRemoteSmokeRoundEntity extends Entity implements ItemSupplie
         return entity.isPickable();
     }
 
+    private boolean guiding;
+    public void startGuide() { guiding = true; }
+    public void releaseGuide(ServerPlayer player) {
+        if (player.getUUID().equals(ownerId)) {
+            rememberDirection(player.getLookAngle().normalize());
+            guiding = false;
+        }
+    }
+
     private Vec3 guidedDirection(ServerLevel level) {
         if (allegiance.active() && nativeDestination != null) return nativeDestination.subtract(position()).normalize();
         Vec3 current = storedDirection();
+        if (!guiding) return current;
         Entity owner = ownerId == null ? null : level.getEntity(ownerId);
         if (!(owner instanceof ServerPlayer player) || !player.isAlive()) {
             return current;

@@ -21,7 +21,7 @@ public final class OperativeSkillStrategy {
             if (threatened || ranged && body.distanceTo(target) >= preferred && !reloading) return 0;
         }
         boolean explosive = slot == SkillSlot.ACTIVE_2 && (role.equals("vyron") || role.equals("luna")
-                || role.equals("uluru") || role.equals("shepherd"))
+                || role.equals("uluru") || role.equals("shepherd") || role.equals("wildfire"))
                 || slot == SkillSlot.ACTIVE_1 && role.equals("d_wolf")
                 || slot == SkillSlot.CORE && (role.equals("vyron") || role.equals("uluru"));
         if (explosive) {

@@ -96,7 +96,10 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Operat
         }
 
         if (tickCount % 5 == 0) {
-            findTriggerTarget(serverLevel).ifPresent(target -> trigger(target.position().subtract(position())));
+            findTriggerTarget(serverLevel).ifPresent(target -> {
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(target, this, "gizmo.skill.smoke_trap", "smoke_trap");
+                trigger(target.position().subtract(position()));
+            });
         }
     }
 
@@ -196,9 +199,7 @@ public class GizmoSmokeTrapEntity extends Entity implements ItemSupplier, Operat
 
     private boolean hasLineOfSightTo(LivingEntity target) {
         Vec3 start = position().add(0.0D, getBbHeight() * 0.5D, 0.0D);
-        Vec3 end = target.getEyePosition();
-        return level().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this)).getType()
-                == HitResult.Type.MISS;
+        return com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper.exposed(level(), start, target);
     }
 
     private Entity owner(ServerLevel level) {

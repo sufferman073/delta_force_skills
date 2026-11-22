@@ -28,8 +28,8 @@ public class GroundItemEntity extends Entity {
     public GroundItemEntity(EntityType<? extends GroundItemEntity> type, Level level) {
         super(type, level);
         this.blocksBuilding = false;
-        this.noPhysics = true;
-        this.setNoGravity(true);
+        this.noPhysics = false;
+        this.setNoGravity(false);
     }
 
     public GroundItemEntity(Level level, double x, double y, double z, ItemStack stack) {
@@ -66,14 +66,16 @@ public class GroundItemEntity extends Entity {
             }
 
             if (this.tickCount == 1) {
-                this.snapToGround();
+                // Old saves used NoGravity and an eye-height InitialY. Settle from current Pos.
+                this.setNoGravity(false);
             }
+            // Keep the flat, stationary presentation, but let unsupported drops fall onto collision shapes.
+            double fallSpeed = Math.max(-1.0D, this.getDeltaMovement().y - 0.04D);
+            this.setDeltaMovement(0.0D, fallSpeed, 0.0D);
+            this.move(net.minecraft.world.entity.MoverType.SELF, this.getDeltaMovement());
+            this.setDeltaMovement(this.onGround() ? Vec3.ZERO : this.getDeltaMovement().scale(0.98D));
+            this.initialY = this.getY();
         }
-    }
-
-    private void snapToGround() {
-        this.setPos(this.getX(), this.initialY, this.getZ());
-        this.setDeltaMovement(Vec3.ZERO);
     }
 
     @Override

@@ -33,6 +33,7 @@ public final class HvkZiplineMotionClient {
     private static double sampleX;
     private static double sampleY;
     private static double sampleZ;
+    private static double lastTickX, lastTickY, lastTickZ;
 
     private HvkZiplineMotionClient() {
     }
@@ -59,6 +60,9 @@ public final class HvkZiplineMotionClient {
             rideLevel = mc.level;
             previousNoGravity = player.isNoGravity();
             previousNoPhysics = player.noPhysics;
+            lastTickX = x;
+            lastTickY = y;
+            lastTickZ = z;
         }
         HvkZiplineMotionClient.active = active;
         HvkZiplineMotionClient.sampleX = x;
@@ -82,6 +86,12 @@ public final class HvkZiplineMotionClient {
             return;
         }
         player.setPos(sampleX, sampleY, sampleZ);
+        player.xo = lastTickX;
+        player.yo = lastTickY;
+        player.zo = lastTickZ;
+        lastTickX = sampleX;
+        lastTickY = sampleY;
+        lastTickZ = sampleZ;
         player.setDeltaMovement(Vec3.ZERO);
         player.fallDistance = 0.0F;
         player.setNoGravity(true);

@@ -103,23 +103,25 @@ public final class SinevaHudOverlay {
         if (!ClientSinevaHudState.bombSuitActive()) {
             return;
         }
-        int max = Math.max(1, ClientSinevaHudState.shieldMaxDurability());
-        int value = Math.max(0, Math.min(max, ClientSinevaHudState.shieldDurability()));
-        int width = skillWidth;
-        int height = 5;
-        int x = skillX;
-        int y = Math.max(8, skillY - (commanderLayout ? 28 : 12));
-        int fill = Math.round((width - 2) * value / (float) max);
-        int accent = value <= 0 ? 0xFFDD4A4A : 0xFF4AC4FF;
-        graphics.fill(x, y, x + width, y + height, 0xAA000000);
-        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xAA0C1720);
-        if (fill > 0) {
-            graphics.fill(x + 1, y + 1, x + 1 + fill, y + height - 1, accent);
+        try (var ignored = ClientHudLayout.scaleButton(graphics, skillX, skillY, SLOT)) {
+            int max = Math.max(1, ClientSinevaHudState.shieldMaxDurability());
+            int value = Math.max(0, Math.min(max, ClientSinevaHudState.shieldDurability()));
+            int width = skillWidth;
+            int height = 5;
+            int x = skillX;
+            int y = Math.max(8, skillY - (commanderLayout ? 28 : 12));
+            int fill = Math.round((width - 2) * value / (float) max);
+            int accent = value <= 0 ? 0xFFDD4A4A : 0xFF4AC4FF;
+            graphics.fill(x, y, x + width, y + height, 0xAA000000);
+            graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xAA0C1720);
+            if (fill > 0) {
+                graphics.fill(x + 1, y + 1, x + 1 + fill, y + height - 1, accent);
+            }
+            String text = value <= 0
+                    ? Component.translatable("hud.dealt_force_skills.sineva.shield_broken").getString()
+                    : Component.translatable("hud.dealt_force_skills.sineva.shield_durability", value, max).getString();
+            HudTextHelper.drawCenteredFitted(graphics, font, text, x + width / 2, y - 9, width, 0xFFE8F7FF);
         }
-        String text = value <= 0
-                ? Component.translatable("hud.dealt_force_skills.sineva.shield_broken").getString()
-                : Component.translatable("hud.dealt_force_skills.sineva.shield_durability", value, max).getString();
-        HudTextHelper.drawCenteredFitted(graphics, font, text, x + width / 2, y - 9, width, 0xFFE8F7FF);
     }
 
     private static void drawSlot(
@@ -133,26 +135,7 @@ public final class SinevaHudOverlay {
             int cooldownTicks,
             String detail
     ) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA071018);
-        graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-        graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-        graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-
-        graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xDD0C1720);
-        drawCenteredClipped(graphics, font, icon.getString(), x + SLOT / 2, y + 12, 32, 0xFFFFFFFF);
-
-        if (cooldownTicks > 0) {
-            graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xCC000000);
-            drawCenteredClipped(graphics, font, cooldownText(cooldownTicks), x + SLOT / 2, y + 14, 34, 0xFFFFE6A6);
-        } else {
-            drawCenteredClipped(graphics, font, detail, x + SLOT / 2, y + 22, 34, 0xFFB7C3D0);
-        }
-
-        String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            drawCenteredClipped(graphics, font, keyName, x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, cooldownTicks, detail);
     }
 
     private static void drawCenteredClipped(GuiGraphics graphics, Font font, String text, int centerX, int y, int width, int color) {

@@ -29,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Method;
 
 public class QuickCoverBlock extends HorizontalDirectionalBlock implements EntityBlock {
+    public static final BooleanProperty PACKAGE_CENTER = BooleanProperty.create("package_center");
     public static final BooleanProperty HALF = BooleanProperty.create("half");
 
     private static final VoxelShape NORTH_SOUTH_SHAPE = box(0.0, 0.0, 6.0, 16.0, 16.0, 10.0);
@@ -40,7 +41,7 @@ public class QuickCoverBlock extends HorizontalDirectionalBlock implements Entit
         super(Properties.of()
                 .strength(500.0f, 1200.0f)
                 .noOcclusion());
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(HALF, false));
+        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(HALF, false).setValue(PACKAGE_CENTER, false));
     }
 
     @Override
@@ -50,7 +51,7 @@ public class QuickCoverBlock extends HorizontalDirectionalBlock implements Entit
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<net.minecraft.world.level.block.Block, BlockState> builder) {
-        builder.add(FACING, HALF);
+        builder.add(FACING, HALF, PACKAGE_CENTER);
     }
 
     @Override
@@ -100,10 +101,6 @@ public class QuickCoverBlock extends HorizontalDirectionalBlock implements Entit
         return false;
     }
 
-    @Override
-    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
-        entity.makeStuckInBlock(state, new Vec3(0.25, 0.25, 0.25));
-    }
 
     @Override
     public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean moving) {

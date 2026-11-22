@@ -70,7 +70,7 @@ public final class SaeedInputHandler {
                 if ((!creative && !sneak) || (creative && sneak)) {
                     NetworkHandler.sendToServer(new C2S_OpenSaeedMonitor());
                 } else {
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
         } else if (selectionWasDown) {

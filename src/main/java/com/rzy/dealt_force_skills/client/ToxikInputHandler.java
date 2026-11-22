@@ -99,9 +99,11 @@ public final class ToxikInputHandler {
             return;
         }
         event.setCanceled(true);
-        if (event.getAction() != GLFW.GLFW_PRESS) {
+        if (ClientToxikHudState.equippedTool() == ToxikTool.TEAR_GAS && event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            if (event.getAction() == GLFW.GLFW_RELEASE) beginTearGasThrow(true);
             return;
         }
+        if (event.getAction() != GLFW.GLFW_PRESS) return;
 
         ToxikTool tool = ClientToxikHudState.equippedTool();
         if (tool == ToxikTool.TEAR_GAS) {
@@ -158,14 +160,14 @@ public final class ToxikInputHandler {
     }
 
     private static void handleActive1Key() {
-        if (KeybindRegister.ACTIVE_SKILL_1 == null) {
+        if (KeybindRegister.activeKey(1) == null) {
             return;
         }
-        boolean down = KeybindRegister.ACTIVE_SKILL_1.isDown();
+        boolean down = KeybindRegister.activeKey(1).isDown();
         if (down) {
             active1WasDown = true;
             active1HeldTicks++;
-            while (KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+            while (KeybindRegister.activeKey(1).consumeClick()) {
             }
             return;
         }
@@ -176,25 +178,10 @@ public final class ToxikInputHandler {
     }
 
     private static void handleActive2Key() {
-        if (KeybindRegister.ACTIVE_SKILL_2 == null) {
-            return;
-        }
-        boolean down = KeybindRegister.ACTIVE_SKILL_2.isDown();
-        if (down) {
-            active2WasDown = true;
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
-            }
-            active2HeldTicks++;
-            if (active2HeldTicks >= TEAR_GAS_EQUIP_HOLD_TICKS && !sentTearGasEquip) {
-                sentTearGasEquip = true;
-                NetworkHandler.sendToServer(new C2S_ToxikToolAction(ToxikToolAction.EQUIP_TEAR_GAS));
-            }
-            return;
-        }
-        if (active2WasDown && active2HeldTicks < TEAR_GAS_EQUIP_HOLD_TICKS) {
-            beginTearGasThrow(false);
-        }
-        resetActive2();
+        if (KeybindRegister.activeKey(2) == null || !KeybindRegister.activeKey(2).consumeClick()) return;
+        while (KeybindRegister.activeKey(2).consumeClick()) {}
+        NetworkHandler.sendToServer(new C2S_ToxikToolAction(ClientToxikHudState.equippedTool() == ToxikTool.TEAR_GAS
+                ? ToxikToolAction.STOW_TOOL : ToxikToolAction.EQUIP_TEAR_GAS));
     }
 
     private static void beginTearGasThrow(boolean equipped) {
@@ -238,7 +225,7 @@ public final class ToxikInputHandler {
     }
 
     private static void handleFireflyPullout(Minecraft minecraft) {
-        if (minecraft.player == null || minecraft.screen != null || KeybindRegister.ACTIVE_SKILL_1 == null) {
+        if (minecraft.player == null || minecraft.screen != null || KeybindRegister.activeKey(1) == null) {
             sendPulloutIfChanged(false);
             return;
         }

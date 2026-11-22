@@ -86,7 +86,7 @@ public final class NativeUluruSkills implements OperativeSkills {
         if (!host.body().isAlive() || host.body().isRemoved() || !host.withinOrders(host.body().position())
                 || host.body().hasEffect(ModEffects.STUN.get()) || host.body().hasEffect(ModEffects.WEBBED.get())
                 || target == null || !host.isEnemy(target) || !host.withinCombatRange(target.position())
-                || !host.canSee(target) || host.body().distanceToSqr(target) > (slot == SkillSlot.CORE ? 80 * 80 : 32 * 32)
+                || !(slot != SkillSlot.CORE ? OperativeHearing.knownContact(host, target) : host.canSee(target)) || host.body().distanceToSqr(target) > (slot == SkillSlot.CORE ? 80 * 80 : 32 * 32)
                 || OperativeElectronics.blocked(host, ModCharacters.ULURU_ID, slot)) return 0;
         return switch (slot) {
             case ACTIVE_1 -> incendiaries > 0 && safe(host, fireShot(host, target), UluruFireFieldEntity.nativeRadius() + 1) ? 80 : 0;
@@ -108,7 +108,7 @@ public final class NativeUluruSkills implements OperativeSkills {
             shot = fireShot(host, target);
             if (!safe(host, shot, UluruFireFieldEntity.nativeRadius() + 1)) return false;
             projectile = new UluruIncendiaryGrenadeEntity(ModEntities.ULURU_INCENDIARY_GRENADE.get(), host.serverLevel(), host.body());
-            speed = 2.25D; lift = 0.14D; forward = 0.55D; sound = ModSounds.INCENDIARY_THROW.get();
+            speed = shot.launchSpeed(2.25D); lift = 0.14D; forward = 0.55D; sound = ModSounds.INCENDIARY_THROW.get();
         } else if (slot == SkillSlot.ACTIVE_2) {
             shot = coverShot(host, target);
             if (shot == null) return false;
@@ -139,7 +139,7 @@ public final class NativeUluruSkills implements OperativeSkills {
     }
 
     private static OperativeBallistics.Shot fireShot(OperativeHost host, LivingEntity target) {
-        return OperativeBallistics.solve(host, target.position(), 2.25D, 0.14D, 0.55D, 0.1D, 0.04D, 0.98D,
+        return OperativeBallistics.lobWithSpeed(host, target.position(), 2.25D, 0.14D, 0.55D, 0.1D, 0.04D, 0.98D,
                 80, Math.max(0.1D, UluruFireFieldEntity.nativeRadius() * 0.5D), true);
     }
     private static OperativeBallistics.Shot coverShot(OperativeHost host, LivingEntity target) {

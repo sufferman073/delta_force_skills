@@ -1,21 +1,11 @@
 {
   "parent": "block/block",
+  "loader": "forge:obj",
+  "model": "dealt_force_skills:models/block/blade_wire_core.obj",
+  "render_type": "minecraft:cutout",
+  "automatic_culling": false,
+  "emissive_ambient": false,
   "textures": {
-    "particle": "dealt_force_skills:block/blade_wire_core",
-    "core": "dealt_force_skills:block/blade_wire_core"
-  },
-  "elements": [
-    {
-      "from": [1, 0, 1],
-      "to": [15, 5, 15],
-      "faces": {
-        "down": { "texture": "#core" },
-        "up": { "texture": "#core" },
-        "north": { "texture": "#core" },
-        "south": { "texture": "#core" },
-        "west": { "texture": "#core" },
-        "east": { "texture": "#core" }
-      }
-    }
-  ]
+    "particle": "dealt_force_skills:block/blade_wire_core"
+  }
 }

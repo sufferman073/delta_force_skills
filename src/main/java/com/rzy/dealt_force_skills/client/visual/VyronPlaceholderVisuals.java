@@ -25,7 +25,7 @@ public final class VyronPlaceholderVisuals {
     private VyronPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         if (!shouldRenderPlaceholder()) {
             return;

@@ -76,6 +76,7 @@ public class NTwoCondensedGrenadeEntity extends Projectile implements ItemSuppli
     public void tick() {
         if (!level().isClientSide && allegiance.active() && tickCount >= 300) { discard(); return; }
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "ntwo.skill.condensed_launcher", (3.0D));
         if (tickCount == 1) {
             startPos = position();
         }

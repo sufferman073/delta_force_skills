@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.saeed;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.motion.TacticalMotion;
 import com.rzy.dealt_force_skills.motion.TacticalMotionSync;
 
@@ -27,6 +30,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import com.rzy.dealt_force_skills.skill.HeldToolVisual;
+import com.rzy.dealt_force_skills.skill.HeldToolVisualSync;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -240,6 +245,7 @@ public final class SaeedStateManager {
         startRollBoost(player);
         player.hurtMarked = true;
         player.fallDistance = 0.0F;
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.EVADE.play(player);
         RangedSoundHelper.playFollowingPlayer(player, ModSounds.SAEED_ROLL_START.get(),
                 SoundSource.PLAYERS, 0.85F, 1.0F, 32.0D);
         return true;
@@ -272,6 +278,7 @@ public final class SaeedStateManager {
         }
 
         tag.putBoolean(CROSSBOW_EQUIPPED, true);
+        HeldToolVisualSync.changed(player);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.saeed.crossbow_equipped"), true);
         player.level().playSound(null, player.blockPosition(), ModSounds.SAEED_CROSSBOW_DRAW.get(),
                 SoundSource.PLAYERS, 0.75F, 1.0F);
@@ -283,6 +290,7 @@ public final class SaeedStateManager {
         CompoundTag tag = data(player);
         if (tag.getBoolean(CROSSBOW_EQUIPPED)) {
             tag.putBoolean(CROSSBOW_EQUIPPED, false);
+            HeldToolVisualSync.changed(player);
             player.displayClientMessage(Component.translatable("message.dealt_force_skills.saeed.crossbow_stowed"), true);
             player.level().playSound(null, player.blockPosition(), ModSounds.SAEED_CROSSBOW_RELOAD.get(),
                     SoundSource.PLAYERS, 0.45F, 1.0F);
@@ -295,6 +303,7 @@ public final class SaeedStateManager {
         CompoundTag tag = data(player);
         boolean bounce = !tag.getBoolean(FIRE_BOUNCE);
         tag.putBoolean(FIRE_BOUNCE, bounce);
+        HeldToolVisualSync.changed(player);
         player.displayClientMessage(Component.translatable(bounce
                 ? "message.dealt_force_skills.saeed.fire_bounce_on"
                 : "message.dealt_force_skills.saeed.fire_bounce_off"), true);
@@ -316,6 +325,7 @@ public final class SaeedStateManager {
             return true;
         }
         tag.putInt(FIRE_AMMO, ammo - 1);
+        HeldToolVisualSync.changed(player);
         long now = SkillCooldownHelper.now(player);
         if (ammo == FIRE_MAX_AMMO) {
             tag.putLong(FIRE_NEXT_RECHARGE, now + FIRE_RECHARGE_TICKS);
@@ -328,7 +338,7 @@ public final class SaeedStateManager {
         Vec3 start = player.getEyePosition().add(look.scale(0.75D));
         arrow.setPos(start.x, start.y - 0.05D, start.z);
         arrow.setDeltaMovement(look.scale(2.25D));
-        level.addFreshEntity(arrow);
+        ToolHandRelease.spawned(level.addFreshEntity(arrow), player, ToolHandCue.SAEED_CROSSBOW);
         player.level().playSound(null, player.blockPosition(), ModSounds.SAEED_CROSSBOW_FIRE.get(),
                 SoundSource.PLAYERS, 0.95F, 1.0F);
         return true;
@@ -353,6 +363,7 @@ public final class SaeedStateManager {
         com.rzy.dealt_force_skills.department.DepartmentTasks.tracker().arm(player,"saeed.command.during_order",true);
         tag.putLong(CORE_COOLDOWN_UNTIL, now + CORE_DURATION_TICKS + SkillCooldownHelper.ticks(player, CORE_COOLDOWN_TICKS));
         tag.putLong(COMMAND_VISUAL_UNTIL, now + COMMAND_VISUAL_TICKS);
+        HeldToolVisualSync.changed(player);
         player.level().playSound(null, player.blockPosition(), ModSounds.SAEED_COMMAND_CALL.get(),
                 SoundSource.PLAYERS, 1.0F, 1.0F);
         recruitGuard(player, SaeedGuardType.IRON_RAIN, true);
@@ -381,6 +392,7 @@ public final class SaeedStateManager {
         tag.putDouble(COMMAND_POINT_Y, point.y);
         tag.putDouble(COMMAND_POINT_Z, point.z);
         tag.putLong(COMMAND_VISUAL_UNTIL, SkillCooldownHelper.now(player) + COMMAND_VISUAL_TICKS);
+        HeldToolVisualSync.changed(player);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.saeed.command_point_set"), true);
         player.level().playSound(null, player.blockPosition(), ModSounds.SAEED_COMMAND_VOICE.get(),
                 SoundSource.PLAYERS, 0.85F, 1.0F);
@@ -912,6 +924,14 @@ public final class SaeedStateManager {
         return 1.0D + Math.max(0.0D, owner.getAttributeValue(Attributes.ATTACK_DAMAGE)) * 0.01D;
     }
 
+    public static HeldToolVisual crossbowVisual(ServerPlayer player) {
+        CompoundTag tag = player.getPersistentData().getCompound(ROOT_TAG);
+        if (tag.getLong(COMMAND_VISUAL_UNTIL) > SkillCooldownHelper.now(player)) return HeldToolVisual.SAEED_COMMAND;
+        if (!tag.getBoolean(CROSSBOW_EQUIPPED)) return HeldToolVisual.NONE;
+        if (tag.getInt(FIRE_AMMO) <= 0) return HeldToolVisual.SAEED_CROSSBOW_SPENT;
+        return tag.getBoolean(FIRE_BOUNCE) ? HeldToolVisual.SAEED_CROSSBOW_RICOCHET : HeldToolVisual.SAEED_CROSSBOW;
+    }
+
     public static boolean isFireCrossbowEquipped(ServerPlayer player) {
         return data(player).getBoolean(CROSSBOW_EQUIPPED);
     }
@@ -1009,6 +1029,7 @@ public final class SaeedStateManager {
                     : (int) amount;
             if (granted > 0) {
                 tag.putInt(TACTICAL_POINTS, current + granted);
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(player, 1);
         com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"saeed.points",current + granted);
                 syncToClient(player);
             }

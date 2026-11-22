@@ -10,9 +10,12 @@ public final class OperativeAllegiance {
     private boolean active;
     private UUID owner;
     private UUID caster;
+    private CompoundTag raidIdentity = new CompoundTag();
+    public CompoundTag raidIdentity() { return raidIdentity.copy(); }
 
     public void capture(Entity caster) {
         if (caster instanceof NativeSaeedGuardEntity guard) { copyFrom(guard.allegiance()); return; }
+        raidIdentity = com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.identity(caster);
         active = caster instanceof OperativeHost;
         // Keep damage attribution after any caster unloads, without enabling native gadget AI.
         owner = caster instanceof net.minecraft.world.entity.player.Player ? caster.getUUID()
@@ -32,6 +35,7 @@ public final class OperativeAllegiance {
     }
 
     private boolean isAlly(Entity source, Entity other, net.minecraft.server.MinecraftServer server) {
+        if (raidIdentity.hasUUID("instance")) return com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.allies(raidIdentity, other);
         if (!active || other == null) return false;
         if (isCaster(other)) return true;
         if (other instanceof NativeSaeedGuardEntity guard && caster!=null && caster.equals(guard.allegiance().caster())) return true;
@@ -68,16 +72,19 @@ public final class OperativeAllegiance {
                 || owner != null && com.rzy.dealt_force_skills.team.DealtTeamManager.areTeammatesById(owner, candidate, level.getServer());
     }
 
-    public void copyFrom(OperativeAllegiance source) { active = source.active; owner = source.owner; caster = source.caster; }
+    public void copyFrom(OperativeAllegiance source) { active = source.active; owner = source.owner; caster = source.caster; raidIdentity = source.raidIdentity.copy(); }
     /** Native gadgets use the host's threat policy, retaining conservative orphan behavior. */
     public boolean isEnemy(net.minecraft.server.level.ServerLevel level, net.minecraft.world.entity.LivingEntity target) {
         if (!active || !com.rzy.dealt_force_skills.util.TargetingUtil.isTargetableLiving(target) || isAlly(level, target)) return false;
+        Boolean raid = com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.hostility(raidIdentity, target);
+        if (raid != null && (!raid || !com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.inside(raidIdentity, level.dimension().location().toString(), target.position()))) return false;
         Entity source = caster == null ? null : level.getEntity(caster);
         return source instanceof OperativeHost host ? host.isEnemy(target) && host.withinCombatRange(target.position())
-                : target instanceof net.minecraft.world.entity.monster.Enemy;
+                : raid != null ? raid : target instanceof net.minecraft.world.entity.monster.Enemy;
     }
 
     public boolean withinOrders(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 position) {
+        if (raidIdentity.hasUUID("instance")) return com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.inside(raidIdentity, level.dimension().location().toString(), position);
         Entity source = caster == null ? null : level.getEntity(caster);
         return !(source instanceof OperativeHost host) || host.withinOrders(position);
     }
@@ -87,12 +94,15 @@ public final class OperativeAllegiance {
     public UUID caster() { return caster; }
     public boolean isCaster(Entity target) { return target != null && target.getUUID().equals(caster); }
     public void save(CompoundTag tag, int age) {
+        if (raidIdentity.hasUUID("instance")) tag.put(com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.IDENTITY, raidIdentity.copy());
+        else tag.remove(com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.IDENTITY);
         tag.putBoolean("OperativeSource", active);
         if (owner != null) tag.putUUID("OperativeOwner", owner);
         if (caster != null) tag.putUUID("OperativeCaster", caster);
         if (active) tag.putInt("OperativeAge", Math.max(0, age));
     }
     public int load(CompoundTag tag, int maxAge) {
+        raidIdentity = com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.identity(tag);
         active = tag.getBoolean("OperativeSource");
         owner = tag.hasUUID("OperativeOwner") ? tag.getUUID("OperativeOwner") : null;
         caster = tag.hasUUID("OperativeCaster") ? tag.getUUID("OperativeCaster") : null;

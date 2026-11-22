@@ -30,7 +30,7 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier, Operat
     @Override public OperativeAllegiance operativeAllegiance() { return nativeAllegiance; }
     private static final EntityDataAccessor<Boolean> DATA_EARTH_FIRE =
             SynchedEntityData.defineId(UluruFireFieldEntity.class, EntityDataSerializers.BOOLEAN);
-    private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.ulurufirefieldentity.life_ticks", 400));
+    private static volatile int LIFE_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("LIFE_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.ulurufirefieldentity.life_ticks", 200));
     private static volatile int DAMAGE_INTERVAL_TICKS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("DAMAGE_INTERVAL_TICKS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.ulurufirefieldentity.damage_interval_ticks", 8));
     private static volatile double RADIUS = com.rzy.dealt_force_skills.config.DealtForceConfig.bind("RADIUS", () -> com.rzy.dealt_force_skills.config.DealtForceConfig.doubleValue("summons.ulurufirefieldentity.radius", 6.0));
     private UUID ownerId;
@@ -61,6 +61,7 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier, Operat
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "uluru.skill.incendiary", effectiveRadius(), effectiveRadius() + 3, player -> com.rzy.dealt_force_skills.util.TargetingUtil.isSelfOrHostileLivingFor(findOwner((ServerLevel)level()), player));
         if (!level().isClientSide && nativeAllegiance.active() && tickCount >= LIFE_TICKS) { discard(); return; }
         double radius = effectiveRadius();
         if (level().isClientSide) {
@@ -83,7 +84,7 @@ public class UluruFireFieldEntity extends Entity implements ItemSupplier, Operat
                 DfsAchievements.recordUluruFireFieldTargets(player, targets);
             }
             UluruExplosionHelper.damageRadiusIgnoringInvulnerability(serverLevel, position(), this, owner, radius,
-                    3.0f, 3.0f, false, true, 20, true);
+                    4.0f, 4.0f, false, true, 20, true);
             serverLevel.sendParticles(ParticleTypes.FLAME, getX(), getY() + 0.1, getZ(),
                     entityData.get(DATA_EARTH_FIRE) ? 96 : 48, radius * 0.95, 0.25, radius * 0.95, 0.01);
         }

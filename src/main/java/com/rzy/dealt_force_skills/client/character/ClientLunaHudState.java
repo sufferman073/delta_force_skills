@@ -104,6 +104,8 @@ public final class ClientLunaHudState {
         }
     }
 
+    public static boolean isRevealed(int entityId) { return revealedEntityTicks.containsKey(entityId); }
+
     public static boolean shouldRender() {
         return synced && ClientCharacterSelectionState.isSelectedCharacter(ModCharacters.LUNA_ID);
     }

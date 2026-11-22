@@ -287,6 +287,7 @@ public final class UndeadSkills {
             UndeadStateManager.startCoreCooldown(player, UndeadProfession.WARRIOR, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.cooldown.1.cooldown_ticks", 60 * 20));
             com.rzy.dealt_force_skills.department.DepartmentUndead.activated(player,slot);
             UndeadStateManager.startWarriorBloodlust(player);
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.BLOODLUST.play(player);
             DfsAchievements.recordUndeadProfessionMechanism(player, UndeadProfession.WARRIOR);
             particles(player, ParticleTypes.FLAME, 36, 0.8D, 1.0D);
             play(player, SoundEvents.RAVAGER_ROAR, 0.8F, 1.25F);
@@ -329,6 +330,7 @@ public final class UndeadSkills {
                             boolean questMarked=target.addEffect(new MobEffectInstance(MobEffects.GLOWING, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.glowing.1.duration_ticks", 8 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.glowing.1.amplifier", 0),
                                     false, false, true), delayedPlayer);
                             if(questInvisible&&questMarked)com.rzy.dealt_force_skills.department.DepartmentTasks.signal(delayedPlayer,"undead.explorer.scan.invisible");
+                            if (questMarked) com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "exploration");
                         }
                         delayedPlayer.serverLevel().sendParticles(ParticleTypes.ELECTRIC_SPARK,
                                 center.x, center.y, center.z, Math.max(18, (int) (radius * 10.0D)),
@@ -355,6 +357,7 @@ public final class UndeadSkills {
             UndeadStateManager.startCoreCooldown(player, UndeadProfession.EXPLORER, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.cooldown.2.cooldown_ticks", 1));
             com.rzy.dealt_force_skills.department.DepartmentUndead.activated(player,slot);
             UndeadStateManager.startExplorerSpace(player);
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.SPACE_OPEN.play(player);
             DfsAchievements.recordUndeadProfessionMechanism(player, UndeadProfession.EXPLORER);
             particles(player, ParticleTypes.PORTAL, 45, 0.8D, 1.0D);
             play(player, SoundEvents.PORTAL_TRAVEL, 0.45F, 1.5F);
@@ -403,6 +406,7 @@ public final class UndeadSkills {
                         boolean questControlled=victim.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.stun.2.duration_ticks", 5 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_skills.effect.stun.2.amplifier", 0),
                                 false, true, true), delayedPlayer);
                         if(questControlled)com.rzy.dealt_force_skills.department.DepartmentUndead.controlled(delayedPlayer,victim);
+                        if (questControlled) com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(victim, "knocked");
                         particlesAt(delayedPlayer, victim, ParticleTypes.ELECTRIC_SPARK, 28, 0.45D);
                     });
             return true;
@@ -444,6 +448,7 @@ public final class UndeadSkills {
                                     delayedPlayer.damageSources().playerAttack(delayedPlayer),
                                     delayedPlayer, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.undead.undead_skills.skill_hurt.4.damage", 10.0F));
                             stealEquipment(delayedPlayer, victimPlayer);
+                            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(victimPlayer, "stolen");
                         } else if (!com.rzy.dealt_force_skills.boss.BossCombatRules.canInstantKill(victim)) {
                             delayedPlayer.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                                     "message.dealt_force_skills.beacon_boss.immune_execute"), true);
@@ -545,6 +550,7 @@ public final class UndeadSkills {
             if (recorded) {
                 com.rzy.dealt_force_skills.department.DepartmentUndead.activated(player,slot);
                 DfsAchievements.recordUndeadProfessionMechanism(player, UndeadProfession.SCHOLAR);
+                com.rzy.dealt_force_skills.skill.BareSkillPulse.SCHOLAR_RECORD.play(player);
             }
             player.displayClientMessage(Component.translatable(recorded
                             ? "message.dealt_force_skills.undead.recorded"
@@ -575,6 +581,7 @@ public final class UndeadSkills {
             player.hurt(player.damageSources().magic(), player.getMaxHealth() * HUNTER_RELOAD_SELF_HEALTH_COST_FRACTION);
             com.rzy.dealt_force_skills.department.DepartmentUndead.activated(player,slot);
             UndeadStateManager.useHunterReload(player);
+            com.rzy.dealt_force_skills.skill.BareSkillPulse.BLOOD_RELOAD.play(player);
             particles(player, ParticleTypes.HAPPY_VILLAGER, 18, 0.55D, 0.8D);
             return true;
         }

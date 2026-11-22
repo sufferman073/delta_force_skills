@@ -84,6 +84,7 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier,
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "vyron.skill.magnetic_bomb", (com.rzy.dealt_force_skills.character.commander.CommanderStateManager.skillRadius(getOwner() instanceof net.minecraft.world.entity.player.Player p ? p : null, RADIUS)));
 
         if (isStuckForRender()) {
             tickStuck();
@@ -244,7 +245,7 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier,
             }
             Vec3 targetCenter = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
             double distance = targetCenter.distanceTo(center);
-            if (distance > radius || !hasLineOfSight(center, targetCenter)) {
+            if (distance > radius || !hasLineOfSight(center, target)) {
                 continue;
             }
             float damage = com.rzy.dealt_force_skills.config.SkillBalance.damage("summons.vyronmagneticbombentity.base_damage", 100.0F) * com.rzy.dealt_force_skills.config.SkillBalance.falloff("summons.vyronmagneticbombentity", distance, falloff);
@@ -255,7 +256,7 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier,
             target.invulnerableTime = 0;
             SkillDamageHelper.hurt(target, SkillDamageHelper.vyronMagneticBomb(serverLevel, this, owner), owner, damage);
             if (ownerPlayer != null && stuckEntityId != null && stuckEntityId.equals(target.getUUID())
-                    && target instanceof ServerPlayer && !target.isAlive()) {
+                    && !target.isAlive()) {
                 DfsAchievements.recordVyronStickyBombKill(ownerPlayer, target);
             }
             target.setDeltaMovement(before);
@@ -266,9 +267,8 @@ public class VyronMagneticBombEntity extends Projectile implements ItemSupplier,
         discard();
     }
 
-    private boolean hasLineOfSight(Vec3 center, Vec3 targetCenter) {
-        HitResult result = level().clip(new ClipContext(center, targetCenter, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
-        return result.getType() == HitResult.Type.MISS || result.getLocation().distanceToSqr(targetCenter) < 0.25D;
+    private boolean hasLineOfSight(Vec3 center, LivingEntity target) {
+        return com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper.exposed(level(), center, target);
     }
 
     private void spawnClientTrail() {

@@ -83,6 +83,7 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "luna.skill.composite_grenade", (com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.radius(getOwner(), com.rzy.dealt_force_skills.character.commander.CommanderStateManager.skillRadius(getOwner() instanceof net.minecraft.world.entity.player.Player p ? p : null, RADIUS))));
 
         if (!level().isClientSide && --fuseRemaining <= 0) {
             explode(position());
@@ -231,7 +232,7 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
             }
             Vec3 targetCenter = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
             double distance = targetCenter.distanceTo(center);
-            if (distance > radius || !hasLineOfSight(center, targetCenter)) {
+            if (distance > radius || !hasLineOfSight(center, target)) {
                 continue;
             }
 
@@ -332,9 +333,8 @@ public class LunaCompositeGrenadeEntity extends Projectile implements ItemSuppli
         return beforeCount > 0 && stack.isEmpty();
     }
 
-    private boolean hasLineOfSight(Vec3 center, Vec3 targetCenter) {
-        HitResult result = level().clip(new ClipContext(center, targetCenter, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
-        return result.getType() == HitResult.Type.MISS || result.getLocation().distanceToSqr(targetCenter) < 0.25D;
+    private boolean hasLineOfSight(Vec3 center, LivingEntity target) {
+        return com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper.exposed(level(), center, target);
     }
 
     private void playImportantFeedback(ServerLevel level, LivingEntity target, LivingEntity owner, SoundEvent sound, float volume, float pitch) {

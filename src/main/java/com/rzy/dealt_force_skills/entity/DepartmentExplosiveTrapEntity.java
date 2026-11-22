@@ -260,6 +260,7 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
             SkillDamageHelper.hurt(target, source, ownerLiving, manual ? 12.0F : 16.0F);
             target.setDeltaMovement(before.add(target.position().subtract(position()).normalize().scale(manual ? 0.55D : 0.35D)));
             target.hurtMarked = true;
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(target, this, "department.skill.armor", "explosive_trap");
         }
         if (!allegiance.active()) SuperbWarfareCompat.damageVehicles(level, position(), radius, source, this,
                 (manual ? 12.0F : 16.0F) / 100.0F, false);
@@ -336,17 +337,11 @@ public class DepartmentExplosiveTrapEntity extends Entity implements ItemSupplie
 
     private boolean hasLineOfSightTo(LivingEntity target) {
         Vec3 start = position().add(0.0D, getBbHeight() * 0.5D, 0.0D);
-        Vec3 end = target.getEyePosition();
-        return level().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this)).getType()
-                == HitResult.Type.MISS;
+        return com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper.exposed(level(), start, target);
     }
 
     private void warnNearbyPlayers(ServerLevel level, double radius) {
-        AABB box = new AABB(position(), position()).inflate(radius);
-        for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, box,
-                target -> TargetingUtil.isTargetablePlayer(target) && !isOwnerOrTeammate(target))) {
-            player.displayClientMessage(Component.translatable("message.dealt_force_skills.department.trap_triggered"), true);
-        }
+        // Only actual explosion recipients receive a warning marker.
     }
 
     private void discardAndNotify(ServerLevel level) {

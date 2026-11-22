@@ -71,7 +71,7 @@ public final class NativeCatDadSkills implements OperativeSkills {
             case ACTIVE_1 -> hissCooldown == 0 && valid(host, target, range()) ? 100 + hissStage * 5 : 0;
             case ACTIVE_2 -> blockCharges > 0 && blockTicks == 0 && valid(host, target, range())
                     && (host.body().distanceToSqr(target) <= 36 || host.body().getLastHurtByMob() == target) ? 130 : 0;
-            case CORE -> coreCooldown == 0 && valid(host, target, 24) ? 90 : 0;
+            case CORE -> coreCooldown == 0 && roadStart(host, target) != null ? 90 : 0;
             case PASSIVE -> 0;
         };
     }
@@ -84,8 +84,9 @@ public final class NativeCatDadSkills implements OperativeSkills {
             sound(host, ModSounds.CATDAD_BLOCK_START.get()); return true;
         }
         if (slot == SkillSlot.CORE) {
-            Vec3 direction = horizontal(host);
-            Vec3 start = ground(host, host.body().position().subtract(direction.scale(33)));
+            Vec3 direction = roadDirection(host, target);
+            Vec3 start = roadStart(host, target);
+            if (start == null) return false;
             var truck = new CatDadRoadTruckEntity(host.serverLevel(), host.body(), start, direction, 66, 16, false);
             if (!host.serverLevel().addFreshEntity(truck)) return false;
             snapshotHealth = Math.max(1, host.body().getHealth()); coreCooldown = CatDadStateManager.CORE_COOLDOWN_TICKS;
@@ -177,6 +178,18 @@ public final class NativeCatDadSkills implements OperativeSkills {
     private static void stop(OperativeHost host) {
         host.body().setSprinting(false); host.body().setDeltaMovement(0, host.body().getDeltaMovement().y, 0);
         if (host.body() instanceof Mob mob) { mob.setTarget(null); mob.getNavigation().stop(); }
+    }
+    private static Vec3 roadDirection(OperativeHost host, LivingEntity target) {
+        Vec3 direction = target.position().subtract(host.body().position()).multiply(1, 0, 1);
+        return direction.lengthSqr() < 0.0001 ? horizontal(host) : direction.normalize();
+    }
+    private static Vec3 roadStart(OperativeHost host, LivingEntity target) {
+        if (!OperativeHearing.knownContact(host, target) || host.body().distanceToSqr(target) > 24 * 24) return null;
+        Vec3 start = ground(host, host.body().position().subtract(roadDirection(host, target).scale(33)));
+        double height = target.getBoundingBox().getCenter().y - start.y;
+        return height >= DealtForceConfig.doubleValue("entities.cat_dad_road_truck_entity.truck_vertical_bottom", -2.4)
+                && height <= DealtForceConfig.doubleValue("entities.cat_dad_road_truck_entity.truck_vertical_top", 12)
+                ? start : null;
     }
     private static Vec3 horizontal(OperativeHost host) {
         Vec3 look = host.body().getLookAngle(), flat = new Vec3(look.x, 0, look.z);

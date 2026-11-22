@@ -59,6 +59,7 @@ public class NTwoDewarCanisterEntity extends Projectile implements ItemSupplier,
     public void tick() {
         if (!level().isClientSide && allegiance.active() && tickCount >= 240) { discard(); return; }
         super.tick();
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "ntwo.skill.dewar_canister", com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(getOwner(), CommanderBranchUpgrade.NTWO_OVERPRESSURE_CANISTER) ? 18.0D : 6.0D);
         Vec3 motion = getDeltaMovement();
         Vec3 next = position().add(motion);
         HitResult hit = level().clip(new ClipContext(position(), next, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));

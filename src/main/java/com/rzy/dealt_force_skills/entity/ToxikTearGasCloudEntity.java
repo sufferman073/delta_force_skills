@@ -71,6 +71,7 @@ public class ToxikTearGasCloudEntity extends Entity implements ItemSupplier, Smo
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "toxik.skill.tear_gas", (RADIUS), RADIUS + 3, player -> com.rzy.dealt_force_skills.util.TargetingUtil.isHostileLivingFor(owner((ServerLevel)level()), player));
         if (!level().isClientSide && allegiance.active() && tickCount >= smokeLifetimeTicks()) { discard(); return; }
         if (level().isClientSide) {
             return;

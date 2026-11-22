@@ -1,0 +1,94 @@
+{
+  "loot.common": {
+    "containerBlock": "minecraft:chest",
+    "lootTable": "minecraft:chests/simple_dungeon",
+    "spawnChance": 1.0,
+    "refresh": "each_instance"
+  },
+  "loot.rare": {
+    "containerBlock": "minecraft:chest",
+    "lootTable": "minecraft:chests/abandoned_mineshaft",
+    "spawnChance": 0.75,
+    "refresh": "each_instance"
+  },
+  "loot.high": {
+    "containerBlock": "minecraft:chest",
+    "lootTable": "minecraft:chests/end_city_treasure",
+    "spawnChance": 0.3,
+    "refresh": "each_instance"
+  },
+  "spawn.team": {
+    "size": 4,
+    "separationRadius": 4.0,
+    "safeSpawnCheck": true,
+    "side": "player",
+    "teamKey": "alpha",
+    "facingDegrees": 0
+  },
+  "switch.evac": {
+    "interactMode": "right_click_block",
+    "singleUsePerInstance": true,
+    "targetBlockOffset": [
+      0,
+      0,
+      0
+    ],
+    "extractionIds": [],
+    "startCountdownOnInteract": true
+  },
+  "extract.timed": {
+    "zone": {
+      "shape": "cylinder",
+      "radius": 6.0,
+      "halfHeight": 3.0
+    },
+    "durationTicks": 1200,
+    "extractAt": "countdown_end",
+    "switchIds": [],
+    "requiredSwitchCount": 1
+  },
+  "extract.conditional": {
+    "zone": {
+      "shape": "cylinder",
+      "radius": 6.0,
+      "halfHeight": 3.0
+    },
+    "interaction": "player_confirm",
+    "conditionMode": "all",
+    "conditions": {
+      "maxLoadRatio": 0.4
+    }
+  },
+  "interact.paid_door": {
+    "interactMode": "right_click_block",
+    "unlockMode": "per_instance",
+    "targetBlockOffset": [
+      0,
+      0,
+      0
+    ],
+    "price": {
+      "currencyKey": "havoc_coin",
+      "amount": 5000
+    }
+  },
+  "spawn.continuous": {
+    "entity": "minecraft:zombie",
+    "countPerWave": 2,
+    "maxAlive": 6,
+    "intervalTicks": 400,
+    "activationRadius": 40
+  },
+  "spawn.special_once": {
+    "entity": "minecraft:ravager",
+    "count": 1,
+    "activationRadius": 35,
+    "oneShot": "per_instance"
+  },
+  "spawn.boss_random": {
+    "entity": "minecraft:warden",
+    "chance": 0.25,
+    "roll": "once_at_instance_creation",
+    "activationRadius": 48
+  }
+}

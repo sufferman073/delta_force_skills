@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "dealt_force_skills:block/personal_dimension_2"
+  }
+}

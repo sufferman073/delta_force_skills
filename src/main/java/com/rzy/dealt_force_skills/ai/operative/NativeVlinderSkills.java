@@ -98,7 +98,7 @@ public final class NativeVlinderSkills implements OperativeSkills {
         return point;
     }
     private boolean needsDefense(OperativeHost host, LivingEntity target) {
-        return valid(host, target, false) || threatened(host, host.body())
+        return OperativeHearing.knownContact(host, target) && host.body().distanceToSqr(target) <= 24 * 24 || threatened(host, host.body())
                 || !host.serverLevel().getEntitiesOfClass(LivingEntity.class, host.body().getBoundingBox().inflate(20),
                     ally -> valid(host, ally, true) && OperativeSupport.downed(ally)).isEmpty();
     }

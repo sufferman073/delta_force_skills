@@ -255,6 +255,7 @@ public final class NoxStateManager {
                 duration, amplifier, false, true, true), owner);
         if (applied || target.hasEffect(ModEffects.NOX_DELAYED_WOUND.get())) {
             NoxDelayedWoundEffect.resetCaps(target, healthCap);
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(owner, 1);
             com.rzy.dealt_force_skills.department.DepartmentHealing.source(target,"nox",owner);
             if (CommanderStateManager.hasBranchUpgrade(owner, CommanderBranchUpgrade.NOX_DEEP_WOUND)) {
                 target.getActiveEffects().stream()
@@ -341,8 +342,8 @@ public final class NoxStateManager {
         if (!(ownerEntity instanceof ServerPlayer owner)) {
             return;
         }
-        ServerPlayer looker = source.getEntity() instanceof ServerPlayer player ? player : null;
-        if (looker == null && source.getDirectEntity() instanceof ServerPlayer player) {
+        LivingEntity looker = source.getEntity() instanceof LivingEntity player ? player : null;
+        if (looker == null && source.getDirectEntity() instanceof LivingEntity player) {
             looker = player;
         }
         if (looker == null || looker == owner || !isLookingAt(looker, decoy)) {
@@ -351,7 +352,7 @@ public final class NoxStateManager {
         DfsAchievements.recordBaitPropLook(owner, looker);
     }
 
-    private static boolean isLookingAt(ServerPlayer player, Entity target) {
+    private static boolean isLookingAt(LivingEntity player, Entity target) {
         Vec3 eye = player.getEyePosition();
         Vec3 toTarget = target.getBoundingBox().getCenter().subtract(eye);
         double distance = toTarget.length();
@@ -554,7 +555,7 @@ public final class NoxStateManager {
         double rangeSqr = STEALTH_WARNING_RANGE * STEALTH_WARNING_RANGE;
         Set<UUID> currentlyNear = new HashSet<>();
         for (ServerPlayer target : nox.server.getPlayerList().getPlayers()) {
-            if (target == nox || target.level() != nox.level() || !TargetingUtil.isTargetablePlayer(target)) {
+            if (target == nox || target.level() != nox.level() || !TargetingUtil.isHostilePlayerFor(nox, target)) {
                 continue;
             }
             if (target.distanceToSqr(nox) > rangeSqr) {
@@ -566,9 +567,7 @@ public final class NoxStateManager {
                 target.level().playSound(null, target.blockPosition(), ModSounds.NOX_STEALTH_WARNING.get(),
                         SoundSource.PLAYERS, 0.7f, 1.0f);
             }
-            if (now % 40L == 0L) {
-                target.displayClientMessage(Component.translatable("message.dealt_force_skills.nox.stealth_nearby"), true);
-            }
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "stealth");
         }
         warned.retainAll(currentlyNear);
     }

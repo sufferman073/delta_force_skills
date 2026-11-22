@@ -6,6 +6,7 @@ import com.rzy.dealt_force_skills.character.gizmo.GizmoPlacementHelper;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoTool;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoToolAction;
 import com.rzy.dealt_force_skills.character.gizmo.GizmoTrapMarker;
+import com.rzy.dealt_force_skills.character.gizmo.GizmoTrapType;
 import com.rzy.dealt_force_skills.client.character.ClientGizmoHudState;
 import com.rzy.dealt_force_skills.client.character.ClientCommanderState;
 import com.rzy.dealt_force_skills.character.ModCharacters;
@@ -18,8 +19,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
@@ -39,10 +38,6 @@ public final class GizmoInputHandler {
     private static final DustParticleOptions SMOKE_PREVIEW = new DustParticleOptions(new Vector3f(0.95f, 0.82f, 0.28f), 1.0f);
     private static final DustParticleOptions SPIDER_PREVIEW = new DustParticleOptions(new Vector3f(0.85f, 0.10f, 0.06f), 1.0f);
     private static int localWebEscapeTicks;
-    private static int localWebbedSlot = -1;
-    private static boolean localWebbedLookLocked;
-    private static float localWebbedYaw;
-    private static float localWebbedPitch;
 
     private GizmoInputHandler() {
     }
@@ -83,12 +78,7 @@ public final class GizmoInputHandler {
         }
 
         Minecraft minecraft = Minecraft.getInstance();
-        if (isWebbed(minecraft)) {
-            if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-                event.setCanceled(true);
-            }
-            return;
-        }
+        if (isWebbed(minecraft)) return;
         if (minecraft.screen != null) {
             return;
         }
@@ -102,7 +92,7 @@ public final class GizmoInputHandler {
         }
 
         Optional<GizmoTrapMarker> marker = findLookedAtMarker(minecraft);
-        if (marker.isPresent() && handsEmpty(minecraft.player)) {
+        if (marker.isPresent()) {
             event.setCanceled(true);
             if (event.getAction() == GLFW.GLFW_PRESS) {
                 GizmoToolAction action = event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
@@ -116,19 +106,12 @@ public final class GizmoInputHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (isWebbed(minecraft)) {
-            if (event.isAttack()) {
-                return;
-            }
-            event.setSwingHand(false);
-            event.setCanceled(true);
-            return;
-        }
+        if (isWebbed(minecraft)) return;
 
         if (!ClientGizmoHudState.hasEquippedTool()) {
             if (minecraft.screen != null || !ClientGizmoHudState.shouldRender()
                     || event.getHand() != InteractionHand.MAIN_HAND
-                    || (!event.isAttack() && !event.isUseItem()) || !handsEmpty(minecraft.player)) {
+                    || (!event.isAttack() && !event.isUseItem())) {
                 return;
             }
             findLookedAtMarker(minecraft).ifPresent(marker -> {
@@ -154,15 +137,7 @@ public final class GizmoInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        if (ClientGizmoHudState.hasEquippedTool() || isWebbed(Minecraft.getInstance())) {
-            event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onScreenOpening(ScreenEvent.Opening event) {
-        if (isWebbed(Minecraft.getInstance()) && event.getNewScreen() != null
-                && !(event.getNewScreen() instanceof net.minecraft.client.gui.screens.DeathScreen)) {
+        if (ClientGizmoHudState.hasEquippedTool()) {
             event.setCanceled(true);
         }
     }
@@ -227,6 +202,7 @@ public final class GizmoInputHandler {
         Vec3 eye = minecraft.player.getEyePosition();
         Vec3 look = minecraft.player.getLookAngle().normalize();
         return ClientGizmoHudState.trapMarkers().stream()
+                .filter(marker -> marker.type() == GizmoTrapType.SMOKE || marker.type() == GizmoTrapType.SPIDER_NEST)
                 .filter(marker -> TrapMarkerTargeting.isLookingAt(eye, look, marker.position(),
                         TrapMarkerTargeting.MARKER_HEIGHT))
                 .min(Comparator.comparingDouble(marker -> marker.position().distanceToSqr(eye)));
@@ -238,81 +214,17 @@ public final class GizmoInputHandler {
                 NetworkHandler.sendToServer(new C2S_GizmoWebEscape(false));
             }
             localWebEscapeTicks = 0;
-            localWebbedSlot = -1;
-            localWebbedLookLocked = false;
             return;
         }
 
-        lockLookDirection(minecraft);
-        lockSelectedHotbarSlot(minecraft);
 
         boolean holdingSpace = minecraft.options.keyJump.isDown();
-        localWebEscapeTicks = holdingSpace ? Math.min(localWebEscapeTicks + 1, 5 * 20) : 0;
+        localWebEscapeTicks = holdingSpace ? Math.min(localWebEscapeTicks + 1, com.rzy.dealt_force_skills.character.gizmo.GizmoStateManager.WEB_ESCAPE_TICKS) : 0;
         NetworkHandler.sendToServer(new C2S_GizmoWebEscape(holdingSpace));
 
-        drainBlockedMappings(minecraft);
-        drainKey(KeybindRegister.CHARACTER_SELECT);
         drainKey(KeybindRegister.ACTIVE_SKILL_1);
         drainKey(KeybindRegister.ACTIVE_SKILL_2);
         drainKey(KeybindRegister.CORE_SKILL);
-        drainKey(minecraft.options.keyPickItem);
-        drainKey(minecraft.options.keyDrop);
-        drainKey(minecraft.options.keySwapOffhand);
-        drainKey(minecraft.options.keyInventory);
-        drainKey(minecraft.options.keyUp);
-        drainKey(minecraft.options.keyDown);
-        drainKey(minecraft.options.keyLeft);
-        drainKey(minecraft.options.keyRight);
-        drainKey(minecraft.options.keyShift);
-        if (minecraft.screen != null && !(minecraft.screen instanceof net.minecraft.client.gui.screens.DeathScreen)) {
-            minecraft.setScreen(null);
-        }
-    }
-
-    private static void lockLookDirection(Minecraft minecraft) {
-        if (minecraft.player == null) {
-            localWebbedLookLocked = false;
-            return;
-        }
-        if (!localWebbedLookLocked) {
-            localWebbedLookLocked = true;
-            localWebbedYaw = minecraft.player.getYRot();
-            localWebbedPitch = minecraft.player.getXRot();
-        }
-        minecraft.player.setYRot(localWebbedYaw);
-        minecraft.player.setXRot(localWebbedPitch);
-        minecraft.player.yRotO = localWebbedYaw;
-        minecraft.player.xRotO = localWebbedPitch;
-    }
-
-    private static void lockSelectedHotbarSlot(Minecraft minecraft) {
-        if (minecraft.player == null) {
-            localWebbedSlot = -1;
-            return;
-        }
-        if (localWebbedSlot < 0) {
-            localWebbedSlot = minecraft.player.getInventory().selected;
-        }
-        if (minecraft.player.getInventory().selected != localWebbedSlot) {
-            minecraft.player.getInventory().selected = localWebbedSlot;
-            if (minecraft.player.connection != null) {
-                minecraft.player.connection.send(new ServerboundSetCarriedItemPacket(localWebbedSlot));
-            }
-        }
-    }
-
-    private static void drainBlockedMappings(Minecraft minecraft) {
-        for (KeyMapping keyMapping : minecraft.options.keyMappings) {
-            if (keyMapping == minecraft.options.keyAttack
-                    || keyMapping == minecraft.options.keyJump
-                    || keyMapping.matchesMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT)) {
-                continue;
-            }
-            drainKey(keyMapping);
-        }
-        for (KeyMapping keyMapping : minecraft.options.keyHotbarSlots) {
-            drainKey(keyMapping);
-        }
     }
 
     private static boolean isWebbed(Minecraft minecraft) {
@@ -323,14 +235,6 @@ public final class GizmoInputHandler {
                 && minecraft.player.hasEffect(ModEffects.WEBBED.get());
     }
 
-    private static boolean handsEmpty(Player player) {
-        if (player == null) {
-            return false;
-        }
-        ItemStack main = player.getMainHandItem();
-        ItemStack off = player.getOffhandItem();
-        return main.isEmpty() && off.isEmpty();
-    }
 
     private static boolean isPrimaryOrSecondary(int button) {
         return button == GLFW.GLFW_MOUSE_BUTTON_LEFT || button == GLFW.GLFW_MOUSE_BUTTON_RIGHT;

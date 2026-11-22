@@ -18,7 +18,6 @@ public final class DepartmentDeath {
             guard.owner().ifPresent(owner->DepartmentTasks.signal(owner,"saeed.sharp_eagle.sentry_kills"));
         if(victim instanceof ServerPlayer player) {
             DepartmentTasks.tracker().fail(player,"death");
-            DepartmentTasks.tracker().arm(player,"sineva.shield.cancel_gun_kill",false);
         }
         if(source.getEntity() instanceof ServerPlayer killer&&killer!=victim) {
             DepartmentGunCombat.killed(killer,victim,source);
@@ -30,9 +29,18 @@ public final class DepartmentDeath {
             String id=BuiltInRegistries.ENTITY_TYPE.getKey(victim.getType()).toString();
             DepartmentTasks.tracker().record(killer,"kill",id,1,id);
             DepartmentTasks.signal(killer,"kill.any");
-            if(source.is(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.DAMAGE_TYPE,
-                    net.minecraft.resources.ResourceLocation.tryParse("tacz:bullets"))))
-                DepartmentTasks.tracker().recordArmed(killer,"sineva.shield.cancel_gun_kill");
+            if (!com.rzy.dealt_force_skills.team.DealtTeamManager.areTeammates(killer, victim))
+                com.rzy.dealt_force_skills.character.sineva.SinevaSkills.recordShieldChargeKill(killer);
+            if (victim.getType() == net.minecraft.world.entity.EntityType.ENDER_DRAGON
+                    && java.util.stream.StreamSupport.stream(killer.getArmorSlots().spliterator(), false)
+                    .allMatch(net.minecraft.world.item.ItemStack::isEmpty))
+                DepartmentTasks.signal(killer, "kill.ender_dragon.unarmored");
+            if (victim.getType() == com.rzy.dealt_force_skills.registry.ModEntities.BEACON_BOSS.get()
+                    && killer.hasEffect(net.minecraft.world.effect.MobEffects.DARKNESS)
+                    && killer.hasEffect(net.minecraft.world.effect.MobEffects.BLINDNESS)
+                    && killer.hasEffect(net.minecraft.world.effect.MobEffects.CONFUSION)
+                    && killer.hasEffect(net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN))
+                DepartmentTasks.signal(killer, "kill.beacon_boss.impaired");
             if (com.rzy.dealt_force_skills.character.dwolf.DWolfStateManager.isOverloadActive(killer))
                 DepartmentTasks.signal(killer,"d_wolf.overload.kill");
             String type=BuiltInRegistries.ENTITY_TYPE.getKey(victim.getType()).getPath();

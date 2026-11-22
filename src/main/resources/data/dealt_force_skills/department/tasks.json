@@ -3209,13 +3209,13 @@
     ],
     "goals": [
       {
-        "kind": "signal",
-        "key": "base.upgrade.command_center",
+        "kind": "facility",
+        "key": "command_center",
         "target": 1,
         "window": 0,
         "unique": false,
         "maximum": false,
-        "description": "升级一次指挥中心"
+        "description": "将指挥中心升至至少1级（已升级也可完成）"
       }
     ],
     "constraints": [],
@@ -3241,13 +3241,13 @@
     ],
     "goals": [
       {
-        "kind": "signal",
-        "key": "base.upgrade.decontamination_room",
+        "kind": "facility",
+        "key": "decontamination_room",
         "target": 1,
         "window": 0,
         "unique": false,
         "maximum": false,
-        "description": "升级一次洗消室"
+        "description": "将洗消室升至至少1级（已升级也可完成）"
       }
     ],
     "constraints": [],
@@ -3273,13 +3273,13 @@
     ],
     "goals": [
       {
-        "kind": "signal",
-        "key": "base.upgrade.diving_center",
+        "kind": "facility",
+        "key": "diving_center",
         "target": 1,
         "window": 0,
         "unique": false,
         "maximum": false,
-        "description": "升级一次潜水中心"
+        "description": "将潜水中心升至至少1级（已升级也可完成）"
       }
     ],
     "constraints": [],
@@ -3305,13 +3305,13 @@
     ],
     "goals": [
       {
-        "kind": "signal",
-        "key": "base.upgrade.training_center",
+        "kind": "facility",
+        "key": "training_center",
         "target": 1,
         "window": 0,
         "unique": false,
         "maximum": false,
-        "description": "升级一次训练中心"
+        "description": "将训练中心升至至少1级（已升级也可完成）"
       }
     ],
     "constraints": [],
@@ -3426,12 +3426,12 @@
     "goals": [
       {
         "kind": "signal",
-        "key": "kill.dragon.empty_equipment_inventory_curios",
+        "key": "kill.ender_dragon.unarmored",
         "target": 1,
         "window": 0,
         "unique": false,
         "maximum": false,
-        "description": "不穿戴任何装备，curios饰品，且物品栏为空的情况下，击杀一次末影龙"
+        "description": "不穿戴头盔、胸甲、护腿和靴子，击杀一次末影龙（允许携带武器和补给）"
       }
     ],
     "constraints": [
@@ -3921,7 +3921,7 @@
     "goals": [
       {
         "kind": "signal",
-        "key": "kill.beacon.dark_blind_nausea_slow",
+        "key": "kill.beacon_boss.impaired",
         "target": 1,
         "window": 0,
         "unique": false,
@@ -4065,7 +4065,7 @@
     "goals": [
       {
         "kind": "signal",
-        "key": "kill.beacon",
+        "key": "kill.beacon_boss",
         "target": 1,
         "window": 0,
         "unique": false,
@@ -4174,20 +4174,20 @@
       {
         "kind": "signal",
         "key": "advancement.mod.normal",
-        "target": 17,
+        "target": 16,
         "window": 0,
         "unique": false,
         "maximum": true,
-        "description": "完成超过16个本模组的普通进度"
+        "description": "完成16个本模组的普通进度"
       },
       {
         "kind": "signal",
         "key": "advancement.mod.challenge",
-        "target": 9,
+        "target": 8,
         "window": 0,
         "unique": false,
         "maximum": true,
-        "description": "完成超过8个本模组的挑战进度"
+        "description": "完成8个本模组的挑战进度"
       }
     ],
     "constraints": [],
@@ -5679,7 +5679,7 @@
         "window": 0,
         "unique": false,
         "maximum": false,
-        "description": "在动力推进期间，再次使用动力推进"
+        "description": "在使用动力推进后的3秒内，再次使用动力推进"
       }
     ],
     "constraints": [],
@@ -6260,12 +6260,12 @@
       },
       {
         "kind": "signal",
-        "key": "sineva.shield.cancel_gun_kill",
+        "key": "sineva.shield.charge_kill",
         "target": 1,
         "window": 0,
         "unique": false,
         "maximum": false,
-        "description": "使用防暴套装时，在冲刺盾击途中再次点按核心技能键以收起盾牌并通过TaCZ枪械完成一次击杀"
+        "description": "使用防暴套装时，在一次冲刺盾击途中，击杀至少一名生物一次"
       },
       {
         "kind": "signal",

@@ -71,6 +71,7 @@ public final class DepartmentTrapMarkerOverlay {
         font.drawInBatch(text, -font.width(text) / 2.0F, 0.0F, 0xFFFF7C3A, false,
                 poseStack.last().pose(), buffers, Font.DisplayMode.SEE_THROUGH,
                 0x66000000, LightTexture.FULL_BRIGHT);
+        OwnerMarkerIcon.draw(poseStack, buffers, "department.skill.armor", distance);
         poseStack.popPose();
     }
 }

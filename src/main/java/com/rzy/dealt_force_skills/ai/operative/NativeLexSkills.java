@@ -53,7 +53,7 @@ public final class NativeLexSkills implements OperativeSkills {
             case ACTIVE_1 -> valid(h,target,8) && !target.getUUID().equals(handshake) && stacks[0]<maxStacks()
                     && (h.body().getHealth()<h.body().getMaxHealth()*.6F || target==h.body().getLastHurtByMob()) ? 88 : 0;
             case ACTIVE_2 -> valid(h,target,3) ? 80 : 0;
-            case CORE -> valid(h,target,20) && stacks[2]<Math.min(maxStacks(),h.body().getHealth()<h.body().getMaxHealth()*.6F?10:3) ? 65 : 0;
+            case CORE -> OperativeHearing.knownContact(h,target) && h.body().distanceToSqr(target)<=400 && stacks[2]<Math.min(maxStacks(),h.body().getHealth()<h.body().getMaxHealth()*.6F?10:3) ? 65 : 0;
             default -> 0;
         };
     }
@@ -73,7 +73,8 @@ public final class NativeLexSkills implements OperativeSkills {
         if(prepared==null)return;
         var slot=prepared;
         LivingEntity target=targetId!=null && h.serverLevel().getEntity(targetId) instanceof LivingEntity e?e:null;
-        if(!valid(h,target,slot==SkillSlot.ACTIVE_2?3:slot==SkillSlot.ACTIVE_1?8:20) || !equipment(h,slot)
+        if(!(slot==SkillSlot.CORE ? OperativeHearing.knownContact(h,target) && h.body().distanceToSqr(target)<=400
+                : valid(h,target,slot==SkillSlot.ACTIVE_2?3:8)) || !equipment(h,slot)
                 || OperativeElectronics.blocked(h,ModCharacters.LEX_NINJIA_ID,slot)){cancel(h);return;}
         h.aimAt(target);if(--delay>0)return;
         float cost=slot==SkillSlot.CORE?5:3;

@@ -140,11 +140,13 @@ public class BladeWireBlockEntity extends BlockEntity {
             }
 
             Vec3 beforeDamageMovement = target.getDeltaMovement();
-            float questBefore = target.getHealth()+target.getAbsorptionAmount();
-            SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(serverLevel, null, damageOwner), damageOwner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("deployables.blade_wire_block_entity.skill_hurt.0.damage", 4.0f));
-            com.rzy.dealt_force_skills.department.DepartmentCombat.wireDamage(serverLevel,pos,damageOwner,Math.max(0,questBefore-target.getHealth()-target.getAbsorptionAmount()));
+            try (var receipt = com.rzy.dealt_force_skills.department.DepartmentCombat.measure(target)) {
+                SkillDamageHelper.hurt(target, SkillDamageHelper.sinevaBladeWire(serverLevel, null, damageOwner), damageOwner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("deployables.blade_wire_block_entity.skill_hurt.0.damage", 4.0f));
+                com.rzy.dealt_force_skills.department.DepartmentCombat.wireDamage(serverLevel,pos,damageOwner,receipt.amount);
+            }
             if (target instanceof ServerPlayer player) {
                 InjuryManager.applyBladeWireContact(player);
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(player, pos, "sineva.skill.blade_wire");
             }
             target.setDeltaMovement(beforeDamageMovement);
             target.hurtMarked = true;

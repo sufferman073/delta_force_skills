@@ -8,7 +8,7 @@
       "text": "兵不厌诈"
     },
     "description": {
-      "text": "当其它玩家看向你的道具时，击杀这名玩家"
+      "text": "当其它实体看向你的道具时，击杀该实体"
     },
     "frame": "challenge",
     "show_toast": true,

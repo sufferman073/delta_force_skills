@@ -1,0 +1,23 @@
+{
+  "textures": {"sheet":"dealt_force_skills:item/refresh_kits/field_materials","particle":"#sheet"},
+  "display": {
+    "ground": {"rotation":[72,12,-2],"translation":[0,1.6,0],"scale":[0.67,0.67,0.67]},
+    "fixed": {"rotation":[13,-17,-3],"translation":[0,0,-0.2],"scale":[0.94,0.94,0.94]},
+    "firstperson_righthand":{"rotation":[17,-25,-7],"translation":[-0.5,2,0.5],"scale":[0.78,0.78,0.78]},
+    "firstperson_lefthand":{"rotation":[20,-31,-2],"translation":[-0.3,2.25,0.6],"scale":[0.77,0.77,0.77]},
+    "thirdperson_righthand":{"rotation":[82,14,-7],"translation":[0.45,1.7,-0.9],"scale":[0.65,0.65,0.65]},
+    "thirdperson_lefthand":{"rotation":[86,18,-4],"translation":[0.2,1.8,-0.8],"scale":[0.65,0.65,0.65]}
+  },
+  "elements": [
+{"name":"canvas_wallet","from":[2.95,4.12,6.55],"to":[13.05,11.58,9.17],"faces":{"north":{"uv":[14,2,16,4],"texture":"#sheet"},"east":{"uv":[14,2,16,4],"texture":"#sheet"},"south":{"uv":[14,2,16,4],"texture":"#sheet"},"west":{"uv":[14,2,16,4],"texture":"#sheet"},"up":{"uv":[14,2,16,4],"texture":"#sheet"},"down":{"uv":[14,2,16,4],"texture":"#sheet"}}},
+    {"name":"dark_gusset","from":[3.35,4.36,6.02],"to":[13.28,11.24,6.56],"faces":{"north":{"uv":[14,4,16,6],"texture":"#sheet"},"east":{"uv":[14,4,16,6],"texture":"#sheet"},"south":{"uv":[14,4,16,6],"texture":"#sheet"},"west":{"uv":[14,4,16,6],"texture":"#sheet"},"up":{"uv":[14,4,16,6],"texture":"#sheet"},"down":{"uv":[14,4,16,6],"texture":"#sheet"}}},
+    {"name":"envelope_flap","from":[3.37,6.55,9.17],"to":[12.77,11.48,9.76],"faces":{"north":{"uv":[0,0,2,2],"texture":"#sheet"},"east":{"uv":[0,0,2,2],"texture":"#sheet"},"south":{"uv":[0,0,2,2],"texture":"#sheet"},"west":{"uv":[0,0,2,2],"texture":"#sheet"},"up":{"uv":[0,0,2,2],"texture":"#sheet"},"down":{"uv":[0,0,2,2],"texture":"#sheet"}}},
+    {"name":"bias_binding","from":[3.55,6.32,9.65],"to":[12.1,6.82,9.98],"rotation":{"origin":[7.8,6.54,9.8],"axis":"z","angle":-22.5},"faces":{"north":{"uv":[0,4,2,6],"texture":"#sheet"},"east":{"uv":[0,4,2,6],"texture":"#sheet"},"south":{"uv":[0,4,2,6],"texture":"#sheet"},"west":{"uv":[0,4,2,6],"texture":"#sheet"},"up":{"uv":[0,4,2,6],"texture":"#sheet"},"down":{"uv":[0,4,2,6],"texture":"#sheet"}}},
+    {"name":"rounded_flap_toe","from":[10.81,4.93,9.12],"to":[12.68,6.57,9.65],"faces":{"north":{"uv":[0,0,2,2],"texture":"#sheet"},"east":{"uv":[0,0,2,2],"texture":"#sheet"},"south":{"uv":[0,0,2,2],"texture":"#sheet"},"west":{"uv":[0,0,2,2],"texture":"#sheet"},"up":{"uv":[0,0,2,2],"texture":"#sheet"},"down":{"uv":[0,0,2,2],"texture":"#sheet"}}},
+    {"name":"medical_woven_label","from":[5.72,8.06,9.75],"to":[9.44,10.65,9.9],"faces":{"north":{"uv":[14,2,16,4],"texture":"#sheet"},"east":{"uv":[14,2,16,4],"texture":"#sheet"},"south":{"uv":[8,8,10,10],"texture":"#sheet"},"west":{"uv":[14,2,16,4],"texture":"#sheet"},"up":{"uv":[14,2,16,4],"texture":"#sheet"},"down":{"uv":[14,2,16,4],"texture":"#sheet"}}},
+    {"name":"hinge_sleeve","from":[5.59,11.57,6.98],"to":[10.48,12.03,8.79],"faces":{"north":{"uv":[12,2,14,4],"texture":"#sheet"},"east":{"uv":[12,2,14,4],"texture":"#sheet"},"south":{"uv":[12,2,14,4],"texture":"#sheet"},"west":{"uv":[12,2,14,4],"texture":"#sheet"},"up":{"uv":[12,2,14,4],"texture":"#sheet"},"down":{"uv":[12,2,14,4],"texture":"#sheet"}}},
+    {"name":"edge_binding","from":[2.74,4.78,6.48],"to":[3.22,11.51,9.31],"faces":{"north":{"uv":[10,0,12,2],"texture":"#sheet"},"east":{"uv":[10,0,12,2],"texture":"#sheet"},"south":{"uv":[10,0,12,2],"texture":"#sheet"},"west":{"uv":[10,0,12,2],"texture":"#sheet"},"up":{"uv":[10,0,12,2],"texture":"#sheet"},"down":{"uv":[10,0,12,2],"texture":"#sheet"}}},
+    {"name":"lanyard_stud","from":[2.55,10.92,8.87],"to":[3.51,11.94,9.58],"faces":{"north":{"uv":[4,6,6,8],"texture":"#sheet"},"east":{"uv":[4,6,6,8],"texture":"#sheet"},"south":{"uv":[14,10,16,12],"texture":"#sheet"},"west":{"uv":[4,6,6,8],"texture":"#sheet"},"up":{"uv":[4,6,6,8],"texture":"#sheet"},"down":{"uv":[4,6,6,8],"texture":"#sheet"}}},
+    {"name":"corner_tape","from":[3.86,4.57,9.14],"to":[5.67,4.99,9.41],"faces":{"north":{"uv":[12,6,14,8],"texture":"#sheet"},"east":{"uv":[12,6,14,8],"texture":"#sheet"},"south":{"uv":[12,6,14,8],"texture":"#sheet"},"west":{"uv":[12,6,14,8],"texture":"#sheet"},"up":{"uv":[12,6,14,8],"texture":"#sheet"},"down":{"uv":[12,6,14,8],"texture":"#sheet"}}}
+  ]
+}

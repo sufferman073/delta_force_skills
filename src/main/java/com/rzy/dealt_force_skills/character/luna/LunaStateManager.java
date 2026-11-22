@@ -17,6 +17,7 @@ import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import com.rzy.dealt_force_skills.util.ReconRevealThrottle;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import com.rzy.dealt_force_skills.skill.HeldToolVisualSync;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -93,6 +94,7 @@ public final class LunaStateManager {
     }
 
     public static void clearState(Player player) {
+        if (player instanceof ServerPlayer serverPlayer) LunaSkills.endDraw(serverPlayer);
         player.getPersistentData().remove(ROOT_TAG);
     }
 
@@ -145,6 +147,10 @@ public final class LunaStateManager {
     }
 
     public static void setEquippedTool(Player player, LunaTool tool) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            LunaSkills.endDraw(serverPlayer);
+            HeldToolVisualSync.changed(serverPlayer);
+        }
         data(player).putInt(EQUIPPED_TOOL, tool.ordinal());
         if (tool != LunaTool.COMPOSITE_GRENADE) {
             clearGrenadeCook(player);
@@ -245,6 +251,8 @@ public final class LunaStateManager {
         if (!revealStarted) {
             return false;
         }
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, requireActiveLuna ? "luna_passive" : "recon");
+        if (requireActiveLuna) com.rzy.dealt_force_skills.feedback.SkillFeedback.passive(owner, 1);
 
         // Share position exposure with the caster's teammates.
         com.rzy.dealt_force_skills.util.PositionRevealHelper.sendToCasterAndTeammates(

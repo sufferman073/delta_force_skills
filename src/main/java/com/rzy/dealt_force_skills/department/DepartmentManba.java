@@ -30,9 +30,9 @@ public final class DepartmentManba {
 
     private record Reduction(ServerPlayer owner,double amount,boolean complete,java.util.function.BooleanSupplier resolved) { }
     private static final class Hit {
-        final LivingEntity target;final float health;
+        final LivingEntity target;boolean damaged;
         final java.util.List<Reduction> reductions=new java.util.ArrayList<>();
-        Hit(LivingEntity entity){target=entity;health=entity.getHealth()+entity.getAbsorptionAmount();}
+        Hit(LivingEntity entity){target=entity;}
     }
     private static final ThreadLocal<java.util.ArrayDeque<Hit>> HITS=ThreadLocal.withInitial(java.util.ArrayDeque::new);
     public static void beginHit(LivingEntity target) { HITS.get().push(new Hit(target)); }
@@ -42,10 +42,14 @@ public final class DepartmentManba {
             hits.peek().reductions.add(new Reduction(owner,before-after,after==0,resolved));
         if(hits.isEmpty())HITS.remove();
     }
+    static void settled(LivingEntity target) {
+        var hits = HITS.get();
+        if (hits.isEmpty()) HITS.remove(); else if (hits.peek().target == target) hits.peek().damaged = true;
+    }
     public static void endHit() {
         var hits=HITS.get();if(hits.isEmpty()){HITS.remove();return;}
         var hit=hits.pop();
-        boolean damaged=hit.health>hit.target.getHealth()+hit.target.getAbsorptionAmount();
+        boolean damaged=hit.damaged;
         for(var reduction:hit.reductions)if(reduction.resolved().getAsBoolean()&&(damaged||reduction.complete()))
             DepartmentTasks.signal(reduction.owner(),"manba.passive.damage_reduced",reduction.amount());
         if(hits.isEmpty())HITS.remove();

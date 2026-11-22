@@ -130,7 +130,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
         }
         playUseSound();
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.interdimensional.crop_done",
-                count, new ItemStack(item).getHoverName(), produced), true);
+                count, WorkBlockItemNames.name(new ItemStack(item)), produced), true);
     }
 
     private boolean payCropBodyCost(ServerPlayer player) {
@@ -187,7 +187,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
         markUpdated();
         playUseSound();
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.interdimensional.food_crafted",
-                count, output.getHoverName()), true);
+                count, WorkBlockItemNames.name(output)), true);
     }
 
     public static void warmQueryCatalog(ServerLevel level) {
@@ -198,7 +198,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
             if (id == null) continue;
             try {
                 ItemStack icon = new ItemStack(item);
-                String name = icon.getHoverName().getString();
+                String name = id.toString();
                 if (plantCandidateFor(item) != null) {
                     crops.add(new EntryView(id, icon, name, "", List.of(), 0, CROP_FOOD_COST));
                 }
@@ -206,7 +206,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
                 if (energy > 0.0D) {
                     foods.add(new EntryView(id, icon, name, "", List.of(icon), 0, energy));
                 }
-            } catch (RuntimeException error) {
+            } catch (RuntimeException | LinkageError error) {
                 WorkBlockQueryCatalog.warnEntry("plants/food", id, error);
             }
         }
@@ -419,7 +419,7 @@ public class InterdimensionalBlockEntity extends BlockEntity {
         if (key.isBlank()) {
             return true;
         }
-        String text = (id + " " + new ItemStack(item).getHoverName().getString()).toLowerCase(Locale.ROOT);
+        String text = (id + " " + WorkBlockItemNames.name(new ItemStack(item)).getString()).toLowerCase(Locale.ROOT);
         return text.contains(key) || JustEnoughCharactersCompat.matches(text, key);
     }
 

@@ -27,7 +27,7 @@ public final class ClientToolReleaseAction {
                 action.model(),
                 action.animation(),
                 action.fallbackLength(),
-                ClientToolModelAnimationState.FAST_PLAYBACK_SPEED);
+                ClientToolModelAnimationState.FAST_PLAYBACK_SPEED * (action == Action.STINGER_STIM_PRIME ? 2.0F : 1.0F));
     }
 
     public static boolean schedule(String key, int delayTicks, Runnable callback) {

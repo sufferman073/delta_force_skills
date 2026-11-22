@@ -1,0 +1,16 @@
+{
+  "parent": "dealt_force_skills:item/refresh_drinks/glass_pose",
+  "loader": "forge:obj",
+  "model": "dealt_force_skills:models/item/refresh_drinks/mountain_rain.obj",
+  "render_type": "minecraft:translucent",
+  "automatic_culling": false,
+  "emissive_ambient": false,
+  "flip_v": false,
+  "textures": {
+    "paint": "dealt_force_skills:item/refresh_drinks/mountain_rain",
+    "particle": "dealt_force_skills:item/refresh_drinks/mountain_rain"
+  },
+  "visibility": {
+    "service": false
+  }
+}

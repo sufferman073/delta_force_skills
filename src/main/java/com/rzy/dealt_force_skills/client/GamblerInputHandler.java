@@ -108,7 +108,7 @@ public final class GamblerInputHandler {
                 if ((!creative && !sneak) || (creative && sneak)) {
                     GamblerPowerScreen.open();
                 } else {
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
             return;

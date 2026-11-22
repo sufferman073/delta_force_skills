@@ -469,6 +469,7 @@ public final class DepartmentOfTransportationStateManager {
         player.addEffect(new MobEffectInstance(ModEffects.STUN.get(), CORE_COUNTDOWN_TICKS, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.department.department_of_transportation_state_manager.effect.stun.0.amplifier", 0), false, true, true));
         stunNearby(player.serverLevel(), player, player.position(), 6.0D, 4 * 20);
         play(player, ModSounds.DEPARTMENT_CORE_CAST.get(), 1.0F, 1.0F);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.COUNTDOWN.play(player);
         play(player, ModSounds.DEPARTMENT_CORE_COUNTDOWN.get(), 0.7F, 1.0F);
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.department.core_started"), true);
         recoverTrafficBoothPassiveFromSkill(player);
@@ -710,10 +711,10 @@ public final class DepartmentOfTransportationStateManager {
         if (ascendUntil > 0L) {
             tag.putLong(CORE_ASCEND_UNTIL, 0L);
             play(player, ModSounds.DEPARTMENT_CORE_RELEASE.get(), 1.0F, 1.0F);
-            int killedPlayers = burstDamage(player.serverLevel(), player.position(), player, player,
+            int killedTargets = burstDamage(player.serverLevel(), player.position(), player, player,
                     5.0D, 24.0F, 4 * 20, true, SkillDamageHelper.departmentCore(player.serverLevel(), player, player));
             applyCoreExecution(player.serverLevel(), player, null, false);
-            DfsAchievements.recordDepartmentCoreKill(player, killedPlayers);
+            DfsAchievements.recordDepartmentCoreKill(player, killedTargets);
         }
     }
 
@@ -769,22 +770,21 @@ public final class DepartmentOfTransportationStateManager {
         }
 
         Entity owner = level.getEntity(ownerId);
-        int killedPlayers = 0;
+        int killedTargets = 0;
         for (LivingEntity living : dueVictims) {
             if (!living.isAlive()) {
                 continue;
             }
-            killedPlayers += burstDamage(level, living.position(), living, owner,
+            killedTargets += burstDamage(level, living.position(), living, owner,
                     4.0D, 18.0F, 3 * 20, true, SkillDamageHelper.departmentCore(level, living, owner));
             if (applyCoreExecution(level, living, owner, true)
-                    && living instanceof ServerPlayer
                     && (owner == null || !living.getUUID().equals(owner.getUUID()))) {
-                killedPlayers++;
+                killedTargets++;
             }
             living.removeEffect(ModEffects.DEPARTMENT_CALIBRATION.get());
         }
         if (owner instanceof ServerPlayer ownerPlayer) {
-            DfsAchievements.recordDepartmentCoreKill(ownerPlayer, killedPlayers);
+            DfsAchievements.recordDepartmentCoreKill(ownerPlayer, killedTargets);
         }
     }
 
@@ -917,7 +917,7 @@ public final class DepartmentOfTransportationStateManager {
         level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, center.x, center.y, center.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
         AABB box = new AABB(center, center).inflate(radius);
         LivingEntity sourceLiving = owner instanceof LivingEntity living ? living : null;
-        int killedPlayers = 0;
+        int killedTargets = 0;
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
             if (skipDirect && target == directEntity) {
                 continue;
@@ -933,9 +933,9 @@ public final class DepartmentOfTransportationStateManager {
             boolean wasAlive = target.isAlive();
             target.invulnerableTime = 0;
             SkillDamageHelper.hurt(target, source, sourceLiving, damage);
-            if (wasAlive && target instanceof ServerPlayer && !target.isAlive()
+            if (wasAlive && !target.isAlive()
                     && (sourceLiving == null || !target.getUUID().equals(sourceLiving.getUUID()))) {
-                killedPlayers++;
+                killedTargets++;
             }
             target.setDeltaMovement(before.add(target.position().subtract(center).normalize().scale(0.45D)));
             target.hurtMarked = true;
@@ -945,7 +945,7 @@ public final class DepartmentOfTransportationStateManager {
         }
         SuperbWarfareCompat.damageVehicles(level, center, radius, source, directEntity,
                 damage / 100.0F, false);
-        return killedPlayers;
+        return killedTargets;
     }
 
     private static void stunNearby(ServerLevel level, ServerPlayer owner, Vec3 center, double radius, int ticks) {

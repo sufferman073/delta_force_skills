@@ -1,1 +1,14 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/outdoor_medical_kit"}}
+{
+  "loader": "forge:separate_transforms",
+  "gui_light": "front",
+  "textures": {"particle":"dealt_force_skills:item/outdoor_medical_kit"},
+  "base": {"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/outdoor_medical_kit"}},
+  "perspectives": {
+    "ground": {"parent":"dealt_force_skills:item/refresh_kits/outdoor_medical_kit"},
+    "fixed": {"parent":"dealt_force_skills:item/refresh_kits/outdoor_medical_kit"},
+    "firstperson_righthand": {"parent":"dealt_force_skills:item/refresh_kits/outdoor_medical_kit"},
+    "firstperson_lefthand": {"parent":"dealt_force_skills:item/refresh_kits/outdoor_medical_kit"},
+    "thirdperson_righthand": {"parent":"dealt_force_skills:item/refresh_kits/outdoor_medical_kit"},
+    "thirdperson_lefthand": {"parent":"dealt_force_skills:item/refresh_kits/outdoor_medical_kit"}
+  }
+}

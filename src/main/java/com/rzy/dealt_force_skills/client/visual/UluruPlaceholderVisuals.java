@@ -34,7 +34,7 @@ public final class UluruPlaceholderVisuals {
     private UluruPlaceholderVisuals() {
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRenderHand(RenderHandEvent event) {
         if (UluruMissileController.isControlling()) {
             event.setCanceled(true);

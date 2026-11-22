@@ -1,6 +1,30 @@
 {
-  "parent": "minecraft:item/generated",
+  "loader": "forge:separate_transforms",
+  "gui_light": "front",
   "textures": {
-    "layer0": "dealt_force_skills:item/mc201_ballistic_helmet"
+    "particle": "dealt_force_skills:item/mc201_ballistic_helmet"
+  },
+  "base": {
+    "parent": "dealt_force_skills:item/refresh_armor/mc201_ballistic_helmet"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/mc201_ballistic_helmet"
+      }
+    },
+    "head": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/mc201_ballistic_helmet"
+      }
+    },
+    "none": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/mc201_ballistic_helmet"
+      }
+    }
   }
 }

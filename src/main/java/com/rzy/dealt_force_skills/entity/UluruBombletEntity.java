@@ -65,6 +65,7 @@ public class UluruBombletEntity extends Projectile implements ItemSupplier, Oper
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "uluru.skill.loitering_missile", (nativeRadius(getOwner())));
         if (!level().isClientSide && nativeAllegiance.active() && tickCount > ARMING_TICKS + ARMED_FUSE_TICKS) {
             explode(position()); return;
         }

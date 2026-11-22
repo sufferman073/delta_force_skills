@@ -360,6 +360,7 @@ public final class HackclawStateManager {
         List<S2C_HackclawPathLines.Line> lines = new ArrayList<>();
         for (int i = 0; i < targets.size(); i++) {
             ServerPlayer target = targets.get(i);
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "hack");
             boolean primary = i == 0;
             reportEquipment(player, target, round, primary);
             lines.add(new S2C_HackclawPathLines.Line(

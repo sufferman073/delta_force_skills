@@ -67,6 +67,7 @@ public final class RoverFieldEntity extends Entity implements SmokeCloudModelSta
 
     @Override public void tick() {
         super.tick();
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, shouldRenderSmokeModel() ? "rover.skill.smoke" : "rover.skill.injector", radius(), radius() + 3, player -> allegiance.active() ? allegiance.isEnemy((ServerLevel)level(), player) : com.rzy.dealt_force_skills.util.TargetingUtil.isHostileLivingFor(ownerId == null ? null : ((ServerLevel)level()).getEntity(ownerId), player));
         if (!(level() instanceof ServerLevel level)) return;
         if (allegiance.active()) { tickNative(level); return; }
         if (tickCount > smokeLifetimeTicks() || ownerId == null

@@ -15,7 +15,8 @@ public final class OperativeBrain {
     private final OperativeEntity host;
     private final BehaviorNode tree;
     private final OperativeTactics tactics;
-    private int nextSkillTick;
+    private final OperativeHearing hearing = new OperativeHearing();
+    private int nextSkillTick, nextRaidPathTick;
     private String lastSkill = "none";
     private double meleeCooldown;
     private String action = "idle";
@@ -34,7 +35,7 @@ public final class OperativeBrain {
         if (meleeCooldown > 0) meleeCooldown--;
         // Perception arbitrates owner orders against immediate self-defence.
         host.orderPosition(); // Retain the last loaded owner position for disconnects or dimension changes.
-        if (host.getTarget() != null && (!host.isEnemy(host.getTarget())
+        if (host.getTarget() != null && (!hearing.validContact(host, host.getTarget())
                 || !host.withinCombatRange(host.getTarget().position()))) host.setTarget(null);
         if ((host.tickCount + host.getId()) % 10 == 0) perceive();
         if ((host.tickCount + host.getId()) % 5 == 0 || ("melee".equals(action) && meleeCooldown <= 0)) {
@@ -60,47 +61,60 @@ public final class OperativeBrain {
         }
         LivingEntity urgent = host.level().getEntitiesOfClass(LivingEntity.class,
                 host.getBoundingBox().inflate(8), candidate -> host.isEnemy(candidate)
-                        && host.withinCombatRange(candidate.position()) && host.canSee(candidate)).stream()
+                        && host.withinCombatRange(candidate.position()) && OperativeHearing.visible(host, candidate)).stream()
                 .min(Comparator.comparingDouble(candidate -> host.distanceToSqr(candidate)
                         - (candidate instanceof net.minecraft.world.entity.Mob mob && mob.getTarget() == host ? 12 : 0)))
                 .orElse(null);
         LivingEntity current = host.getTarget();
         if (urgent != null) {
             // Retain an equally close current threat; owner focus cannot override self-defence.
-            if (current == null || !host.isEnemy(current) || !host.canSee(current)
+            if (current == null || !host.isEnemy(current) || !OperativeHearing.visible(host, current)
                     || host.distanceToSqr(current) > 64 || host.distanceToSqr(urgent) + 9 < host.distanceToSqr(current))
                 host.setTarget(urgent);
-            return;
+            hearing.clear(); return;
         }
         LivingEntity assisted = host.assistedTarget();
-        if (assisted != null && host.isEnemy(assisted) && host.withinCombatRange(assisted.position())) {
-            host.setTarget(assisted); return;
+        if (assisted != null && host.isEnemy(assisted) && host.withinCombatRange(assisted.position())
+                && (OperativeHearing.visible(host, assisted) || host.skills().isRevealed(assisted) || OperativeHearing.audible(assisted))) {
+            host.setTarget(assisted); hearing.clear(); return;
         }
         LivingEntity retained = host.getTarget();
-        if (retained != null && host.isEnemy(retained) && host.withinCombatRange(retained.position())) return;
+        if (retained != null && host.isEnemy(retained) && host.withinCombatRange(retained.position())
+                && (OperativeHearing.visible(host, retained) || host.skills().isRevealed(retained))) {
+            hearing.clear(); return;
+        }
         LivingEntity owner = host.getOwner();
         LivingEntity threat = owner == null ? null : owner.getLastHurtByMob();
         LivingEntity previous = host.getTarget();
-        host.setTarget(host.level().getEntitiesOfClass(LivingEntity.class,
-                        host.getBoundingBox().inflate(host.acquisitionRange()), candidate -> host.isEnemy(candidate)
-                                && host.withinCombatRange(candidate.position()) && (host.canSee(candidate)
+        double range = host.acquisitionRange();
+        LivingEntity seen = host.level().getEntitiesOfClass(LivingEntity.class,
+                        host.getBoundingBox().inflate(range), candidate -> host.isEnemy(candidate) && host.distanceToSqr(candidate) <= range * range
+                                && host.withinCombatRange(candidate.position()) && (OperativeHearing.visible(host, candidate)
                                 || host.skills().isRevealed(candidate))).stream()
                 .min(Comparator.comparingDouble(candidate -> host.distanceToSqr(candidate)
                         - (candidate == threat ? 600.0D : 0.0D)
                         - (candidate == host.getLastHurtByMob() ? 300.0D : 0.0D)
                         - (candidate == previous ? 30.0D : 0.0D)))
-                .orElse(null));
+                .orElse(null);
+        if (seen != null) { host.setTarget(seen); hearing.clear(); return; }
+        boolean previouslyHeard = hearing.tracks(retained);
+        LivingEntity heard = hearing.acquire(host);
+        // Keep a previously observed combat contact outside acquisition range, as before.
+        if (heard == null && !previouslyHeard && retained != null && host.isEnemy(retained)
+                && host.withinCombatRange(retained.position()) && OperativeHearing.audible(retained)) host.setTarget(retained);
+        else host.setTarget(heard);
     }
 
     private BehaviorNode.Status enforceOrders() {
         if (host.withinLeash(host.position())) return FAILURE;
         host.skills().cancel(host);
+        hearing.clear();
         host.setTarget(null);
         return returnToOwnerOrPost();
     }
 
     private BehaviorNode.Status hasTarget() {
-        return host.getTarget() != null && host.isEnemy(host.getTarget()) ? SUCCESS : FAILURE;
+        return hearing.validContact(host, host.getTarget()) ? SUCCESS : FAILURE;
     }
 
     private BehaviorNode.Status chooseSkill() {
@@ -134,6 +148,12 @@ public final class OperativeBrain {
 
     private BehaviorNode.Status fight() {
         LivingEntity target = host.getTarget();
+        if (com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.pursuing(host) && !tactics.threatened()) {
+            double range = OperativeGun.equipped(host) && host.gun().hasAmmunition(host)
+                    ? Math.min(64, OperativeGun.effectiveRange(host)) : 12;
+            if (host.distanceToSqr(target) > range * range || !host.hasLineOfSight(target) && !host.skills().isRevealed(target))
+                return returnToOwnerOrPost();
+        }
         if (!host.withinCombatRange(target.position())) {
             host.setTarget(null);
             return FAILURE;
@@ -141,6 +161,11 @@ public final class OperativeBrain {
         host.getLookControl().setLookAt(target, 30.0F, 30.0F);
         if (host.skills().locksMovement()) { host.getNavigation().stop(); action = "skill:" + lastSkill; return RUNNING; }
         if (tactics.move(target)) { action = tactics.describe(); return RUNNING; }
+        if (!host.isEnemy(target)) {
+            tactics.navigate(target.position(), 1.1D);
+            action = "investigate_contact";
+            return RUNNING;
+        }
         if (OperativeGun.equipped(host) && host.gun().hasAmmunition(host) && host.distanceToSqr(target) <= Math.pow(OperativeGun.effectiveRange(host), 2) && OperativeGun.clearShot(host, target)) {
             host.getNavigation().stop();
             action = OperativeGun.clearShot(host, target) ? "shoot" : "hold_fire";
@@ -165,7 +190,19 @@ public final class OperativeBrain {
 
     private BehaviorNode.Status returnToOwnerOrPost() {
         if (host.skills().locksMovement()) return RUNNING;
-        var contact = host.skills().investigation();
+        if (com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.pursuing(host)) {
+            var destination = host.orderPosition();
+            if (destination != null && host.distanceToSqr(destination) > 9) {
+                if (host.tickCount >= nextRaidPathTick) {
+                    nextRaidPathTick = host.tickCount + 20;
+                    tactics.marchToward(destination);
+                }
+                action = "raid_pursuit";
+                return RUNNING;
+            }
+        }
+        var contact = hearing.investigation(host);
+        if (contact == null) contact = host.skills().investigation();
         if (contact != null && host.withinOrders(contact) && host.position().distanceToSqr(contact) > 4) {
             tactics.navigate(contact, 1.0D);
             action = "investigate";
@@ -181,5 +218,7 @@ public final class OperativeBrain {
         return RUNNING;
     }
 
-    public String describe() { return action + ",last_skill=" + lastSkill; }
+    public void resetPerception() { hearing.clear(); }
+
+    public String describe() { return action + ",last_skill=" + lastSkill + ",hearing=" + hearing.tracks(host.getTarget()); }
 }

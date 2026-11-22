@@ -113,6 +113,9 @@ public class VlinderMedicalDroneEntity extends Entity implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && mode != VlinderDroneMode.HEAL && level() instanceof ServerLevel feedbackLevel
+                && targetId != null && feedbackLevel.getEntity(targetId) instanceof ServerPlayer feedbackTarget && tickCount % 4 == 0)
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.shaped(feedbackTarget, this, "vlinder.skill.medical_drone", distanceToSqr(feedbackTarget) <= HIT_DISTANCE * HIT_DISTANCE);
         if (level().isClientSide) {
             spawnClientParticles();
             return;

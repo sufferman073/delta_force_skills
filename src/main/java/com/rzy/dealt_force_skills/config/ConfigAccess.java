@@ -70,8 +70,7 @@ public final class ConfigAccess {
             return false;
         }
         if (file == ConfigFileId.GAMEPLAY && path.startsWith("operatives.")
-                && (!path.startsWith("operatives.attributes.")
-                || !com.rzy.dealt_force_skills.ai.operative.OperativeSettings.valid(path, parsed))) return false;
+                && !com.rzy.dealt_force_skills.ai.operative.OperativeSettings.valid(path, parsed)) return false;
         if (file == ConfigFileId.GAMEPLAY && path.startsWith("home.")
                 && !com.rzy.dealt_force_skills.home.HomeSettings.valid(path, parsed)) return false;
         synchronized (ConfigAccess.class) {
@@ -250,6 +249,7 @@ public final class ConfigAccess {
         if (entry.file() == ConfigFileId.GAMBLER) return "gambler";
         String owner = entry.file() == ConfigFileId.GAMEPLAY ? CharacterConfigGrouping.owner(path) : "";
         if (!owner.isEmpty()) return owner;
+        if (path.startsWith("operatives.") && parts.length > 1) return parts[1];
         if (path.startsWith("characters.") && parts.length > 1) {
             return parts[1];
         }

@@ -33,7 +33,7 @@ public final class NativeChamberSkills implements OperativeSkills {
     public boolean owns(UUID id){return id!=null && (id.equals(anchor)||id.equals(trap));}
     public ChamberGunKind equipped(){return equipped;}
 
-    private static boolean valid(OperativeHost host,LivingEntity target){return target!=null && target.level()==host.body().level() && host.isEnemy(target) && host.withinCombatRange(target.position()) && host.body().distanceToSqr(target)<=48*48 && host.canSee(target);}
+    private static boolean valid(OperativeHost host,LivingEntity target){return target!=null && target.level()==host.body().level() && host.isEnemy(target) && host.withinCombatRange(target.position()) && host.body().distanceToSqr(target)<=48*48 && OperativeHearing.knownContact(host,target);}
     private static boolean available(OperativeHost host,SkillSlot slot){return NativeRaptorSkills.available(host) && !OperativeSupport.downed(host.body()) && !OperativeElectronics.blocked(host,ModCharacters.CHAMBER_ID,slot);}
     @Override public double score(OperativeHost host,SkillSlot slot,LivingEntity target){
         if(!available(host,slot))return 0;

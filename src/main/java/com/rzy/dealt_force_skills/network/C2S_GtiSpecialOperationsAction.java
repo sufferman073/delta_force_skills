@@ -19,6 +19,7 @@ public record C2S_GtiSpecialOperationsAction(Action action, int index, int count
     public static void handle(C2S_GtiSpecialOperationsAction msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
+            if (player != null && com.rzy.dealt_force_skills.raid.RaidAccess.externalItemsBlocked(player)) return;
             if (player == null) return;
             boolean gtiAccess = GtiTradingHallManager.hasBaseAccess(player);
             switch (msg.action) {

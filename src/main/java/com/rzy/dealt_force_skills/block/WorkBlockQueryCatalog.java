@@ -47,7 +47,7 @@ public final class WorkBlockQueryCatalog {
         LOGGER.info("Prepared work catalog {} entries={}", key, entries.size());
     }
 
-    public static void warnEntry(String catalog, Object id, RuntimeException error) {
+    public static void warnEntry(String catalog, Object id, Throwable error) {
         LOGGER.warn("Cannot inspect {} entry {}", catalog, id, error);
     }
 
@@ -56,17 +56,27 @@ public final class WorkBlockQueryCatalog {
                                              double energy, BooleanSupplier valid, UnaryOperator<EntryView> resolve) {
         PENDING.remove(player.getUUID());
         Catalog catalog = owner == player.getServer() ? CATALOGS.get(catalogKey) : null;
-        List<EntryView> matches = catalog == null ? List.of() : catalog.search(query);
+        boolean metadata = AdvancedWorkBlockData.CATALOG_QUERY.equals(query);
+        List<EntryView> matches;
+        if (catalog == null) {
+            matches = List.of();
+        } else if (AdvancedWorkBlockData.PREVIEW_QUERY.equals(query)) {
+            matches = requestedPage >= 0 && requestedPage < catalog.entries.size()
+                    ? List.of(catalog.entries.get(requestedPage)) : List.of();
+            requestedPage = 0;
+        } else {
+            matches = metadata ? catalog.entries : catalog.search(query);
+        }
         int page = Math.max(0, Math.min(requestedPage,
                 matches.isEmpty() ? 0 : (matches.size() - 1) / AdvancedWorkBlockData.PAGE_SIZE));
         int from = page * AdvancedWorkBlockData.PAGE_SIZE;
         List<EntryView> entries = new ArrayList<>(matches.subList(from,
                 Math.min(matches.size(), from + AdvancedWorkBlockData.PAGE_SIZE)));
         String loading = Component.translatable("screen.dealt_force_skills.advanced_work.loading").getString();
-        entries.replaceAll(e -> new EntryView(e.id(), e.icon(), e.name(), loading, List.of(), 0, e.cost()));
+        if (!metadata) entries.replaceAll(e -> new EntryView(e.id(), e.icon(), e.name(), loading, List.of(), 0, e.cost()));
         AdvancedWorkBlockData initial = new AdvancedWorkBlockData(block.getBlockPos(), blockType, mode,
                 query, page, matches.size(), energy, entries);
-        if (!entries.isEmpty()) {
+        if (!metadata && !entries.isEmpty()) {
             PENDING.put(player.getUUID(), new Preview(player, block, initial, valid, resolve));
         }
         return initial;
@@ -101,9 +111,8 @@ public final class WorkBlockQueryCatalog {
         };
 
         private Catalog(List<EntryView> entries) {
-            this.entries = entries.stream().sorted(Comparator.comparing(EntryView::name)
-                    .thenComparing(e -> e.id().toString())).toList();
-            this.text = this.entries.stream().map(e -> (e.id() + " " + e.name()).toLowerCase(Locale.ROOT)).toList();
+            this.entries = entries.stream().sorted(Comparator.comparing(e -> e.id().toString())).toList();
+            this.text = this.entries.stream().map(e -> e.id().toString().toLowerCase(Locale.ROOT)).toList();
         }
 
         private List<EntryView> search(String query) {
@@ -157,7 +166,7 @@ public final class WorkBlockQueryCatalog {
                 // A loot sampler yields after each roll; resume this row on the next slice.
                 if (resolved == null) return false;
                 entries.set(index, resolved);
-            } catch (RuntimeException error) {
+            } catch (RuntimeException | LinkageError error) {
                 warnEntry("preview", entry.id(), error);
                 entries.set(index, new EntryView(entry.id(), entry.icon(), entry.name(),
                         Component.translatable("screen.dealt_force_skills.advanced_work.preview_failed").getString(),

@@ -106,6 +106,10 @@ public final class NativeSinevaSkills implements OperativeSkills {
                     else if (host.body().distanceToSqr(target) >= 25 && host.body().distanceToSqr(target) <= 100)
                         tryCharge(host, target);
                 }
+            } else if (OperativeHearing.knownContact(host, target) && host.body().distanceToSqr(target) <= 24 * 24) {
+                idleTicks = 0;
+                front = shield > 0;
+                host.aimAt(target);
             } else {
                 front = false;
                 if (++idleTicks >= 200) deactivate(host);
@@ -150,12 +154,12 @@ public final class NativeSinevaSkills implements OperativeSkills {
                 && host.body().distanceToSqr(target) <= max * max;
     }
     @Override public double score(OperativeHost host, SkillSlot slot, LivingEntity target) {
-        if (busy() || gunWindow > 0 || !valid(host, target, 0, 24) || host.body().hasEffect(ModEffects.STUN.get())
+        if (busy() || gunWindow > 0 || !usable(host) || !OperativeHearing.knownContact(host, target) || host.body().distanceToSqr(target) > 24 * 24 || host.body().hasEffect(ModEffects.STUN.get())
                 || host.body().hasEffect(ModEffects.WEBBED.get())
                 || OperativeElectronics.blocked(host, ModCharacters.SINEVA_ID, slot)) return 0;
         return switch (slot) {
             case CORE -> !suit && coreCooldown == 0 ? 100 : 0;
-            case ACTIVE_1 -> wires > 0 && wireDelay == 0 && valid(host, target, 2, 24) && wireShot(host, target) != null ? 80 : 0;
+            case ACTIVE_1 -> wires > 0 && wireDelay == 0 && host.body().distanceToSqr(target) >= 4 && wireShot(host, target) != null ? 80 : 0;
             case ACTIVE_2 -> grappleCooldown == 0 && valid(host, target, 2, 24) && grappleClear(host, target) ? 90 : 0;
             default -> 0;
         };
@@ -171,7 +175,7 @@ public final class NativeSinevaSkills implements OperativeSkills {
             if (shot == null) return false;
             var wire = new BladeWireProjectileEntity(ModEntities.BLADE_WIRE_PROJECTILE.get(), host.serverLevel(), host.body());
             wire.setPos(host.body().getEyePosition().add(shot.direction().scale(0.55D)).add(0, -0.1D, 0));
-            wire.setDeltaMovement(shot.direction().scale(2.25D).add(0, 0.14D, 0));
+            wire.setDeltaMovement(shot.direction().scale(shot.launchSpeed(2.25D)).add(0, 0.14D, 0));
             if (!host.serverLevel().addFreshEntity(wire)) return false;
             if (wires == Math.max(0, SinevaStateManager.BLADE_WIRE_MAX_CHARGES)) wireRecharge = Math.max(1, SinevaStateManager.BLADE_WIRE_RECHARGE_TICKS);
             wires--; wireDelay = 100;
@@ -196,7 +200,7 @@ public final class NativeSinevaSkills implements OperativeSkills {
         return true;
     }
     private static OperativeBallistics.Shot wireShot(OperativeHost host, LivingEntity target) {
-        var shot = OperativeBallistics.solve(host, target.position().add(0, 0.05D, 0), 2.25D, 0.14D, 0.55D, 0.1D, 0.03D, 0.99D, 80, 1.2D, true);
+        var shot = OperativeBallistics.lobWithSpeed(host, target.position().add(0, 0.05D, 0), 2.25D, 0.14D, 0.55D, 0.1D, 0.03D, 0.99D, 80, 1.2D, true);
         if (shot == null || !host.withinOrders(shot.impact())) return null;
         var p = net.minecraft.core.BlockPos.containing(shot.impact().add(0, 0.1D, 0));
         if (!host.serverLevel().getBlockState(p).canBeReplaced()) return null;

@@ -33,8 +33,8 @@ public final class SkillBalance {
         damage("summons.vyronmagneticbombentity.base_damage", 100.0F);
         damage("summons.ulurubombletentity.player_damage", 50.0F);
         damage("summons.ulurubombletentity.non_player_damage", 125.0F);
-        damage("summons.uluruincendiarygrenadeentity.player_damage", 12.0F);
-        damage("summons.uluruincendiarygrenadeentity.non_player_damage", 12.0F);
+        damage("summons.uluruincendiarygrenadeentity.player_damage", 8.0F);
+        damage("summons.uluruincendiarygrenadeentity.non_player_damage", 8.0F);
         profile("summons.dwolfhandcannongrenadeentity", 0.1D);
         profile("summons.lunacompositegrenadeentity", 0.1D);
         profile("summons.shepherdfraggrenadeentity", 0.1D);

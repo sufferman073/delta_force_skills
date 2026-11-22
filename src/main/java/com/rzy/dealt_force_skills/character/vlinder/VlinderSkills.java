@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.vlinder;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.electronics.ElectronicInterferenceManager;
@@ -22,7 +25,7 @@ public final class VlinderSkills {
         VlinderStateManager.initializeIfNeeded(player);
         return switch (slot) {
             case ACTIVE_1 -> alternate ? selfHealingDust(player) : toggleMedicalDrone(player);
-            case ACTIVE_2 -> launchRemoteSmoke(player);
+            case ACTIVE_2 -> launchRemoteSmoke(player, alternate);
             case CORE -> summonActiveDefense(player);
             case PASSIVE -> false;
         };
@@ -43,6 +46,13 @@ public final class VlinderSkills {
             case TOGGLE_MEDICAL_MODE -> toggleMedicalMode(player);
             case LAUNCH_MEDICAL_DRONE -> launchMedicalDrone(player);
             case SELF_HEALING_DUST -> selfHealingDust(player);
+            case RELEASE_SMOKE_GUIDE -> {
+                var data = player.getPersistentData();
+                if (data.hasUUID("dfs.vlinder.guiding" ) && player.serverLevel().getEntity(data.getUUID("dfs.vlinder.guiding")) instanceof VlinderRemoteSmokeRoundEntity round)
+                    round.releaseGuide(player);
+                data.remove("dfs.vlinder.guiding");
+                yield true;
+            }
         };
     }
 
@@ -108,7 +118,7 @@ public final class VlinderSkills {
         Vec3 look = player.getLookAngle().normalize();
         Vec3 start = player.getEyePosition().add(look.scale(0.78D));
         drone.setPos(start.x, start.y - 0.05D, start.z);
-        level.addFreshEntity(drone);
+        ToolHandRelease.spawned(level.addFreshEntity(drone), player, ToolHandCue.VLINDER_MEDICAL_DRONE);
         level.playSound(null, player.blockPosition(), ModSounds.VLINDER_MEDICAL_DRONE_LAUNCH.get(),
                 SoundSource.PLAYERS, 0.85F, VlinderStateManager.droneMode(player) == VlinderDroneMode.HEAL ? 1.08F : 0.9F);
         VlinderStateManager.setEquippedTool(player, VlinderTool.NONE);
@@ -127,10 +137,11 @@ public final class VlinderSkills {
         player.level().playSound(null, player.blockPosition(), ModSounds.VLINDER_HEALING_DUST_APPLY.get(),
                 SoundSource.PLAYERS, 0.8F, 1.15F);
         VlinderStateManager.setEquippedTool(player, VlinderTool.NONE);
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.HEALING_DUST.play(player);
         return true;
     }
 
-    private static boolean launchRemoteSmoke(ServerPlayer player) {
+    private static boolean launchRemoteSmoke(ServerPlayer player, boolean guided) {
         if (ElectronicInterferenceManager.tryBlockSkillUse(player, ModCharacters.VLINDER, SkillSlot.ACTIVE_2)) {
             return true;
         }
@@ -143,9 +154,10 @@ public final class VlinderSkills {
         Vec3 start = player.getEyePosition().add(look.scale(0.72D));
         VlinderRemoteSmokeRoundEntity round = new VlinderRemoteSmokeRoundEntity(
                 ModEntities.VLINDER_REMOTE_SMOKE_ROUND.get(), level, player);
+        if (guided) { round.startGuide(); player.getPersistentData().putUUID("dfs.vlinder.guiding", round.getUUID()); }
         round.setPos(start.x, start.y - 0.08D, start.z);
         round.setDeltaMovement(look.scale(VlinderRemoteSmokeRoundEntity.SPEED));
-        level.addFreshEntity(round);
+        ToolHandRelease.spawned(level.addFreshEntity(round), player, ToolHandCue.VLINDER_ROUND);
         level.playSound(null, player.blockPosition(), ModSounds.VLINDER_REMOTE_SMOKE_THROW.get(),
                 SoundSource.PLAYERS, 0.85F, 1.0F);
         return true;
@@ -170,7 +182,7 @@ public final class VlinderSkills {
         Vec3 look = player.getLookAngle().normalize();
         Vec3 start = player.getEyePosition().add(look.scale(0.75D));
         drone.setPos(start.x, start.y + 0.2D, start.z);
-        level.addFreshEntity(drone);
+        ToolHandRelease.spawned(level.addFreshEntity(drone), player, ToolHandCue.VLINDER_DEFENSE);
         level.playSound(null, player.blockPosition(), ModSounds.VLINDER_ACTIVE_DEFENSE_SUMMON.get(),
                 SoundSource.PLAYERS, 0.95F, 1.0F);
         return true;

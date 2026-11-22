@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.morse;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.ModCharacters;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.electronics.ElectronicInterferenceManager;
@@ -118,7 +121,7 @@ public final class MorseSkills {
         orb.setDeltaMovement(look.scale(1.45D).add(0.0D, 0.18D, 0.0D));
         orb.setYRot(player.getYRot());
         orb.setXRot(player.getXRot());
-        if (level.addFreshEntity(orb)) {
+        if (ToolHandRelease.spawned(level.addFreshEntity(orb), player, ToolHandCue.MORSE_SHOCK_ORB)) {
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
             com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         }
@@ -149,7 +152,7 @@ public final class MorseSkills {
         grenade.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         grenade.setYRot(player.getYRot());
         grenade.setXRot(player.getXRot());
-        if (level.addFreshEntity(grenade)) {
+        if (ToolHandRelease.spawned(level.addFreshEntity(grenade), player, ToolHandCue.MORSE_FLASH_GRENADE)) {
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
             com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         }

@@ -142,7 +142,7 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
         }
         WorkBlockStorageAccess.giveWithBlockLootBonus(player, level, worldPosition, new ItemStack(item, count));
         player.displayClientMessage(Component.translatable("message.dealt_force_skills.hvk_treasure.ore_created",
-                count, new ItemStack(item).getHoverName()), true);
+                count, WorkBlockItemNames.name(new ItemStack(item))), true);
         playUseSound();
     }
 
@@ -153,10 +153,14 @@ public class HvkAdvancedTreasureCompassBlockEntity extends BlockEntity {
         }
         List<EntryView> ores = new ArrayList<>();
         for (Block block : ForgeRegistries.BLOCKS.getValues()) {
-            if (!isOreBlock(block)) continue;
-            ItemStack icon = new ItemStack(block.asItem());
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(icon.getItem());
-            if (id != null) ores.add(new EntryView(id, icon, icon.getHoverName().getString(), "", List.of(icon), 0, 64));
+            try {
+                if (!isOreBlock(block)) continue;
+                ItemStack icon = new ItemStack(block.asItem());
+                ResourceLocation id = ForgeRegistries.ITEMS.getKey(icon.getItem());
+                if (id != null) ores.add(new EntryView(id, icon, id.toString(), "", List.of(icon), 0, 64));
+            } catch (RuntimeException | LinkageError error) {
+                WorkBlockQueryCatalog.warnEntry("ores", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block), error);
+            }
         }
         WorkBlockQueryCatalog.register(level.getServer(), "chests", chests);
         WorkBlockQueryCatalog.register(level.getServer(), "ores", ores);

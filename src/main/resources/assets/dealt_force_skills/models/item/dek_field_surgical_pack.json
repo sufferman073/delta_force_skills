@@ -1,1 +1,14 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/dek_field_surgical_pack"}}
+{
+  "loader": "forge:separate_transforms",
+  "gui_light": "front",
+  "textures": {"particle":"dealt_force_skills:item/dek_field_surgical_pack"},
+  "base": {"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/dek_field_surgical_pack"}},
+  "perspectives": {
+    "ground": {"parent":"dealt_force_skills:item/refresh_kits/dek_field_surgical_pack"},
+    "fixed": {"parent":"dealt_force_skills:item/refresh_kits/dek_field_surgical_pack"},
+    "firstperson_righthand": {"parent":"dealt_force_skills:item/refresh_kits/dek_field_surgical_pack"},
+    "firstperson_lefthand": {"parent":"dealt_force_skills:item/refresh_kits/dek_field_surgical_pack"},
+    "thirdperson_righthand": {"parent":"dealt_force_skills:item/refresh_kits/dek_field_surgical_pack"},
+    "thirdperson_lefthand": {"parent":"dealt_force_skills:item/refresh_kits/dek_field_surgical_pack"}
+  }
+}

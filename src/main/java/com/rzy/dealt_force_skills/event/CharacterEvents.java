@@ -160,6 +160,16 @@ public class CharacterEvents {
     }
 
     @SubscribeEvent
+    public static void onVisualDimensionChange(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) HeldToolVisualSync.clearTransient(player);
+    }
+
+    @SubscribeEvent
+    public static void onVisualLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) HeldToolVisualSync.clearTransient(player);
+    }
+
+    @SubscribeEvent
     public static void onPlayerStartTracking(PlayerEvent.StartTracking event) {
         if (event.getEntity() instanceof ServerPlayer watcher) {
             if (event.getTarget() instanceof ServerPlayer target) {
@@ -223,7 +233,7 @@ public class CharacterEvents {
             GhrothStateManager.syncToClient(player);
             CommanderStateManager.syncToClient(player);
             ChamberStateManager.syncToClient(player);
-            HeldToolVisualSync.sync(player);
         }
+        HeldToolVisualSync.tick(player);
     }
 }

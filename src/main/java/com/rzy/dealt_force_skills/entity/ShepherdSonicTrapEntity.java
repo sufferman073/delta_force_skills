@@ -281,6 +281,7 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
             SkillDamageHelper.hurt(target, SkillDamageHelper.shepherdSonic(level, this, owner), owner instanceof LivingEntity living ? living : null, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.shepherd_sonic_trap_entity.skill_hurt.0.damage", 10.0f));
             target.setDeltaMovement(before);
             target.hurtMarked = true;
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(target, this, "shepherd.skill.sonic_trap", "sonic_trap");
             target.addEffect(new MobEffectInstance(ModEffects.SONIC_SHOCK.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherd_sonic_trap_entity.effect.sonic_shock.0.duration_ticks", 8 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.shepherd_sonic_trap_entity.effect.sonic_shock.0.amplifier", 1), false, true, true), owner);
             if (ownerPlayer != null) {
                 DfsAchievements.recordShepherdSonicTrapHit(ownerPlayer, target, warned);
@@ -348,17 +349,11 @@ public class ShepherdSonicTrapEntity extends Entity implements ItemSupplier, Blo
 
     private boolean hasLineOfSightTo(LivingEntity target) {
         Vec3 start = position().add(0.0D, getBbHeight() * 0.5D, 0.0D);
-        Vec3 end = target.getEyePosition();
-        return level().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this)).getType()
-                == HitResult.Type.MISS;
+        return com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper.exposed(level(), start, target);
     }
 
     private void warnNearbyPlayers(ServerLevel level, double radius) {
-        AABB box = new AABB(position(), position()).inflate(radius);
-        for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, box,
-                target -> TargetingUtil.isTargetablePlayer(target) && !isOwnerOrTeammate(target))) {
-            player.displayClientMessage(Component.translatable("message.dealt_force_skills.shepherd.sonic_trap_triggered"), true);
-        }
+        // Effect recipients are notified in explode(), after its target filters.
     }
 
     private Entity owner(ServerLevel level) {

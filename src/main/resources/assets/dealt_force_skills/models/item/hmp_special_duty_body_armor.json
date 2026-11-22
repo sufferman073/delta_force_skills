@@ -1,6 +1,30 @@
 {
-  "parent": "minecraft:item/generated",
+  "loader": "forge:separate_transforms",
+  "gui_light": "front",
   "textures": {
-    "layer0": "dealt_force_skills:item/hmp_special_duty_body_armor"
+    "particle": "dealt_force_skills:item/hmp_special_duty_body_armor"
+  },
+  "base": {
+    "parent": "dealt_force_skills:item/refresh_armor/hmp_special_duty_body_armor"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/hmp_special_duty_body_armor"
+      }
+    },
+    "head": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/hmp_special_duty_body_armor"
+      }
+    },
+    "none": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/hmp_special_duty_body_armor"
+      }
+    }
   }
 }

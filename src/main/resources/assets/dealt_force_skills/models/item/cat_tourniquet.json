@@ -1,1 +1,14 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/cat_tourniquet"}}
+{
+  "loader": "forge:separate_transforms",
+  "gui_light": "front",
+  "textures": {"particle":"dealt_force_skills:item/cat_tourniquet"},
+  "base": {"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/cat_tourniquet"}},
+  "perspectives": {
+    "ground": {"parent":"dealt_force_skills:item/refresh_kits/cat_tourniquet"},
+    "fixed": {"parent":"dealt_force_skills:item/refresh_kits/cat_tourniquet"},
+    "firstperson_righthand": {"parent":"dealt_force_skills:item/refresh_kits/cat_tourniquet"},
+    "firstperson_lefthand": {"parent":"dealt_force_skills:item/refresh_kits/cat_tourniquet"},
+    "thirdperson_righthand": {"parent":"dealt_force_skills:item/refresh_kits/cat_tourniquet"},
+    "thirdperson_lefthand": {"parent":"dealt_force_skills:item/refresh_kits/cat_tourniquet"}
+  }
+}

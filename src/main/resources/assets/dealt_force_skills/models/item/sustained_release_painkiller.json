@@ -1,1 +1,1 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/sustained_release_painkiller"}}
+{"gui_light":"front","parent":"minecraft:block/block","loader":"forge:separate_transforms","textures":{"particle":"dealt_force_skills:item/sustained_release_painkiller"},"base":{"parent":"dealt_force_skills:item/refresh_tablets/sustained_release_painkiller"},"perspectives":{"gui":{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/sustained_release_painkiller"}}}}

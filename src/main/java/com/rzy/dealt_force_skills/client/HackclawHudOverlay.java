@@ -71,13 +71,7 @@ public final class HackclawHudOverlay {
                 && ClientHackclawHudState.coreActiveTicks() <= 0) {
             return;
         }
-        int width = 152;
-        int height = 54;
-        int x = (graphics.guiWidth() - width) / 2;
-        int y = graphics.guiHeight() / 2 + 34;
-        graphics.fill(x, y, x + width, y + height, 0xD20A151B);
-        graphics.fill(x, y, x + width, y + 2, 0xFF54DFFF);
-        graphics.fill(x, y + height - 2, x + width, y + height, 0xFF247D91);
+        int y = 3;
         String title = Component.translatable(
                 "character.dealt_force_skills.hackclaw.skill.advanced_hack").getString();
         graphics.drawCenteredString(font, title, graphics.guiWidth() / 2, y + 7, 0xFF8CEBFF);
@@ -138,25 +132,7 @@ public final class HackclawHudOverlay {
             int cooldownTicks,
             String detail
     ) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA101216);
-        graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-        graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-        graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xDD171A20);
-        drawCenteredClipped(graphics, font, icon.getString(), x + SLOT / 2, y + 12, 32, 0xFFFFFFFF);
-
-        if (cooldownTicks > 0) {
-            graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xCC000000);
-            drawCenteredClipped(graphics, font, cooldownText(cooldownTicks), x + SLOT / 2, y + 14, 34, 0xFFFFE6A6);
-        } else {
-            drawCenteredClipped(graphics, font, detail, x + SLOT / 2, y + 22, 34, 0xFFE0E4EA);
-        }
-
-        String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            drawCenteredClipped(graphics, font, keyName, x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, cooldownTicks, detail);
     }
 
     private static void drawCenteredClipped(GuiGraphics graphics, Font font, String text, int centerX, int y, int width, int color) {

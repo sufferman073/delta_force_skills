@@ -40,6 +40,8 @@ public final class GtiTradingHallManager {
         MATERIALS("materials"),
         WEAPONS("weapons"),
         TOOLS("tools"),
+        HELMETS("helmets"),
+        ARMOR("armor"),
         MISC("misc");
 
         private final String id;
@@ -67,6 +69,8 @@ public final class GtiTradingHallManager {
                 case "material" -> "materials";
                 case "weapon" -> "weapons";
                 case "tool" -> "tools";
+                case "helmet" -> "helmets";
+                case "armour", "chestplate" -> "armor";
                 case "miscellaneous", "sundry", "sundries" -> "misc";
                 default -> normalized;
             };

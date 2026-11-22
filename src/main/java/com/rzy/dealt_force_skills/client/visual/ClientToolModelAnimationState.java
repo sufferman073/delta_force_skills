@@ -28,6 +28,7 @@ public final class ClientToolModelAnimationState {
             float fallbackLength,
             float playbackSpeed
     ) {
+        ClientToolHandMotion.preparing(key,model);
         ACTIVE.put(key, new ActiveAnimation(
                 model,
                 animation,
@@ -72,7 +73,6 @@ public final class ClientToolModelAnimationState {
             length = active.fallbackLength();
         }
         if (length <= 0.0F || active.elapsedAnimationSeconds() >= length) {
-            ACTIVE.remove(key);
             return null;
         }
         return active;

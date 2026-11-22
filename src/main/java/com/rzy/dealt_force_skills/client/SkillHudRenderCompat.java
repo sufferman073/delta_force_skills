@@ -15,6 +15,14 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class SkillHudRenderCompat {
+    @SubscribeEvent
+    public static void captureProjection(net.minecraftforge.client.event.RenderLevelStageEvent event) {
+        if (event.getStage() == net.minecraftforge.client.event.RenderLevelStageEvent.Stage.AFTER_ENTITIES)
+            ClientSkillFeedback.renderExits(event.getPoseStack(), event.getCamera().getPosition());
+        if (event.getStage() == net.minecraftforge.client.event.RenderLevelStageEvent.Stage.AFTER_LEVEL)
+            ClientSkillFeedback.projection(event.getProjectionMatrix());
+    }
+
     private static boolean postDispatch;
 
     private SkillHudRenderCompat() {
@@ -41,7 +49,10 @@ public final class SkillHudRenderCompat {
         try {
             RenderGuiOverlayEvent.Post hudEvent = new RenderGuiOverlayEvent.Post(
                     event.getWindow(), graphics, event.getPartialTick(), VanillaGuiOverlay.HOTBAR.type());
+            SkillIconHud.beginFrame();
             renderSkillHud(hudEvent);
+            SkillIconHud.endFrame(graphics);
+            ClientSkillFeedback.render(graphics);
             graphics.flush();
         } finally {
             postDispatch = false;

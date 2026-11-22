@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.gizmo;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.util.TrapMarkerTargeting;
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.entity.GizmoSmokeTrapEntity;
@@ -13,7 +16,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Optional;
@@ -137,7 +139,7 @@ public final class GizmoSkills {
         GizmoSmokeTrapEntity trap = new GizmoSmokeTrapEntity(ModEntities.GIZMO_SMOKE_TRAP.get(), level, player, placement.get().face());
         Vec3 pos = placement.get().position();
         trap.setPos(pos.x, pos.y, pos.z);
-        level.addFreshEntity(trap);
+        ToolHandRelease.spawned(level.addFreshEntity(trap), player, ToolHandCue.GIZMO_SMOKE_TRAP);
         RangedSoundHelper.playTrapSound(level, pos, ModSounds.GIZMO_SMOKE_TRAP_DEPLOY.get(), 0.9f, 1.0f);
         if (triggerImmediately) {
             trap.trigger(player.getLookAngle());
@@ -161,7 +163,7 @@ public final class GizmoSkills {
         GizmoSpiderNestTrapEntity trap = new GizmoSpiderNestTrapEntity(ModEntities.GIZMO_SPIDER_NEST_TRAP.get(), level, player);
         Vec3 pos = placement.get().position();
         trap.setPos(pos.x, pos.y, pos.z);
-        level.addFreshEntity(trap);
+        ToolHandRelease.spawned(level.addFreshEntity(trap), player, ToolHandCue.GIZMO_SPIDER_NEST);
         RangedSoundHelper.playTrapSound(level, pos, ModSounds.GIZMO_SPIDER_NEST_DEPLOY.get(), 0.9f, 1.0f);
         if (triggerImmediately) {
             trap.trigger(directionFromLook(player));
@@ -189,7 +191,7 @@ public final class GizmoSkills {
         tBoy.setDeltaMovement(look.scale(1.2D).add(0.0D, 0.05D, 0.0D));
         tBoy.setYRot(player.getYRot());
         tBoy.setXRot(player.getXRot());
-        level.addFreshEntity(tBoy);
+        ToolHandRelease.spawned(level.addFreshEntity(tBoy), player, ToolHandCue.GIZMO_T_BOY);
         GizmoStateManager.setCoreCooldown(player);
         GizmoStateManager.setEquippedTool(player, GizmoTool.NONE);
         level.playSound(null, player.blockPosition(), ModSounds.GIZMO_T_BOY_DEPLOY.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
@@ -239,7 +241,7 @@ public final class GizmoSkills {
         if (entity == null || entity.distanceToSqr(player) > 50.0D * 50.0D) {
             return false;
         }
-        if (GizmoStateManager.equippedTool(player) != GizmoTool.NONE || !handsEmpty(player)) {
+        if (GizmoStateManager.equippedTool(player) != GizmoTool.NONE) {
             return false;
         }
 
@@ -247,11 +249,6 @@ public final class GizmoSkills {
                 TrapMarkerTargeting.MARKER_HEIGHT);
     }
 
-    private static boolean handsEmpty(ServerPlayer player) {
-        ItemStack main = player.getMainHandItem();
-        ItemStack off = player.getOffhandItem();
-        return main.isEmpty() && off.isEmpty();
-    }
 
     private static Vec3 directionFromLook(ServerPlayer player) {
         Vec3 look = player.getLookAngle();

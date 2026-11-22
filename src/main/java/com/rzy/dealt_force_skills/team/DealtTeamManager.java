@@ -135,6 +135,8 @@ public final class DealtTeamManager {
      * </ul>
      */
     public static boolean canRescue(Player helper, Player target) {
+        if (com.rzy.dealt_force_skills.raid.RaidMatches.belongs(helper) || com.rzy.dealt_force_skills.raid.RaidMatches.belongs(target))
+            return helper != target && com.rzy.dealt_force_skills.raid.RaidMatches.sameTeam(helper, target);
         if (helper == null || target == null || helper.getUUID().equals(target.getUUID())) {
             return false;
         }

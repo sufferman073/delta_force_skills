@@ -20,7 +20,7 @@ import java.lang.reflect.Modifier;
 import java.util.function.Supplier;
 
 public class NetworkHandler {
-    private static final String PROTOCOL = "88";
+    private static final String PROTOCOL = "90";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(DealtForceSkillsMod.MODID, "main"),
@@ -31,6 +31,15 @@ public class NetworkHandler {
 
     public static void onCommonSetup(FMLCommonSetupEvent e) {
         e.enqueueWork(() -> {
+            CHANNEL.messageBuilder(C2S_RaidShopSearch.class, 300, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_RaidShopSearch::encode).decoder(C2S_RaidShopSearch::decode)
+                    .consumerMainThread(C2S_RaidShopSearch::handle).add();
+            CHANNEL.messageBuilder(C2S_SkillObservation.class, 234, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_SkillObservation::encode).decoder(C2S_SkillObservation::decode)
+                    .consumerMainThread(C2S_SkillObservation::handle).add();
+            CHANNEL.messageBuilder(S2C_SkillFeedback.class, 233, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                    .encoder(S2C_SkillFeedback::encode).decoder(S2C_SkillFeedback::decode)
+                    .consumerMainThread(NetworkHandler::handleClientPacket).add();
             CHANNEL.messageBuilder(C2S_HomeAction.class, 235, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                     .encoder(C2S_HomeAction::encode).decoder(C2S_HomeAction::decode).consumerMainThread(C2S_HomeAction::handle).add();
             CHANNEL.messageBuilder(S2C_HomeSnapshot.class, 236, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
@@ -967,8 +976,11 @@ public class NetworkHandler {
             CHANNEL.messageBuilder(S2C_RoverState.class, id++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                     .encoder(S2C_RoverState::encode).decoder(S2C_RoverState::decode)
                     .consumerMainThread(NetworkHandler::handleClientPacket).add();
-            if (id > 235) {
-                throw new IllegalStateException("Sequential network IDs overlap reserved IDs 235..255");
+            CHANNEL.messageBuilder(C2S_HeldToolPrep.class, id++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                    .encoder(C2S_HeldToolPrep::encode).decoder(C2S_HeldToolPrep::decode)
+                    .consumerMainThread(C2S_HeldToolPrep::handle).add();
+            if (id > 233) {
+                throw new IllegalStateException("Sequential network IDs overlap reserved IDs 233..255");
             }
             com.mojang.logging.LogUtils.getLogger().info("Network protocol {}: Wildfire action=238, state=239; stamina vault=0, state=1", PROTOCOL);
         });
@@ -1039,6 +1051,10 @@ public class NetworkHandler {
     }
 
     private static boolean isSkillHudStatePacket(Object msg) {
+        if (msg instanceof S2C_SkillFeedback feedback) {
+            String kind = feedback.data().getString("Kind");
+            return kind.equals("raptor_hummingbird") || kind.equals("nikaidou_witch");
+        }
         return msg instanceof S2C_SyncSinevaState
                 || msg instanceof S2C_SyncUluruState
                 || msg instanceof S2C_SyncDWolfState

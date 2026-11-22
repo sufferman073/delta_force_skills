@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.stinger;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.SkillSlot;
 import com.rzy.dealt_force_skills.character.commander.CommanderBranchUpgrade;
 import com.rzy.dealt_force_skills.character.commander.CommanderStateManager;
@@ -120,7 +123,7 @@ public final class StingerSkills {
         smoke.setDeltaMovement(look.scale(speed).add(0.0D, lift, 0.0D));
         smoke.setYRot(player.getYRot());
         smoke.setXRot(player.getXRot());
-        if (level.addFreshEntity(smoke))
+        if (ToolHandRelease.spawned(level.addFreshEntity(smoke), player, ToolHandCue.STINGER_SMOKE_GRENADE))
             com.rzy.dealt_force_skills.motion.TacticalMotionSync.throwItem(player);
         level.playSound(null, player.blockPosition(), ModSounds.STINGER_SMOKE_THROW.get(),
                 SoundSource.PLAYERS, 0.95f, highThrow ? 0.95f : 1.1f);
@@ -172,7 +175,7 @@ public final class StingerSkills {
         Vec3 look = player.getLookAngle().normalize();
         Vec3 start = player.getEyePosition().add(look.scale(0.8D));
         drone.setPos(start.x, start.y - 0.1D, start.z);
-        if(level.addFreshEntity(drone)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        if(ToolHandRelease.spawned(level.addFreshEntity(drone), player, ToolHandCue.STINGER_SMOKE_DRONE)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         level.playSound(null, player.blockPosition(), ModSounds.STINGER_DRONE_LAUNCH.get(),
                 SoundSource.PLAYERS, 0.9f, guided ? 0.95f : 1.05f);
         StingerStateManager.setEquippedTool(player, StingerTool.NONE);
@@ -263,20 +266,14 @@ public final class StingerSkills {
                 mode
         );
         Vec3 look = player.getLookAngle().normalize();
-        Vec3 right = look.cross(new Vec3(0.0D, 1.0D, 0.0D)).normalize();
-        Vec3 vertical = right.cross(look).normalize();
-        Vec3 start = player.getEyePosition()
-                .add(look.scale(0.58D))
-                .add(right.scale(0.30D))
-                .add(vertical.scale(-0.24D));
+        Vec3 start = projectile.placeAtMuzzle(player, look);
         Vec3 direction = target == null
                 ? look
                 : target.position().add(0.0D, target.getBbHeight() * 0.58D, 0.0D).subtract(start).normalize();
-        projectile.setPos(start.x, start.y, start.z);
         projectile.setDeltaMovement(direction.scale(STIM_PROJECTILE_SPEED));
         projectile.setYRot(player.getYRot());
         projectile.setXRot(player.getXRot());
-        if(level.addFreshEntity(projectile)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
+        if(ToolHandRelease.spawned(level.addFreshEntity(projectile), player, ToolHandCue.STINGER_STIM_GUN)) com.rzy.dealt_force_skills.department.DepartmentTasks.activated(player,"");
         level.playSound(null, player.blockPosition(), ModSounds.STINGER_STIM_FIRE.get(),
                 SoundSource.PLAYERS, 0.85f, mode == StingerStimMode.HEAL ? 1.12f : 0.88f);
     }

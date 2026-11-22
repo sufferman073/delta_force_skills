@@ -80,6 +80,9 @@ public class MorseShockOrbEntity extends Projectile implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "morse.skill.shock_orb", (masterBall ? RADIUS * 6.0D : RADIUS), (masterBall ? RADIUS * 6.0D : RADIUS) + 3,
+                player -> nativeAllegiance.active() ? nativeAllegiance.isEnemy((ServerLevel)level(), player)
+                        : TargetingUtil.isHostileLivingFor(owner((ServerLevel)level()), player));
         if (!level().isClientSide && nativeAllegiance.active() && tickCount > 200) { discard(); return; }
 
         if (!level().isClientSide && explodeInTicks >= 0) {

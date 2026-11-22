@@ -149,7 +149,7 @@ public final class HvkAsaraArenaManager {
     private static final int NATURAL_SPAWN_TICKS = 30 * 20;
     private static final int SUCCESS_PACK_TICKS = 60 * 20;
     private static final int BUILD_BLOCKS_PER_TICK = 16_384;
-    private static final int BUILD_CHUNKS_PER_TICK = 2;
+    private static final int BUILD_CHUNKS_PER_TICK = 8;
     private static final int BUILD_ENTITY_CHUNKS_PER_TICK = 64;
     private static final long BUILD_TICK_BUDGET_NANOS = 4_000_000L;
     private static final int MAX_BUILD_TICKS = 10 * 60 * 20;
@@ -224,14 +224,13 @@ public final class HvkAsaraArenaManager {
 
         List<LivingEntity> living = arena.getEntitiesOfClass(LivingEntity.class, bounds(session), LivingEntity::isAlive);
         for (LivingEntity entity : living) {
-            entity.addEffect(new MobEffectInstance(MobEffects.GLOWING, 40, 0, false, false, false));
+            if (!entity.hasEffect(MobEffects.GLOWING) || now % 20 == 0) entity.addEffect(new MobEffectInstance(MobEffects.GLOWING, 40, 0, false, false, false));
             if (entity != player) {
                 markAndApplyMob(entity, session);
             }
         }
         List<LivingEntity> activeHostiles = living.stream()
                 .filter(entity -> entity != player && isSessionHostile(entity, session))
-                .sorted(java.util.Comparator.comparingDouble(player::distanceToSqr))
                 .toList();
         syncArenaStatus(player, session, activeHostiles, now);
 
@@ -809,7 +808,7 @@ public final class HvkAsaraArenaManager {
         }
         session.nextHudSyncAt = now + HUD_SYNC_INTERVAL_TICKS;
         List<BlockPos> positions = activeHostiles.size() < 8
-                ? activeHostiles.stream().map(Entity::blockPosition).toList() : List.of();
+                ? activeHostiles.stream().sorted(java.util.Comparator.comparingDouble(player::distanceToSqr)).map(Entity::blockPosition).toList() : List.of();
         NetworkHandler.sendToPlayer(new S2C_HvkAsaraArenaStatus(activeHostiles.size(), positions), player);
     }
 
@@ -1532,6 +1531,7 @@ public final class HvkAsaraArenaManager {
         private ResetBounds resetBounds;
         private int clearTargetIndex;
         private long clearBlockIndex;
+        private net.minecraft.world.level.chunk.LevelChunk clearChunk;
         private ServerLevel clearLoadedLevel;
         private int clearLoadedChunkX = Integer.MIN_VALUE;
         private int clearLoadedChunkZ = Integer.MIN_VALUE;
@@ -1553,6 +1553,8 @@ public final class HvkAsaraArenaManager {
         private boolean cleanupOnly;
         private RandomSource structureRandom;
         private int activeTicks;
+        private int stageStartTick;
+        private BuildStage timedStage;
         private int lastReportedProgress = -10;
         private int nextProgressReminderTick;
 
@@ -1567,7 +1569,9 @@ public final class HvkAsaraArenaManager {
         }
 
         private boolean tick(MinecraftServer server, ServerPlayer player) {
-            if (!cleanupOnly && ++activeTicks > MAX_BUILD_TICKS) {
+            ++activeTicks;
+            if (timedStage != stage) { timedStage = stage; stageStartTick = activeTicks; }
+            if (!cleanupOnly && activeTicks - stageStartTick > MAX_BUILD_TICKS) {
                 rollbackPlayer(server, player);
                 if (player != null) {
                     player.displayClientMessage(Component.translatable(
@@ -1731,7 +1735,7 @@ public final class HvkAsaraArenaManager {
             int generated = 0;
             while (previewSourceIndex < previewSources.size()
                     && checked < STRUCTURE_PLACEMENT_CHECKS_PER_TICK
-                    && generated < 1
+                    && generated < 8
                     && (checked == 0 || System.nanoTime() < deadline)) {
                 ServerLevel source = previewSources.get(previewSourceIndex);
                 if (previewPlacementSourceIndex != previewSourceIndex) {
@@ -1769,7 +1773,7 @@ public final class HvkAsaraArenaManager {
                     previewGenerationAttempts++;
                     generated++;
                     StructureStart candidate = generateStructureAt(source, structure, candidateChunk);
-                    if (candidate.isValid()) {
+                    if (candidate.isValid() && structureChunkCount(candidate.getBoundingBox()) <= MAX_STRUCTURE_CHUNKS) {
                         sourcePreview = relocatePreview(candidate, structure, source, targetChunk);
                         stage = BuildStage.PREPARE;
                         return false;
@@ -1901,6 +1905,27 @@ public final class HvkAsaraArenaManager {
             return false;
         }
 
+        private final Map<ServerLevel, Map<Long, java.util.BitSet>> entityRegions = new java.util.IdentityHashMap<>();
+
+        private boolean mayHaveSavedEntities(ServerLevel level, int chunkX, int chunkZ) {
+            int regionX = chunkX >> 5, regionZ = chunkZ >> 5;
+            var regions = entityRegions.computeIfAbsent(level, ignored -> new HashMap<>());
+            var slots = regions.computeIfAbsent(ChunkPos.asLong(regionX, regionZ), ignored -> {
+                var occupied = new java.util.BitSet(1024);
+                var directory = net.minecraft.world.level.dimension.DimensionType.getStorageFolder(level.dimension(),
+                        level.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT));
+                var file = directory.resolve("entities").resolve("r." + regionX + "." + regionZ + ".mca");
+                if (java.nio.file.Files.notExists(file)) return occupied;
+                try (var input = new java.io.DataInputStream(new java.io.BufferedInputStream(java.nio.file.Files.newInputStream(file)))) {
+                    for (int index = 0; index < 1024; index++) if (input.readInt() != 0) occupied.set(index);
+                } catch (java.io.IOException unreadable) {
+                    occupied.set(0, 1024);
+                }
+                return occupied;
+            });
+            return slots.get((chunkX & 31) + 32 * (chunkZ & 31));
+        }
+
         private boolean processEntities(long deadline) {
             int processed = 0;
             while (entityTargetIndex < entityTargets.size() && processed < BUILD_ENTITY_CHUNKS_PER_TICK
@@ -1927,7 +1952,9 @@ public final class HvkAsaraArenaManager {
                 AABB area = new AABB(Math.max(minX, chunkX << 4), target.level.getMinBuildHeight(),
                         Math.max(minZ, chunkZ << 4), Math.min(maxX + 1.0D, (chunkX << 4) + 16.0D),
                         target.level.getMaxBuildHeight(), Math.min(maxZ + 1.0D, (chunkZ << 4) + 16.0D));
-                target.level.getChunk(chunkX, chunkZ);
+                if (target.level.getChunkSource().getChunkNow(chunkX, chunkZ) == null && mayHaveSavedEntities(target.level, chunkX, chunkZ)) {
+                    target.level.getChunk(chunkX, chunkZ);
+                }
                 for (Entity entity : target.level.getEntities((Entity) null, area, entity -> !(entity instanceof Player))) {
                     entity.discard();
                 }
@@ -1954,12 +1981,14 @@ public final class HvkAsaraArenaManager {
                 int chunkX = pos.getX() >> 4;
                 int chunkZ = pos.getZ() >> 4;
                 if (clearLoadedLevel != target.level || clearLoadedChunkX != chunkX || clearLoadedChunkZ != chunkZ) {
-                    target.level.getChunk(chunkX, chunkZ);
+                    clearChunk = target.level.getChunk(chunkX, chunkZ);
                     clearLoadedLevel = target.level;
                     clearLoadedChunkX = chunkX;
                     clearLoadedChunkZ = chunkZ;
                 }
-                if (!target.level.getBlockState(pos).isAir()) {
+                if (clearChunk.getSection(clearChunk.getSectionIndex(pos.getY())).hasOnlyAir()) {
+                    clearBlockIndex += Math.min(15 - (pos.getY() & 15), target.bounds.maxY - pos.getY());
+                } else if (!clearChunk.getBlockState(pos).isAir()) {
                     target.level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 18);
                 }
                 processed++;

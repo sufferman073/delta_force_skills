@@ -176,8 +176,8 @@ public final class NativeStingerSkills implements OperativeSkills {
             Vec3 direction = point.subtract(host.body().getEyePosition()).normalize();
             var dart = new StingerStimProjectileEntity(ModEntities.STINGER_STIM_PROJECTILE.get(), host.serverLevel(), host.body(),
                     cloud == null ? target.getUUID() : null, healing ? StingerStimMode.HEAL : StingerStimMode.SUPPRESS);
-            dart.setPos(host.body().getEyePosition().add(direction.scale(0.65)));
-            dart.setDeltaMovement(direction.scale(2.25D));
+            Vec3 start = dart.placeAtMuzzle(host.body(), direction);
+            dart.setDeltaMovement(point.subtract(start).normalize().scale(2.25D));
             if (!host.serverLevel().addFreshEntity(dart)) return;
         }
         if (stim == stimCapacity()) stimRecharge = Math.max(1, StingerStateManager.STIM_RECHARGE_TICKS);

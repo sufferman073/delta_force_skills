@@ -1,4 +1,6 @@
 {
+  "config.deltaforce.BASE|customdrop.enabled": "自定义掉落物总开关（服务器）",
+  "config.deltaforce.subcategory.rules": "服务器规则",
   "tab.deltaforce": "三角洲行动",
   "item.deltaforce.temp_df": "临时DF测试物品",
   "item.deltaforce.african_star": "非洲之星",

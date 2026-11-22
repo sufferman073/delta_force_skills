@@ -257,7 +257,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
             pendingCraftRecipeId = recipeId;
             startPlanningJob(player, recipeId, requestId, basic);
             player.displayClientMessage(Component.translatable(
-                    "message.dealt_force_skills.hvk_constructor.plan_checking", recipe.result.getHoverName()), true);
+                    "message.dealt_force_skills.hvk_constructor.plan_checking", WorkBlockItemNames.name(recipe.result)), true);
             return 0;
         }
         int queued = maxCrafts;
@@ -267,7 +267,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
                 || !canConsumeWithRedemption(player, batchCost, sources)) {
             player.displayClientMessage(Component.translatable(
                     "message.dealt_force_skills.hvk_constructor.not_enough_batch",
-                    queued, outputCount, recipe.result.getHoverName()), true);
+                    queued, outputCount, WorkBlockItemNames.name(recipe.result)), true);
             pendingCrafts = 0;
             pendingCraftRecipeId = null;
             return 0;
@@ -286,7 +286,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         sendRecipeDetail(player, recipeId);
         player.displayClientMessage(Component.translatable(
                 "message.dealt_force_skills.hvk_constructor.queued",
-                queuedCrafts, queuedTargetItems, recipe.result.getHoverName()), true);
+                queuedCrafts, queuedTargetItems, WorkBlockItemNames.name(recipe.result)), true);
         return queued;
     }
 
@@ -712,7 +712,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         if (queuedRawCost.isEmpty() && hasInputs(recipe.inputs)) {
             sendRecipeDetail(owner, detailId, "missing_authoritative_plan");
             owner.displayClientMessage(Component.translatable(
-                    "message.dealt_force_skills.hvk_constructor.plan_checking", recipe.result.getHoverName()), true);
+                    "message.dealt_force_skills.hvk_constructor.plan_checking", WorkBlockItemNames.name(recipe.result)), true);
             clearQueuedCraft();
             markUpdated();
             return;
@@ -728,7 +728,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
                 || !craftBatch(owner, recipe, batchCost, (int) remainingItems)) {
             owner.displayClientMessage(Component.translatable(
                     "message.dealt_force_skills.hvk_constructor.not_enough_batch",
-                    remainingCrafts, remainingItems, recipe.result.getHoverName()), true);
+                    remainingCrafts, remainingItems, WorkBlockItemNames.name(recipe.result)), true);
             clearQueuedCraft();
             sendRecipeDetail(owner, detailId);
             markUpdated();
@@ -739,7 +739,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         play(ModSounds.HVK_CONSTRUCTOR_CRAFT_FINISH.get());
         owner.displayClientMessage(Component.translatable(
                 "message.dealt_force_skills.hvk_constructor.crafted",
-                remainingItems, recipe.result.getHoverName()), true);
+                remainingItems, WorkBlockItemNames.name(recipe.result)), true);
         sendRecipeDetail(owner, detailId);
         markUpdated();
     }
@@ -1056,7 +1056,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
                         if (mix != null && mix.getClass().getName().contains("PotionBrewing")) {
                             try {
                                 addBrewingMixRecipes(level, mix, seen, recipes);
-                            } catch (ReflectiveOperationException | RuntimeException ignored) {
+                            } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
                                 // Skip incompatible mix entries while keeping other brewing recipes visible.
                             }
                         }
@@ -1675,12 +1675,20 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
                 collectIndexedRecipes(level, type, seen, recipes, byId, mutableOptions);
             }
             for (SyntheticRecipe recipe : syntheticRecipes(level)) {
-                addIndexedRecipe(recipe.id, recipe.recipe, seen, recipes, byId, mutableOptions);
+                try {
+                    addIndexedRecipe(recipe.id, recipe.recipe, seen, recipes, byId, mutableOptions);
+                } catch (RuntimeException | LinkageError error) {
+                    LOGGER.warn("Skipping incompatible HVK recipe {}", recipe.id, error);
+                }
             }
             for (var entry : com.rzy.dealt_force_skills.compat.HvkJeiRecipeCatalog.entries(level)) {
-                List<RecipeInput> inputs = entry.inputs().stream()
-                        .map(input -> new RecipeInput(Ingredient.of(input.choices().stream()), input.count())).toList();
-                addIndexedRecipe(entry.id(), new SelectedRecipe(entry.output(), inputs), seen, recipes, byId, mutableOptions);
+                try {
+                    List<RecipeInput> inputs = entry.inputs().stream()
+                            .map(input -> new RecipeInput(Ingredient.of(input.choices().stream()), input.count())).toList();
+                    addIndexedRecipe(entry.id(), new SelectedRecipe(entry.output(), inputs), seen, recipes, byId, mutableOptions);
+                } catch (RuntimeException | LinkageError error) {
+                    LOGGER.warn("Skipping incompatible HVK recipe {}", entry.id(), error);
+                }
             }
             recipes.sort(Comparator
                     .comparing((IndexedRecipe recipe) -> itemKey(recipe.view.result.getItem()))
@@ -1754,7 +1762,7 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
         }
 
         private static String searchText(ResourceLocation id, ItemStack result) {
-            return (id + " " + itemKey(result.getItem()) + " " + result.getHoverName().getString())
+            return (id + " " + itemKey(result.getItem()))
                     .toLowerCase(Locale.ROOT);
         }
     }
@@ -1771,8 +1779,12 @@ public class HvkAdvancedStandardTemplateConstructorBlockEntity extends BlockEnti
             Level level, RecipeType<T> type, Set<ResourceLocation> seen, List<IndexedRecipe> recipes,
             Map<ResourceLocation, SelectedRecipe> byId, Map<Item, List<CraftingOption>> optionsByItem) {
         for (T recipe : level.getRecipeManager().getAllRecipesFor(type)) {
-            RecipeIndex.addIndexedRecipe(recipe.getId(), selectedRecipe(level, recipe),
-                    seen, recipes, byId, optionsByItem);
+            try {
+                RecipeIndex.addIndexedRecipe(recipe.getId(), selectedRecipe(level, recipe),
+                        seen, recipes, byId, optionsByItem);
+            } catch (RuntimeException | LinkageError error) {
+                LOGGER.warn("Skipping incompatible HVK recipe {}", recipe.getClass().getName(), error);
+            }
         }
     }
 

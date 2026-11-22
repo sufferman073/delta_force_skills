@@ -28,18 +28,18 @@ public final class NativeNTwoSkills implements OperativeSkills {
     private static boolean valid(OperativeHost host, LivingEntity target) {
         return target != null && target.isAlive() && target.level() == host.body().level()
                 && host.isEnemy(target) && host.withinCombatRange(target.position())
-                && host.body().distanceToSqr(target) <= 24 * 24 && host.canSee(target);
+                && host.body().distanceToSqr(target) <= 24 * 24 && OperativeHearing.knownContact(host, target);
     }
     private static OperativeBallistics.Shot floorShot(OperativeHost host, LivingEntity target, boolean core) {
         if (!valid(host, target)) return null;
-        var shot = OperativeBallistics.solve(host, target.position(), core ? 3.25 : 1.1, core ? 0.18 : 0.22,
+        var shot = OperativeBallistics.lob(host, target.position(), core ? 3.25 : 1.1, core ? 0.18 : 0.22,
                 core ? 0.75 : 0.7, 0.12, core ? 0.012 : 0.045, core ? 0.996 : 0.986,
                 core ? 180 : 240, core ? 2 : 4, true);
         double safe = core ? 4 : 7;
         return shot != null && host.body().position().distanceToSqr(shot.impact()) > safe * safe ? shot : null;
     }
     private static OperativeBallistics.Shot trackingShot(OperativeHost host, LivingEntity target) {
-        return valid(host, target) ? OperativeBallistics.direct(host, target, 0.72, 0.7, 0.12, 0, 1, 240) : null;
+        return valid(host, target) && host.canSee(target) ? OperativeBallistics.direct(host, target, 0.72, 0.7, 0.12, 0, 1, 240) : null;
     }
     private boolean covered(OperativeHost host, LivingEntity target) {
         return !host.serverLevel().getEntitiesOfClass(NTwoIceFieldEntity.class, target.getBoundingBox().inflate(6),

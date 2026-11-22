@@ -22,6 +22,7 @@ public final class ClientVyronToolAnimationState {
     public static void startFire(VyronTool tool) {
         fireTool = tool;
         fireStartedNanos = System.nanoTime();
+        ClientToolModelAnimationState.start("vyron_release", modelFor(tool), "fire", tool == VyronTool.TIGER_CANNON ? .12F : .7F, ClientToolModelAnimationState.FAST_PLAYBACK_SPEED);
     }
 
     public static boolean hasActiveFire() {
@@ -37,7 +38,8 @@ public final class ClientVyronToolAnimationState {
             length = fireTool == VyronTool.MAGNETIC_BOMB ? 0.70833F : 0.08333F;
         }
         if (fireElapsedSeconds() >= length) {
-            reset();
+            fireTool = VyronTool.NONE;
+            fireStartedNanos = 0L;
         }
         return fireTool;
     }

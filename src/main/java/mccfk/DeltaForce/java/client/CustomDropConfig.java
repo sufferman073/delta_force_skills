@@ -169,6 +169,6 @@ public final class CustomDropConfig {
     }
 
     private static Path configPath() {
-        return FMLPaths.CONFIGDIR.get().resolve("deltaforce").resolve(FILE_NAME);
+        return com.rzy.dealt_force_skills.client.HudProfileFiles.local(FMLPaths.CONFIGDIR.get().resolve("deltaforce").resolve(FILE_NAME));
     }
 }

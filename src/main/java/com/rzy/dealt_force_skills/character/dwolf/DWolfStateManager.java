@@ -18,6 +18,7 @@ import com.rzy.dealt_force_skills.util.RangedSoundHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import com.rzy.dealt_force_skills.skill.HeldToolVisualSync;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -207,6 +208,10 @@ public final class DWolfStateManager {
         return consumeCharge(player, SMOKE_CHARGES, smokeCapacity(player), SMOKE_NEXT_RECHARGE, SMOKE_RECHARGE_TICKS);
     }
 
+    public static boolean handCannonVisible(Player player) {
+        return player.getPersistentData().getCompound(ROOT_TAG).getInt(EQUIPPED_TOOL) == DWolfTool.HAND_CANNON.ordinal();
+    }
+
     public static DWolfTool equippedTool(Player player) {
         int ordinal = data(player).getInt(EQUIPPED_TOOL);
         DWolfTool[] values = DWolfTool.values();
@@ -214,6 +219,7 @@ public final class DWolfStateManager {
     }
 
     public static void setEquippedTool(Player player, DWolfTool tool) {
+        if (player instanceof ServerPlayer serverPlayer) HeldToolVisualSync.changed(serverPlayer);
         data(player).putInt(EQUIPPED_TOOL, tool.ordinal());
     }
 
@@ -405,6 +411,7 @@ public final class DWolfStateManager {
 
         tag.putLong(OVERLOAD_STARTUP_UNTIL, 0L);
         tag.putLong(OVERLOAD_ACTIVE_UNTIL, now + CommanderStateManager.skillDuration(player, OVERLOAD_DURATION_TICKS));
+        com.rzy.dealt_force_skills.skill.BareSkillPulse.OVERLOAD.play(player);
         tag.putDouble(OVERLOAD_STEP_LAST_X, player.getX());
         tag.putDouble(OVERLOAD_STEP_LAST_Z, player.getZ());
         com.rzy.dealt_force_skills.stamina.StaminaManager.recoverPercent(player, 50);

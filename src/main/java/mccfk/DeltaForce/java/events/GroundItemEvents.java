@@ -55,6 +55,15 @@ public class GroundItemEvents {
     }
 
     @SubscribeEvent
+    public static void onItemToss(ItemTossEvent event) {
+        if (!event.getPlayer().level().isClientSide() && shouldConvertToGroundItem(event.getEntity().getItem())) {
+            var player = event.getPlayer();
+            event.getEntity().setPos(player.getX(), player.getY(), player.getZ());
+            event.getEntity().setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        }
+    }
+
+    @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent event) {
         if (event.getEntity() instanceof ItemEntity itemEntity && !itemEntity.getItem().isEmpty()) {
             ItemStack itemStack = itemEntity.getItem();

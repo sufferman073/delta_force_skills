@@ -31,6 +31,7 @@ public record C2S_DfWarehouseAction(Action action, int index, int target, int co
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
+            if (player != null && com.rzy.dealt_force_skills.raid.RaidAccess.externalItemsBlocked(player)) return;
             if (player == null || message.action != Action.OPEN
                     && (message.count < 0 || message.count > MAX_TRANSFER_COUNT)) return;
             boolean changed = switch (message.action) {

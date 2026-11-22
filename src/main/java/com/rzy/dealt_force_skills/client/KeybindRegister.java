@@ -1,6 +1,8 @@
 package com.rzy.dealt_force_skills.client;
 
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
+import com.rzy.dealt_force_skills.character.ModCharacters;
+import com.rzy.dealt_force_skills.client.character.ClientCharacterSelectionState;
 import net.minecraft.client.KeyMapping;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -17,6 +19,20 @@ public class KeybindRegister {
     public static KeyMapping ACTIVE_SKILL_1;
     public static KeyMapping ACTIVE_SKILL_2;
     public static KeyMapping CORE_SKILL;
+    private static final java.util.Set<String> REVERSED = java.util.Set.of(
+            ModCharacters.VYRON_ID, ModCharacters.D_WOLF_ID, ModCharacters.NOX_ID,
+            ModCharacters.WILDFIRE_ID, ModCharacters.TEMPEST_ID, ModCharacters.STINGER_ID,
+            ModCharacters.TOXIK_ID, ModCharacters.VLINDER_ID, ModCharacters.SHEPHERD_ID,
+            ModCharacters.LUNA_ID, ModCharacters.MORSE_ID, ModCharacters.RAPTOR_ID);
+
+    public static boolean reversedActives() {
+        String selected = ClientCharacterSelectionState.selectedCharacterId();
+        return selected != null && REVERSED.contains(selected);
+    }
+
+    public static KeyMapping activeKey(int originalSlot) {
+        return (originalSlot == 1) != reversedActives() ? ACTIVE_SKILL_1 : ACTIVE_SKILL_2;
+    }
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent e) {

@@ -111,6 +111,7 @@ public class CatDadRoadTruckEntity extends Entity implements com.rzy.dealt_force
     @Override
     public void tick() {
         super.tick();
+        warnRoadTargets();
         int age = entityData.get(AGE) + 1;
         entityData.set(AGE, age);
         if (level().isClientSide) {
@@ -303,6 +304,20 @@ public class CatDadRoadTruckEntity extends Entity implements com.rzy.dealt_force
             SkillDamageHelper.hurt(target, SkillDamageHelper.catDadTruck(level, this, source),
                     source instanceof LivingEntity living ? living : null,
                     DealtForceConfig.floatValue("summons.cat_dad_road_truck_entity.skill_hurt.0.damage", 10000));
+        }
+    }
+
+    private void warnRoadTargets() {
+        if (!(level() instanceof ServerLevel level) || tickCount % 4 != 0) return;
+        Vec3 dir = direction(), side = new Vec3(-dir.z, 0, dir.x);
+        for (ServerPlayer player : level.players()) {
+            Vec3 rel = player.getBoundingBox().getCenter().subtract(start());
+            double along = rel.dot(dir), lateral = Math.abs(rel.dot(side));
+            if (along < -3 || along > length() + 3 || lateral > roadWidth() * .5D + 3
+                    || rel.y < TRUCK_VERTICAL_BOTTOM - 3 || rel.y > TRUCK_VERTICAL_TOP + 3) continue;
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.shaped(player, this, "catdad.skill.highway", insideTruck(position(), player));
+            if (along >= 0 && along <= length() && lateral <= roadWidth() * .5D)
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(player, "truck");
         }
     }
 

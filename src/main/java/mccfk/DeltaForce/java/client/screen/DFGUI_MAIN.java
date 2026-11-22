@@ -112,6 +112,12 @@ public class DFGUI_MAIN extends Screen {
     /**
      * 打开三角洲主界面并直接选中"特战干员"标签页（供外部按键/入口调用）
      */
+    public static void openToStart() {
+        lastSelectedTab = 0;
+        StartGameScreen.closeOverlayPanels();
+        Minecraft.getInstance().setScreen(new DFGUI_MAIN());
+    }
+
     public static void openToOperator() {
         lastSelectedTab = OPERATOR_TAB_INDEX;
         StartGameScreen.closeOverlayPanels();
@@ -121,6 +127,11 @@ public class DFGUI_MAIN extends Screen {
     /** Opens the redesigned special-operations panel inside the Delta Force shell.
      */
     public static void openToLogistics() {
+        var client = Minecraft.getInstance();
+        if (client.player != null && client.player.level().dimension().equals(com.rzy.dealt_force_skills.raid.RaidInstances.DIMENSION)) {
+            NetworkHandler.sendToServer(C2S_SpecialOperationsBaseAction.open());
+            return;
+        }
         lastSelectedTab = LOGISTICS_TAB_INDEX;
         StartGameScreen.closeOverlayPanels();
         SpecialOperationsBaseScreen.clearPendingGtiAccess();
@@ -361,11 +372,12 @@ public class DFGUI_MAIN extends Screen {
                     && Operator.handleDetailButtonClick(scaledMouseX, scaledMouseY)) return true;
             // 开始游戏标签下的模式面板点击：打开玩法选择界面
             if (selectedTab == 0) {
-                if (StartGameScreen.isPreBattleRepClicked(scaledMouseX, scaledMouseY, w, h)) {
+                if (subScreen == null && StartGameScreen.isPreBattleRepClicked(scaledMouseX, scaledMouseY, w, h)) {
+                    if (Minecraft.getInstance().getConnection() != null) Minecraft.getInstance().getConnection().sendCommand("raid prep");
                     return true;
                 }
                 if (subScreen == null && StartGameScreen.isNoTargetClicked(scaledMouseX, scaledMouseY, w, h)) {
-                    Minecraft.getInstance().setScreen(new com.rzy.dealt_force_skills.client.screen.HomeScreen(this));
+                    if (Minecraft.getInstance().getConnection() != null) Minecraft.getInstance().getConnection().sendCommand("raid");
                     return true;
                 }
             }

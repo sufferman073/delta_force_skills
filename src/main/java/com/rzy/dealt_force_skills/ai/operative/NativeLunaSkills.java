@@ -55,7 +55,7 @@ public final class NativeLunaSkills implements OperativeSkills {
         revealed.values().removeIf(ticks -> ticks <= 0);
         if (!busy()) return;
         LivingEntity target = host.serverLevel().getEntity(preparedTarget) instanceof LivingEntity living ? living : null;
-        if (!valid(host, target, 2, prepared == SkillSlot.CORE ? 80 : 40)) {
+        if (!valid(host, target, 2, prepared == SkillSlot.CORE ? 80 : 40, prepared != SkillSlot.ACTIVE_2)) {
             cancel(host); return;
         }
         host.aimAt(target);
@@ -79,7 +79,7 @@ public final class NativeLunaSkills implements OperativeSkills {
 
     @Override
     public double score(OperativeHost host, SkillSlot slot, LivingEntity target) {
-        if (busy() || !valid(host, target, 2, slot == SkillSlot.CORE ? 80 : 40)) return 0;
+        if (busy() || !valid(host, target, 2, slot == SkillSlot.CORE ? 80 : 40, slot != SkillSlot.ACTIVE_2)) return 0;
         return switch (slot) {
             case ACTIVE_1 -> shocks > 0 && arrowShot(host, target) != null ? 80 : 0;
             case ACTIVE_2 -> grenades > 0 && safeGrenade(host, grenadeShot(host, target)) ? 120 : 0;
@@ -155,7 +155,11 @@ public final class NativeLunaSkills implements OperativeSkills {
     }
 
     private static boolean valid(OperativeHost host, LivingEntity target, double min, double max) {
-        if (target == null || !host.isEnemy(target) || !host.canSee(target)
+        return valid(host, target, min, max, true);
+    }
+
+    private static boolean valid(OperativeHost host, LivingEntity target, double min, double max, boolean sight) {
+        if (target == null || !host.isEnemy(target) || !(sight ? host.canSee(target) : OperativeHearing.knownContact(host, target))
                 || !host.withinCombatRange(target.position()) || !host.withinOrders(host.body().position())) return false;
         double distance = host.body().distanceToSqr(target);
         return distance >= min * min && distance <= max * max;
@@ -170,8 +174,8 @@ public final class NativeLunaSkills implements OperativeSkills {
     }
 
     private static OperativeBallistics.Shot grenadeShot(OperativeHost host, LivingEntity target) {
-        var shot = OperativeBallistics.solve(host, target.position().add(0, 0.1D, 0),
-                1.55D, 0.18D, 0.7D, 0.12D, 0.045D, 0.986D, 55, 1.5D, true);
+        var shot = OperativeBallistics.lob(host, target.position().add(0, 0.1D, 0),
+                1.55D, 0.18D, 0.7D, 0.12D, 0.045D, 0.986D, Math.min(240, Math.max(0, LunaStateManager.COMPOSITE_GRENADE_FUSE_TICKS - 2)), 1.5D, true);
         return shot != null && shot.flightTicks() + 1 < LunaStateManager.COMPOSITE_GRENADE_FUSE_TICKS ? shot : null;
     }
 

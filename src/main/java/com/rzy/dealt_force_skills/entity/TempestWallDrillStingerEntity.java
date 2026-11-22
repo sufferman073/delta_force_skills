@@ -101,6 +101,7 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
     @Override
     public void tick() {
         super.tick();
+        warnSkillTargets();
         if (allegiance.active() && level() instanceof ServerLevel level
                 && (++nativeAge > 160 + Math.max(1, CHARGE_TICKS)
                 || !isAttached() && nativeAge > 160 || !allegiance.withinOrders(level, position()))) { discard(); return; }
@@ -218,6 +219,24 @@ public class TempestWallDrillStingerEntity extends Projectile implements ItemSup
     private Entity attachedTarget(ServerLevel level) {
         return allegiance.active() ? (attachedEntityUuid == null ? null : level.getEntity(attachedEntityUuid))
                 : level.getEntity(attachedEntityId);
+    }
+
+    private void warnSkillTargets() {
+        if (!(level() instanceof ServerLevel level) || tickCount % 4 != 0) return;
+        Vec3 direction = releaseDirection.lengthSqr() > 1.0E-6D ? releaseDirection.normalize()
+                : getDeltaMovement().lengthSqr() > 1.0E-6D ? getDeltaMovement().normalize() : new Vec3(0, 0, 1);
+        boolean instant = com.rzy.dealt_force_skills.ai.operative.OperativeGrowth.branch(owner(level), CommanderBranchUpgrade.TEMPEST_INSTANT_TRIGGER);
+        for (ServerPlayer player : level.players()) {
+            Vec3 relative = player.getBoundingBox().getCenter().subtract(position());
+            double along = relative.dot(direction);
+            double width = RELEASE_HALF_WIDTH + player.getBbWidth() * .5D;
+            double perpendicular = Math.max(0, relative.lengthSqr() - along * along);
+            boolean danger = instant ? relative.lengthSqr() <= 100
+                    : along >= 0 && along <= RELEASE_RANGE && perpendicular <= width * width;
+            boolean warning = instant ? relative.lengthSqr() <= 169
+                    : along >= -3 && along <= RELEASE_RANGE + 3 && perpendicular <= (width + 3) * (width + 3);
+            if (warning) com.rzy.dealt_force_skills.feedback.SkillFeedback.shaped(player, this, "tempest.skill.wall_drill_stinger", danger || player.getId() == attachedEntityId);
+        }
     }
 
     private void tickFlight() {

@@ -85,6 +85,7 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier, 
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "vyron.skill.tiger_cannon", (radius()));
 
         if (!level().isClientSide) {
             warnPlayers();
@@ -199,7 +200,7 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier, 
         AABB box = new AABB(center, center).inflate(r);
         for (ServerPlayer player : serverLevel.getEntitiesOfClass(ServerPlayer.class, box,
                 target -> TargetingUtil.isTargetablePlayer(target) && target.distanceToSqr(center) <= r * r)) {
-            player.displayClientMessage(Component.translatable("message.dealt_force_skills.vyron.tiger_warning"), true);
+            // Direction and range are shown by SkillFeedback.threat().
         }
     }
 
@@ -246,6 +247,7 @@ public class VyronTigerCannonEntity extends Projectile implements ItemSupplier, 
             }
             hitAny = true;
             if (questHit && target != owner) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"vyron.tiger.hit");
+            if (questHit) com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "tiger");
             knockedDownTargets++;
         }
         if (hitAny && owner instanceof ServerPlayer attacker) {

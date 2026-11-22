@@ -44,6 +44,7 @@ public final class RoverProjectileEntity extends ThrowableItemProjectile {
     @Override public void tick() {
         if (!level().isClientSide && allegiance.active() && tickCount >= 200) { discard(); return; }
         super.tick();
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.hostileThreat(this, smoke ? "rover.skill.smoke" : "rover.skill.injector", smoke ? com.rzy.dealt_force_skills.character.rover.RoverConfig.SMOKE_RADIUS : com.rzy.dealt_force_skills.character.rover.RoverConfig.INJECTOR_RADIUS);
         if (!level().isClientSide && tickCount > 200) { if (allegiance.active()) discard(); else burst(); }
     }
 

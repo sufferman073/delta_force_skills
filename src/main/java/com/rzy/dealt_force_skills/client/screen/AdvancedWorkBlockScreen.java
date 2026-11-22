@@ -26,6 +26,12 @@ public class AdvancedWorkBlockScreen extends Screen {
     private static final int SEARCH_DEBOUNCE_TICKS = 8;
 
     private AdvancedWorkBlockData data;
+    private final java.util.List<EntryView> catalog = new java.util.ArrayList<>();
+    private final java.util.Map<ResourceLocation, String> searchText = new java.util.HashMap<>();
+    private int catalogTotal = -1;
+    private int nextCatalogPage;
+    private boolean catalogPending;
+    private boolean catalogReady;
     private String query;
     private ResourceLocation selectedId;
     private boolean searchFocused;
@@ -48,7 +54,61 @@ public class AdvancedWorkBlockScreen extends Screen {
         if (Minecraft.getInstance().screen instanceof AdvancedWorkBlockScreen screen
                 && screen.data.pos().equals(data.pos())
                 && screen.data.blockType() == data.blockType()) {
-            screen.setData(data);
+            screen.receiveData(data);
+        }
+    }
+
+    private void receiveData(AdvancedWorkBlockData next) {
+        if (next.mode() != data.mode()) return;
+        if (AdvancedWorkBlockData.CATALOG_QUERY.equals(next.query())) {
+            if (catalogTotal >= 0 && catalogTotal != next.total()) {
+                catalog.clear();
+                searchText.clear();
+                nextCatalogPage = 0;
+                catalogReady = false;
+                catalogPending = false;
+            }
+            catalogTotal = next.total();
+            if (next.page() != nextCatalogPage) return;
+            catalogPending = false;
+            catalog.addAll(next.entries());
+            nextCatalogPage++;
+            catalogReady = catalog.size() >= catalogTotal || next.entries().isEmpty();
+            request(data.mode(), query, data.page());
+        } else if (AdvancedWorkBlockData.PREVIEW_QUERY.equals(next.query())) {
+            var rows = new java.util.ArrayList<>(data.entries());
+            for (EntryView entry : next.entries()) {
+                for (int i = 0; i < rows.size(); i++) {
+                    if (rows.get(i).id().equals(entry.id())) rows.set(i, entry);
+                }
+            }
+            // Preserve the current local search/page while refreshing server-owned availability.
+            data = new AdvancedWorkBlockData(data.pos(), data.blockType(), data.mode(), data.query(),
+                    data.page(), data.total(), next.storedEnergy(), rows);
+        } else {
+            // Actions still use the established packets. Refresh only the selected preview afterwards.
+            data = new AdvancedWorkBlockData(data.pos(), data.blockType(), data.mode(), data.query(),
+                    data.page(), data.total(), next.storedEnergy(), data.entries());
+            if (catalogReady) requestPreview();
+        }
+    }
+
+    private void requestPreview() {
+        if (!catalogReady || selectedId == null) return;
+        for (int i = 0; i < catalog.size(); i++) {
+            if (catalog.get(i).id().equals(selectedId)) {
+                NetworkHandler.sendToServer(new C2S_AdvancedWorkBlockQuery(data.pos(), data.blockType(),
+                        data.mode(), AdvancedWorkBlockData.PREVIEW_QUERY, i));
+                return;
+            }
+        }
+    }
+
+    private void collectCatalog() {
+        if (!catalogReady && !catalogPending) {
+            catalogPending = true;
+            NetworkHandler.sendToServer(new C2S_AdvancedWorkBlockQuery(data.pos(), data.blockType(),
+                    data.mode(), AdvancedWorkBlockData.CATALOG_QUERY, nextCatalogPage));
         }
     }
 
@@ -74,6 +134,16 @@ public class AdvancedWorkBlockScreen extends Screen {
         }
     }
 
+    public void reloadCatalog() {
+        catalog.clear();
+        searchText.clear();
+        catalogTotal = -1;
+        nextCatalogPage = 0;
+        catalogPending = false;
+        catalogReady = false;
+        request(data.mode(), query, 0);
+    }
+
     @Override
     public boolean isPauseScreen() {
         return false;
@@ -82,6 +152,7 @@ public class AdvancedWorkBlockScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        collectCatalog();
         if (pendingSearchTicks >= 0 && --pendingSearchTicks <= 0) {
             pendingSearchTicks = -1;
             request(data.mode(), query, 0);
@@ -130,6 +201,7 @@ public class AdvancedWorkBlockScreen extends Screen {
             if (row != null) {
                 selectedId = row.id();
                 outputScroll = 0;
+                requestPreview();
                 return true;
             }
             ActionButton action = actionAt(mouseX, mouseY);
@@ -192,7 +264,26 @@ public class AdvancedWorkBlockScreen extends Screen {
     }
 
     private void request(int mode, String query, int page) {
-        NetworkHandler.sendToServer(new C2S_AdvancedWorkBlockQuery(data.pos(), data.blockType(), mode, query, page));
+        if (mode != data.mode()) {
+            catalog.clear();
+            searchText.clear();
+            catalogTotal = -1;
+            nextCatalogPage = 0;
+            catalogPending = false;
+            catalogReady = false;
+        }
+        java.util.List<EntryView> matches = new java.util.ArrayList<>();
+        for (EntryView entry : catalog) {
+            String text = searchText.computeIfAbsent(entry.id(), ignored ->
+                    entry.id() + " " + entry.name() + " " + entryName(entry).getString());
+            if (com.rzy.dealt_force_skills.compat.JustEnoughCharactersCompat.matches(text, query)) matches.add(entry);
+        }
+        int selectedPage = clamp(page, 0, Math.max(0, (matches.size() - 1) / AdvancedWorkBlockData.PAGE_SIZE));
+        int from = selectedPage * AdvancedWorkBlockData.PAGE_SIZE;
+        setData(new AdvancedWorkBlockData(data.pos(), data.blockType(), mode, query, selectedPage,
+                matches.size(), data.storedEnergy(), matches.subList(from,
+                Math.min(matches.size(), from + AdvancedWorkBlockData.PAGE_SIZE))));
+        if (catalogReady) requestPreview();
     }
 
     private void drawTabs(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -228,6 +319,7 @@ public class AdvancedWorkBlockScreen extends Screen {
                 query.isBlank() ? 0xFF7D8791 : 0xFFFFFF);
         Component resultText = Component.translatable("screen.dealt_force_skills.advanced_work.results",
                 data.entries().size(), data.total(), data.page() + 1, maxPage() + 1);
+        if (!catalogReady) resultText = Component.translatable("screen.dealt_force_skills.advanced_work.loading");
         graphics.drawString(font, fit(resultText, searchWidth() - 94), x, y + 24, 0xFFBFC7D0);
         drawPageButton(graphics, pageButtonLeft(), y + 21, -1, mouseX, mouseY);
         drawPageButton(graphics, pageButtonLeft() + 44, y + 21, 1, mouseX, mouseY);
@@ -270,7 +362,7 @@ public class AdvancedWorkBlockScreen extends Screen {
         graphics.fill(x, y, x + listWidth(), y + 1, selected || hovered ? 0xFFFFD34D : 0x66304050);
         graphics.renderItem(entry.icon(), x + 5, y + 7);
         graphics.renderItemDecorations(font, entry.icon(), x + 5, y + 7);
-        graphics.drawString(font, fit(entryName(entry.id(), entry.name()), listWidth() - 34), x + 28, y + 5, 0xFFFFFF);
+        graphics.drawString(font, fit(entryName(entry), listWidth() - 34), x + 28, y + 5, 0xFFFFFF);
         graphics.drawString(font, fit(Component.literal(entry.detail()), listWidth() - 34), x + 28, y + 18, 0xFF8D98A5);
     }
 
@@ -290,7 +382,7 @@ public class AdvancedWorkBlockScreen extends Screen {
                 x + PADDING, y + 10, 0xFFFFD34D);
         graphics.renderItem(selected.icon(), x + PADDING, y + 25);
         graphics.renderItemDecorations(font, selected.icon(), x + PADDING, y + 25);
-        graphics.drawString(font, fit(entryName(selected.id(), selected.name()), w - 48), x + PADDING + 24, y + 25, 0xFFFFFF);
+        graphics.drawString(font, fit(entryName(selected), w - 48), x + PADDING + 24, y + 25, 0xFFFFFF);
         graphics.drawString(font, fit(Component.literal(selected.id().toString()), w - 48),
                 x + PADDING + 24, y + 38, 0xFF8D98A5);
         graphics.drawString(font, fit(Component.literal(selected.detail()), w - PADDING * 2),
@@ -325,10 +417,22 @@ public class AdvancedWorkBlockScreen extends Screen {
         drawScrollbar(graphics, x + w - 3, y, h, outputFullHeight(), outputScroll, maxOutputScroll());
     }
 
-    private Component entryName(ResourceLocation id, String fallback) {
+    private Component entryName(EntryView entry) {
+        ResourceLocation id = entry.id();
+        String fallback = entry.name();
         if (data.blockType() == AdvancedWorkBlockData.BLOCK_HVK_TREASURE_COMPASS
                 && data.mode() == AdvancedWorkBlockData.MODE_TREASURE_CHEST) {
             return HvkResourceDisplayNames.lootTable(id, fallback);
+        }
+        try {
+            if (data.blockType() == AdvancedWorkBlockData.BLOCK_HVK_CLONE) {
+                var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.get(id);
+                if (type != null) return type.getDescription();
+            } else {
+                return entry.icon().getHoverName();
+            }
+        } catch (RuntimeException | LinkageError ignored) {
+            // Keep the row and ID search even if a third-party client name is broken.
         }
         return Component.literal(fallback);
     }

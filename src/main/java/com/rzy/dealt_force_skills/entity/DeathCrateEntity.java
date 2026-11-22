@@ -38,6 +38,16 @@ public final class DeathCrateEntity extends Entity implements Container, MenuPro
     private NonNullList<ItemStack> items = NonNullList.withSize(SIZE, ItemStack.EMPTY);
     private int age;
     private UUID ownerUuid;
+    private UUID raidInstance, raidReceipt;
+
+    public UUID raidReceipt() { return raidReceipt; }
+    public UUID raidInstance() { return raidInstance; }
+    public void configureRaid(UUID instance, UUID receipt, java.util.List<ItemStack> contents) {
+        if (raidInstance != null) throw new IllegalStateException("Crate already assigned");
+        raidInstance = java.util.Objects.requireNonNull(instance); raidReceipt = java.util.Objects.requireNonNull(receipt);
+        items = NonNullList.withSize(Math.max(1, contents.size()), ItemStack.EMPTY);
+        for (int i = 0; i < contents.size(); i++) items.set(i, contents.get(i).copy());
+    }
 
     public DeathCrateEntity(EntityType<? extends DeathCrateEntity> type, Level level) {
         super(type, level);
@@ -56,6 +66,7 @@ public final class DeathCrateEntity extends Entity implements Container, MenuPro
         if (level().isClientSide) {
             return;
         }
+        if (raidInstance != null) return;
         age++;
         if (age >= LIFETIME_TICKS) {
             clearContent();
@@ -72,14 +83,27 @@ public final class DeathCrateEntity extends Entity implements Container, MenuPro
     protected void readAdditionalSaveData(CompoundTag tag) {
         age = Math.max(0, tag.getInt("Age"));
         items = NonNullList.withSize(SIZE, ItemStack.EMPTY);
+        if (tag.hasUUID("RaidInstance") && tag.hasUUID("RaidReceipt")) {
+            raidInstance = tag.getUUID("RaidInstance"); raidReceipt = tag.getUUID("RaidReceipt");
+            var saved = tag.getList("RaidItems", net.minecraft.nbt.Tag.TAG_COMPOUND);
+            items = NonNullList.withSize(Math.max(1, saved.size()), ItemStack.EMPTY);
+            var restored = com.rzy.dealt_force_skills.raid.assets.RaidItemCodec.readList(level().getServer(), saved, saved.size());
+            for (int i = 0; i < restored.size(); i++) items.set(i, restored.get(i));
+        } else {
         ContainerHelper.loadAllItems(tag, items);
+        }
         ownerUuid = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.putInt("Age", age);
+        if (raidInstance != null) {
+            tag.putUUID("RaidInstance", raidInstance); tag.putUUID("RaidReceipt", raidReceipt);
+            tag.put("RaidItems", com.rzy.dealt_force_skills.raid.assets.RaidItemCodec.writeList(level().getServer(), items));
+        } else {
         ContainerHelper.saveAllItems(tag, items);
+        }
         if (ownerUuid != null) {
             tag.putUUID("Owner", ownerUuid);
         }
@@ -92,8 +116,13 @@ public final class DeathCrateEntity extends Entity implements Container, MenuPro
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
-        if (!level().isClientSide) {
-            player.openMenu(this);
+        if (!level().isClientSide && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            if (raidInstance != null) {
+                if (!com.rzy.dealt_force_skills.raid.RaidMatches.participating(serverPlayer)
+                        || !raidInstance.equals(com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(player))) return InteractionResult.FAIL;
+                com.rzy.dealt_force_skills.raid.ui.RaidPageMenu.open(serverPlayer, this, getDisplayName().getString(),
+                        () -> stillValid(player) && com.rzy.dealt_force_skills.raid.RaidMatches.participating(serverPlayer), this::setChanged);
+            } else player.openMenu(this);
         }
         return InteractionResult.sidedSuccess(level().isClientSide);
     }

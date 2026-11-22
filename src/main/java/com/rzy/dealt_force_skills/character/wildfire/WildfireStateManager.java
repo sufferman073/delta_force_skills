@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.wildfire;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.character.*;
 import com.rzy.dealt_force_skills.character.electronics.ElectronicInterferenceManager;
 import com.rzy.dealt_force_skills.character.sineva.SinevaKnockdownState;
@@ -56,9 +59,9 @@ public final class WildfireStateManager {
         s.smoke=fill?smokeMax:Math.min(smokeMax,Math.max(0,s.smoke)+1);
         s.grenade=fill?grenadeMax:Math.min(grenadeMax,Math.max(0,s.grenade)+1);
         if(s.smoke>=smokeMax)s.smokeRecharge=0;
-        else if(s.smokeRecharge<=0)s.smokeRecharge=WildfireConfig.cooldown(true);
+        else if(s.smokeRecharge<=0)s.smokeRecharge=rechargeTicks(player, true);
         if(s.grenade>=grenadeMax)s.grenadeRecharge=0;
-        else if(s.grenadeRecharge<=0)s.grenadeRecharge=WildfireConfig.cooldown(false);
+        else if(s.grenadeRecharge<=0)s.grenadeRecharge=rechargeTicks(player, false);
         s.cooldown=0;
         player.getPersistentData().put(DATA,snapshot(player));
         sync(player);
@@ -94,7 +97,7 @@ public final class WildfireStateManager {
             }
             if(s.phase==3)return true;
             if(s.cooldown>0){cooldown(player);return true;}
-            s.phase=1;s.prepare=WildfireConfig.ticks("core.prepare_ticks",40);s.cooldown=WildfireConfig.coreCooldown();
+            s.phase=1;s.prepare=WildfireConfig.ticks("core.prepare_ticks",40);s.cooldown=SkillCooldownHelper.ticks(player, WildfireConfig.coreCooldown());
             stowTool(player,s);s.age=0;s.blocked=0;s.previous=player.position();player.stopUsingItem();
             sound(player,ModSounds.WILDFIRE_CORE_START.get(),1);sync(player);return true;
         }
@@ -107,7 +110,7 @@ public final class WildfireStateManager {
             sound(player,smoke?ModSounds.WILDFIRE_SMOKE_EQUIP.get():ModSounds.WILDFIRE_GRENADE_EQUIP.get(),1);
             sync(player);return true;
         }
-        if(smoke){WildfireDeviceEntity.smoke(player,player.position(),true);consume(s,true);sound(player,ModSounds.WILDFIRE_SMOKE_RING.get(),.85F);}
+        if(smoke){WildfireDeviceEntity.smoke(player,player.position(),true);consume(player,s,true);sound(player,ModSounds.WILDFIRE_SMOKE_RING.get(),.85F);}
         else throwDevice(player,s,false,false);
         sync(player);return true;
     }
@@ -130,20 +133,23 @@ public final class WildfireStateManager {
         Vec3 look=player.getLookAngle().normalize();device.setPos(player.getEyePosition().add(look.scale(.6)).add(0,-.1,0));
         device.setDeltaMovement(look.scale(WildfireConfig.number(high?"projectile.high_speed":"projectile.low_speed",high?1.55:1.05))
                 .add(0,WildfireConfig.number(high?"projectile.high_lift":"projectile.low_lift",high?.3:.08),0));
-        if(player.serverLevel().addFreshEntity(device))consume(s,smoke);
+        if(ToolHandRelease.spawned(player.serverLevel().addFreshEntity(device), player, smoke ? ToolHandCue.WILDFIRE_SMOKE : ToolHandCue.WILDFIRE_HE))consume(player,s,smoke);
         s.tool=0;sound(player,smoke?ModSounds.WILDFIRE_SMOKE_THROW.get():ModSounds.WILDFIRE_GRENADE_THROW.get(),1);
     }
     private static void stowTool(ServerPlayer player,State s) {
         if(s.tool==2)sound(player,ModSounds.WILDFIRE_GRENADE_STOW.get(),1);
         s.tool=0;
     }
-    private static void consume(State s,boolean smoke) {
-        if(smoke){s.smoke--;if(s.smokeRecharge<=0)s.smokeRecharge=WildfireConfig.cooldown(true);}
-        else{s.grenade--;if(s.grenadeRecharge<=0)s.grenadeRecharge=WildfireConfig.cooldown(false);}
+    private static int rechargeTicks(ServerPlayer player, boolean smoke) {
+        return SkillCooldownHelper.ticks(player, WildfireConfig.cooldown(smoke));
+    }
+    private static void consume(ServerPlayer player,State s,boolean smoke) {
+        if(smoke){s.smoke--;if(s.smokeRecharge<=0)s.smokeRecharge=rechargeTicks(player, true);}
+        else{s.grenade--;if(s.grenadeRecharge<=0)s.grenadeRecharge=rechargeTicks(player, false);}
     }
     public static void cancelPreparation(ServerPlayer player) {
         State s=STATES.get(player);if(s==null||s.phase!=1)return;
-        s.cooldown=(int)Math.ceil(WildfireConfig.coreCooldown()*(1-WildfireConfig.fraction("core.cancel_refund",.9)));
+        s.cooldown=(int)Math.ceil(s.cooldown*(1-WildfireConfig.fraction("core.cancel_refund",.9)));
         endCore(player,s);sync(player);
     }
     public static boolean blocksItems(Player player) {
@@ -151,6 +157,8 @@ public final class WildfireStateManager {
         State s=STATES.get(p);return s!=null&&isWildfire(p)&&(s.phase!=0||s.tool!=0);
     }
     public static boolean passiveActive(LivingEntity entity) {
+        if (entity instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host
+                && host.skills() instanceof com.rzy.dealt_force_skills.ai.operative.NativeWildfireSkills wildfire) return wildfire.passiveActive(host);
         if(!(entity instanceof ServerPlayer player)||!isWildfire(player))return false;
         State s=state(player);
         if (ElectronicInterferenceManager.isElectronicSkill(ModCharacters.WILDFIRE,SkillSlot.PASSIVE)) {
@@ -170,6 +178,8 @@ public final class WildfireStateManager {
         return active?1+WildfireConfig.number("passive.reload_bonus",.5):1;
     }
     public static void onDamaged(LivingEntity entity) {
+        if (entity instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host
+                && host.skills() instanceof com.rzy.dealt_force_skills.ai.operative.NativeWildfireSkills wildfire) wildfire.onDamaged(host);
         if(entity instanceof ServerPlayer p&&isWildfire(p)) {
             state(p).passiveUntil=p.level().getGameTime()+WildfireConfig.ticks("passive.duration_ticks",60);
             updateAttributes(p,state(p));sync(p);
@@ -177,6 +187,9 @@ public final class WildfireStateManager {
     }
     public static float defend(ServerPlayer player,DamageSource source,float amount) {
         State s=STATES.get(player);if(s==null||s.phase<2)return amount;
+        return shieldDefense(player,source,amount);
+    }
+    public static float shieldDefense(LivingEntity player,DamageSource source,float amount) {
         // Environmental damage is unaffected; known physical impacts use the existing hit estimator.
         if(source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD)
                 ||source.is(net.minecraft.world.damagesource.DamageTypes.FALL)||source.getEntity()==player)return amount;
@@ -186,7 +199,8 @@ public final class WildfireStateManager {
         if(origin!=null&&inFront(player,origin))return amount*(float)(1-WildfireConfig.fraction("core.front_damage_reduction",.75));
         return amount;
     }
-    public static boolean inFront(Player player,Vec3 point) {
+    public static boolean inFront(Player player,Vec3 point) {return inFront((LivingEntity)player,point);}
+    public static boolean inFront(LivingEntity player,Vec3 point) {
         Vec3 delta=point.subtract(player.position()).multiply(1,0,1).normalize();
         Vec3 look=player.getLookAngle().multiply(1,0,1).normalize();
         return delta.dot(look)>=Math.cos(Math.toRadians(Math.min(180,WildfireConfig.number("core.front_half_angle_degrees",90))));
@@ -211,8 +225,8 @@ public final class WildfireStateManager {
         State s=state(player);
         if(s.level!=player.level()){endCore(player,s);s.tool=0;s.level=player.level();}
         s.smoke=Math.min(s.smoke,WildfireConfig.maxCharges(true));s.grenade=Math.min(s.grenade,WildfireConfig.maxCharges(false));
-        if(s.smoke<WildfireConfig.maxCharges(true)&&--s.smokeRecharge<=0){s.smoke++;s.smokeRecharge=s.smoke<WildfireConfig.maxCharges(true)?WildfireConfig.cooldown(true):0;}
-        if(s.grenade<WildfireConfig.maxCharges(false)&&--s.grenadeRecharge<=0){s.grenade++;s.grenadeRecharge=s.grenade<WildfireConfig.maxCharges(false)?WildfireConfig.cooldown(false):0;}
+        if(s.smoke<WildfireConfig.maxCharges(true)&&--s.smokeRecharge<=0){s.smoke++;s.smokeRecharge=s.smoke<WildfireConfig.maxCharges(true)?rechargeTicks(player, true):0;}
+        if(s.grenade<WildfireConfig.maxCharges(false)&&--s.grenadeRecharge<=0){s.grenade++;s.grenadeRecharge=s.grenade<WildfireConfig.maxCharges(false)?rechargeTicks(player, false):0;}
         if(s.phase==0&&s.cooldown>0)s.cooldown--;
         if(s.phase!=0&&(player.hasEffect(ModEffects.STUN.get())||player.isPassenger()))endCore(player,s);
         if(s.phase==1&&--s.prepare<=0){s.phase=2;s.age=0;s.previous=player.position();}
@@ -264,13 +278,15 @@ public final class WildfireStateManager {
         modifier(player.getAttribute(Attributes.MOVEMENT_SPEED),SPEED,0,AttributeModifier.Operation.MULTIPLY_TOTAL);
         STATES.remove(player);
     }
-    public static void impact(ServerPlayer player,boolean frontOnly) {
-        var level=player.serverLevel();Vec3 center=player.position();double radius=Math.min(64,WildfireConfig.number("core.impact_radius",4));
+    public static void impact(ServerPlayer player,boolean frontOnly) {impact((LivingEntity)player,frontOnly);}
+    public static void impact(LivingEntity player,boolean frontOnly) {
+        var level=(net.minecraft.server.level.ServerLevel)player.level();Vec3 center=player.position();double radius=Math.min(64,WildfireConfig.number("core.impact_radius",4));
         DamageSource source=new WildfireDamageSource(level,player,player,true);
         for(LivingEntity target:level.getEntitiesOfClass(LivingEntity.class,player.getBoundingBox().inflate(radius))) {
             if(target==player||!target.isAlive()||!TargetingUtil.isHostileLivingFor(player,target)
+                    ||player instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost host && !host.isEnemy(target)
                     ||target.position().distanceTo(center)>radius||frontOnly&&!inFront(player,target.position()))continue;
-            target.invulnerableTime=0;target.hurt(source,(float)WildfireConfig.number("core.impact_damage",10));
+            target.invulnerableTime=0;SkillDamageHelper.hurt(target,source,player,(float)WildfireConfig.number("core.impact_damage",10));
             int ticks=WildfireConfig.ticks("core.silence_ticks",100);
             target.addEffect(new MobEffectInstance(ModEffects.STUN.get(),ticks,0,false,true),player);
             // Match Sineva shield bash even when an equal/longer silence already exists.
@@ -292,6 +308,6 @@ public final class WildfireStateManager {
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,center.x,center.y+.4,center.z,8,radius*.4,.3,radius*.4,0);
         sound(player,frontOnly?ModSounds.WILDFIRE_CORE_EXPLODE.get():ModSounds.WILDFIRE_CORE_LAND.get(),1);
     }
-    private static void sound(ServerPlayer p,SoundEvent sound,float pitch) {p.level().playSound(null,p.blockPosition(),sound,SoundSource.PLAYERS,.85F,pitch);}
+    private static void sound(LivingEntity p,SoundEvent sound,float pitch) {p.level().playSound(null,p.blockPosition(),sound,SoundSource.PLAYERS,.85F,pitch);}
     private static void cooldown(ServerPlayer player) {SkillCooldownHelper.notifyCooldown(player,Component.translatable("message.dealt_force_skills.wildfire.cooldown"));}
 }

@@ -27,6 +27,7 @@ public final class TempestInputHandler {
     private static boolean active2WasDown;
     private static int active2HeldTicks;
     private static boolean sentWallEquip;
+    private static boolean throwCanceled;
     private static boolean coreWasDown;
 
     private TempestInputHandler() {
@@ -68,6 +69,11 @@ public final class TempestInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
+        if (sentWallEquip && Minecraft.getInstance().screen == null && isPrimaryOrSecondary(event.getButton())) {
+            event.setCanceled(true);
+            if (event.getAction() == GLFW.GLFW_PRESS && !throwCanceled) { throwCanceled = true; NetworkHandler.sendToServer(new C2S_TempestToolAction(TempestToolAction.STOW_TOOL)); }
+            return;
+        }
         if (!ClientTempestHudState.hasEquippedTool() || !isPrimaryOrSecondary(event.getButton())) {
             return;
         }
@@ -87,6 +93,11 @@ public final class TempestInputHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractionKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (sentWallEquip && (event.isAttack() || event.isUseItem())) {
+            event.setCanceled(true); event.setSwingHand(false);
+            if (!throwCanceled) { throwCanceled = true; NetworkHandler.sendToServer(new C2S_TempestToolAction(TempestToolAction.STOW_TOOL)); }
+            return;
+        }
         if (!ClientTempestHudState.hasEquippedTool()) {
             return;
         }
@@ -110,24 +121,26 @@ public final class TempestInputHandler {
     }
 
     private static void handleActive1Key(boolean active1Owned) {
-        if (!active1Owned || KeybindRegister.ACTIVE_SKILL_1 == null) {
+        if (!active1Owned || KeybindRegister.activeKey(1) == null) {
             return;
         }
-        while (KeybindRegister.ACTIVE_SKILL_1.consumeClick()) {
+        while (KeybindRegister.activeKey(1).consumeClick()) {
             ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_1);
         }
     }
 
     private static void handleActive2Key(boolean active2Owned) {
-        if (!active2Owned || KeybindRegister.ACTIVE_SKILL_2 == null) {
+        if (!active2Owned || KeybindRegister.activeKey(2) == null) {
             resetActive2();
             return;
         }
-        boolean down = KeybindRegister.ACTIVE_SKILL_2.isDown();
+        boolean clicked = false;
+        while (KeybindRegister.activeKey(2).consumeClick()) clicked = true;
+        boolean down = KeybindRegister.activeKey(2).isDown();
         if (down) {
             active2WasDown = true;
             active2HeldTicks++;
-            while (KeybindRegister.ACTIVE_SKILL_2.consumeClick()) {
+            while (KeybindRegister.activeKey(2).consumeClick()) {
             }
             if (!ClientTempestHudState.hasEquippedTool()
                     && active2HeldTicks >= WALL_DRILL_EQUIP_HOLD_TICKS
@@ -137,12 +150,15 @@ public final class TempestInputHandler {
             }
             return;
         }
-        if (active2WasDown && !sentWallEquip) {
+        if ((active2WasDown || clicked) && !throwCanceled && !sentWallEquip) {
             if (ClientTempestHudState.hasEquippedTool()) {
                 NetworkHandler.sendToServer(new C2S_TempestToolAction(TempestToolAction.STOW_TOOL));
             } else {
                 ClientCharacterSelectionState.useSkill(SkillSlot.ACTIVE_2);
             }
+        }
+        if (active2WasDown && sentWallEquip && !throwCanceled) {
+            NetworkHandler.sendToServer(new C2S_TempestToolAction(TempestToolAction.THROW_WALL_DRILL, true));
         }
         resetActive2();
     }
@@ -165,6 +181,7 @@ public final class TempestInputHandler {
     }
 
     private static void resetActive2() {
+        throwCanceled = false;
         active2WasDown = false;
         active2HeldTicks = 0;
         sentWallEquip = false;

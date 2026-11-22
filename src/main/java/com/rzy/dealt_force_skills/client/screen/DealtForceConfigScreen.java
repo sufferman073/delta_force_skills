@@ -214,7 +214,7 @@ public class DealtForceConfigScreen extends Screen {
         entryByKey.entrySet().removeIf(e -> e.getValue().file() != ConfigFileId.HUD);
         allEntries.removeIf(e -> e.file() != ConfigFileId.HUD);
         for (ConfigEntryData entry : serverEntries) {
-            putEntry(entry);
+            if (canEdit && !entry.file().clientLocal()) putEntry(entry);
         }
         statusMessage = canEdit
                 ? Component.translatable("config.dealt_force_skills.status.server_op", serverEntries.size()).getString()
@@ -249,7 +249,7 @@ public class DealtForceConfigScreen extends Screen {
         for (String category : presentCategories()) {
             sidebarList.append(new CategoryNode(category));
             if (expandedCategories.contains(category)) {
-                sidebarList.append(new SubcategoryNode(category, ""));
+                if (!"operatives".equals(category)) sidebarList.append(new SubcategoryNode(category, ""));
                 for (String sub : presentSubcategories(category)) {
                     sidebarList.append(new SubcategoryNode(category, sub));
                 }
@@ -653,7 +653,7 @@ public class DealtForceConfigScreen extends Screen {
                 selectedCategory = category;
                 expandedCategories.add(category);
                 List<String> subs = presentSubcategories(category);
-                boolean large = "characters".equals(category) || "summons".equals(category) || "items".equals(category);
+                boolean large = "operatives".equals(category) || "characters".equals(category) || "summons".equals(category) || "items".equals(category);
                 selectedSubcategory = (large && !subs.isEmpty()) ? subs.get(0) : "";
                 rebuildSidebar();
                 rebuildEntryList();

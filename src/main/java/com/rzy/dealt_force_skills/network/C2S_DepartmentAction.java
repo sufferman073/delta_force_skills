@@ -16,6 +16,7 @@ public record C2S_DepartmentAction(int action,String department,int page,String 
     public static void handle(C2S_DepartmentAction msg,Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(()->{
             var player=ctx.get().getSender();
+            if (player != null && com.rzy.dealt_force_skills.raid.RaidAccess.externalItemsBlocked(player)) return;
             if(player==null||!player.isAlive()||player.isSpectator()||msg.action<0||msg.action>5
                     ||!DepartmentTasks.allowRequest(player,msg.action!=0))return;
             var tracker=DepartmentTasks.tracker();

@@ -59,6 +59,30 @@ public class StingerStimProjectileEntity extends Projectile implements ItemSuppl
         this.mode = mode;
     }
 
+    public Vec3 placeAtMuzzle(LivingEntity owner, Vec3 forward) {
+        Vec3 eye = owner.getEyePosition();
+        Vec3 mouth = com.rzy.dealt_force_skills.character.stinger.StingerStimMount.muzzle(owner, forward);
+        HitResult hit = level().clip(new ClipContext(eye, mouth, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, owner));
+        Vec3 limit = hit.getType() == HitResult.Type.MISS ? mouth : hit.getLocation();
+        EntityHitResult contact = ProjectileUtil.getEntityHitResult(level(), this, eye, limit,
+                new net.minecraft.world.phys.AABB(eye, limit).inflate(0.42D), this::canHitEntity);
+        if (contact != null) limit = contact.getLocation();
+        if (contact != null || hit.getType() != HitResult.Type.MISS) {
+            Vec3 offset = limit.subtract(eye);
+            double clearance = .02D;
+            if (contact == null && hit instanceof net.minecraft.world.phys.BlockHitResult block) {
+                var face = block.getDirection();
+                double extent = face.getAxis().isHorizontal() ? getBbWidth() / 2D
+                        : face == net.minecraft.core.Direction.DOWN ? getBbHeight() : 0D;
+                double incidence = Math.abs(offset.normalize().dot(Vec3.atLowerCornerOf(face.getNormal())));
+                clearance = (extent + .02D) / Math.max(1.0E-6D, incidence);
+            }
+            limit = eye.add(offset.scale(Math.max(0D, 1D - clearance / Math.max(.02D, offset.length()))));
+        }
+        setPos(limit);
+        return limit;
+    }
+
     @Override
     public ItemStack getItem() {
         return new ItemStack(mode == StingerStimMode.HEAL ? Items.LIME_DYE : Items.POISONOUS_POTATO);

@@ -51,8 +51,10 @@ public final class RaptorHudOverlay {
                 Component.translatable("character.dealt_force_skills.raptor.skill.falcon_drone"),
                 ClientRaptorHudState.falconCooldownTicks(),
                 falconDetail());
-        if (ClientRaptorHudState.falconActiveTicks() > 0) {
-            drawFalconBatteryBar(graphics, font, x, y - 12, SLOT * 3 + GAP * 2);
+        try (var ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
+            if (ClientRaptorHudState.falconActiveTicks() > 0) {
+                drawFalconBatteryBar(graphics, font, x, y - 12, SLOT * 3 + GAP * 2);
+            }
         }
     }
 
@@ -99,23 +101,7 @@ public final class RaptorHudOverlay {
             int cooldownTicks,
             String detail
     ) {
-        try (ClientHudLayout.ButtonScale ignored = ClientHudLayout.scaleButton(graphics, x, y, SLOT)) {
-            graphics.fill(x, y, x + SLOT, y + SLOT, 0xAA101518);
-        graphics.fill(x, y, x + SLOT, y + 1, accentColor);
-        graphics.fill(x, y + SLOT - 1, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x, y, x + 1, y + SLOT, accentColor);
-        graphics.fill(x + SLOT - 1, y, x + SLOT, y + SLOT, accentColor);
-        graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xDD162024);
-        drawCenteredClipped(graphics, font, icon.getString(), x + SLOT / 2, y + 12, 32, 0xFFFFFFFF);
-        if (cooldownTicks > 0) {
-            graphics.fill(x + 6, y + 5, x + 40, y + 31, 0xCC000000);
-            drawCenteredClipped(graphics, font, cooldownText(cooldownTicks), x + SLOT / 2, y + 14, 34, 0xFFFFE6A6);
-        } else {
-            drawCenteredClipped(graphics, font, detail, x + SLOT / 2, y + 22, 34, 0xFFE0E4EA);
-        }
-        String keyName = key == null ? "?" : key.getTranslatedKeyMessage().getString();
-            drawCenteredClipped(graphics, font, keyName, x + SLOT / 2, y + 35, 38, 0xFFFFFFFF);
-        }
+        SkillIconHud.draw(graphics, font, x, y, SLOT, key, icon, cooldownTicks, detail);
     }
 
     private static void drawCenteredClipped(GuiGraphics graphics, Font font, String text, int centerX, int y, int width, int color) {

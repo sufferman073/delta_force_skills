@@ -57,9 +57,7 @@ public final class HelmetVisionClient {
     }
 
     public static boolean isThermalVisionActive() {
-        Minecraft minecraft = Minecraft.getInstance();
-        return minecraft.player != null
-                && DfsEquipmentItem.activeVisionMode(minecraft.player) == DfsEquipmentItem.VISION_THERMAL;
+        return HelmetVisionRenderer.thermalCaptureActive();
     }
 
     public static void syncLocalHelmetMode(int mode) {

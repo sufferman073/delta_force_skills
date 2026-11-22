@@ -69,6 +69,14 @@ public final class DealtItemsHavocConfig {
         populate(event.getServer());
     }
 
+    @SubscribeEvent
+    public static void recipesReloaded(net.minecraftforge.event.OnDatapackSyncEvent event) {
+        if (event.getPlayer() != null) return;
+        var server = event.getPlayerList().getServer();
+        populate(server);
+        com.rzy.dealt_force_skills.registry.ModGameRules.syncToAll(server);
+    }
+
     public static synchronized boolean reload() {
         CommentedFileConfig replacement = CommentedFileConfig.builder(configPath()).sync().build();
         try {
@@ -87,8 +95,16 @@ public final class DealtItemsHavocConfig {
     }
 
     public static synchronized void populate(MinecraftServer server) {
-        Map<Item, Long> prices = calculateDefaultPrices(server);
         CommentedFileConfig current = config();
+        Object version = current.get("recipe_pricing_version");
+        if (current.get("items") != null && (!(version instanceof Number number) || number.intValue() < 3)) {
+            Path original = configPath(), backup = original.resolveSibling(FILE_NAME + ".pre-v3.bak");
+            if (Files.isRegularFile(original) && Files.notExists(backup)) try { Files.copy(original, backup); }
+            catch (IOException error) { LOGGER.error("Cannot back up {}: not migrating sale prices", original, error); return; }
+        }
+        Map<Item, Long> previous = current.get("recipe_pricing_version") == null && current.get("buyback_multiplier") != null
+                ? calculateDefaultPrices(server) : Map.of();
+        Map<Item, Long> prices = recipePrices(server, current, previous);
         int added = 0;
         for (Item item : ForgeRegistries.ITEMS.getValues()) {
             ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
@@ -100,15 +116,19 @@ public final class DealtItemsHavocConfig {
                 current.set(root + ".sellable", true);
                 added++;
             }
-            if (current.get(root + ".price") == null) {
+            Object stored = current.get(root + ".price"), generated = current.get(root + ".generated_price");
+            Long old = generated instanceof Number number ? Long.valueOf(number.longValue()) : previous.get(item);
+            if (stored == null || stored instanceof Number number && old != null && old > 0 && number.longValue() == old) {
                 long defaultPrice = id.getNamespace().equals(DealtForceSkillsMod.MODID)
                         && isDefaultUnsellable(id.getPath())
                         ? -1L
                         : Math.max(1L, prices.getOrDefault(item, fallbackPrice(new ItemStack(item))));
                 current.set(root + ".price", defaultPrice);
+                current.set(root + ".generated_price", defaultPrice);
             }
             current.setComment(root, "Registry item " + id + ". price is paid in havoc coins per item; -1 disables sale and buyback.");
         }
+        current.set("recipe_pricing_version", 3);
         if (current.get("buyback_multiplier") == null) {
             current.set("buyback_multiplier", DEFAULT_BUYBACK_MULTIPLIER);
             current.setComment("buyback_multiplier", "Base buyback multiplier before Command Center reductions. Default 2.3 (230%).");
@@ -143,16 +163,14 @@ public final class DealtItemsHavocConfig {
         if (id == null) {
             return 1L;
         }
-        Long priceFileValue = PriceFileLoader.getHavocPrice(id);
-        if (priceFileValue != null) {
-            return Math.max(1L, priceFileValue);
-        }
-        Object value = config().get(path(id) + ".price");
-        if (value instanceof Number number) {
-            long configured = number.longValue();
-            return configured == -1L ? -1L : Math.max(1L, configured);
-        }
-        return fallbackPrice(new ItemStack(item));
+        String root = path(id);
+        Object stored = config().get(root + ".price");
+        Object generated = config().get(root + ".generated_price");
+        if (stored instanceof Number number && (!(generated instanceof Number marker) || marker.longValue() != number.longValue() || number.longValue() == -1))
+            return normalizePrice(number.longValue());
+        Long filePrice = PriceFileLoader.getHavocPrice(id);
+        if (filePrice != null) return normalizePrice(filePrice);
+        return stored instanceof Number number ? normalizePrice(number.longValue()) : fallbackPrice(new ItemStack(item));
     }
 
     public static synchronized boolean isSellable(ServerPlayer player, ItemStack stack) {
@@ -175,6 +193,8 @@ public final class DealtItemsHavocConfig {
                 return normalizePrice(entry.getLong("Price"));
             }
         }
+        VariantPrice variant = vanillaVariants.get(fingerprint);
+        if (variant != null && hasGeneratedBase(stack.getItem())) return variant.price();
         return price(stack.getItem());
     }
 
@@ -219,6 +239,10 @@ public final class DealtItemsHavocConfig {
                 variants.add(new VariantPrice(stack, normalizePrice(entry.getLong("Price"))));
             }
         }
+        for (VariantPrice variant : vanillaVariants.values()) {
+            if (variants.size() >= MAX_SYNCED_VARIANTS) break;
+            if (hasGeneratedBase(variant.stack().getItem())) variants.add(variant);
+        }
         return List.copyOf(variants);
     }
 
@@ -242,6 +266,7 @@ public final class DealtItemsHavocConfig {
         CommentedFileConfig current = config();
         String root = path(id);
         current.set(root + ".price", price);
+        current.set(root + ".generated_price", -2L);
         current.setComment(root, "Registry item " + id + ". price is paid in havoc coins per item; -1 disables sale and buyback.");
         current.save();
         return true;
@@ -290,6 +315,164 @@ public final class DealtItemsHavocConfig {
             return Math.max(1.0D, number.doubleValue());
         }
         return DEFAULT_BUYBACK_MULTIPLIER;
+    }
+
+    private static void loadVanillaAnchors(Map<Item, Long> values) {
+        try (var stream = DealtItemsHavocConfig.class.getResourceAsStream("/data/dealt_force_skills/havoc/vanilla_prices.json")) {
+            if (stream == null) throw new IOException("Missing vanilla Havoc prices");
+            var table = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+            for (var entry : table.entrySet()) {
+                String key = entry.getKey();
+                long coins = entry.getValue().getAsLong();
+                if (key.startsWith("#")) {
+                    var tag = net.minecraft.tags.ItemTags.create(ResourceLocation.tryParse("minecraft:" + key.substring(1)));
+                    for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(tag))
+                        if (BuiltInRegistries.ITEM.getKey(holder.value()).getNamespace().equals("minecraft")) values.put(holder.value(), coins);
+                } else BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse("minecraft:" + key)).ifPresent(item -> values.put(item, coins));
+            }
+        } catch (IOException failure) { throw new IllegalStateException(failure); }
+    }
+
+    private static Map<String, VariantPrice> vanillaVariants = Map.of();
+    private static void loadVanillaVariants(MinecraftServer server) {
+        var variants = new HashMap<String, VariantPrice>();
+        try (var stream = DealtItemsHavocConfig.class.getResourceAsStream("/data/dealt_force_skills/havoc/vanilla_variant_prices.json")) {
+            var table = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(java.util.Objects.requireNonNull(stream), StandardCharsets.UTF_8)).getAsJsonObject();
+            for (var entry : table.entrySet()) {
+                String key = entry.getKey(); int split = key.indexOf('{');
+                var legacy = new CompoundTag(); legacy.putString("id", "minecraft:" + key.substring(0, split)); legacy.putByte("Count", (byte)1);
+                legacy.put("tag", TagParser.parseTag(key.substring(split)));
+                ItemStack stack = ItemStack.of(legacy);
+                if (!stack.isEmpty()) variants.put(fingerprint(serializeStack(stack)), new VariantPrice(stack, entry.getValue().getAsLong()));
+            }
+        } catch (IOException | CommandSyntaxException error) { throw new IllegalStateException("Invalid vanilla variant price table", error); }
+        vanillaVariants = Map.copyOf(variants);
+    }
+    private static boolean hasGeneratedBase(Item item) {
+        String root = path(BuiltInRegistries.ITEM.getKey(item));
+        Object price = config().get(root + ".price"), marker = config().get(root + ".generated_price");
+        return price instanceof Number value && marker instanceof Number generated && value.longValue() > 0 && value.longValue() == generated.longValue()
+                && PriceFileLoader.getHavocPrice(item) == null;
+    }
+
+    private record Input(Item consumed, Item returned) { }
+    private record Cost(Item output, int count, List<List<Input>> ingredients) { }
+
+    private static Map<Item, Long> recipePrices(MinecraftServer server, CommentedFileConfig current, Map<Item, Long> previous) {
+        Map<Item, Long> values = new IdentityHashMap<>();
+        var fixed = java.util.Collections.newSetFromMap(new IdentityHashMap<Item, Boolean>());
+        loadVanillaAnchors(values);
+        loadVanillaVariants(server);
+        List<Cost> costs = new ArrayList<>();
+        var explicit = PriceFileLoader.getHavocPriceMap();
+        Map<Item, Long> shopFallback = new IdentityHashMap<>();
+        for (var entry : DfsShopCatalog.entries()) if (!entry.preview().isEmpty())
+            shopFallback.merge(entry.preview().getItem(), (long)entry.price(), Math::min);
+        for (Item item : BuiltInRegistries.ITEM) {
+            var id = BuiltInRegistries.ITEM.getKey(item);
+            Long price = explicit.get(id);
+            if (price == null && id.getNamespace().equals(DealtForceSkillsMod.MODID)) {
+                if (id.getPath().equals("premium_coffee_beans")) price = 120_000L;
+                if (id.getPath().equals("programmable_processor")) price = 15_000L;
+            }
+            String root = path(id);
+            Object stored = current.get(root + ".price"), marker = current.get(root + ".generated_price");
+            Long generated = marker instanceof Number number ? Long.valueOf(number.longValue()) : previous.get(item);
+            if (stored instanceof Number number && (generated == null || number.longValue() != generated || number.longValue() == -1))
+                price = number.longValue();
+            if (price != null) values.put(item, price);
+            else if (id.getNamespace().equals(DealtForceSkillsMod.MODID) && isDefaultUnsellable(id.getPath())) values.put(item, -1L);
+        }
+        fixed.addAll(values.keySet());
+        for (var registered : server.getRecipeManager().getRecipes()) {
+            try {
+                var recipe = registered;
+                if (recipe.isSpecial() || !(recipe instanceof CraftingRecipe || recipe instanceof net.minecraft.world.item.crafting.SmithingTransformRecipe || recipe instanceof net.minecraft.world.item.crafting.AbstractCookingRecipe
+                        || recipe instanceof net.minecraft.world.item.crafting.StonecutterRecipe)) continue;
+                ItemStack output = recipe.getResultItem(server.registryAccess());
+                if (output.isEmpty() || fixed.contains(output.getItem())) continue;
+                List<List<Input>> inputs = new ArrayList<>();
+                if (recipe instanceof net.minecraft.world.item.crafting.SmithingTransformRecipe smithing) {
+                    for (java.util.function.Predicate<ItemStack> slot : List.<java.util.function.Predicate<ItemStack>>of(smithing::isTemplateIngredient, smithing::isBaseIngredient, smithing::isAdditionIngredient))
+                        inputs.add(BuiltInRegistries.ITEM.stream().filter(item -> slot.test(new ItemStack(item)))
+                                .map(item -> new Input(item, net.minecraft.world.item.Items.AIR)).toList());
+                } else for (Ingredient ingredient : recipe.getIngredients()) if (!ingredient.isEmpty()) {
+                    inputs.add(Arrays.stream(ingredient.getItems()).filter(stack -> !stack.isEmpty())
+                            .map(stack -> new Input(stack.getItem(), stack.getCraftingRemainingItem().getItem())).distinct().toList());
+                }
+                if (!inputs.isEmpty() && inputs.stream().noneMatch(List::isEmpty)) costs.add(new Cost(output.getItem(), output.getCount(), inputs));
+            } catch (RuntimeException failure) { LOGGER.debug("Skipping unreadable item recipe {}", registered, failure); }
+        }
+        for (String metal : List.of("iron", "gold", "copper"))
+            equivalent(costs, fixed, "raw_" + metal, metal + "_ingot");
+        equivalent(costs, fixed, "ancient_debris", "netherite_scrap");
+        for (String prefix : List.of("", "deepslate_")) {
+            for (String ore : List.of("iron", "gold", "coal", "diamond", "emerald"))
+                equivalent(costs, fixed, prefix + ore + "_ore", ore.equals("iron") || ore.equals("gold") ? "raw_" + ore : ore);
+            dropValue(costs, fixed, prefix + "copper_ore", "raw_copper", 7, 2);
+            dropValue(costs, fixed, prefix + "lapis_ore", "lapis_lazuli", 13, 2);
+            dropValue(costs, fixed, prefix + "redstone_ore", "redstone", 9, 2);
+        }
+        dropValue(costs, fixed, "nether_gold_ore", "gold_nugget", 4, 1);
+        equivalent(costs, fixed, "nether_quartz_ore", "quartz");
+        resolveCosts(costs, values);
+        List<Cost> unresolved = costs.stream().filter(cost -> !values.containsKey(cost.output())).toList();
+        if (!unresolved.isEmpty()) {
+            var pendingOutputs = java.util.Collections.newSetFromMap(new IdentityHashMap<Item, Boolean>());
+            unresolved.forEach(cost -> pendingOutputs.add(cost.output()));
+            for (var recipe : unresolved) for (var slot : recipe.ingredients()) for (var option : slot) {
+                for (Item ingredient : List.of(option.consumed(), option.returned()))
+                    if (ingredient != net.minecraft.world.item.Items.AIR && !pendingOutputs.contains(ingredient))
+                        values.computeIfAbsent(ingredient, item -> shopFallback.getOrDefault(item, fallbackPrice(new ItemStack(item))));
+            }
+            resolveCosts(unresolved, values);
+        }
+        shopFallback.forEach(values::putIfAbsent);
+        return values;
+    }
+
+    private static void dropValue(List<Cost> costs, java.util.Set<Item> fixed, String ore, String drop, int units, int count) {
+        var output = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse("minecraft:" + ore));
+        var source = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse("minecraft:" + drop));
+        if (output.isPresent() && source.isPresent() && !fixed.contains(output.get()))
+            costs.add(new Cost(output.get(), count, java.util.Collections.nCopies(units, List.of(new Input(source.get(), net.minecraft.world.item.Items.AIR)))));
+    }
+
+    private static void equivalent(List<Cost> costs, java.util.Set<Item> fixed, String target, String... sources) {
+        var output = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse("minecraft:" + target));
+        if (output.isEmpty() || fixed.contains(output.get())) return;
+        List<List<Input>> inputs = new ArrayList<>();
+        for (String source : sources) {
+            var base = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse("minecraft:" + source));
+            if (base.isEmpty()) return;
+            inputs.add(List.of(new Input(base.get(), net.minecraft.world.item.Items.AIR)));
+        }
+        costs.add(new Cost(output.get(), 1, inputs));
+    }
+
+    private static void resolveCosts(List<Cost> costs, Map<Item, Long> values) {
+        for (int pass = 0; pass <= costs.size(); pass++) {
+            Map<Item, Long> updates = new IdentityHashMap<>();
+            for (Cost cost : costs) {
+                long sum = 0;
+                for (var input : cost.ingredients()) {
+                    long cheapest = Long.MAX_VALUE;
+                    for (Input option : input) {
+                        if (option.consumed() == option.returned()) { cheapest = 0; break; }
+                        Long price = values.get(option.consumed());
+                        long refund = option.returned() == net.minecraft.world.item.Items.AIR ? 0L : values.getOrDefault(option.returned(), -1L);
+                        if (price != null && price > 0 && refund >= 0 && price >= refund) cheapest = Math.min(cheapest, price - refund);
+                    }
+                    if (cheapest == Long.MAX_VALUE || sum > Long.MAX_VALUE - cheapest) { sum = 0; break; }
+                    sum += cheapest;
+                }
+                if (sum == 0) continue;
+                long unit = 1 + (sum - 1) / cost.count();
+                if (unit < values.getOrDefault(cost.output(), Long.MAX_VALUE)) updates.merge(cost.output(), unit, Math::min);
+            }
+            if (updates.isEmpty()) break;
+            values.putAll(updates);
+        }
     }
 
     private static Map<Item, Long> calculateDefaultPrices(MinecraftServer server) {

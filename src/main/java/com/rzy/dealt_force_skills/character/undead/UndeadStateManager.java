@@ -655,6 +655,7 @@ public final class UndeadStateManager {
                 boolean appliedControl=attacker.addEffect(new MobEffectInstance(ModEffects.STUN.get(), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.duration_ticks", 3 * 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("characters.undead.undead_state_manager.effect.stun.2.amplifier", 0),
                         false, true, true), player);
                 if(appliedControl)com.rzy.dealt_force_skills.department.DepartmentTasks.signal(player,"undead.knight.parry.silenced");
+                if (appliedControl) com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(attacker, "parried");
                 player.serverLevel().sendParticles(ParticleTypes.CRIT,
                         attacker.getX(), attacker.getY() + attacker.getBbHeight() * 0.5D, attacker.getZ(),
                         18, 0.35D, 0.35D, 0.35D, 0.08D);
@@ -790,6 +791,7 @@ public final class UndeadStateManager {
                 : 4L * 20L + 1L;
         target.getPersistentData().putLong(RUPTURE_UNTIL, now + duration);
         target.getPersistentData().putLong(RUPTURE_NEXT, now + 20L);
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "bleeding");
         com.rzy.dealt_force_skills.department.DepartmentUndead.rupture(owner,target);
     }
 
@@ -823,10 +825,37 @@ public final class UndeadStateManager {
         tickFrozenBlade(entity, tag, now);
     }
 
+    private static void syncIconAvailability(ServerPlayer player) {
+        float first, second, core;
+        UndeadProfession profession = profession(player);
+        switch (profession) {
+            case KNIGHT -> { first = UndeadUpgradeManager.has(player, com.rzy.dealt_force_skills.shop.UndeadShopEntry.KNIGHT_FANATIC_CHARGE) ? 18.6F : 20;
+                second = iconEnergyCost(1, 10); core = iconEnergyCost(2, 60); }
+            case WARRIOR -> { first = iconEnergyCost(3, 30); second = 0; core = iconEnergyCost(4, 50); }
+            case EXPLORER -> { first = iconEnergyCost(5, 20); second = 10; core = explorerSpaceActive(player) ? 0 : iconEnergyCost(6, 100); }
+            case ROGUE -> { first = iconEnergyCost(7, 15); second = iconEnergyCost(8, 30); core = iconEnergyCost(9, 50); }
+            case SCHOLAR -> { first = iconEnergyCost(10, 20); second = iconEnergyCost(11, 20);
+                core = UndeadUpgradeManager.has(player, com.rzy.dealt_force_skills.shop.UndeadShopEntry.SCHOLAR_ANCIENT_SCROLL) ? 37.5F : 75; }
+            case HUNTER -> { first = iconEnergyCost(13, 20); second = 0; core = 0; }
+            default -> { first = second = core = 0; }
+        }
+        float energy = energy(player) + .0001F;
+        int mask = (energy >= effectiveEnergyCost(player, first) ? 1 : 0)
+                | (energy >= effectiveEnergyCost(player, second) && (profession != UndeadProfession.HUNTER || hunterReloadReady(player)) ? 2 : 0)
+                | (energy >= effectiveEnergyCost(player, core) ? 4 : 0);
+        if (isActionLocked(player)) mask = 0;
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.availability(player, "undead." + profession.id() + ".skill.", mask);
+    }
+
+    private static float iconEnergyCost(int index, float fallback) {
+        return com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("characters.undead.undead_skills.energy." + index + ".energy_cost", fallback);
+    }
+
     public static void syncToClient(ServerPlayer player) {
         if (!isUndead(player)) {
             return;
         }
+        syncIconAvailability(player);
         CompoundTag tag = data(player);
         NetworkHandler.sendToPlayer(new S2C_SyncUndeadState(
                 profession(player).ordinal(),
@@ -863,11 +892,13 @@ public final class UndeadStateManager {
                     8, 0.55D, 0.8D, 0.55D, 0.02D);
         }
         if (now < tag.getLong(KNIGHT_PARRY_UNTIL)) {
+            com.rzy.dealt_force_skills.feedback.SkillFeedback.active(player, "undead.knight.skill.active2", (int)(tag.getLong(KNIGHT_PARRY_UNTIL)-now));
             player.setDeltaMovement(Vec3.ZERO);
         }
         if (now >= tag.getLong(KNIGHT_CHARGE_UNTIL)) {
             return;
         }
+        com.rzy.dealt_force_skills.feedback.SkillFeedback.active(player, "undead.knight.skill.active1", (int)(tag.getLong(KNIGHT_CHARGE_UNTIL)-now));
         Vec3 look = player.getLookAngle();
         int targetId = tag.getInt(KNIGHT_CHARGE_TARGET);
         Entity chargeTarget = targetId >= 0 ? player.serverLevel().getEntity(targetId) : null;

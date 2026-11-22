@@ -121,11 +121,13 @@ public class GizmoSmokeCloudEntity extends Entity implements OperativeAreaSource
             }
 
             boolean smokeApplied = target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmo_smoke_cloud_entity.effect.movement_slowdown.0.duration_ticks", 20), com.rzy.dealt_force_skills.config.DealtForceConfig.intValue("summons.gizmo_smoke_cloud_entity.effect.movement_slowdown.0.amplifier", 0), false, true, true));
+            if (smokeApplied) com.rzy.dealt_force_skills.feedback.SkillFeedback.triggered(target, this, "gizmo.skill.smoke_trap", "smoke_trap");
             if (ownerId != null && level.getEntity(ownerId) instanceof ServerPlayer owner) {
                 DfsAchievements.recordGizmoComboTarget(owner, target, "smoke");
                 if (smokeApplied) com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"gizmo.smoke.affected");
             }
             if (target.hasEffect(ModEffects.CORROSION.get())) {
+                com.rzy.dealt_force_skills.feedback.SkillFeedback.notice(target, "gizmo_reveal");
                 revealIds.add(target.getId());
                 if (allegiance.active() && smokeOwner instanceof com.rzy.dealt_force_skills.ai.operative.OperativeHost bot && bot.skills() != null) bot.skills().remember(target, 20);
             }

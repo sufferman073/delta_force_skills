@@ -11,7 +11,11 @@ public final class TrapMarkerTargeting {
     }
 
     public static boolean isLookingAt(Vec3 eye, Vec3 look, Vec3 position, double markerHeight) {
-        if (position.distanceToSqr(eye) > 50.0D * 50.0D) {
+        return isLookingAt(eye, look, position, markerHeight, 50.0D);
+    }
+
+    public static boolean isLookingAt(Vec3 eye, Vec3 look, Vec3 position, double markerHeight, double range) {
+        if (position.distanceToSqr(eye) > range * range) {
             return false;
         }
         Vec3 direction = look.normalize();

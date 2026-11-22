@@ -22,7 +22,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
@@ -111,7 +110,7 @@ public final class ShepherdInputHandler {
         }
 
         Optional<ShepherdTrapMarker> marker = findLookedAtMarker(minecraft);
-        if (marker.isPresent() && handsEmpty(minecraft.player)) {
+        if (marker.isPresent()) {
             event.setCanceled(true);
             if (event.getAction() == GLFW.GLFW_PRESS) {
                 ShepherdToolAction action = event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
@@ -134,7 +133,7 @@ public final class ShepherdInputHandler {
         if (!ClientShepherdHudState.hasEquippedTool()) {
             if (minecraft.screen != null || !ClientShepherdHudState.shouldRender()
                     || event.getHand() != InteractionHand.MAIN_HAND
-                    || (!event.isAttack() && !event.isUseItem()) || !handsEmpty(minecraft.player)) {
+                    || (!event.isAttack() && !event.isUseItem())) {
                 return;
             }
             findLookedAtMarker(minecraft).ifPresent(marker -> {
@@ -307,15 +306,11 @@ public final class ShepherdInputHandler {
             return;
         }
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action == GLFW.GLFW_PRESS) {
-            ClientToolReleaseAction.begin(
-                    ClientToolReleaseAction.Action.SHEPHERD_GRENADE,
-                    GRENADE_RELEASE_TICKS,
-                    () -> sendToolActionOnce(ShepherdToolAction.THROW_GRENADE));
-        } else if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_PRESS) {
-            ClientToolReleaseAction.play(ClientToolReleaseAction.Action.SHEPHERD_GRENADE);
             sendToolActionOnce(ShepherdToolAction.START_GRENADE_COOK);
-        } else if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_RELEASE) {
+        } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action == GLFW.GLFW_RELEASE) {
             sendToolActionOnce(ShepherdToolAction.THROW_GRENADE);
+        } else if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_PRESS) {
+            sendToolActionOnce(ShepherdToolAction.STOW_TOOL);
         }
     }
 
@@ -361,14 +356,6 @@ public final class ShepherdInputHandler {
                 .min(Comparator.comparingDouble(marker -> marker.position().distanceToSqr(eye)));
     }
 
-    private static boolean handsEmpty(Player player) {
-        if (player == null) {
-            return false;
-        }
-        ItemStack main = player.getMainHandItem();
-        ItemStack off = player.getOffhandItem();
-        return main.isEmpty() && off.isEmpty();
-    }
 
     private static boolean isPrimaryOrSecondary(int button) {
         return button == GLFW.GLFW_MOUSE_BUTTON_LEFT || button == GLFW.GLFW_MOUSE_BUTTON_RIGHT;

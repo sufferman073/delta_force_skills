@@ -28,12 +28,12 @@ public final class DepartmentGhroth {
     }
     private static final java.util.Set<LivingEntity> DEATHS=java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
     private static final class Hit {
-        final LivingEntity target;final float health;
+        final LivingEntity target;boolean damaged;
         ServerPlayer dodgeOwner,noonOwner;
         java.util.function.BooleanSupplier dodgeResolved,noonResolved;
         java.util.function.IntConsumer copies;
         boolean full;
-        Hit(LivingEntity target){this.target=target;health=target.getHealth()+target.getAbsorptionAmount();}
+        Hit(LivingEntity target){this.target=target;}
     }
     private static final ThreadLocal<java.util.ArrayDeque<Hit>> HITS=ThreadLocal.withInitial(java.util.ArrayDeque::new);
     public static void beginHit(LivingEntity target){HITS.get().push(new Hit(target));}
@@ -52,12 +52,15 @@ public final class DepartmentGhroth {
         }
         if(hits.isEmpty())HITS.remove();
     }
+    static void settled(LivingEntity target) {
+        var hits = HITS.get();
+        if (hits.isEmpty()) HITS.remove(); else if (hits.peek().target == target) hits.peek().damaged = true;
+    }
     public static void endHit() {
         var hits=HITS.get();if(hits.isEmpty()){HITS.remove();return;}
         var hit=hits.pop();if(hits.isEmpty())HITS.remove();
         if(hit.dodgeOwner!=null&&hit.dodgeResolved.getAsBoolean())DepartmentTasks.signal(hit.dodgeOwner,"ghroth.dodged");
-        float lost=hit.health-hit.target.getHealth()-hit.target.getAbsorptionAmount();
-        if(hit.noonOwner!=null&&Float.isFinite(lost)&&lost>0&&hit.noonResolved.getAsBoolean()) {
+        if(hit.noonOwner!=null&&hit.damaged&&hit.noonResolved.getAsBoolean()) {
             int copies=GhrothStateManager.consumeNoonDamageCopiesForHit(hit.noonOwner);
             if(copies>0){if(hit.full)DepartmentTasks.signal(hit.noonOwner,"ghroth.core.fully_charged_hit");hit.copies.accept(copies);}
         }

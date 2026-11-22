@@ -98,6 +98,7 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "luna.skill.shock_arrow", (highPressureArrow ? PULSE_RADIUS * 2.5D : PULSE_RADIUS));
         if (!level().isClientSide && !stuck && isOperativeSource() && tickCount > 160) {
             discard();
             return;
@@ -262,7 +263,7 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
                 if (getOwner() instanceof ServerPlayer owner) {
                     if (bounced && living.getHealth() + living.getAbsorptionAmount() < beforeQuestDamage)
                         com.rzy.dealt_force_skills.department.DepartmentTasks.signal(owner,"luna.arrow.bounce_hit");
-                    DfsAchievements.recordLunaShockFixedKill(owner, living, bounced, true);
+
                 }
                 RangedSoundHelper.playThrottled(serverLevel, living.position(), ModSounds.LUNA_SHOCK_ARROW_PULSE.get(),
                         SoundSource.PLAYERS, 0.9f, 1.2f, 16.0D, 4, 3.0D);
@@ -327,15 +328,15 @@ public class LunaShockArrowEntity extends Projectile implements ItemSupplier, Bl
             if (!highPressureArrow && !hasLineOfSight(center, target)) {
                 continue;
             }
+            if (owner instanceof ServerPlayer player && bounced)
+                DfsAchievements.recordLunaShockFixedKill(player, target, true, true);
             target.invulnerableTime = 0;
             SkillDamageHelper.hurt(target, SkillDamageHelper.lunaShockArrow(serverLevel, this, owner), owner, com.rzy.dealt_force_skills.config.DealtForceConfig.floatValue("summons.luna_shock_arrow_entity.skill_hurt.1.damage", 4.0f));
         }
     }
 
     private boolean hasLineOfSight(Vec3 center, LivingEntity target) {
-        Vec3 targetCenter = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
-        HitResult result = level().clip(new ClipContext(center, targetCenter, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
-        return result.getType() == HitResult.Type.MISS || result.getLocation().distanceToSqr(targetCenter) < 0.25D;
+        return com.rzy.dealt_force_skills.character.uluru.UluruExplosionHelper.exposed(level(), center, target);
     }
 
     private Vec3 reflect(Vec3 motion, Direction direction) {

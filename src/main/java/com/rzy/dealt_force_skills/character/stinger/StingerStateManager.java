@@ -173,7 +173,17 @@ public final class StingerStateManager {
                 && hasStingerProtection(player);
     }
 
+    /** Raid fallback reuses the native downed pose/control state, with its own server deadline. */
+    public static void enterRaidDowned(ServerPlayer player, int durationTicks) {
+        enterDowned(player);
+        data(player).putBoolean("RaidGenericDowned", true);
+        data(player).putLong(DOWNED_UNTIL, SkillCooldownHelper.now(player) + Math.max(1, durationTicks));
+        player.removeEffect(ModEffects.STINGER_DOWNED.get());
+        player.addEffect(new MobEffectInstance(ModEffects.STINGER_DOWNED.get(), Math.max(1, durationTicks), 0, false, true, true));
+    }
+
     public static void enterDowned(ServerPlayer player) {
+        data(player).remove("RaidGenericDowned");
         CompoundTag tag = data(player);
         long now = SkillCooldownHelper.now(player);
         long until = now + DOWNED_DURATION_TICKS;
@@ -194,6 +204,7 @@ public final class StingerStateManager {
     }
 
     public static void clearDowned(ServerPlayer player, boolean fullHeal) {
+        data(player).remove("RaidGenericDowned");
         CompoundTag tag = data(player);
         tag.putLong(DOWNED_UNTIL, 0L);
         tag.putLong(DOWNED_COOLDOWN_UNTIL,
@@ -211,6 +222,7 @@ public final class StingerStateManager {
     }
 
     public static void clearDownedOnDeath(ServerPlayer player) {
+        data(player).remove("RaidGenericDowned");
         CompoundTag tag = data(player);
         tag.putLong(DOWNED_UNTIL, 0L);
         tag.putInt(SELF_RESCUE_TICKS, 0);
@@ -523,6 +535,10 @@ public final class StingerStateManager {
     }
 
     private static void tickRescue(ServerPlayer player) {
+        if (data(player).getBoolean("RaidGenericDowned") && !isStinger(player)) {
+            resetRescue(data(player));
+            return;
+        }
         CompoundTag tag = data(player);
         if (!rescueCooldownReady(player)) {
             resetRescue(tag);

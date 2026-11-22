@@ -29,6 +29,15 @@ import java.util.Set;
 @Mod.EventBusSubscriber(modid = DealtForceSkillsMod.MODID, value = Dist.CLIENT)
 public final class SmokeWorldRenderer {
     private static final Set<Entity> CLOUDS = Collections.newSetFromMap(new IdentityHashMap<>());
+    private static final Set<Entity> DRAWN = Collections.newSetFromMap(new IdentityHashMap<>());
+
+    public static boolean drawInEntityPass(Entity entity) {
+        if (CLOUDS.contains(entity) && OculusCompat.isUsingRenderPack() && !OculusCompat.isRenderShadow()) {
+            DRAWN.add(entity);
+            return true;
+        }
+        return false;
+    }
 
     private SmokeWorldRenderer() {
     }
@@ -42,18 +51,20 @@ public final class SmokeWorldRenderer {
 
     @SubscribeEvent
     public static void onLeave(EntityLeaveLevelEvent event) {
-        if (event.getLevel() instanceof ClientLevel) CLOUDS.remove(event.getEntity());
+        if (event.getLevel() instanceof ClientLevel) { CLOUDS.remove(event.getEntity()); DRAWN.remove(event.getEntity()); }
     }
 
     @SubscribeEvent
     public static void onUnload(LevelEvent.Unload event) {
-        if (event.getLevel() instanceof ClientLevel) CLOUDS.clear();
+        if (event.getLevel() instanceof ClientLevel) { CLOUDS.clear(); DRAWN.clear(); }
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onWorldStage(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY && !OculusCompat.isRenderShadow()) DRAWN.clear();
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES
-                || HelmetVisionClient.isThermalVisionActive() || OculusCompat.isRenderShadow()) return;
+                || OculusCompat.isRenderShadow()) return;
+        if (HelmetVisionClient.isThermalVisionActive()) { DRAWN.clear(); return; }
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || CLOUDS.isEmpty()) return;
         CLOUDS.removeIf(entity -> entity.isRemoved() || entity.level() != mc.level);
@@ -61,27 +72,42 @@ public final class SmokeWorldRenderer {
         Vec3 camera = event.getCamera().getPosition();
         float partialTick = event.getPartialTick();
         var buffers = mc.renderBuffers().bufferSource();
+        boolean drewFallback = false;
         for (Entity entity : CLOUDS) {
-            if (!entity.shouldRenderAtSqrDistance(entity.distanceToSqr(camera))) continue;
-            EntityRenderer<?> renderer = mc.getEntityRenderDispatcher().getRenderer(entity);
-            SmokeCloudRenderer<?> smoke;
-            if (renderer instanceof SmokeCloudRenderer<?> cloudRenderer) {
-                smoke = cloudRenderer;
-            } else if (renderer instanceof WildfireDeviceRenderer wildfireRenderer) {
-                smoke = wildfireRenderer.smokeRenderer();
-            } else {
-                continue;
-            }
+            if (DRAWN.contains(entity) || !entity.shouldRenderAtSqrDistance(entity.distanceToSqr(camera))) continue;
             pose.pushPose();
             try {
                 pose.translate(Mth.lerp(partialTick, entity.xo, entity.getX()) - camera.x,
                         Mth.lerp(partialTick, entity.yo, entity.getY()) - camera.y,
                         Mth.lerp(partialTick, entity.zo, entity.getZ()) - camera.z);
-                smoke.renderWorld(entity, partialTick, pose, buffers);
+                renderCloud(entity, partialTick, pose, buffers);
+                drewFallback = true;
             } finally {
                 pose.popPose();
             }
         }
-        buffers.endBatch();
+        DRAWN.clear();
+        if (drewFallback) buffers.endBatch();
+    }
+
+    static void renderCloud(Entity entity, float partialTick, PoseStack pose,
+                            net.minecraft.client.renderer.MultiBufferSource buffers) {
+        Minecraft mc = Minecraft.getInstance();
+        EntityRenderer<?> renderer = mc.getEntityRenderDispatcher().getRenderer(entity);
+        SmokeCloudRenderer<?> smoke;
+        if (renderer instanceof SmokeCloudRenderer<?> cloudRenderer) {
+            smoke = cloudRenderer;
+        } else if (renderer instanceof WildfireDeviceRenderer wildfireRenderer) {
+            smoke = wildfireRenderer.smokeRenderer();
+        } else if (renderer instanceof com.rzy.dealt_force_skills.client.renderer.RoverFieldRenderer roverRenderer) {
+            smoke = roverRenderer.smokeRenderer();
+        } else {
+            return;
+        }
+        if (entity instanceof com.rzy.dealt_force_skills.entity.RoverFieldEntity field) {
+            float scale = (float) (field.radius() / 6.0);
+            pose.scale(scale, scale, scale);
+        }
+        smoke.renderWorld(entity, partialTick, pose, buffers);
     }
 }

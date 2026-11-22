@@ -37,7 +37,7 @@ public final class NativeCorpsArena {
     public static Vec3 center(LivingEntity body){var t=body.getPersistentData().getCompound(KEY);return new Vec3(t.getInt("CenterX")+.5,80,t.getInt("CenterZ")+.5);}
     public static LivingEntity opponent(LivingEntity body){var t=body.getPersistentData().getCompound(KEY);return t.hasUUID("Partner")?find(body.getServer(),t.getUUID("Partner")):null;}
     public static int grace(LivingEntity body){return active(body)?(int)Math.max(0,Math.min(300,body.getPersistentData().getCompound(KEY).getLong("Started")+300-now(body.getServer()))):0;}
-    public static boolean available(OperativeHost host){var server=host.serverLevel().getServer();var d=data(server);return !hasTicket(host.body()) && server.getLevel(CorpsStateManager.ALLEY_MAZE_LEVEL)!=null && d.next<65536 && d.leases.size()<16;}
+    public static boolean available(OperativeHost host){if(com.rzy.dealt_force_skills.raid.ai.RaidAiAffinity.instance(host.body())!=null)return false;var server=host.serverLevel().getServer();var d=data(server);return !hasTicket(host.body()) && server.getLevel(CorpsStateManager.ALLEY_MAZE_LEVEL)!=null && d.next<65536 && d.leases.size()<16;}
     public static boolean start(OperativeHost host,LivingEntity target) {
         if(!available(host) || hasTicket(target) || host.body().isPassenger() || host.body().isVehicle() || target.isPassenger() || target.isVehicle())return false;
         var server=host.serverLevel().getServer();var arena=server.getLevel(CorpsStateManager.ALLEY_MAZE_LEVEL);var d=data(server);

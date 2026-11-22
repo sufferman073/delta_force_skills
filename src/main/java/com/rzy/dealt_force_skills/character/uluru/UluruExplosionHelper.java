@@ -185,12 +185,24 @@ public final class UluruExplosionHelper {
 
     public static boolean hasExplosionLineOfSight(ServerLevel level, Vec3 center, LivingEntity target) {
         Vec3 start = center.add(0.0D, 0.1D, 0.0D);
-        Vec3 body = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
-        return hasLineOfSight(level, start, target.getEyePosition(), target)
-                || hasLineOfSight(level, start, body, target);
+        return exposed(level, start, target);
     }
 
-    private static boolean hasLineOfSight(ServerLevel level, Vec3 start, Vec3 end, LivingEntity target) {
+    public static boolean exposed(net.minecraft.world.level.Level level, Vec3 start, LivingEntity target) {
+        AABB box = target.getBoundingBox();
+        Vec3 center = box.getCenter();
+        if (hasLineOfSight(level, start, center, target) || hasLineOfSight(level, start, target.getEyePosition(), target)) return true;
+        double dx = box.getXsize() * 0.4, dy = box.getYsize() * 0.35, dz = box.getZsize() * 0.4;
+        for (int corner = 0; corner < 4; corner++) {
+            double x = (corner & 1) == 0 ? -dx : dx;
+            double z = (corner & 2) == 0 ? -dz : dz;
+            if (hasLineOfSight(level, start, center.add(x, -dy, z), target)
+                    || hasLineOfSight(level, start, center.add(x, dy, z), target)) return true;
+        }
+        return false;
+    }
+
+    private static boolean hasLineOfSight(net.minecraft.world.level.Level level, Vec3 start, Vec3 end, LivingEntity target) {
         return level.clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, target)).getType()
                 == HitResult.Type.MISS;
     }

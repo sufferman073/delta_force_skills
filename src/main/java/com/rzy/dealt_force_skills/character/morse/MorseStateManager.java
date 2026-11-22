@@ -1,5 +1,8 @@
 package com.rzy.dealt_force_skills.character.morse;
 
+import com.rzy.dealt_force_skills.skill.ToolHandCue;
+import com.rzy.dealt_force_skills.skill.ToolHandRelease;
+
 import com.rzy.dealt_force_skills.DealtForceSkillsMod;
 import com.rzy.dealt_force_skills.character.CharacterSelectionManager;
 import com.rzy.dealt_force_skills.character.ModCharacters;
@@ -19,6 +22,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.level.ServerLevel;
+import com.rzy.dealt_force_skills.skill.HeldToolVisualSync;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -200,6 +204,7 @@ public final class MorseStateManager {
     }
 
     public static void setEquippedTool(Player player, MorseTool tool) {
+        if (player instanceof ServerPlayer serverPlayer) HeldToolVisualSync.changed(serverPlayer);
         data(player).putInt(EQUIPPED_TOOL, tool.ordinal());
         if (tool != MorseTool.SONAR_DETECTOR) {
             cancelSonarDeploy(player);
@@ -229,6 +234,7 @@ public final class MorseStateManager {
         }
         CompoundTag tag = data(player);
         tag.putBoolean(DEPLOYING, true);
+        HeldToolVisualSync.changed(player);
         tag.putInt(DEPLOY_TICKS, 0);
         Vec3 start = player.position();
         tag.putDouble(DEPLOY_START_X, start.x);
@@ -335,6 +341,11 @@ public final class MorseStateManager {
         ), player);
     }
 
+    public static int visualDeployTicks(ServerPlayer player) {
+        CompoundTag tag = player.getPersistentData().getCompound(ROOT_TAG);
+        return tag.getBoolean(DEPLOYING) ? Math.max(0, tag.getInt(DEPLOY_TICKS)) : -1;
+    }
+
     private static void tickSonarDeploy(ServerPlayer player, long now) {
         CompoundTag tag = data(player);
         if (!tag.getBoolean(DEPLOYING)) {
@@ -363,7 +374,7 @@ public final class MorseStateManager {
                 com.rzy.dealt_force_skills.registry.ModEntities.MORSE_SONAR_DETECTOR.get(), level, player, facing);
         detector.setPos(target.x, target.y, target.z);
         detector.setYRot(tag.getFloat(DEPLOY_YAW));
-        level.addFreshEntity(detector);
+        ToolHandRelease.spawned(level.addFreshEntity(detector), player, ToolHandCue.MORSE_SONAR_DETECTOR);
         tag.putBoolean(DEPLOYING, false);
         tag.putInt(DEPLOY_TICKS, 0);
         setEquippedTool(player, MorseTool.NONE);
@@ -373,6 +384,7 @@ public final class MorseStateManager {
 
     private static void cancelSonarDeploy(Player player) {
         CompoundTag tag = data(player);
+        if (tag.getBoolean(DEPLOYING) && player instanceof ServerPlayer serverPlayer) HeldToolVisualSync.changed(serverPlayer);
         tag.putBoolean(DEPLOYING, false);
         tag.putInt(DEPLOY_TICKS, 0);
     }

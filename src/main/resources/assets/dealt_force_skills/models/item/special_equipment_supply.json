@@ -1,1 +1,106 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/special_equipment_supply"}}
+{
+  "loader": "forge:separate_transforms",
+  "gui_light": "front",
+  "textures": {
+    "particle": "dealt_force_skills:item/special_equipment_supply"
+  },
+  "base": {
+    "parent": "dealt_force_skills:item/utility_cases/special_equipment_supply"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/generated",
+      "textures": {
+        "layer0": "dealt_force_skills:item/special_equipment_supply"
+      }
+    },
+    "thirdperson_righthand": {
+      "parent": "dealt_force_skills:item/utility_cases/special_equipment_supply",
+      "display": {
+        "thirdperson_righthand": {
+          "rotation": [
+            77,
+            -20,
+            0
+          ],
+          "translation": [
+            0,
+            2.5,
+            1
+          ],
+          "scale": [
+            0.66,
+            0.66,
+            0.66
+          ]
+        }
+      }
+    },
+    "firstperson_righthand": {
+      "parent": "dealt_force_skills:item/utility_cases/special_equipment_supply",
+      "display": {
+        "firstperson_righthand": {
+          "rotation": [
+            12,
+            -24,
+            0
+          ],
+          "translation": [
+            1,
+            2,
+            1
+          ],
+          "scale": [
+            0.67,
+            0.67,
+            0.67
+          ]
+        }
+      }
+    },
+    "thirdperson_lefthand": {
+      "parent": "dealt_force_skills:item/utility_cases/special_equipment_supply",
+      "display": {
+        "thirdperson_lefthand": {
+          "rotation": [
+            77,
+            20,
+            0
+          ],
+          "translation": [
+            0,
+            2.5,
+            1
+          ],
+          "scale": [
+            0.66,
+            0.66,
+            0.66
+          ]
+        }
+      }
+    },
+    "firstperson_lefthand": {
+      "parent": "dealt_force_skills:item/utility_cases/special_equipment_supply",
+      "display": {
+        "firstperson_lefthand": {
+          "rotation": [
+            12,
+            24,
+            0
+          ],
+          "translation": [
+            1,
+            2,
+            1
+          ],
+          "scale": [
+            0.67,
+            0.67,
+            0.67
+          ]
+        }
+      }
+    }
+  }
+}

@@ -95,6 +95,7 @@ public class SaeedFireFieldEntity extends Entity implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide) com.rzy.dealt_force_skills.feedback.SkillFeedback.threat(this, "saeed.skill.fire_arrow", (radius), radius + 3, player -> !isFriendlyTarget(player));
         if (level().isClientSide) {
             for (int i = 0; i < 4; i++) {
                 double x = getX() + (random.nextDouble() - 0.5D) * radius * 2.0D;

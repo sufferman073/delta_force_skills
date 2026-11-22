@@ -39,7 +39,7 @@ public final class GhrothInputHandler {
             heldTicks++;
             if (!longTriggered && heldTicks >= LONG_HOLD_TICKS && minecraft.screen == null) {
                 longTriggered = true;
-                DFGUI_MAIN.openToLogistics();
+                DFGUI_MAIN.openToStart();
             }
         } else if (wasDown) {
             if (!longTriggered && minecraft.screen == null) {

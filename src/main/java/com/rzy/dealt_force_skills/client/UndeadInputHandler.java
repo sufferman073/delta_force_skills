@@ -60,7 +60,7 @@ public final class UndeadInputHandler {
                 if ((!creative && !sneak) || (creative && sneak)) {
                     UndeadProfessionScreen.open();
                 } else {
-                    DFGUI_MAIN.openToLogistics();
+                    DFGUI_MAIN.openToStart();
                 }
             }
         } else if (wasDown) {

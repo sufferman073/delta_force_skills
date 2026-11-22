@@ -1,1 +1,14 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/perception_activation_injection"}}
+{
+  "loader": "forge:separate_transforms",
+  "gui_light": "front",
+  "textures": {"particle":"dealt_force_skills:item/perception_activation_injection"},
+  "base": {"parent":"minecraft:item/generated","textures":{"layer0":"dealt_force_skills:item/perception_activation_injection"}},
+  "perspectives": {
+    "firstperson_righthand": {"parent":"dealt_force_skills:item/refresh_pharma/perception_activation_injection"},
+    "firstperson_lefthand": {"parent":"dealt_force_skills:item/refresh_pharma/perception_activation_injection"},
+    "thirdperson_righthand": {"parent":"dealt_force_skills:item/refresh_pharma/perception_activation_injection"},
+    "thirdperson_lefthand": {"parent":"dealt_force_skills:item/refresh_pharma/perception_activation_injection"},
+    "ground": {"parent":"dealt_force_skills:item/refresh_pharma/perception_activation_injection","display":{"ground":{"rotation":[10,18,62],"translation":[0,0,0],"scale":[0.68,0.68,0.68]}}},
+    "fixed": {"parent":"dealt_force_skills:item/refresh_pharma/perception_activation_injection","display":{"fixed":{"rotation":[0,166,-14],"translation":[0,0,1.2],"scale":[1.02,1.02,1.02]}}}
+  }
+}

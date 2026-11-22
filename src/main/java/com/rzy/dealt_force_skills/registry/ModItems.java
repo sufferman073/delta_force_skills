@@ -45,11 +45,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.rzy.dealt_force_skills.mapeditor.MapEditorToolItem;
+
 public class ModItems {
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(ForgeRegistries.ITEMS, DealtForceSkillsMod.MODID);
 
     public static final java.util.Map<String, java.util.function.Supplier<? extends Item>> OPERATIVE_SPAWN_EGGS = registerOperativeEggs();
+
+    public static final java.util.Map<MapEditorToolItem.Tool, Supplier<? extends Item>> MAP_EDITOR_TOOLS = registerMapEditorTools();
+
+    private static java.util.Map<MapEditorToolItem.Tool, Supplier<? extends Item>> registerMapEditorTools() {
+        var tools = new java.util.LinkedHashMap<MapEditorToolItem.Tool, Supplier<? extends Item>>();
+        for (var tool : MapEditorToolItem.Tool.values())
+            tools.put(tool, ITEMS.register("map_editor_" + tool.id, () -> new MapEditorToolItem(tool)));
+        return java.util.Collections.unmodifiableMap(tools);
+    }
 
     private static java.util.Map<String, java.util.function.Supplier<? extends Item>> registerOperativeEggs() {
         var eggs = new java.util.LinkedHashMap<String, java.util.function.Supplier<? extends Item>>();
@@ -61,6 +72,10 @@ public class ModItems {
 
     public static final RegistryObject<Item> AUTO_SELL_UPGRADE = ITEMS.register("auto_sell_upgrade",
             com.rzy.dealt_force_skills.compat.SophisticatedBackpackCompat::createUpgrade);
+
+    public static final java.util.List<RegistryObject<Item>> PERSONAL_DIMENSIONS = java.util.stream.IntStream.rangeClosed(0, 5)
+            .mapToObj(tier -> ITEMS.<Item>register("personal_dimension_" + tier,
+                    () -> new BlockItem(ModBlocks.PERSONAL_DIMENSIONS.get(tier).get(), new Item.Properties()))).toList();
 
     public static final RegistryObject<Item> GTI_SPECIAL_OPERATIONS = ITEMS.register("gti_special_operations",
             () -> new BlockItem(ModBlocks.GTI_SPECIAL_OPERATIONS.get(), new Item.Properties()));
