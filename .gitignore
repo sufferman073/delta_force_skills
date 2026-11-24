@@ -113,6 +113,12 @@ secrets.*
 *password*
 *secret*
 
+# `secret_raid` is a shipped raid dimension (the map-preview world), not a
+# credential file. Without these the raid dimension is missing from any clean
+# checkout and raid placement dies with "地图预览维度未加载".
+!/src/main/resources/data/dealt_force_skills/dimension/secret_raid.json
+!/src/main/resources/data/dealt_force_skills/dimension_type/secret_raid.json
+
 # Source-tree hardening. `src/main/**` is public, so block accidental
 # generated files, editor backups, OS metadata, and archives inside it.
 /src/**/.DS_Store

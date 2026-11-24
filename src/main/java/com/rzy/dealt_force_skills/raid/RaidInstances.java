@@ -29,6 +29,8 @@ public final class RaidInstances {
     private static final String ENTITY_INSTANCE = "dfs_preview_instance";
     private static final Map<MinecraftServer, Map<UUID, RaidMapPlacement>> JOBS = new WeakHashMap<>();
     private static final Set<UUID> TRAVELLING = new HashSet<>();
+    /** Placement start markers, {nanoTime, gameTick}, used only for the load-timing log. */
+    private static final Map<UUID, long[]> TIMING = new HashMap<>();
     private RaidInstances() { }
 
     public static int placementPercent(MinecraftServer server, UUID id) {
@@ -49,6 +51,21 @@ public final class RaidInstances {
     private static void persist(MinecraftServer server) {
         RaidInstanceData.get(server).setDirty();
         server.overworld().getDataStorage().save();
+    }
+    /**
+     * One log line per finished placement so two builds can be compared by numbers:
+     * total wall time, ticks spent, and per-chunk cost. Keep this identical in every build.
+     */
+    private static void reportPlacementTiming(ServerLevel level, Instance instance, RaidMapPlacement job) {
+        long[] start = TIMING.remove(instance.id);
+        if (start == null) return;
+        long nanos = System.nanoTime() - start[0];
+        long ticks = level.getGameTime() - start[1];
+        int chunks = Math.max(1, job.totalChunks());
+        LOGGER.info("Raid map placement {} map={} action={} chunks={} ticks={} wallMs={} msPerChunk={}",
+                instance.id, instance.mapId, instance.phase, job.totalChunks(), ticks,
+                String.format(Locale.ROOT, "%.1f", nanos / 1_000_000.0D),
+                String.format(Locale.ROOT, "%.2f", nanos / 1_000_000.0D / chunks));
     }
     public static Instance create(MinecraftServer server, String mapId) {
         ServerLevel level = server.getLevel(DIMENSION);
@@ -217,8 +234,10 @@ public final class RaidInstances {
             if (instance.phase != Phase.PREPARING && instance.phase != Phase.RECYCLING || !instance.error.isEmpty()) continue;
             if (instance.phase == Phase.RECYCLING && !RaidMatches.cleanupAllowed(server, instance.id)) continue;
             try {
-                RaidMapPlacement job = jobs(server).computeIfAbsent(instance.id, ignored -> new RaidMapPlacement(level,
-                        RaidTemplate.load(instance.mapId), instance.origin(), instance.phase == Phase.RECYCLING));
+                RaidMapPlacement job = jobs(server).computeIfAbsent(instance.id, ignored -> {
+                    TIMING.put(instance.id, new long[]{System.nanoTime(), level.getGameTime()});
+                    return new RaidMapPlacement(level, RaidTemplate.load(instance.mapId), instance.origin(), instance.phase == Phase.RECYCLING);
+                });
                 boolean complete = job.tick();
                 if (job.error() != null) throw new IllegalStateException(job.error());
                 if (complete) {
@@ -227,6 +246,7 @@ public final class RaidInstances {
                     instance.phase = instance.phase == Phase.PREPARING ? Phase.READY : Phase.CLOSED;
                     persist(server);
                     LOGGER.info("Raid map preview {} now {}", instance.id, instance.phase);
+                    reportPlacementTiming(level, instance, job);
                 }
             } catch (RuntimeException failure) {
                 RaidMapPlacement job = jobs(server).remove(instance.id); if (job != null) job.cancel();
