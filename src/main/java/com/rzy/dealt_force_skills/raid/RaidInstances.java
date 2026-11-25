@@ -250,6 +250,7 @@ public final class RaidInstances {
                 }
             } catch (RuntimeException failure) {
                 RaidMapPlacement job = jobs(server).remove(instance.id); if (job != null) job.cancel();
+                TIMING.remove(instance.id);
                 instance.error = failure.getClass().getSimpleName() + ": " + failure.getMessage(); persist(server);
                 LOGGER.error("Map preview {} failed; slot {} remains reserved", instance.id, instance.slot, failure);
             }
