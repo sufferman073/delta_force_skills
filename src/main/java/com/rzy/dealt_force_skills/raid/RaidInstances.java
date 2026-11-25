@@ -62,10 +62,10 @@ public final class RaidInstances {
         long nanos = System.nanoTime() - start[0];
         long ticks = level.getGameTime() - start[1];
         int chunks = Math.max(1, job.totalChunks());
-        LOGGER.info("Raid map placement {} map={} action={} chunks={} ticks={} wallMs={} msPerChunk={}",
+        LOGGER.info("Raid map placement {} map={} action={} chunks={} ticks={} wallMs={} msPerChunk={} {}",
                 instance.id, instance.mapId, instance.phase, job.totalChunks(), ticks,
                 String.format(Locale.ROOT, "%.1f", nanos / 1_000_000.0D),
-                String.format(Locale.ROOT, "%.2f", nanos / 1_000_000.0D / chunks));
+                String.format(Locale.ROOT, "%.2f", nanos / 1_000_000.0D / chunks), job.timings());
     }
     public static Instance create(MinecraftServer server, String mapId) {
         ServerLevel level = server.getLevel(DIMENSION);
